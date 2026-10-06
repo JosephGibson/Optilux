@@ -43,7 +43,7 @@ def test_clean_tree_passes(tmp_path: Path) -> None:
     [
         ("AGENTS.md", 6_144),
         ("docs/big.md", 24_576),
-        ("docs/prompts/m9.md", 24_576),
+        ("docs/prompts/m9.md", 40_960),
         ("docs/roadmap.md", 40_960),
         ("docs/plans/m9.md", 40_960),
     ],
