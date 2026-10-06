@@ -1,0 +1,39 @@
+[project]
+name = "optilux"
+# Never bumped: the release version is the newest commit's prefix (docs/workflow.md, Git).
+version = "0.0.0"
+description = "Shader and runtime benchmark harness for Minecraft."
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+optilux = "optilux.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.16.10",
+]
+
+[build-system]
+# Same version as the uv that locks the project, so uv builds with its built-in backend.
+requires = ["uv_build==0.12.23"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "optilux"
+# Flat layout: the package sits at the repo root, not under src/.
+module-root = ""
+
+[tool.ruff]
+# 100: the width chosen in docs/plans/m0.md, phase 0.00.01.
+line-length = 100
+# ruff format also formats code blocks in Markdown; docs/sources/ is kept verbatim.
+extend-exclude = ["docs/sources"]
+
+[tool.ruff.lint]
+# pycodestyle, pyflakes, isort, bugbear, pyupgrade.
+select = ["E", "W", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
