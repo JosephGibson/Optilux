@@ -5,7 +5,7 @@ import sys
 from collections.abc import Sequence
 from typing import NoReturn
 
-from optilux.verbs import Verb, install, launch, milestone, pack, status, test, verify
+from optilux.verbs import Verb, install, launch, milestone, mod, pack, status, test, verify
 
 # The verb registry: every verb module's VERB, in `optilux --help` order.
 VERBS: tuple[Verb, ...] = (
@@ -16,6 +16,7 @@ VERBS: tuple[Verb, ...] = (
     pack.VERB,
     install.VERB,
     launch.VERB,
+    mod.VERB,
 )
 
 

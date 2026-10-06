@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 closed (release v0.00.06); M1 in progress: 0.01.03 (pre-launch files, the launch gate and the first launch) is the last phase done, next 0.01.04, the mod project. Latest stop: handoff.md.
+Status: M0 closed (release v0.00.06); M1 in progress: 0.01.04 (the mod project, the inert gate, mod build and mod test) is the last phase done, next 0.01.05, the pipe transport. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -95,7 +95,7 @@ The Phase -1 spike's handoff findings (2026-10-06), each with the milestone and 
 | F6 | Viewfinder has no server-command tool; terrain shows only as "Terrain solid"; 30 fps under the debug context | 0.01.10 dev session 1; M2 A8 and E5 | /tick, /summon and /setblock go through the mod's `command`; dev session 1 runs the deferred batch: the look review of the L1, V1 and V6 captures (user), the /mcp reconnect and one Viewfinder call from Claude Code, V2 with /summon and /setblock; E5's overhead check separates the debug context from the mod |
 | F7 | Dev-tier quit: WM_CLOSE saves the world, then the watchdog writes a crash report and the process exits -8 | closed (user, 2026-10-06) | accepted as known in platform.md#mod-tiers; the dev-session protocol treats exit -8 after "Saving worlds" as a clean quit; no shutdown step |
 | F8 | 26.3 stores the singleplayer player under players/data/<uuid>.dat | 0.01.03 launch; M2 world verbs | `launch` takes `--uuid` from that file name when the snapshot has one; `world snapshot` records it (platform.md#install-and-launch) |
-| F9 | Iris has no release tags since 1.7.3; the 26.3 branch head says MOD_VERSION 1.11.6 | 0.01.04 mixin-target test | the pinned jar's bytecode is the authority (`javap -c -p`); the source at commit adc75283b is context; the mixin-target test reads the jars (mod.md#11-build-and-test) |
+| F9 | Iris has no release tags since 1.7.3; the 26.3 branch head says MOD_VERSION 1.11.6 | landed in 0.01.04 | the pinned jar's bytecode is the authority (`javap -c -p`); the source at commit adc75283b is context; the mixin-target test reads every target from the hash-checked jars with ASM (mod.md#11-build-and-test) |
 | F10 | Offline mode still calls api.minecraftservices.com at startup; GPULatency read 1.04 frames idle at 141 fps | M2 P1 and calibration notes | the call is recorded, not blocked; the CPU-floor measurement reads GPULatency next to the 90 % rule (measurement.md#validity) |
 | F11 | A launch takes about 20 s; 167 s only with the modal dialog | 0.01.03 launch | the world timeout is 120 s (6x the spike's 18.4 s join); the Sodium file is written before every launch so no dialog appears; a timeout ends the process and fails the run |
 | Q1 | The game directory under runtime/ still holds the spike world and files | 0.01.08 | the provisional world is a copy of runtime/mc-26.3/game/saves/spike under snapshots/provisional/, made by hand and hashed (design.md#6-milestones); nothing else under runtime/ is reused: `install` rebuilds from the launch spec |

@@ -1,0 +1,132 @@
+// optilux-helper (docs/mod.md#11-build-and-test). `optilux mod build|test` writes
+// build/optilux/inputs.json from the platform file and the hash-checked pinned jars before it runs
+// Gradle; this script reads nothing else under config/ or runtime/.
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import java.security.MessageDigest
+import net.fabricmc.loom.task.AbstractRunTask
+
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.18.2'
+}
+
+def inputsFile = file('build/optilux/inputs.json')
+if (!inputsFile.isFile()) {
+    throw new GradleException(
+        "no ${inputsFile}; fix: run `uv run optilux mod build` or `mod test` from the repo root")
+}
+def optilux = new JsonSlurper().parse(inputsFile)
+
+static String sha512(File file) {
+    def digest = MessageDigest.getInstance('SHA-512')
+    file.withInputStream { stream ->
+        byte[] buffer = new byte[1 << 20]
+        int read
+        while ((read = stream.read(buffer)) > 0) {
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().encodeHex().toString()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${optilux.minecraft}"
+    implementation "net.fabricmc:fabric-loader:${optilux.loader}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${optilux.fabricApi}"
+    // Iris and Sodium from the platform's pinned jars, never a repository.
+    optilux.compileOnly.each { pinned ->
+        def jar = file(pinned.path)
+        if (!jar.isFile() || sha512(jar) != pinned.sha512) {
+            throw new GradleException("${jar} is missing or off its pin; fix: run `uv run optilux install`")
+        }
+        compileOnly files(jar)
+    }
+
+    testImplementation platform('org.junit:junit-bom:5.14.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'org.ow2.asm:asm:9.10.1'
+    testImplementation 'org.ow2.asm:asm-tree:9.10.1'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.encoding = 'UTF-8'
+}
+
+// fabric.mod.json: one client entrypoint, the mixin config, `depends` from the inputs; no access
+// widener and no nested jars (docs/mod.md#5-safety).
+def generated = layout.buildDirectory.dir('generated/fabric')
+def modJson = tasks.register('modJson') {
+    def out = generated.get().file('fabric.mod.json').asFile
+    def version = project.version.toString()
+    def depends = optilux.depends
+    inputs.file(inputsFile)
+    inputs.property('version', version)
+    outputs.file(out)
+    doLast {
+        def meta = [
+            schemaVersion: 1,
+            id: 'optilux-helper',
+            version: version,
+            name: 'Optilux helper',
+            description: 'Benchmark helper for the Optilux harness; inert without -Doptilux.token.',
+            license: 'MIT',
+            environment: 'client',
+            entrypoints: [client: ['optilux.helper.HelperClient']],
+            mixins: ['optilux-helper.mixins.json'],
+            depends: depends,
+        ]
+        out.parentFile.mkdirs()
+        out.setText(JsonOutput.prettyPrint(JsonOutput.toJson(meta)).replace('\r\n', '\n') + '\n', 'UTF-8')
+    }
+}
+sourceSets.main.resources.srcDir(files(generated).builtBy(modJson))
+
+jar {
+    from(rootProject.file('../LICENSE'))
+}
+
+// The same sources give the same bytes: the jar's sha512 is run identity.
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+// The game never starts from Gradle (docs/mod.md#5-safety): a graph holding a run task fails
+// before any task runs.
+loom {
+    runConfigs.configureEach {
+        ideConfigGenerated = false
+    }
+}
+gradle.taskGraph.whenReady { graph ->
+    def runs = graph.allTasks.findAll { it instanceof AbstractRunTask }
+    if (runs) {
+        throw new GradleException(
+            "${runs*.name.join(', ')}: the game never starts from Gradle; fix: `uv run optilux launch`")
+    }
+}
+
+// Tests read the built jar and the pinned jars, and write only under build/.
+test {
+    useJUnitPlatform()
+    dependsOn tasks.named('jar')
+    def work = layout.buildDirectory.dir('test-work').get().asFile
+    workingDir = work
+    systemProperty 'java.io.tmpdir', new File(work, 'tmp').absolutePath
+    systemProperty 'optilux.inputs', inputsFile.absolutePath
+    systemProperty 'optilux.jar', tasks.jar.archiveFile.get().asFile.absolutePath
+    doFirst {
+        new File(work, 'tmp').mkdirs()
+    }
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
+}

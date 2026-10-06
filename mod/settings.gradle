@@ -1,0 +1,13 @@
+// optilux-helper (docs/mod.md), built and tested only through `optilux mod build|test`.
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+rootProject.name = 'optilux-helper'

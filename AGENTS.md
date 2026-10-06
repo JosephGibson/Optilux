@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M1 in progress: 0.01.03 (pre-launch files, the launch gate and the first launch) is the last phase done, next 0.01.04, the mod project (docs/plans/m1.md). Latest stop: docs/handoff.md.
+Status: M1 in progress: 0.01.04 (the mod project, the inert gate, mod build and mod test) is the last phase done, next 0.01.05, the pipe transport (docs/plans/m1.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -19,11 +19,11 @@ Status: M1 in progress: 0.01.03 (pre-launch files, the launch gate and the first
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`: the briefing and the next prompt) and optilux-release (the PR checklist, the release watch, the switch block); agents/researcher.md and reviewer.md (read-only).
 - .github/: workflows/ci.yml (push and pull_request, windows-latest: ruff, tests, verify docs, `pack release --check`, `pack build`, the zip as an artifact) and release.yml (push to main: `pack release`).
-- mod/ (planned): optilux-helper (Fabric).
+- mod/: optilux-helper (Fabric), a Gradle project (Loom, wrapper pinned by sha256); `mod build` puts its jar into runtime/<platform>/files/, `mod test` runs its JUnit tests.
 - shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256); `pack release` publishes it as the GitHub release v<version>, titled `Optilux <version>: <Name>`. M0 holds the placeholder: shaders/shaders.properties, one comment line, no programs; M3's hello pack replaces it.
 - config/: platforms (+ launch specs), suite, profiles, java, tools; views and pipeline planned.
 - docs/.
-- Ignored: results/raw/, runtime/, snapshots/, reference/, build/, .venv/. Committed: results/records/, config/calibrations/.
+- Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/. Committed: results/records/, config/calibrations/.
 
 ## Docs
 - docs/design.md: goals, architecture, interfaces, milestones, decisions.
