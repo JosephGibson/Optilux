@@ -1,5 +1,5 @@
 # Roadmap
-Status: written in Phase 0 (2026-10-06); M0 is current, its plan is plans/m0.md and its prompts prompts/m0.md; nothing built yet (handoff.md).
+Status: M0 in progress (plan plans/m0.md, prompts prompts/m0.md); 0.00.01 is the last phase done, next 0.00.02. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -96,7 +96,7 @@ Owner: who decides. Recommendation: what an unattended run takes. Closed decisio
 
 | Id | Decision | Owner | Recommendation | When |
 |---|---|---|---|---|
-| D1 | Installing uv (not on PATH on 2026-10-06) | user | `pip install uv==<newest release>` into the user's Python 3.12: it adds nothing to PATH; the standalone installer edits the user PATH, so it is the fallback only on the user's say | 0.00.01 start |
+| D1 | Installing uv (not on PATH on 2026-10-06) | user | closed: `pip install uv==0.12.23` into the user's Python 3.12, whose Scripts folder was already on PATH (user, 2026-10-06) | closed |
 | D2 | CLI framework | Claude | argparse from the standard library: no dependency; `--json` per verb; click would add a dependency no M0 verb needs | 0.00.01 |
 | D3 | Where git hooks live | Claude | .githooks/ committed and `core.hooksPath` set with `git config --local` in 0.00.03, reported by `optilux status`; copying into .git/hooks would need an installer verb outside the verb table | 0.00.03 |
 | D4 | Commit-message check | Claude | one line, at most 72 characters, `0.MM.PP: ` then text, no attribution token (Co-Authored-By, Claude, Anthropic, Generated); the trailing period of the user's examples is style, not enforced | 0.00.03 |

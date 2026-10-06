@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: Phase 0 closed 2026-10-06 (roadmap, M0 plan and prompts); next M0, whose first prompt is in docs/prompts/m0.md (docs/handoff.md). No code yet.
+Status: M0 in progress; 0.00.01 (Python project and `optilux test`) is the last phase done, next 0.00.02 (docs/prompts/m0.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -13,13 +13,14 @@ Status: Phase 0 closed 2026-10-06 (roadmap, M0 plan and prompts); next M0, whose
 - Git: one milestone branch; one commit per phase, `0.MM.PP: <summary>`, one line, at most 72 characters; push after each commit; one PR per milestone, rebase-merged by the user; no force push, no `--no-verify`.
 - No Claude or Anthropic attribution anywhere.
 
-## Layout (planned)
-- optilux/: Python harness.
-- mod/: optilux-helper (Fabric).
-- shader/: the pack.
-- config/: platforms (+ launch specs), suite, profiles, java, tools, views, pipeline.
+## Layout
+- optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb. Run `uv run optilux <verb>`.
+- tests/: pytest, run by `uv run optilux test`.
+- mod/ (planned): optilux-helper (Fabric).
+- shader/ (planned): the pack.
+- config/: platforms (+ launch specs), suite, profiles, java, tools; views and pipeline planned.
 - docs/.
-- Ignored: results/raw/, runtime/, snapshots/, reference/. Committed: results/records/, config/calibrations/.
+- Ignored: results/raw/, runtime/, snapshots/, reference/, .venv/. Committed: results/records/, config/calibrations/.
 
 ## Docs
 - docs/design.md: goals, architecture, interfaces, milestones, decisions.

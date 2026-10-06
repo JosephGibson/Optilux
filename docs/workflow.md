@@ -126,9 +126,9 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 - A test that needs git builds a throwaway repo in a temp dir and checks it is not this repo before writing (ALC rule).
 
 ## Code conventions
-- Python and dependencies locked with hashes: uv (.python-version, pyproject.toml, uv.lock), installed with the user's OK in M0; one `.venv`; ruff format and lint; type hints on public functions.
+- uv, installed by pip into the user's Python 3.12 (roadmap.md#decisions D1): .python-version pins Python 3.12, pyproject.toml pins the dev tools exactly, uv.lock locks every dependency with hashes; one `.venv`; ruff format and lint; type hints on public functions.
 - No absolute paths in code: paths derive from the repo root or config/.
 - Windows APIs via ctypes. PowerShell only where Windows forces it.
-- JSON for configs, inputs and records; UTF-8 without BOM; LF. Git for Windows here sets core.autocrlf=true system-wide, so M0's first commit adds .gitattributes (`* text=auto eol=lf`); without it, hashed files change on checkout.
+- JSON for configs, inputs and records; the one exception is pyproject.toml, where uv, ruff and pytest read their settings. UTF-8 without BOM; LF. Git for Windows here sets core.autocrlf=true system-wide, so M0's first commit adds .gitattributes (`* text=auto eol=lf`); without it, hashed files change on checkout.
 - Every constant carries its reason or evidence at its definition (no voodoo constants).
 - Errors name the fix; scripts handle failures rather than leaving them to the agent.
