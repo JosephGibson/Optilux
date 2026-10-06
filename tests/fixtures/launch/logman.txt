@@ -1,0 +1,30 @@
+
+Data Collector Set                      Type                          Status
+-------------------------------------------------------------------------------
+Eventlog-Security                       Trace                         Running 
+CimFSUnionFS-Filter                     Trace                         Running 
+FilterMgr-Logger                        Trace                         Running 
+LwtNetLog                               Trace                         Running 
+Microsoft-Windows-Rdp-Graphics-RdpIdd-Trace Trace                         Running 
+NetCore                                 Trace                         Running 
+NtfsLog                                 Trace                         Running 
+RadioMgr                                Trace                         Running 
+ReFSLog                                 Trace                         Running 
+WiFiSession                             Trace                         Running 
+SleepStudyTraceSession                  Trace                         Running 
+F589D420-8B9A-40A2-95A8-DBB27ED17997    Trace                         Running 
+BE235AAC-AC9D-4DDC-9FA6-D4C37AF837B7    Trace                         Running 
+D425B399-4B71-4151-8DAF-413F92A75EC3    Trace                         Running 
+CldFltLog                               Trace                         Running 
+MpWppCoreTracing-20261005-191136-00000003-100000000 Trace                         Running 
+MpWppUpdateLogging                      Trace                         Running 
+MpWppTracing-20261005-221136-00000003-fffffffeffffffff Trace                         Running 
+1DSListener                             Trace                         Running 
+WINNETESP                               Trace                         Running 
+DefenderApiLoggerLowPriv                Trace                         Running 
+UpdateSessionOrchestration              Trace                         Running 
+MoUxCoreWorker                          Trace                         Running 
+Windows-Compat-Inventory-InstallMon     Trace                         Running 
+WinDiag-Realtime-Session                Trace                         Running 
+
+The command completed successfully.

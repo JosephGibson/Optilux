@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 closed (release v0.00.06); M1 in progress: 0.01.02 (install and the launch-spec check) is the last phase done, next 0.01.03, pre-launch files and launch. Latest stop: handoff.md.
+Status: M0 closed (release v0.00.06); M1 in progress: 0.01.03 (pre-launch files, the launch gate and the first launch) is the last phase done, next 0.01.04, the mod project. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -34,7 +34,7 @@ Change, exit and agent-time estimate per phase; files, tests, decisions and comm
 - Estimate: 2 h.
 
 ### 0.01.03 Pre-launch files and `launch`
-- Change: options.txt, sodium-options.json and iris.properties written before every launch (F3; rawMouseInput false joins suite.json display); the launch gate (F2); `launch <world>`: game/mods/ made to hold exactly the tier's jars, jar and asset-index hashes checked, the offline session with the fresh token (`--no-token` for A1, `--set` for A7's option), `--uuid` from the snapshot's player file (F8), the started command line checked, the join awaited within 120 s (F11), WM_CLOSE until `quit` exists. CI to windows-latest. One announced launch.
+- Change: options.txt, sodium-options.json and iris.properties written before every launch (F3; no rawMouseInput: 26.3 removed it, user 2026-10-06); the launch gate (F2); `launch <world>`: game/mods/ made to hold exactly the tier's jars, jar and asset-index hashes checked, the offline session with the fresh token (`--no-token` for A1, `--set` for A7's option), `--uuid` from the snapshot's player file (F8), the started command line checked, the join awaited within 120 s (F11), WM_CLOSE until `quit` exists. CI to windows-latest. One announced launch.
 - Exit: launch, join and quit pass with exit 0; the options read back equal the written keys; CI green on windows-latest.
 - Estimate: 2 h.
 

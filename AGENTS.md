@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M1 in progress: 0.01.02 (install and the launch-spec check) is the last phase done, next 0.01.03, pre-launch files and launch (docs/plans/m1.md). Latest stop: docs/handoff.md.
+Status: M1 in progress: 0.01.03 (pre-launch files, the launch gate and the first launch) is the last phase done, next 0.01.04, the mod project (docs/plans/m1.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -14,11 +14,11 @@ Status: M1 in progress: 0.01.02 (install and the launch-spec check) is the last 
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout
-- optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec. Run `uv run optilux <verb>`.
-- tests/: pytest, run by `uv run optilux test`; fixtures/ holds Mojang's and Fabric's 26.3 JSON.
+- optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec, launch.py the pre-launch files, the gate and the launch. Run `uv run optilux <verb>`.
+- tests/: pytest, run by `uv run optilux test`; fixtures/ holds Mojang's and Fabric's 26.3 JSON and launch's log and logman output; `windows`-marked tests skip elsewhere.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`: the briefing and the next prompt) and optilux-release (the PR checklist, the release watch, the switch block); agents/researcher.md and reviewer.md (read-only).
-- .github/: workflows/ci.yml (push and pull_request: ruff, tests, verify docs, `pack release --check`, `pack build`, the zip as an artifact) and release.yml (push to main: `pack release`).
+- .github/: workflows/ci.yml (push and pull_request, windows-latest: ruff, tests, verify docs, `pack release --check`, `pack build`, the zip as an artifact) and release.yml (push to main: `pack release`).
 - mod/ (planned): optilux-helper (Fabric).
 - shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256); `pack release` publishes it as the GitHub release v<version>, titled `Optilux <version>: <Name>`. M0 holds the placeholder: shaders/shaders.properties, one comment line, no programs; M3's hello pack replaces it.
 - config/: platforms (+ launch specs), suite, profiles, java, tools; views and pipeline planned.
