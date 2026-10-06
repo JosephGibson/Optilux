@@ -3,8 +3,8 @@
 User-facing changes per release. Versions are 0.MM.PP (milestone, phase).
 
 ## 0.01 Game control
-The harness installs and launches the pinned Minecraft and drives it through the helper mod.
-- Releases are titled `Optilux <version>: <milestone>`, for example `Optilux 0.01.07: Game control`.
+The harness installs the pinned Minecraft, Fabric, mods, Java and tools hash-checked, launches the game directly, and drives it through the rewritten helper mod. Still nothing to run for a shader user: the first real pack arrives with M3.
+- Releases are titled `Optilux <version>: <milestone>`, for example `Optilux 0.01.10: Game control`.
 
 ## 0.00 Foundation
 Foundation. Nothing to run yet: no shader pack to install and no benchmark to start.

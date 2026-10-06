@@ -289,6 +289,33 @@ def test_status_names_a_missing_estimate_and_a_gap(cloned: Path) -> None:
     assert status.heads_up(facts) == "no next prompt: see the problems below"
 
 
+def test_status_plans_while_the_set_starts_at_the_phase_after_the_next(cloned: Path) -> None:
+    # The plan phase in progress: 0.07.00 committed, the set it wrote starts at 0.07.02 and is
+    # not committed yet; the cycle still yields the Plan prompt, for 0.07.01.
+    root = milestone_repo(cloned)
+    later = FIXTURE.replace("0.07.00 First", "0.07.02 Second").replace(
+        "0.07.01 Second", "0.07.03 Third"
+    )
+    (root / "docs" / "prompts" / "m7.md").write_bytes(later.encode())
+    facts = status.collect(root)
+    assert (facts["next_kind"], facts["next_phase"], facts["next_title"]) == (
+        "planning",
+        "0.07.01",
+        "Plan M7",
+    )
+    assert facts["prompt"].startswith("Plan milestone M7 as phase 0.07.01 on branch m7 in ")
+    assert (facts["next_estimate"], facts["next_size"]) == (1, "M")
+    assert not any("no stored prompt" in problem for problem in facts["problems"])
+    # Two or more missing phases are a gap, not the plan phase.
+    gap = later.replace("0.07.02 Second", "0.07.03 Second").replace(
+        "0.07.03 Third", "0.07.04 Third"
+    )
+    (root / "docs" / "prompts" / "m7.md").write_bytes(gap.encode())
+    facts = status.collect(root)
+    assert (facts["next_kind"], facts["prompt"]) == (None, None)
+    assert any("no stored prompt for 0.07.01; fix:" in problem for problem in facts["problems"])
+
+
 def test_status_gives_the_release_once_every_phase_is_committed(
     cloned: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
