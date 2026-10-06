@@ -59,13 +59,14 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-// fabric.mod.json: one client entrypoint, the mixin config, `depends` from the inputs; no access
-// widener and no nested jars (docs/mod.md#5-safety).
+// fabric.mod.json: one client entrypoint, the mixin config, `depends` from the inputs, the
+// platform id `hello` reports; no access widener and no nested jars (docs/mod.md#5-safety).
 def generated = layout.buildDirectory.dir('generated/fabric')
 def modJson = tasks.register('modJson') {
     def out = generated.get().file('fabric.mod.json').asFile
     def version = project.version.toString()
     def depends = optilux.depends
+    def platformId = optilux.platform
     inputs.file(inputsFile)
     inputs.property('version', version)
     outputs.file(out)
@@ -81,6 +82,7 @@ def modJson = tasks.register('modJson') {
             entrypoints: [client: ['optilux.helper.HelperClient']],
             mixins: ['optilux-helper.mixins.json'],
             depends: depends,
+            custom: ['optilux:platform': platformId],
         ]
         out.parentFile.mkdirs()
         out.setText(JsonOutput.prettyPrint(JsonOutput.toJson(meta)).replace('\r\n', '\n') + '\n', 'UTF-8')

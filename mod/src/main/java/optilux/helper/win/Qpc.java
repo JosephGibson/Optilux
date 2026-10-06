@@ -12,8 +12,13 @@ public final class Qpc {
         this.frequency = frequency;
     }
 
+    /** The mod's kernel32 binding, loaded on first use. */
+    public static Kernel32 kernel32() {
+        return Native.load("kernel32", Kernel32.class);
+    }
+
     public static Qpc load() {
-        Kernel32 kernel32 = Native.load("kernel32", Kernel32.class);
+        Kernel32 kernel32 = kernel32();
         long[] frequency = new long[1];
         if (!kernel32.QueryPerformanceFrequency(frequency) || frequency[0] <= 0) {
             throw new IllegalStateException("QueryPerformanceFrequency failed: " + frequency[0]);
