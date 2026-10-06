@@ -1,0 +1,16 @@
+{
+    "required": true,
+    "minVersion": "0.8",
+    "package": "optilux.helper.mixin",
+    "plugin": "optilux.helper.MixinGate",
+    "compatibilityLevel": "JAVA_25",
+    "client": [
+        "GameRendererMixin"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    },
+    "overwrites": {
+        "requireAnnotations": true
+    }
+}
