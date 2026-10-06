@@ -1,0 +1,300 @@
+{
+ "schema": 1,
+ "id": "mc-26.3",
+ "minecraft": "26.3",
+ "minecraftReleased": "2026-09-15",
+ "java": {
+  "major": 25,
+  "why": "Minecraft requires Java 25 since 26.1"
+ },
+ "loader": {
+  "name": "fabric",
+  "version": "0.19.5",
+  "source": "meta.fabricmc.net/v2/versions/loader/26.3"
+ },
+ "renderer": {
+  "backend": "iris-gl",
+  "minecraftRenderer": "OpenGL",
+  "why": "Vulkan is experimental in 26.3 and Iris runs on OpenGL only (Iris 1.11.0+26.2 changelog); the bench forces OpenGL through optionKey",
+  "optionKey": {
+   "key": "preferredGraphicsBackend",
+   "value": "opengl",
+   "why": "options.txt key written by Options.processOptions in the 26.3 client jar; values default | opengl | vulkan (PreferredGraphicsApi.getSerializedName); the file must also carry version:5023, or the OptionsForceDefaultGraphicsApiFix datafixer (schema 4892) rewrites the key to default (Phase -1 spike R3)"
+  }
+ },
+ "gamerules": {
+  "advanceTime": "advance_time",
+  "advanceWeather": "advance_weather",
+  "spawnMobs": "spawn_mobs",
+  "randomTickSpeed": "random_tick_speed",
+  "why": "26.3 gamerule names read from net.minecraft.world.level.gamerules.GameRules in the client jar (Phase -1 spike R2); suite.json world.setup uses them"
+ },
+ "offlinePlayer": {
+  "name": "optilux",
+  "uuid": "51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79",
+  "why": "offline UUID of the name (UUID v3 of 'OfflinePlayer:optilux', as the client derives it); used when a world has no Player entry (platform.md#install-and-launch); if the client derives its own offline UUID (spike L1 records it), that value replaces this one"
+ },
+ "formats": {
+  "dataPack": "121.0",
+  "resourcePack": "97.1",
+  "verified": true,
+  "why": "version.json inside the 26.3 client jar: pack_version data 121.0, resource 97.1; world_version 5023, protocol 777 (Phase -1 spike R1)"
+ },
+ "pinnedOn": "2026-10-05",
+ "pinSource": "Modrinth API v2; sha512 from Modrinth file metadata; install refuses a file whose sha512 differs",
+ "helperMod": {
+  "id": "optilux-helper",
+  "source": "built from mod/ (full rewrite, mod.md)",
+  "sha512": "recorded at build"
+ },
+ "tiers": {
+  "bench": {
+   "purpose": "every perf and visual measurement",
+   "extends": null,
+   "mods": [
+    {
+     "slug": "fabric-api",
+     "version": "0.161.0+26.3",
+     "file": "fabric-api-0.161.0+26.3.jar",
+     "type": "release",
+     "published": "2026-09-18",
+     "modrinthVersionId": "bNnaTiuM",
+     "sha512": "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d"
+    },
+    {
+     "slug": "sodium",
+     "version": "mc26.3-0.9.2-fabric",
+     "file": "sodium-fabric-0.9.2+mc26.3.jar",
+     "type": "release",
+     "published": "2026-09-15",
+     "modrinthVersionId": "bAZQdGpg",
+     "sha512": "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93",
+     "why": "Iris 1.11.7 requires exactly this Sodium version (Modrinth dependency)"
+    },
+    {
+     "slug": "iris",
+     "version": "1.11.7+26.3-fabric",
+     "file": "iris-fabric-1.11.7+mc26.3.jar",
+     "type": "release",
+     "published": "2026-09-30",
+     "modrinthVersionId": "vTN4NRGW",
+     "sha512": "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42"
+    }
+   ],
+   "resourcePacks": [
+    {
+     "slug": "faithful-64x",
+     "version": "Release-15-Wilderness-Bound-Drop",
+     "file": "Faithful 64x - Release 15.zip",
+     "type": "release",
+     "published": "2026-09-15",
+     "modrinthVersionId": "6QfM0mZq",
+     "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8",
+     "why": "all building and testing use Faithful 64x; nothing from it ships"
+    }
+   ]
+  },
+  "played": {
+   "purpose": "compatibility smoke test against the user's daily set; never shader perf evidence (the JVM track's S4 pacing runs here, jvm.md#scenarios)",
+   "extends": "bench",
+   "mods": [
+    {
+     "slug": "cloth-config",
+     "version": "26.3.159+fabric",
+     "file": "cloth-config-fabric-26.3.159.jar",
+     "type": "release",
+     "published": "2026-09-23",
+     "modrinthVersionId": "fg2uyxOW",
+     "sha512": "8924e19d41845096724fa10f3717bc51964a0edbbbcad0ff1e6c6187a398b08f356e49579a657c2dc44a7f92e3850771f3ca70bf8c1f654de60425163b91dbb1"
+    },
+    {
+     "slug": "entityculling",
+     "version": "1.11.2",
+     "file": "entityculling-fabric-1.11.2-mc26.3.jar",
+     "type": "release",
+     "published": "2026-09-21",
+     "modrinthVersionId": "F4loCvYt",
+     "sha512": "c5d8947cb022f8baed4bf17e38ca598c56b8049871e7e47fb462bcecc9bc01e7eb75290494199fcb1aa73f5e37f93a296211ba78c9dd2a5bff30d5eed497ebcc"
+    },
+    {
+     "slug": "ferrite-core",
+     "version": "9.0.0-fabric",
+     "file": "ferritecore-9.0.0-fabric.jar",
+     "type": "release",
+     "published": "2026-03-24",
+     "modrinthVersionId": "d5ddUdiB",
+     "sha512": "d81fa97e11784c19d42f89c2f433831d007603dd7193cee45fa177e4a6a9c52b384b198586e04a0f7f63cd996fed713322578bde9a8db57e1188854ae5cbe584"
+    },
+    {
+     "slug": "immediatelyfast",
+     "version": "1.17.1+26.3-fabric",
+     "file": "ImmediatelyFast-Fabric-1.17.1+26.3.jar",
+     "type": "release",
+     "published": "2026-09-17",
+     "modrinthVersionId": "3MP9UR23",
+     "sha512": "8e139589fd995bce3d485a34d92a07243964212f7ed2e4fc2f6de5b9a74d0f59b03252e7ce40c64e006cf3e21bed5de27b830d33ef048b286e041f6178ad8428"
+    },
+    {
+     "slug": "lithium",
+     "version": "mc26.3-0.26.2-fabric",
+     "file": "lithium-fabric-0.26.2+mc26.3.jar",
+     "type": "release",
+     "published": "2026-09-28",
+     "modrinthVersionId": "xS0Q8LSi",
+     "sha512": "4d7fee66132eedc71feab9390b92c95d7058edbdad0fecfac1d836a2950b97a7ca463afbede61c7ef361ce65e1f927ab9e89dde5bf2e0e0ce486afb5c5dbee40"
+    },
+    {
+     "slug": "modmenu",
+     "version": "21.0.0",
+     "file": "modmenu-21.0.0.jar",
+     "type": "release",
+     "published": "2026-09-23",
+     "modrinthVersionId": "kyy7dbrZ",
+     "sha512": "588c0c557963f4778572ee81bfafc190b332c26d5926c5fe7e3e1614dcf8e14f58e3bc80a97694521dd05907e9753a7c8575048ea769e4dbf40a3db74a4e2606"
+    },
+    {
+     "slug": "moreculling",
+     "version": "1.9.0",
+     "file": "moreculling-fabric-26.3-1.9.0.jar",
+     "type": "release",
+     "published": "2026-10-03",
+     "modrinthVersionId": "t7vAlfgO",
+     "sha512": "b1975ef43606a3baa1c93a040fbef96abfbf46ae6a1e364c60effd03a42568f945ede0bde329241e87adc6a9c2769dd1d13ad286869c689018035eff677442b2"
+    },
+    {
+     "slug": "scalablelux",
+     "version": "0.3.0-alpha.0.6+26.3",
+     "file": "ScalableLux-fabric-mc26.3-0.3.0-alpha.0.6-all.jar",
+     "type": "alpha",
+     "published": "2026-09-16",
+     "modrinthVersionId": "g4eqNSKd",
+     "sha512": "ded5a939fb20ab81c1f33b147ca9b98050773dbb28dff16df939c7d567b626809522994ec8dbfb99e7f498dc6a4e62f25e141a87d18efb43f73fc5ad1569ccc9"
+    },
+    {
+     "slug": "placeholder-api",
+     "version": "3.2.0+26.3",
+     "file": "placeholder-api-3.2.0+26.3.jar",
+     "type": "release",
+     "published": "2026-09-09",
+     "modrinthVersionId": "lXytLqWj",
+     "sha512": "eb2bb31e51068aad2581b7864ea7b11b1209ba1c2b27551cd5837d9b312b818b73bb47c06374b46b99b73401c62c6b6c115f702c55aed6afd467ad8ad6448de4"
+    }
+   ],
+   "missing": {
+    "modernfix": "no 26.3 build on 2026-10-05",
+    "lighten-up-chunks": "on Modrinth as 'Lighten Up, Chunks!' (project Kaz3EwdW); latest build targets 26.2 (2026-08-13), no 26.3 build on 2026-10-06",
+    "voxy": "no 26.3 build; see tier lod"
+   },
+   "excluded": {
+    "sodium-extra": "disabled on the played instance (ALC played-reference.json)",
+    "c2me-fabric": "disabled on the played instance; JVM-tier axis only"
+   }
+  },
+  "debug": {
+   "purpose": "RenderDoc attribution captures only; never perf evidence",
+   "extends": "bench",
+   "mods": [
+    {
+     "slug": "gfx-debuggers",
+     "version": "3.2.0",
+     "file": "gfx-debuggers-3.2.0.jar",
+     "type": "release",
+     "published": "2026-03-26",
+     "modrinthVersionId": "VaK91cKa",
+     "sha512": "721614376aac0d6fd7ab27481c120d723736d0507cd1a42e4829efa4dc4b283fbd68b35824f5840d5f227f84df820782ff9a8b0cb6644becba13d8aa215390a5",
+     "why": "RenderDoc injection. Not inert: without -Ddebugger the mod opens a debugger-choice dialog at launch that an unattended launch cannot dismiss; -Ddebugger=renderdoc injects RenderDoc, -Ddebugger=skip launches normally; RenderDoc location via -Drenderdoc.path=<dir> or RENDERDOC_PATH (https://github.com/xirreal/gfx-debuggers)"
+    }
+   ]
+  },
+  "dev": {
+   "purpose": "development and diagnostics with Claude Code over MCP; never perf evidence until its overhead is measured (offline.md#verify)",
+   "extends": "bench",
+   "mods": [
+    {
+     "slug": "viewfinder",
+     "version": "v2.1.4+26.3",
+     "file": "viewfinder-26.3-2.1.4+26.3.jar",
+     "type": "release",
+     "published": "2026-10-03",
+     "modrinthVersionId": "udfs9W2z",
+     "sha512": "ce92f324a90c590c32b2df1893c49dee73bb539a41099cb71d2dc9e94e04c90c984a1a097131c76b27a993f4bb0d8afb180024c132911f28aa16ef7b92c4d696",
+     "why": "Iris debugging mod with an MCP server (127.0.0.1:7150, no auth, not read-only): hot-swap diagnostics, pass dumps, per-pass GPU timings, reflection"
+    }
+   ]
+  },
+  "lod": {
+   "purpose": "Voxy compatibility once it ships for 26.3",
+   "extends": "bench",
+   "mods": [
+    {
+     "slug": "voxy",
+     "status": "pending",
+     "why": "latest 0.2.19-beta targets 26.2 (2026-08-29)"
+    }
+   ]
+  },
+  "jvm": {
+   "purpose": "post-1.0 JVM track; mods here are axes, not defaults",
+   "extends": "bench",
+   "mods": [
+    {
+     "slug": "chunky",
+     "version": "1.5.3",
+     "file": "Chunky-Fabric-1.5.3.jar",
+     "type": "release",
+     "published": "2026-05-04",
+     "modrinthVersionId": "4Eotm6ov",
+     "sha512": "b83bfe7b218d0aa6232af977ae741dc1f82b10e50cd12bb759f65cf416b8b62beccb543e587ef0b9670abe03815660f8e091bc6823624d65cf07300571573516",
+     "why": "chunk pre-generation throughput scenario"
+    },
+    {
+     "slug": "lithium",
+     "version": "mc26.3-0.26.2-fabric",
+     "file": "lithium-fabric-0.26.2+mc26.3.jar",
+     "type": "release",
+     "published": "2026-09-28",
+     "modrinthVersionId": "xS0Q8LSi",
+     "sha512": "4d7fee66132eedc71feab9390b92c95d7058edbdad0fecfac1d836a2950b97a7ca463afbede61c7ef361ce65e1f927ab9e89dde5bf2e0e0ce486afb5c5dbee40",
+     "why": "axis: server tick optimisation"
+    },
+    {
+     "slug": "c2me-fabric",
+     "version": "0.4.2-alpha.0.89+26.3",
+     "file": "c2me-fabric-mc26.3-0.4.2-alpha.0.89.jar",
+     "type": "alpha",
+     "published": "2026-10-01",
+     "modrinthVersionId": "FXjQDzq7",
+     "sha512": "b4fcf82bbe15bfa253e3ab6df4d6b64e800a2ccdb45d4ca2b8040da87f72033fed34f4f94016aac507596c78fddb18dba28c6642790181642cae46fae28b3a85",
+     "why": "axis: concurrent chunk generation (alpha)"
+    }
+   ]
+  }
+ },
+ "worldPrep": {
+  "mods": [
+   {
+    "slug": "chunky",
+    "version": "1.5.3",
+    "file": "Chunky-Fabric-1.5.3.jar",
+    "type": "release",
+    "published": "2026-05-04",
+    "modrinthVersionId": "4Eotm6ov",
+    "sha512": "b83bfe7b218d0aa6232af977ae741dc1f82b10e50cd12bb759f65cf416b8b62beccb543e587ef0b9670abe03815660f8e091bc6823624d65cf07300571573516"
+   }
+  ],
+  "rule": "bench + Chunky: the mod sends the prep commands; enabled only while preparing a world snapshot, never in a session",
+  "extends": "bench"
+ },
+ "referencePacks": [
+  {
+   "slug": "complementary-unbound",
+   "version": "r5.9.3",
+   "file": "ComplementaryUnbound_r5.9.3.zip",
+   "type": "release",
+   "published": "2026-09-15",
+   "modrinthVersionId": "B1kyfoUZ",
+   "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c",
+   "why": "the baseline suite's only reference pack; studied as source under reference/ (gitignored)"
+  }
+ ]
+}

@@ -1,0 +1,10 @@
+# Generated or machine-local; never committed
+results/raw/
+runtime/
+snapshots/
+reference/
+.venv/
+__pycache__/
+*.pyc
+mod/.gradle/
+build/

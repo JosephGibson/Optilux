@@ -1,0 +1,26 @@
+{
+ "schema": 1,
+ "id": "bench",
+ "use": "every shader measurement; the JVM track's reference runtime",
+ "runtime": {
+  "vendor": "Eclipse Temurin",
+  "major": 25,
+  "build": "jdk-25.0.4.1+1",
+  "buildWhy": "latest Temurin 25 GA on 2026-10-06 (Adoptium API, release jdk-25.0.4.1+1, 2026-08-19); pinned in the Phase -1 spike with its archive sha256",
+  "source": "Adoptium API (api.adoptium.net); install checks the archive sha256 and unpacks it under runtime/java/",
+  "archiveSha256": "00c847d804f4a78e9f04f2683faf14fed898535b177b7fc704486cb0284e9283",
+  "archive": "OpenJDK25U-jdk_x64_windows_hotspot_25.0.4.1_1.zip",
+  "imageType": "jdk (javap and jcmd are used by the spike and the harness)"
+ },
+ "gc": "G1 (JVM default)",
+ "heap": {
+  "xmsEqualsXmx": true,
+  "size": 6144,
+  "unit": "MiB",
+  "provisional": true,
+  "sizeWhy": "provisional 6144 MiB (the spike launches with it and checks the started process against it); the spike records an idle lower bound, and M2 sets the size from the heap after GC over a full-mode session with its reloads, plus headroom. Xms = Xmx removes heap resizing from the measurement"
+ },
+ "flags": [],
+ "flagsWhy": "plain and reproducible (user, 2026-10-05); GPU-bound shader scenes barely react to JVM flags; tuning belongs to the JVM track",
+ "check": "the harness reads the started process's real arguments and refuses a mismatch (ALC practice)"
+}

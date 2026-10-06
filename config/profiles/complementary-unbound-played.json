@@ -1,0 +1,40 @@
+{
+ "schema": 1,
+ "pack": "complementary-unbound r5.9.3",
+ "id": "played",
+ "source": "ALC tools/bench/profiles/PLAYED.txt (the user's settings, recorded 2026-09-28)",
+ "verify": "keys were recorded against Reimagined r5.9.2 run as SHADER_STYLE 4; check each key exists in Unbound r5.9.3 before the first M2 capture",
+ "options": {
+  "ANISOTROPIC_FILTER": 4,
+  "ATM_FOG_MULT": 0.50,
+  "BLOCK_REFLECT_QUALITY": 1,
+  "BORDER_FOG": false,
+  "CAVE_FOG": false,
+  "ENTITY_SHADOW": -1,
+  "FXAA_DEFINE": -1,
+  "LIGHTSHAFT_QUALI_DEFINE": 0,
+  "RAIN_STYLE": 2,
+  "RP_MODE": 0,
+  "WATER_REFLECT_QUALITY": 1,
+  "shadowDistance": 96.0,
+  "SHADER_STYLE": 4
+ },
+ "defaultsKept": {"SHADOW_QUALITY": 2, "CLOUD_QUALITY": 2},
+ "ablations": {
+  "why": "ALC feature costs on the enabled stack, ms, mean over valid views (worst view); the starting map for the iso-feature profile and Optilux's budget",
+  "source": "ALC docs/baseline.md (feature ablations)",
+  "rows": [
+   {"set": "SHADOW_QUALITY=-1",         "meanMs": 0.667, "worst": "rain 1.120"},
+   {"set": "TAA_DEFINE=0",              "meanMs": 0.579, "worst": "rain 0.662"},
+   {"set": "CLOUD_QUALITY=0",           "meanMs": 0.302, "worst": "ocean_sunset 0.649"},
+   {"set": "NETHER_STORM=false",        "meanMs": 0.228, "worst": "nether_crimson 1.837"},
+   {"set": "ANISOTROPIC_FILTER=0",      "meanMs": 0.204, "worst": "forest_noon 0.392"},
+   {"set": "WATER_REFLECT_QUALITY=-1",  "meanMs": 0.192, "worst": "ocean_sunset 0.321"},
+   {"set": "SSAO_QUALI_DEFINE=0",       "meanMs": 0.138, "worst": "underwater 0.394"},
+   {"set": "BLOCK_REFLECT_QUALITY=0",   "meanMs": 0.132, "worst": "rain 0.303"},
+   {"set": "BLOOM_ENABLED=-1",          "meanMs": 0.128, "worst": "underwater 0.165"},
+   {"set": "IMAGE_SHARPENING=0",        "meanMs": 0.013, "worst": "end_dragon 0.055"},
+   {"set": "RAIN_STYLE=1",              "meanMs": -0.020, "worst": "rain -0.020"}
+  ]
+ }
+}

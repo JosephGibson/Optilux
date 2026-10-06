@@ -1,0 +1,309 @@
+{
+ "schema": 1,
+ "id": "suite-1",
+ "status": "draft: roles and constants carried from ALC (AlaCarteShaders 0.5, MC 1.21.11); positions are chosen in the new 26.3 world (M2); every [verify] item is re-measured on the platform",
+ "platform": "mc-26.3",
+ "display": {
+  "resolution": "3840x2160",
+  "why": "bench resolution = play resolution (user, 2026-10-05); keeps every variant GPU-bound (ALC: GPUBusy/FrameTime 0.995-1.005 on 108/108 captures)",
+  "window": "borderless fullscreen",
+  "vsync": false,
+  "fpsLimit": "unlimited",
+  "fov": 90,
+  "viewBobbing": false,
+  "renderDistance": 16,
+  "simulationDistance": 12,
+  "guiScale": 3,
+  "mipmapLevels": 4,
+  "biomeBlend": 2,
+  "sodiumOptions": null,
+  "nullWhy": "sodiumOptions becomes the hash in M1; every key in this block is identity (run-record.md#identity)",
+  "windowKeys": "fullscreen:true, exclusiveFullscreen:false (vanilla borderless); Sodium flips exclusiveFullscreen to true once on a fresh sodium-options.json (notifications.has_edited_fullscreen_option), so the harness writes that file first (spike L1, L2)",
+  "graphicsPreset": "custom",
+  "optionsTxt": {
+   "version": "5023",
+   "fullscreen": "true",
+   "exclusiveFullscreen": "false",
+   "enableVsync": "false",
+   "maxFps": "260",
+   "renderDistance": "16",
+   "simulationDistance": "12",
+   "fov": "0.5",
+   "bobView": "false",
+   "guiScale": "3",
+   "mipmapLevels": "4",
+   "biomeBlendRadius": "2",
+   "graphicsPreset": "\"custom\"",
+   "preferredGraphicsBackend": "\"opengl\"",
+   "improvedTransparency": "false",
+   "pauseOnLostFocus": "false",
+   "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+   "onboardAccessibility": "false",
+   "skipMultiplayerWarning": "true",
+   "joinedFirstServer": "true",
+   "telemetryOptInExtra": "false",
+   "realmsNotifications": "false",
+   "narrator": "0"
+  },
+  "optionsTxtWhy": "the keys the spike wrote before L1 and read back after the first quit; the game kept every value except two: Sodium forced exclusiveFullscreen true on its first run and the fancy preset forced simulationDistance 12 (recorded here as 12 and kept as the identity value: user, 2026-10-06). version:5023 keeps the schema-4892 datafixer from resetting preferredGraphicsBackend; graphicsPreset custom keeps Minecraft's constructor from applying a preset over renderDistance, simulationDistance, mipmapLevels, biomeBlendRadius and more; maxFps 260 is the slider's unlimited value (L1 ran 141 fps); fov is stored as (degrees - 70) / 40; the game drops the 'fabric' pack id from resourcePacks",
+  "sodiumOptionsWhy": "hash of sodium-options.json as written at the first quit; the file must carry notifications.has_edited_fullscreen_option=true and, for the dev tier, performance.use_no_error_g_l_context=false (Iris's debug context opens a modal dialog otherwise)"
+ },
+ "java": "config/java/bench.json",
+ "world": {
+  "source": "new 26.3 world (user, 2026-10-05); seed chosen in M2 so every view role fits inside the pre-generated area",
+  "seed": null,
+  "pregen": {
+   "overworld": "radius covering every view and motion path plus render distance (16 chunks = 256 blocks)",
+   "nether": "same rule",
+   "end": "same rule",
+   "tool": "chunky (the platform file's worldPrep set; never in a session)",
+   "aLCSizes": "1536 / 400 / 400 blocks"
+  },
+  "snapshot": "snapshots/<id>: every file hashed; restore + hash check before every session",
+  "setup": [
+   "gamerule time/weather advance off",
+   "spawn mobs off",
+   "random tick speed 0",
+   "spectator (creative for the entities role)",
+   "kill non-player entities except the ender dragon and entities tagged optilux_bench (the entities role's mobs and the coverage content, tagged with PersistenceRequired when the snapshot is prepared); at world preparation only, never per session",
+   "time per view",
+   "weather per view",
+   "/tick freeze via the mod's command (needs permission level 3)"
+  ],
+  "why": "ALC: 0 of 860 captures lost with this setup; gamerule names and pack formats come from the platform file (verified in the Phase -1 spike)"
+ },
+ "resourcePacks": {
+  "standard": [
+   "faithful-64x"
+  ],
+  "deterministic": [
+   "faithful-64x",
+   "optilux-static-textures"
+  ],
+  "staticTexturesWhy": "animated textures held on frame 1 (ALC needed this for bit-identical frames); built in M3 for M3's deterministic visual exit"
+ },
+ "viewRoles": [
+  {
+   "id": "forest_noon",
+   "dim": "overworld",
+   "time": 6000,
+   "weather": "clear",
+   "pitchHint": 15,
+   "stresses": "terrain, shadows, foliage",
+   "pick": "dense forest with open sky and distant terrain"
+  },
+  {
+   "id": "ocean_sunset",
+   "dim": "overworld",
+   "time": 12000,
+   "weather": "clear",
+   "pitchHint": 5,
+   "stresses": "water, reflections, refraction",
+   "pick": "shoreline facing open ocean toward the sun"
+  },
+  {
+   "id": "cave",
+   "dim": "overworld",
+   "time": 6000,
+   "weather": "clear",
+   "pitchHint": 15,
+   "stresses": "block light, cave fog",
+   "pick": "large cave with torches or lava, no sky visible"
+  },
+  {
+   "id": "rain",
+   "dim": "overworld",
+   "time": 6000,
+   "weather": "thunder",
+   "pitchHint": 15,
+   "stresses": "weather",
+   "pick": "may share forest_noon's pose"
+  },
+  {
+   "id": "nether_crimson",
+   "dim": "nether",
+   "time": 6000,
+   "weather": "clear",
+   "pitchHint": 15,
+   "stresses": "nether fog, lava, storm",
+   "pick": "crimson forest with lava in view"
+  },
+  {
+   "id": "end_dragon",
+   "dim": "end",
+   "time": 6000,
+   "weather": "clear",
+   "pitchHint": 10,
+   "stresses": "end sky, beams",
+   "pick": "main island facing the pillars"
+  },
+  {
+   "id": "night",
+   "dim": "overworld",
+   "time": 18000,
+   "weather": "clear",
+   "pitchHint": -20,
+   "stresses": "stars, night sky",
+   "pick": "may share ocean_sunset's position, camera raised"
+  },
+  {
+   "id": "underwater",
+   "dim": "overworld",
+   "time": 6000,
+   "weather": "clear",
+   "pitchHint": 20,
+   "stresses": "underwater fog, caustics",
+   "pick": "submerged, sea floor in view"
+  },
+  {
+   "id": "nether_soul",
+   "dim": "nether",
+   "time": 6000,
+   "weather": "clear",
+   "pitchHint": 10,
+   "stresses": "soul sand valley fog, soul fire light",
+   "pick": "soul sand valley with soul fire in view"
+  },
+  {
+   "id": "entities",
+   "dim": "overworld",
+   "time": 6000,
+   "weather": "clear",
+   "pitchHint": 10,
+   "stresses": "entity rendering, entity shadows, held-item light",
+   "pick": "5-10 frozen NoAI mobs in direct sun near the camera; creative mode with a torch in hand; the only role with entities in view"
+  }
+ ],
+ "viewRolesWhy": "ALC's 8 calibrated roles (6 overworld, 1 nether, 1 end) plus nether_soul (design.md D10) and entities (D11); positions chosen fresh in the 26.3 world",
+ "viewPlacement": [
+  "candidate poses from the role's 'pick' rule (biomes located in game)",
+  "in-game check in one dev session (camera.place + capture): feature visible, not inside a block (a buried camera shows a black frame: ALC's nylium case), no entities in sight (except the entities role), GPU-bound at 3840x2160, inside the pre-generated area with render-distance margin",
+  "record id, dim, pos, yaw, pitch, time, weather in config/views/<world-id>.json (committed); its hash joins the run identity (run-record.md#identity) and the datapack functions are generated from it"
+ ],
+ "coverageViews": {
+  "status": "built in M3",
+  "area": "frozen, out of sight of every perf view",
+  "content": [
+   "NoAI mobs",
+   "armor stand",
+   "item frame",
+   "dropped item",
+   "sign text",
+   "beacon",
+   "enchanted item",
+   "held torch (creative mode; spectator shows no hand)",
+   "particle source"
+  ],
+  "rule": "every program on the shader coverage list is drawn by >= 1 coverage view; anything still moving under /tick freeze is excluded from identical/near checks"
+ },
+ "motionPaths": [
+  {
+   "id": "forest_pan",
+   "view": "forest_noon",
+   "kind": "yaw sweep",
+   "params": null
+  },
+  {
+   "id": "ocean_pan",
+   "view": "ocean_sunset",
+   "kind": "yaw sweep",
+   "params": null
+  },
+  {
+   "id": "nether_pan",
+   "view": "nether_crimson",
+   "kind": "yaw sweep",
+   "params": null
+  }
+ ],
+ "motionPathsWhy": "draft v0: movement in 2 overworld + 1 nether scene; ALC pans were a triangle-wave yaw sway, one sway per window, rotation only; params set in M5 from that",
+ "modes": {
+  "quick": {
+   "views": [
+    "forest_noon",
+    "nether_crimson",
+    "end_dragon"
+   ],
+   "rounds": 1,
+   "estMinutes": 3,
+   "why": "one view per dimension; estimate from ALC 4.4 s/capture"
+  },
+  "full": {
+   "views": "all",
+   "rounds": 2,
+   "estMinutesPer5Variants": 19,
+   "why": "ALC calibrated R=2; ALC's ~15 min for 8 views scaled to 10 views (estimate)"
+  }
+ },
+ "capture": {
+  "windowS": 2.5,
+  "gpuWarmupS": 30,
+  "settleS": {
+   "afterReload": 1.5,
+   "afterViewSwitch": 1.5,
+   "afterDimensionChange": 4.0
+  },
+  "visualSettleS": {
+   "default": 1.0,
+   "underwater": 2.0,
+   "addAfterDimensionChange": 3.0
+  },
+  "reloadCap": 288,
+  "why": "ALC calibrated: 1.5 s checked over 372 reloads; Nether still meshing at 2 s (12.7 % drift); underwater 6.2 % of pixels differ at 0.5 s; reload cap from ALC's Iris reload leak (10.4 MB/reload on 1.10.7); the spike measured 20.6 MiB heap and 320 MiB private bytes per reload on the dev tier with debug options (platform.md#mc-263-verified), so M1 re-measures on the bench tier before the cap is trusted; ticksAfterWeatherChange from ALC's /tick step 120 (weather ramps only while ticking) [verify on the platform]; maxPendingFrames bounds the mod's pending frame readbacks (~530 MB at 4K, mod.md#8-capture)",
+  "ticksAfterWeatherChange": 120,
+  "maxPendingFrames": 16,
+  "unitsWhy": "seconds, timed by the mod on the QPC clock (ALC calibrated settles and windows in seconds; a frame-count wait was rejected)"
+ },
+ "validity": {
+  "gpuBoundMin": 0.9,
+  "halvesWithinPct": 3,
+  "minFrames": 100,
+  "tailWhy": "tail = median of per-capture p95 frame times (measurement.md#session); ALC: p99 swung up to 39.5 % between identical captures; per-capture p95s live in the committed record, so the tail can be re-judged",
+  "cpuFloorMs": {
+   "status": "measured in M2 per view with a passthrough pack",
+   "alcUpperBound": {
+    "cave": 3.6,
+    "nether_crimson": 3.8,
+    "underwater": 4.0,
+    "night": 4.4
+   },
+   "why": "ALC: the lightest captures (TAA, storm or clouds off) were still GPU-bound, so the floor is at most these frame times; below 0.9x the floor the 90 % rule fails and cost rows need per-pass timers"
+  },
+  "queueSignalWhy": "GPULatency well under one frame = CPU-limited; ALC saw ~2.7 frames in all 2,124 captures. PresentMon 2.x: GPULatency = time from the frame's CPU start until the GPU started working on it (README-ConsoleApplication.md, v2.6.0)"
+ },
+ "statistics": {
+  "schedule": "A, then (Ci, A) pairs, R rounds; A/A twin is always one Ci",
+  "falseRate": 0.05,
+  "thresholdFloorPct": 0.5,
+  "calibration": {
+   "twinsPerSession": 5,
+   "minSessionsPerMode": 4
+  },
+  "why": "ALC: bracketing beat ABBA (rms 0.52 -> 0.33 %) against 10-40 s GPU regimes; one geo-mean test per candidate; the thresholds are empirical and target <= 5 % false accepts, monitored by every session's twin",
+  "twinMonitor": {
+   "window": 20,
+   "maxExceed": 2,
+   "why": "more than 2 of the last 20 twins over the geo-mean threshold forces recalibration (7.5 % odds by chance at 5 %); the window restarts at each calibration"
+  },
+  "deltaUnitWhy": "delta = 100 x (ratio - 1), in %, negative = faster; thresholds on |delta| of the null candidates (measurement.md#verdicts-and-cost-rows)"
+ },
+ "fidelity": {
+  "flip": {
+   "ppd": 66.2243805699035,
+   "why": "32-inch 16:9 4K panel viewed from about 70 cm (user, 2026-10-06; design.md D5)"
+  },
+  "tiers": {
+   "identical": "decoded pixels equal",
+   "near": "max |d| <= 1 on every pixel",
+   "close": "mean FLIP <= 0.005, p99.9 <= 0.10, SSIM >= 0.995",
+   "review": "anything else"
+  }
+ },
+ "reference": {
+  "pack": "complementary-unbound",
+  "profiles": {
+   "played": "config/profiles/complementary-unbound-played.json",
+   "iso": "config/profiles/complementary-unbound-iso.json: dropped features off; kept features matched to Optilux as they land"
+  }
+ }
+}
