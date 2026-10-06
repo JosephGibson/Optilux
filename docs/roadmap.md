@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 in progress (plan plans/m0.md, prompts prompts/m0.md); 0.00.02 is the last phase done, next 0.00.03. Latest stop: handoff.md.
+Status: M0 in progress (plan plans/m0.md, prompts prompts/m0.md); 0.00.03 is the last phase done, next 0.00.04. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -99,7 +99,7 @@ Owner: who decides. Recommendation: what an unattended run takes. Closed decisio
 | D1 | Installing uv (not on PATH on 2026-10-06) | user | closed: `pip install uv==0.12.23` into the user's Python 3.12, whose Scripts folder was already on PATH (user, 2026-10-06) | closed |
 | D2 | CLI framework | Claude | argparse from the standard library: no dependency; `--json` per verb; click would add a dependency no M0 verb needs | 0.00.01 |
 | D3 | Where git hooks live | Claude | .githooks/ committed and `core.hooksPath` set with `git config --local` in 0.00.03, reported by `optilux status`; copying into .git/hooks would need an installer verb outside the verb table | 0.00.03 |
-| D4 | Commit-message check | Claude | one line, at most 72 characters, `0.MM.PP: ` then text, no attribution token (Co-Authored-By, Claude, Anthropic, Generated); the trailing period of the user's examples is style, not enforced | 0.00.03 |
+| D4 | Commit-message check | Claude | one line, at most 72 characters, `0.MM.PP: ` then text, no attribution token (Co-Authored-By, Claude, Anthropic, Generated; the tool name "Claude Code" passes unless "by", "with" or "via" precede it, as the 0.00.03 subject names it); the trailing period of the user's examples is style, not enforced | 0.00.03 |
 | D5 | CI runner | Claude | ubuntu-latest: M0's tests are pure Python, and Windows minutes cost 2x on a private repo (2,000 minutes a month on GitHub Free); switch to windows-latest when a Windows-only path (ctypes, the named pipe) gets a test, in M1 | 0.00.06 |
 | D6 | Release tag and asset | Claude | tag v<version> (workflow.md#release), asset optilux-<version>.zip, body = the milestone's CHANGELOG entry; the workflow creates the tag at main's head | 0.00.06 |
 | D7 | Repository merge settings | user | rebase merge on, squash and merge commits off, set in 0.00.06 by `gh repo edit` so a merge cannot pick another method; the prompt names the command and stops for the go | 0.00.06 |

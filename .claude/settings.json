@@ -1,0 +1,108 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.venv/Scripts/python.exe\" -m optilux.hooks git_guard",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.venv/Scripts/python.exe\" -m optilux.hooks post_edit",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(uv *)",
+      "Bash(python *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(optilux *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git rev-parse *)",
+      "Bash(git ls-files *)",
+      "Bash(git ls-remote *)",
+      "Bash(git describe *)",
+      "Bash(git blame *)",
+      "Bash(git grep *)",
+      "Bash(git cat-file *)",
+      "Bash(git branch --show-current)",
+      "Bash(git config --get*)",
+      "Bash(git remote -v)",
+      "Bash(git remote get-url *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git switch *)",
+      "Bash(git fetch *)",
+      "Bash(gh auth status *)",
+      "Bash(gh repo view *)",
+      "Bash(gh release list *)",
+      "Bash(gh release view *)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run watch *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr status *)",
+      "Bash(gh workflow list *)",
+      "Bash(gh workflow view *)",
+      "PowerShell(uv *)",
+      "PowerShell(python *)",
+      "PowerShell(pytest *)",
+      "PowerShell(ruff *)",
+      "PowerShell(optilux *)",
+      "PowerShell(git status *)",
+      "PowerShell(git log *)",
+      "PowerShell(git diff *)",
+      "PowerShell(git show *)",
+      "PowerShell(git rev-parse *)",
+      "PowerShell(git ls-files *)",
+      "PowerShell(git ls-remote *)",
+      "PowerShell(git describe *)",
+      "PowerShell(git blame *)",
+      "PowerShell(git grep *)",
+      "PowerShell(git cat-file *)",
+      "PowerShell(git branch --show-current)",
+      "PowerShell(git config --get*)",
+      "PowerShell(git remote -v)",
+      "PowerShell(git remote get-url *)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)",
+      "PowerShell(git push *)",
+      "PowerShell(git switch *)",
+      "PowerShell(git fetch *)",
+      "PowerShell(gh auth status *)",
+      "PowerShell(gh repo view *)",
+      "PowerShell(gh release list *)",
+      "PowerShell(gh release view *)",
+      "PowerShell(gh run list *)",
+      "PowerShell(gh run view *)",
+      "PowerShell(gh run watch *)",
+      "PowerShell(gh pr list *)",
+      "PowerShell(gh pr view *)",
+      "PowerShell(gh pr checks *)",
+      "PowerShell(gh pr status *)",
+      "PowerShell(gh workflow list *)",
+      "PowerShell(gh workflow view *)"
+    ]
+  }
+}

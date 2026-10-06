@@ -1,0 +1,9 @@
+#!/bin/sh
+# Git pre-commit hook: optilux.hooks pre_commit runs ruff on staged .py and the doc rules when a
+# .md is staged (docs/workflow.md#hooks-and-guards). The venv beside these hooks runs them.
+here=$(cd "$(dirname "$0")/.." && pwd)
+py="$here/.venv/Scripts/python.exe"
+[ -x "$py" ] || py="$here/.venv/bin/python"
+[ -x "$py" ] || { echo "pre-commit: no venv in $here; run \`uv sync\` there" >&2; exit 1; }
+root=$(git rev-parse --show-toplevel) || exit 1
+exec "$py" -m optilux.hooks pre_commit "$root"

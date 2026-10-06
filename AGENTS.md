@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M0 in progress; 0.00.02 (`optilux verify docs` and the doc-limit test) is the last phase done, next 0.00.03 (docs/prompts/m0.md). Latest stop: docs/handoff.md.
+Status: M0 in progress; 0.00.03 (git and Claude Code hooks) is the last phase done, next 0.00.04 (docs/prompts/m0.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -16,6 +16,8 @@ Status: M0 in progress; 0.00.02 (`optilux verify docs` and the doc-limit test) i
 ## Layout
 - optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb. Run `uv run optilux <verb>`.
 - tests/: pytest, run by `uv run optilux test`.
+- .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
+- .claude/: settings.json (Claude Code hooks, allow rules); skills/ and agents/ from 0.00.04.
 - mod/ (planned): optilux-helper (Fabric).
 - shader/ (planned): the pack.
 - config/: platforms (+ launch specs), suite, profiles, java, tools; views and pipeline planned.

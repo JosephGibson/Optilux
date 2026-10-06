@@ -62,6 +62,10 @@ class Violation:
     fix: str
     line: int | None = None
 
+    def text(self) -> str:
+        where = self.file if self.line is None else f"{self.file}:{self.line}"
+        return f"{where}: {self.rule}: {self.detail}\n  fix: {self.fix}"
+
 
 @dataclass(frozen=True)
 class FileSize:
