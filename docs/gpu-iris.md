@@ -1,11 +1,14 @@
 # GPU and Iris reference
 Status: carried 2026-10-05 from ALC (lessons.md) and the user's playbook (sources/shader-optimization-playbook.md, "PB").
-- Both ran Iris 1.10.7, Sodium 0.8.x, MC 1.21.11, RX 7800 XT, 4K. Frame counters and reload, the settings re-read and the `#version` rewrite were verified on Iris 1.11.7 in the spike (platform.md#mc-263-verified); every other Iris fact is [MC]: re-verify on 1.11.7 with `javap -c -p`.
-- Tags: m = measured in game; v = verified offline (ISA, jar bytecode, numeric check); b = built, never timed. CONFLICT = the sources disagree; measure before relying on either.
 
 ## Contents
+Sources and tags
 GPU: Uniform math · Occupancy · Latency · Depth and discard · Bandwidth · Transcendentals
 Iris: Custom uniforms · Passes and buffers · Frame counters and reload · Properties and options · Programs and alpha tests · Toolchain quirks
+
+## Sources and tags
+- ALC and PB both ran Iris 1.10.7, Sodium 0.8.x, MC 1.21.11, RX 7800 XT, 4K. Frame counters and reload, the settings re-read and the `#version` rewrite were verified on Iris 1.11.7 in the spike (platform.md#mc-263-verified); every other Iris fact is [MC]: re-verify on 1.11.7 with `javap -c -p`.
+- Tags: m = measured in game; v = verified offline (ISA, jar bytecode, numeric check); b = built, never timed. CONFLICT = the sources disagree; measure before relying on either.
 
 ## Uniform math
 - RDNA3 (gfx11) has no scalar float ALU; RDNA3.5 adds one. Uniform-only float math runs per lane, in every pixel. [ALC v, PB v]

@@ -66,8 +66,8 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 - Evidence overrules docs. When the spike or a measurement contradicts a doc, the doc is fixed in the same phase; the work is never bent to fit it.
 - Limits:
   - AGENTS.md at most 6,144 bytes; any .md under docs/ at most 24,576 bytes (sources/ exempt); a plan (optilux-plan output, docs/roadmap.md) at most 40,960 bytes (the critic refuses over 50,000 characters). Raised from 4,096 and 16,384 (user, 2026-10-06): those left the three most-edited docs at zero margin; the cap exists to force cuts of duplicated text, not to split a doc by concern;
-  - TOC: a `## Contents` section after the Status line in any file over 100 lines;
-  - one test enforces size, TOC and links (every `path#heading` cite resolves to a heading in that file).
+  - TOC: a `## Contents` section directly after the Status line in any file over 100 lines;
+  - `optilux verify docs` enforces size, TOC, links (every `path#heading` cite resolves to a heading in that file), UTF-8 without BOM, LF and Status lines over the root's .md and docs/; optilux/docs_check.py holds the slug rule; a test runs it over the repo.
 - AGENTS.md links one level deep. The Terms section is canonical; no synonyms.
 - docs/sources/ holds external documents verbatim (the user's playbook). They are cited, never edited, and exempt from the limits.
 - Status lines: ASCII, at most two sentences, pointing to the handoff.

@@ -1,13 +1,14 @@
 # Lessons from ALC
 Status: carried 2026-10-05 from AlaCarteShaders 0.5 (ALC: MC 1.21.11, Iris 1.10.7, Sodium 0.8.12). ALC is retired and separate: this file is all Optilux takes from it (user, 2026-10-06).
-Tags:
+
+## Contents
+Tags · Outcomes · Game control · Iris and Sodium · Determinism · Tools · Windows · Statistics · GPU · Java · Mod · Open at ALC close
+
+## Tags
 - [MC]: re-verify on each platform.
 - [HW]: this machine.
 - [ALC]: context only.
 Each item reads "fact -> technique". Brackets name the ALC record a fact came from (ALC's own docs/measurement.md when none): citations only, never looked up.
-
-## Contents
-Outcomes · Game control · Iris and Sodium · Determinism · Tools · Windows · Statistics · GPU · Java · Mod · Open at ALC close
 
 ## Outcomes
 [ALC] Read this first.

@@ -1,12 +1,12 @@
 # Playbook
 Status: rough, 2026-10-05.
-- Curated from the user's shader-optimization playbook (sources/shader-optimization-playbook.md, "PB", kept verbatim) and ALC's measured record.
-- Every item is a hypothesis until Optilux's loop measures it. Facts with tags are in gpu-iris.md.
 
 ## Contents
 1 How to use · 2 Evidence · 3 Workflow · 4 Design defaults · 5 Candidates · 6 Did not work · 7 Pitfalls · 8 Checklists · 9 Not carried
 
 ## 1. How to use
+- Curated from the user's shader-optimization playbook (sources/shader-optimization-playbook.md, "PB", kept verbatim) and ALC's measured record.
+- Every item is a hypothesis until Optilux's loop measures it. Facts with tags are in gpu-iris.md.
 - Optilux is written from scratch, so much of PB's optimization becomes design: built into the first version of a pass (section 4).
 - The rest are candidates for the optimization phase (section 5), each with its evidence and the visual tier it needs.
 - An item changes status only through Optilux evidence: a cost row or an A/B verdict (measurement.md).
