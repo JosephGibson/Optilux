@@ -1,12 +1,18 @@
-"""Stored prompt sets, docs/prompts/m<MM>.md, in the format of docs/prompts/m0.md Rules: one
-`## 0.MM.PP <title>` heading per phase, each followed by exactly one fenced block holding the
-prompt; `## Resume` last, with one fenced block. `optilux status` prints the next prompt verbatim.
+"""Stored prompts, which `optilux status` prints verbatim.
+
+- docs/prompts/m<MM>.md, a milestone's prompt set, in the format of docs/prompts/m0.md Rules: one
+  `## 0.MM.PP <title>` heading per phase, each followed by exactly one fenced block holding the
+  prompt; `## Resume` last, with one fenced block.
+- docs/prompts/standing.md, the Plan and Release prompts every milestone uses, each with its own
+  `- Estimate: <h> h` line; placeholders such as {M} are filled in for the milestone at hand.
+- A phase prompt's size comes from its phase's `- Estimate: <h> h` in docs/plans/m<MM>.md.
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
+from optilux import docs_check
 from optilux.docs_check import FENCE
 
 # A section heading, at column 0 as the Rules write them; the title is the rest of the line.
@@ -15,6 +21,16 @@ SECTION = re.compile(r"^## (\S.*?)\s*$")
 PHASE = re.compile(r"(0\.(\d{2})\.(\d{2}))(?:\s+(.*))?")
 RESUME = "Resume"
 VERSION = re.compile(r"0\.(\d{2})\.(\d{2})")
+STANDING = "docs/prompts/standing.md"
+PLAN, RELEASE = "Plan", "Release"
+# The estimate line of a plan phase and of a standing prompt: agent hours, the first number on the
+# line, written `2 agent` as docs/templates/plan.md has it or `1.5 h` as plans/m0.md does.
+ESTIMATE = re.compile(r"^- Estimate: (\d+(?:\.\d+)?)(?: ?h)?\b")
+# Size buckets of an estimate in agent hours (user, 2026-10-06). M is a typical phase: ALC's took
+# about 1 h (docs/workflow.md#git) and M0's were estimated at 1-1.5 h; XL is past two typical
+# phases, a candidate for a split. The last bucket is open-ended.
+SIZES = ((0.5, "S"), (1.5, "M"), (3.0, "L"))
+LARGEST = "XL"
 
 
 class PromptError(ValueError):
@@ -45,6 +61,16 @@ class Section:
     line: int
     heading: str
     blocks: list[tuple[int, str]]
+    lines: list[str] = field(default_factory=list)  # outside the fenced blocks
+
+
+@dataclass(frozen=True)
+class Standing:
+    """A standing prompt (Plan or Release) with its estimate in agent hours."""
+
+    name: str
+    estimate: float | None
+    text: str  # verbatim, placeholders unfilled
 
 
 def prompt_name(milestone: int) -> str:
@@ -80,6 +106,8 @@ def sections(text: str, file: str) -> list[Section]:
             fence, opened, block = match.group(1), number, []
         elif heading := SECTION.match(line):
             found.append(Section(number, heading.group(1), []))
+        else:
+            found[-1].lines.append(line)
     if fence:
         raise error(file, opened, "the fenced block is never closed", f"close it with {fence}")
     return found
@@ -158,3 +186,73 @@ def next_phase(newest: str | None, milestone: int) -> str:
     if match and int(match.group(1)) == milestone:
         return f"0.{milestone:02d}.{int(match.group(2)) + 1:02d}"
     return f"0.{milestone:02d}.00"
+
+
+def size(hours: float) -> str:
+    """S, M, L or XL for an estimate in agent hours (SIZES)."""
+    return next((name for limit, name in SIZES if hours <= limit), LARGEST)
+
+
+def estimate_in(lines: list[str]) -> float | None:
+    """The hours of the first `- Estimate: <h> h` line, None without one."""
+    found = (ESTIMATE.match(line) for line in lines)
+    return next((float(match.group(1)) for match in found if match), None)
+
+
+def plan_name(milestone: int) -> str:
+    return f"docs/plans/m{milestone}.md"
+
+
+def phase_estimate(root: Path, milestone: int, version: str) -> float | None:
+    """The estimate of a phase in its plan: the `- Estimate:` line under `### <version> ...`,
+    up to the next heading; None when the plan, the phase or the line is missing."""
+    path = root / plan_name(milestone)
+    if not path.is_file():
+        return None
+    text = path.read_bytes().decode("utf-8", errors="replace").replace("\r\n", "\n")
+    body: list[str] | None = None
+    for _, line in docs_check.unfenced(docs_check.split_lines(text)):
+        if line.startswith("#"):
+            if body is not None:
+                break
+            if line.startswith(f"### {version} ") or line.rstrip() == f"### {version}":
+                body = []
+        elif body is not None:
+            body.append(line)
+    return estimate_in(body) if body is not None else None
+
+
+def load_standing(root: Path) -> dict[str, Standing]:
+    """The Plan and Release prompts of docs/prompts/standing.md, each with its estimate;
+    PromptError when the file is missing or a section breaks the format."""
+    path = root / STANDING
+    if not path.is_file():
+        raise error(STANDING, None, "no such file", "restore the standing prompts from git")
+    text = path.read_bytes().decode("utf-8", errors="replace").replace("\r\n", "\n")
+    found = {section.heading: section for section in sections(text, STANDING)[1:]}
+    standing = {}
+    for name in (PLAN, RELEASE):
+        section = found.get(name)
+        if section is None:
+            raise error(STANDING, None, f"no `## {name}` section", f"add `## {name}`")
+        estimate = estimate_in(section.lines)
+        if estimate is None:
+            detail = f"`## {name}` has no `- Estimate: <h> h` line"
+            raise error(STANDING, section.line, detail, "add one above its fenced block")
+        standing[name] = Standing(
+            name, estimate, one_block(section, STANDING, f"the {name} prompt")
+        )
+    return standing
+
+
+def fill(text: str, milestone: int, version: str) -> str:
+    """A standing prompt for a milestone: {M} its number, {MM} its two digits, {PREV} the
+    previous milestone's number, {VERSION} the phase the prompt commits."""
+    for key, value in (
+        ("{MM}", f"{milestone:02d}"),
+        ("{M}", str(milestone)),
+        ("{PREV}", str(milestone - 1)),
+        ("{VERSION}", version),
+    ):
+        text = text.replace(key, value)
+    return text

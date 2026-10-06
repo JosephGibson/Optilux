@@ -136,11 +136,85 @@ def test_next_phase(newest: str | None, milestone: int, expected: str) -> None:
     assert prompts.next_phase(newest, milestone) == expected
 
 
+PLAN = """# M7 plan
+Status: fixture.
+
+## 5. Phases
+### 0.07.00 First
+- Commit: `0.07.00: First.`
+- Estimate: 0.3 h.
+
+### 0.07.01 Second
+- Estimate: 2 agent; 30 min machine.
+
+## 6. Decisions
+- Estimate: 9 h.
+"""
+
+
+@pytest.mark.parametrize(
+    ("hours", "size"),
+    [(0.3, "S"), (0.5, "S"), (0.6, "M"), (1.5, "M"), (2, "L"), (3, "L"), (3.5, "XL"), (8, "XL")],
+)
+def test_size(hours: float, size: str) -> None:
+    assert prompts.size(hours) == size
+
+
+def test_phase_estimate(tmp_path: Path) -> None:
+    (tmp_path / "docs" / "plans").mkdir(parents=True)
+    (tmp_path / "docs" / "plans" / "m7.md").write_text(PLAN, encoding="utf-8")
+    assert prompts.phase_estimate(tmp_path, 7, "0.07.00") == 0.3
+    assert prompts.phase_estimate(tmp_path, 7, "0.07.01") == 2  # stops at the next heading
+    assert prompts.phase_estimate(tmp_path, 7, "0.07.02") is None
+    assert prompts.phase_estimate(tmp_path, 8, "0.08.00") is None  # no plan
+    assert prompts.phase_estimate(REPO_ROOT, 0, "0.00.00") == 0.3
+    assert prompts.phase_estimate(REPO_ROOT, 0, "0.00.06") == 1.5  # "1.5 h, plus the user's merge"
+
+
+def test_standing_prompts_of_this_repo() -> None:
+    standing = prompts.load_standing(REPO_ROOT)
+    plan, release = standing[prompts.PLAN], standing[prompts.RELEASE]
+    assert (plan.estimate, release.estimate) == (1, 0.3)
+    filled = prompts.fill(plan.text, 2, "0.02.00")
+    assert filled.startswith("Plan milestone M2 as phase 0.02.00 on branch m2 in C:\\Projects\\")
+    assert "docs/plans/m1.md as the worked example" in filled and "`## 0.02 <Name>`" in filled
+    assert "Commit `0.02.00: M2 plan and prompts.`" in filled
+    assert "{" not in filled
+    assert release.text == "/optilux-release\n"
+
+
+@pytest.mark.parametrize(
+    ("text", "detail"),
+    [
+        ("# S\n\n## Release\n- Estimate: 0.3 h.\n```text\nr\n```\n", "no `## Plan` section"),
+        ("# S\n\n## Plan\n```text\np\n```\n\n## Release\n- Estimate: 1 h.\n```text\nr\n```\n", ""),
+    ],
+)
+def test_standing_faults_name_the_fix(tmp_path: Path, text: str, detail: str) -> None:
+    (tmp_path / "docs" / "prompts").mkdir(parents=True)
+    with pytest.raises(prompts.PromptError, match="standing.md: no such file; fix: restore"):
+        prompts.load_standing(tmp_path)
+    (tmp_path / prompts.STANDING).write_text(text, encoding="utf-8")
+    with pytest.raises(prompts.PromptError) as caught:
+        prompts.load_standing(tmp_path)
+    expected = detail or "`## Plan` has no `- Estimate: <h> h` line; fix: add one above"
+    assert expected in str(caught.value)
+
+
+def with_standing(root: Path) -> None:
+    """The real standing prompts, so the fixture repos test them too."""
+    (root / "docs" / "prompts").mkdir(parents=True, exist_ok=True)
+    (root / prompts.STANDING).write_bytes((REPO_ROOT / prompts.STANDING).read_bytes())
+
+
 def milestone_repo(cloned: Path) -> Path:
-    """`cloned` on a pushed m7 with one phase committed, Status lines and the fixture prompts."""
+    """`cloned` on a pushed m7 with one phase committed: Status lines, the fixture prompts and
+    plan, and the standing prompts."""
     git(cloned, "switch", "-q", "-c", "m7", "--no-track", "origin/main")
-    (cloned / "docs" / "prompts").mkdir(parents=True)
+    with_standing(cloned)
     (cloned / "docs" / "prompts" / "m7.md").write_bytes(FIXTURE.encode())
+    (cloned / "docs" / "plans").mkdir(parents=True)
+    (cloned / "docs" / "plans" / "m7.md").write_bytes(PLAN.encode())
     (cloned / "docs" / "roadmap.md").write_bytes(b"# Roadmap\nStatus: roadmap M7.\n")
     git(cloned, "add", "docs")
     commit_file(cloned, "AGENTS.md", b"# Fixture\nStatus: agents M7.\n", "0.07.00: First.")
@@ -153,8 +227,14 @@ def test_status_in_a_throwaway_repo(cloned: Path) -> None:
     facts = status.collect(root)
     assert (facts["branch"], facts["pushed"], facts["clean"]) == ("m7", True, True)
     assert (facts["version_local"], facts["version_main"]) == ("0.07.00", "0.00.00")
-    assert (facts["next_phase"], facts["next_title"]) == ("0.07.01", "Second")
-    assert (facts["prompt_file"], facts["prompt"]) == ("docs/prompts/m7.md", "Run 0.07.01.\n")
+    assert (facts["next_kind"], facts["next_phase"], facts["next_title"]) == (
+        "implementation",
+        "0.07.01",
+        "Second",
+    )
+    assert (facts["next_source"], facts["prompt"]) == ("docs/prompts/m7.md", "Run 0.07.01.\n")
+    assert (facts["next_estimate"], facts["next_size"]) == (2, "L")
+    assert facts["next_estimate_source"] == "docs/plans/m7.md" and facts["switch"] is None
     assert facts["status_lines"] == {
         "AGENTS.md": "Status: agents M7.",
         "docs/roadmap.md": "Status: roadmap M7.",
@@ -167,7 +247,7 @@ def test_status_in_a_throwaway_repo(cloned: Path) -> None:
     assert status.collect(root)["problems"] == [] and status.collect(root)["hooks_set"]
 
 
-def test_status_text_prints_the_prompt_verbatim(
+def test_status_text_prints_the_heads_up_and_the_prompt_verbatim(
     cloned: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     root = milestone_repo(cloned)
@@ -175,43 +255,120 @@ def test_status_text_prints_the_prompt_verbatim(
     assert cli.main(["status"]) == 0
     out = capsys.readouterr().out
     assert out.startswith(
+        "heads-up:   implementation, size L (2 h estimate, docs/plans/m7.md)\n"
         "branch:     m7, pushed\nversion:    0.07.00 local, 0.00.00 on origin/main\n"
     )
     assert "next phase: 0.07.01 Second (docs/prompts/m7.md)\n" in out
     assert "AGENTS.md: Status: agents M7.\n" in out and "tree:       clean\n" in out
+    assert "switch to" not in out
     assert out.endswith("\nnext prompt, 0.07.01 Second, verbatim:\nRun 0.07.01.\n")
 
 
-def test_status_exits_0_with_problems(
+def test_status_names_a_missing_estimate_and_a_gap(cloned: Path) -> None:
+    root = milestone_repo(cloned)
+    (root / "docs" / "plans" / "m7.md").unlink()
+    facts = status.collect(root)
+    assert (facts["next_kind"], facts["next_size"], facts["prompt"]) == (
+        "implementation",
+        None,
+        "Run 0.07.01.\n",
+    )
+    assert (
+        "no estimate for 0.07.01 in docs/plans/m7.md; "
+        "fix: add `- Estimate: <h> h.` to `### 0.07.01` in docs/plans/m7.md"
+    ) in facts["problems"]
+    assert status.heads_up(facts) == "implementation, size unknown (no estimate)"
+    gap = FIXTURE.replace("0.07.01 Second", "0.07.02 Third")
+    (root / "docs" / "prompts" / "m7.md").write_bytes(gap.encode())
+    facts = status.collect(root)
+    assert (facts["next_kind"], facts["prompt"]) == (None, None)
+    assert (
+        "no stored prompt for 0.07.01; fix: add `## 0.07.01 <title>` to docs/prompts/m7.md "
+        "(its phases end at 0.07.02)"
+    ) in facts["problems"]
+    assert status.heads_up(facts) == "no next prompt: see the problems below"
+
+
+def test_status_gives_the_release_once_every_phase_is_committed(
     cloned: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     root = milestone_repo(cloned)
     (root / "extra.txt").write_bytes(b"dirty\n")
-    commit_file(root, "second.txt", b"x\n", "0.07.01: Second.")  # not pushed; no 0.07.02 prompt
+    commit_file(root, "second.txt", b"x\n", "0.07.01: Second.")  # the last phase, not pushed
     facts = status.collect(root)
-    assert (facts["pushed"], facts["clean"], facts["prompt"]) == (False, False, None)
-    assert facts["changes"] == ["?? extra.txt"] and facts["next_phase"] == "0.07.02"
-    assert "HEAD is not on origin/m7; fix: `git push -u origin m7`" in facts["problems"]
-    assert any(
-        p.startswith("no stored prompt for 0.07.02; fix: add `## 0.07.02 <title>`")
-        and p.endswith("`optilux milestone start 8`")
-        for p in facts["problems"]
+    assert (facts["pushed"], facts["clean"]) == (False, False)
+    assert facts["changes"] == ["?? extra.txt"] and facts["switch"] is None
+    assert (facts["next_kind"], facts["next_phase"], facts["next_title"]) == (
+        "release",
+        None,
+        "Release M7",
     )
-    (root / "docs" / "prompts" / "m7.md").write_bytes(without_resume().encode())
+    assert (facts["prompt"], facts["next_size"]) == ("/optilux-release\n", "S")
+    assert "HEAD is not on origin/m7; fix: `git push -u origin m7`" in facts["problems"]
     monkeypatch.setattr(status, "REPO_ROOT", root)
+    assert cli.main(["status"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith(
+        "heads-up:   release, size S (0.3 h estimate, docs/prompts/standing.md)\n"
+    )
+    assert "next phase: Release M7 (docs/prompts/standing.md)\n" in out
+    assert out.endswith("\nnext prompt, Release M7, verbatim:\n/optilux-release\n")
+    (root / "docs" / "prompts" / "m7.md").write_bytes(without_resume().encode())
     assert cli.main(["status"]) == 0
     out = capsys.readouterr().out
     assert "tree:       2 changes: M docs/prompts/m7.md; ?? extra.txt\n" in out
     assert "problem:    docs/prompts/m7.md: no `## Resume` section; fix: " in out
-    assert "next prompt" not in out
+    assert out.startswith("heads-up:   no next prompt: see the problems below\n")
+    assert "\nnext prompt, " not in out
 
 
-def test_status_before_the_first_phase(cloned: Path) -> None:
+def test_status_after_the_merge_switches_and_plans_the_next_milestone(
+    cloned: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = milestone_repo(cloned)
+    commit_file(root, "second.txt", b"x\n", "0.07.01: Second.")
+    git(root, "push", "-q", "origin", "m7", "m7:main")  # the user's merge, as a fast-forward
+    facts = status.collect(root)
+    assert (facts["version_local"], facts["version_main"]) == ("0.07.01", "0.07.01")
+    assert (facts["next_kind"], facts["next_phase"], facts["next_title"]) == (
+        "planning",
+        "0.08.00",
+        "Plan M8",
+    )
+    assert facts["prompt"].startswith("Plan milestone M8 as phase 0.08.00 on branch m8 in ")
+    switch = ["uv run optilux milestone start 8", "git branch -D m7", "git push origin --delete m7"]
+    assert facts["switch"] == switch
+    monkeypatch.setattr(status, "REPO_ROOT", root)
+    assert cli.main(["status"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("heads-up:   planning, size M (1 h estimate, docs/prompts/standing.md)\n")
+    block = "\nswitch to m8 first, paste:\n" + "\n".join(switch) + "\n"
+    assert block + "\nnext prompt, 0.08.00 Plan M8, verbatim:\nPlan milestone M8" in out
+    git(root, "switch", "-q", "main")
+    git(root, "merge", "-q", "--ff-only", "m7")
+    git(root, "push", "-q", "origin", "--delete", "m7")
+    facts = status.collect(root)  # on main: the milestone comes from the newest version
+    assert (facts["branch"], facts["pushed"], facts["next_title"]) == ("main", None, "Plan M8")
+    assert facts["switch"] == ["uv run optilux milestone start 8", "git branch -D m7"]
+
+
+def test_status_plans_a_milestone_without_a_prompt_set(cloned: Path) -> None:
     git(cloned, "switch", "-q", "-c", "m7", "--no-track", "origin/main")
+    with_standing(cloned)
     facts = status.collect(cloned)
     assert (facts["version_local"], facts["next_phase"]) == ("0.00.00", "0.07.00")
-    assert facts["pushed"] is False and facts["prompt"] is None
-    assert any("docs/prompts/m7.md: no such file; fix: " in p for p in facts["problems"])
+    assert (facts["next_kind"], facts["next_title"], facts["next_size"]) == (
+        "planning",
+        "Plan M7",
+        "M",
+    )
+    assert facts["prompt"].startswith("Plan milestone M7 as phase 0.07.00 on branch m7 in ")
+    assert "docs/plans/m6.md as the worked example" in facts["prompt"]
+    assert facts["pushed"] is False and facts["switch"] is None
+    (cloned / prompts.STANDING).unlink()
+    facts = status.collect(cloned)
+    assert facts["prompt"] is None
+    assert any("docs/prompts/standing.md: no such file; fix: " in p for p in facts["problems"])
 
 
 def test_status_outside_a_repo(tmp_path: Path) -> None:
@@ -231,8 +388,8 @@ def test_status_json_on_this_repo(
     facts = json.loads(capsys.readouterr().out)
     assert facts["branch"] == repo.current_branch(REPO_ROOT) and facts["head"] == head
     assert facts["version_local"] == facts["version_main"] == repo.newest_version(REPO_ROOT)
-    assert facts["next_phase"] == prompts.next_phase(facts["version_local"], facts["milestone"])
-    prompt = prompts.load(REPO_ROOT, facts["milestone"]).phase(facts["next_phase"])
-    assert facts["prompt"] == (prompt.text if prompt else None)
+    # Whatever the state of this checkout, the cycle always yields a next prompt with a size.
+    assert facts["prompt"] and facts["next_kind"] in ("planning", "implementation", "release")
+    assert facts["next_size"] in ("S", "M", "L", "XL")
     assert facts["status_lines"]["AGENTS.md"].startswith("Status: ")
     assert facts["status_lines"]["docs/roadmap.md"].startswith("Status: ")

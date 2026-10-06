@@ -2,7 +2,11 @@
 
 User-facing changes per release. Versions are 0.MM.PP (milestone, phase).
 
-## 0.00
+## 0.01 Game control
+The harness installs and launches the pinned Minecraft and drives it through the helper mod.
+- Releases are titled `Optilux <version>: <milestone>`, for example `Optilux 0.01.07: Game control`.
+
+## 0.00 Foundation
 Foundation. Nothing to run yet: no shader pack to install and no benchmark to start.
 - Repository: the design, measurement, platform, shader and mod documents, the roadmap and the M0 plan.
 - Harness skeleton: the `optilux` command (`test`, `verify docs`, `status`, `milestone start`, `pack build`, `pack release`) with its tests, doc checks and git hooks; CI runs the tests and builds the zip on every push and pull request.

@@ -1,5 +1,5 @@
 # Workflow
-Status: draft; M0 built the hooks, optilux-next, optilux-release, `milestone start`, the read-only agents, CI and the release workflow; each later skill follows the creation rule.
+Status: draft; M0 built the hooks, optilux-next, optilux-release, `milestone start`, the read-only agents, CI and the release workflow, and 0.01.00 the standing prompts; each later skill follows the creation rule.
 
 ## Contents
 Skills · Agents · Running a milestone · Docs rules · Git · Release · Hooks and guards · Testing · Code conventions
@@ -21,11 +21,11 @@ Rules (Anthropic's skill best practices, https://platform.claude.com/docs/en/age
 
 | Skill | Draft v0 name | Does | Freedom |
 |---|---|---|---|
-| optilux-next | /next, status, next prompt | Built: injects `uv run optilux status` (branch and pushed or not, versions local and on origin/main, next phase, the Status lines, tree, hooks path, problems with fixes) and prints its lines and the next stored prompt verbatim; `allowed-tools: Bash(uv run optilux status*)`; read-only, in the main context (a fork would hand the prompt back as a result instead of printing it) | low |
+| optilux-next | /next, status, next prompt | Built: injects `uv run optilux status` (a heads-up on the next prompt's kind and size, branch and pushed or not, versions local and on origin/main, next phase, the Status lines, tree, hooks path, problems with fixes) and prints its lines, the switch block after a merge, and the next prompt verbatim; there is always one (Running a milestone); `allowed-tools: Bash(uv run optilux status*)`; read-only, in the main context (a fork would hand the prompt back as a result instead of printing it) | low |
 | optilux-milestone | /milestone, /phase | Milestone kickoff: injects the roadmap section and run rules, loads the stored prompt set | low |
 | optilux-plan | /plan | Writes docs/plans/m<MM>.md from docs/templates/plan.md (strict template, at most 40,960 bytes); premises verified at the source | medium |
 | optilux-bench | (Benchmark) | Validates a run spec, announces the launch, runs `optilux run`, summarizes the run record | low |
-| optilux-release | /release | Built: before the PR `verify docs`, `test`, `pack release --check`, push, `gh pr create --title "0.MM: <summary>" --body ""`, `gh pr checks --watch`; after the user's merge `gh run watch` on the release run and `gh release view v<version>`; no allowed-tools, so `gh pr create` keeps its permission prompt | low |
+| optilux-release | /release | Built: picks its half from `gh pr view m<MM>`; before the PR `verify docs`, `test`, `pack release --check`, push, `gh pr create --title "0.MM <Name>: <what it delivers>" --body ""`, `gh pr checks --watch`; after the user's merge `gh run watch` on the release run, `gh release view v<version>`, and the switch block from `optilux status` for the user to paste, never run (user, 2026-10-06); no allowed-tools, so `gh pr create` keeps its permission prompt | low |
 | optilux-research | (Shader Expert research) | docs/research/<topic>.md with sources; built after 2-3 manual research tasks | high |
 
 - When each skill is built:
@@ -54,6 +54,8 @@ Rules (Anthropic's skill best practices, https://platform.claude.com/docs/en/age
 1. Plan with optilux-plan into docs/plans/m<MM>.md (template docs/templates/plan.md, written with the first hand-made plan in Phase 0). Verify every premise at its source: ALC's recurring failure was "a control described rather than read" (3 times).
 2. Optional /critique. The user approves. A `--repo` run works on a copy without reference/, runtime/, snapshots/ or results/raw/: Complementary's source never goes to a third-party model.
 3. A stored prompt set, docs/prompts/<milestone>.md: one prompt per phase plus a Resume prompt. The user hands prompts out verbatim; prompts are never rewritten per session.
+- The cycle's next prompt, as `optilux status` and /optilux-next print it (user, 2026-10-06): a milestone without a prompt set gets the standing Plan prompt (docs/prompts/standing.md), which runs steps 1-3 as the milestone's first free phase until optilux-plan exists; then each phase's prompt; once every phase is committed, the standing Release prompt (/optilux-release); after the merge, the switch block to m<MM+1> and its Plan prompt.
+- The heads-up names the kind (planning, implementation, release) and the size from the estimate in agent hours: S up to 0.5, M up to 1.5, L up to 3, XL above. A phase's estimate is its plan's `- Estimate:` line; a standing prompt carries its own.
 4. Unattended run: no questions mid-run. Take the roadmap's recommendation or log the question in the handoff.
 5. One commit per phase; update the Status line after each; push after each commit.
 6. Stop on a stated condition; write docs/handoff.md (one file, overwritten at each stop; superseded text deleted); report commits and time against estimates. ALC estimates ran wide (4-6 h estimated, ~1.2 h actual).
@@ -82,7 +84,7 @@ Applies to every AI-facing doc. README and release notes are human-facing.
   - A phase is one reviewable, test-green change (ALC's phases took ~1 h), so a regression bisects to one phase; rebase merge keeps every phase commit on main.
   - Shader features and candidates are options (shader.md#method), so a regression is also isolated by switching them off, without bisect.
 - Push after every commit, as a backup; no git hook runs on push (Hooks and guards).
-- PR per milestone: one-line title `0.MM: <summary>`, no body.
+- PR per milestone: one-line title `0.MM <Name>: <what it delivers>`, the name as in the CHANGELOG heading, at most 72 characters, no trailing period (user, 2026-10-06; M0's was `0.00: Foundation.`); no body.
 - No VERSION file. The release version is the prefix of the newest commit on main, and the commit-msg hook enforces the format, so it is checkable before the merge.
 - `optilux milestone start` cuts the branch from origin/main with `--no-track` (ALC: VS Code Sync otherwise merges main into it). It refuses a dirty tree and an existing local or remote branch, fetches first and prints the next step; scripted like ALC's release-next, written after a hand-made branch broke.
 - Bootstrap, once, by hand at the start of M0 (design.md D6): create the private repo `Optilux`; first commit on main `0.00.00: Repo bootstrap.` with .gitattributes, AGENTS.md, docs and config; `git push -u origin main`; `git switch -c m0 --no-track origin/main`. Every later branch is cut by `optilux milestone start`.
@@ -101,8 +103,8 @@ Applies to every AI-facing doc. README and release notes are human-facing.
   - HEAD must be origin/main's tip: a release cut from m<MM> would tag a commit the rebase merge replaces;
   - version = the newest commit's prefix; `pack build` first (shader/ + LICENSE + README with the credit; one tree, one sha256), so the release needs no other workflow's files; the tree must be clean;
   - `gh release view v<version>`; a tag v<version> already on origin must be at HEAD, else exit 1 (a tag is never moved);
-  - when absent, `gh release create v<version> build/optilux-<version>.zip --title v<version> --notes-file <entry> --target <HEAD sha>`; `--target` because gh would otherwise tag the default branch's head at run time. Private repo, private releases.
-- Release notes: each milestone adds its user-facing entry, `## 0.MM`, to CHANGELOG.md before its PR. The release body is that entry.
+  - when absent, `gh release create v<version> build/optilux-<version>.zip --title "Optilux <version>: <Name>" --notes-file <entry> --target <HEAD sha>`; `--target` because gh would otherwise tag the default branch's head at run time. Private repo, private releases.
+- Release notes: each milestone's first phase adds its user-facing entry under `## 0.MM <Name>` to CHANGELOG.md, and later phases extend it; CI's release check needs it on every push. The release body is that entry, the name its title's.
 - Every release rule must be checkable before the merge: `optilux pack release --check [--no-remote] [--ref R]` checks the subject of R (default HEAD) by the commit-msg rule, the CHANGELOG entry, no release and no tag for the version on GitHub (skipped with `--no-remote`), a clean tree, and R as a branch tip on origin. ALC's gate judged the merge method and message after the fact and refused 3 merges.
 - CI, .github/workflows/ci.yml on push and pull_request (ubuntu-latest, roadmap.md#decisions D5; actions pinned to release tags): `uv sync --frozen`, ruff check and format, `optilux test`, `optilux verify docs`, `pack release --check --no-remote`, `pack build`, the zip as an artifact. On pull_request the checkout is GitHub's synthetic merge commit, whose subject carries no version, so the check and the build read it through `--ref HEAD^2`, the PR head; push events use HEAD. The in-game compile check runs locally through the mod.
 

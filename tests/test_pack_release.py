@@ -16,8 +16,8 @@ from optilux.verbs import pack
 PHASE = "0.00.06: CI, release workflow, optilux-release."
 CHANGELOG = (
     "# Changelog\n\nUser-facing changes.\n\n"
-    "## 0.00\nFoundation.\n- One.\n- Two.\n\n"
-    "## 0.01\nNext.\n"
+    "## 0.00 Foundation\nFoundation.\n- One.\n- Two.\n\n"
+    "## 0.01 Game control\nNext.\n"
 )
 ENTRY = "Foundation.\n- One.\n- Two.\n"
 TREE = {
@@ -114,12 +114,22 @@ def problems(found: list[tuple[str, str]]) -> list[str]:
 
 def test_changelog_entry(tmp_path: Path) -> None:
     (tmp_path / "CHANGELOG.md").write_text(CHANGELOG, encoding="utf-8")
-    assert pack.changelog_entry(tmp_path, "0.00.06") == ENTRY
-    assert pack.changelog_entry(tmp_path, "0.01.03") == "Next.\n"  # the last section ends at EOF
-    with pytest.raises(pack.PackError, match="has no `## 0.02` section; fix: add `## 0.02`"):
+    assert pack.changelog_entry(tmp_path, "0.00.06") == pack.Entry(
+        "## 0.00 Foundation", "Foundation", ENTRY
+    )
+    last = pack.changelog_entry(tmp_path, "0.01.03")  # the last section ends at EOF
+    assert (last.name, last.text) == ("Game control", "Next.\n")
+    with pytest.raises(pack.PackError, match="has no `## 0.02 <Name>` section; fix: add `## 0.02"):
         pack.changelog_entry(tmp_path, "0.02.01")
-    (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n## 0.00\n\n## 0.01\nx\n")
-    with pytest.raises(pack.PackError, match="`## 0.00` section is empty; fix: add"):
+    (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n## 0.00 Foundation\n\n## 0.01 X\nx\n")
+    with pytest.raises(pack.PackError, match="`## 0.00 Foundation` section is empty; fix: add"):
+        pack.changelog_entry(tmp_path, "0.00.06")
+    (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n## 0.00\nFoundation.\n")
+    with pytest.raises(
+        pack.PackError,
+        match="`## 0.00` names no milestone; fix: head it `## 0.00 <Name>` "
+        r"\(title `Optilux <version>: <Name>`\)",
+    ):
         pack.changelog_entry(tmp_path, "0.00.06")
     (tmp_path / "CHANGELOG.md").unlink()
     with pytest.raises(pack.PackError, match="no CHANGELOG.md under"):
@@ -134,7 +144,7 @@ def test_check_passes_on_a_pushed_phase(
     sha = head(pushed)[:7]
     assert capsys.readouterr().out == (
         f"ok:      subject of HEAD ({sha}): {PHASE}\n"
-        "ok:      CHANGELOG.md `## 0.00`: 3 lines\n"
+        "ok:      CHANGELOG.md `## 0.00 Foundation`: 3 lines\n"
         "ok:      no release and no tag v0.00.06 on GitHub\n"
         "ok:      tree clean\n"
         f"ok:      HEAD ({sha}) is the tip of origin/m0\n"
@@ -213,10 +223,11 @@ def test_check_refuses_a_bad_subject_a_missing_entry_and_an_unpushed_ref(
         f"HEAD~1 ({head(pushed, 'HEAD~1')[:7]}) is no branch tip on origin; "
         "fix: push it (`git push origin m0`), or check a branch tip instead"
     ]
-    commit_file(pushed, "CHANGELOG.md", b"# Changelog\n\n## 0.00\nFoundation.\n", "0.01.01: Next.")
+    changelog = b"# Changelog\n\n## 0.00 Foundation\nFoundation.\n"
+    commit_file(pushed, "CHANGELOG.md", changelog, "0.01.01: Next.")
     found = problems(pack.check(pushed, "HEAD", remote=True))
     assert len(found) == 2
-    assert found[0].startswith("CHANGELOG.md has no `## 0.01` section; fix: add `## 0.01`")
+    assert found[0].startswith("CHANGELOG.md has no `## 0.01 <Name>` section; fix: add `## 0.01")
     assert found[1].startswith(f"HEAD ({head(pushed)[:7]}) is no branch tip on origin")
 
 
@@ -253,14 +264,15 @@ def test_release_creates_the_release_when_absent(
     assert gh.calls == [
         view("v0.00.06"),
         ["release", "create", "v0.00.06", "build/optilux-0.00.06.zip"]
-        + ["--title", "v0.00.06", "--notes-file", notes, "--target", sha],
+        + ["--title", "Optilux 0.00.06: Foundation", "--notes-file", notes, "--target", sha],
     ]
     assert gh.notes == ENTRY
     assert not Path(notes).exists()  # the temporary notes file is gone
     out = capsys.readouterr().out
     assert out.startswith("optilux pack release: wrote build/optilux-0.00.06.zip (3 entries")
     assert out.endswith(
-        f"optilux pack release: created release v0.00.06 at {sha[:7]} with optilux-0.00.06.zip: "
+        "optilux pack release: created release v0.00.06 'Optilux 0.00.06: Foundation' "
+        f"at {sha[:7]} with optilux-0.00.06.zip: "
         f"{URL.format(tag='v0.00.06')}\n"
     )
     assert pack.check(on_main, "HEAD", remote=False)[-2] == (pack.OK, "tree clean")

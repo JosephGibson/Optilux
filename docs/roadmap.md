@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 closed pending merge (plan plans/m0.md, prompts prompts/m0.md): 0.00.06 is the last phase, and the milestone PR awaits the user's rebase merge. Latest stop: handoff.md.
+Status: M0 closed (release v0.00.06); M1 in progress: 0.01.00 (workflow tooling) is the last phase done, next 0.01.01, the M1 plan. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -101,7 +101,7 @@ Owner: who decides. Recommendation: what an unattended run takes. Closed decisio
 | D3 | Where git hooks live | Claude | .githooks/ committed and `core.hooksPath` set with `git config --local` in 0.00.03, reported by `optilux status`; copying into .git/hooks would need an installer verb outside the verb table | 0.00.03 |
 | D4 | Commit-message check | Claude | one line, at most 72 characters, `0.MM.PP: ` then text, no attribution token (Co-Authored-By, Claude, Anthropic, Generated; the tool name "Claude Code" passes unless "by", "with" or "via" precede it, as the 0.00.03 subject names it); the trailing period of the user's examples is style, not enforced | 0.00.03 |
 | D5 | CI runner | Claude | ubuntu-latest: M0's tests are pure Python, and Windows minutes cost 2x on a private repo (2,000 minutes a month on GitHub Free); switch to windows-latest when a Windows-only path (ctypes, the named pipe) gets a test, in M1 | 0.00.06 |
-| D6 | Release tag and asset | Claude | tag v<version> (workflow.md#release), asset optilux-<version>.zip, body = the milestone's CHANGELOG entry; the workflow creates the tag at main's head | 0.00.06 |
+| D6 | Release tag and asset | Claude | tag v<version> (workflow.md#release), asset optilux-<version>.zip, body = the milestone's CHANGELOG entry; the workflow creates the tag at main's head; title `Optilux <version>: <Name>`, the name from the CHANGELOG heading `## 0.MM <Name>` (user, 2026-10-06; from v0.01) | 0.00.06 |
 | D7 | Repository merge settings | user | rebase merge on, squash and merge commits off, set in 0.00.06 by `gh repo edit` so a merge cannot pick another method; the prompt names the command and stops for the go | 0.00.06 |
 | D8 | When optilux-plan is built | Claude | in M1's last phase, from two hand-made plans (m0.md, m1.md), used from M2's plan on; workflow.md#skills says after the first hand-written plan, and one plan is too little for the creation rule's 3 eval scenarios | M1 P6 |
 | D9 | Placeholder pack content | Claude | shader/shaders/shaders.properties with one comment line and no programs; never launched in M0; M3's hello pack replaces it and BENCH_DETERMINISTIC starts there (shader.md#determinism-and-taa) | 0.00.05 |
