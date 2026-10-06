@@ -47,7 +47,7 @@ Status: <draft | approved by the user, <date>>; <one sentence on where the miles
 - Change: <files and behaviour>.
 - Tests: <what proves it; "by hand: <check>" where no test is cheap>.
 - Exit: <checkable>.
-- Estimate: <h> agent<; <min> machine>.
+- Estimate: <h> h; machine: <launches, downloads, or none>.< Attended: <what needs the user>.>
 
 ## 6. Decisions
 | Id | Decision | Owner | Recommendation | When |

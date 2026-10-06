@@ -2,6 +2,7 @@
 repo with a bare origin, and on this repo with the remote faked."""
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -116,6 +117,34 @@ def test_parse_repo_prompts() -> None:
     assert all(p.title and p.text.endswith("\n") for p in prompt_set.phases)
     assert prompt_set.phases[4].text.startswith("Run M0 phase 0.00.04 on branch m0")
     assert prompt_set.resume.startswith("Resume M0 in C:\\Projects\\Optilux.")
+
+
+def test_repo_prompts_number_their_steps_in_sequence() -> None:
+    # A step glued to the line before it (`...quit.2. next`) leaves a gap in the numbering and
+    # hides itself from the briefing's STOP and /critique reading; 0.01.05 and 0.01.08 once had it.
+    texts = {name: p.text for name, p in prompts.load_standing(REPO_ROOT).items()}
+    for milestone in (0, 1):
+        texts.update({p.version: p.text for p in prompts.load(REPO_ROOT, milestone).phases})
+    for name, text in texts.items():
+        numbers = [int(m.group(1)) for m in re.finditer(r"^(\d+)\. ", text, re.M)]
+        assert numbers == list(range(1, len(numbers) + 1)), name
+
+
+def test_m1_prompts_follow_the_audited_form() -> None:
+    # The form of docs/prompts/m1.md Rules: the why and a Done-when up front, a Report that backs
+    # its claims; 0.01.02 predates it and ran as written. The Plan prompt asks the same of M2+.
+    texts = {p.version: p.text for p in prompts.load(REPO_ROOT, 1).phases if p.version > "0.01.02"}
+    texts["Plan"] = prompts.load_standing(REPO_ROOT)[prompts.PLAN].text
+    assert len(texts) == 9
+    for name, text in texts.items():
+        first = text.split("\n", 1)[0]
+        assert "Take `date` first" in first and " Why: " in first, name
+        assert " Done when: " in first and "Read AGENTS.md" not in first, name
+    for version, text in texts.items():
+        if version != "Plan":
+            assert "back each claim with output from this session" in text, version
+    reviewed = {v for v, text in texts.items() if "Review: call the reviewer agent" in text}
+    assert reviewed == {"0.01.03", "0.01.04", "0.01.05", "0.01.06", "0.01.07"}
 
 
 def test_load_names_a_missing_file(tmp_path: Path) -> None:

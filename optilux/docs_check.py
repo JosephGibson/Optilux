@@ -15,7 +15,10 @@ from pathlib import Path
 # concern; raised from 4,096 and 16,384 by the user on 2026-10-06.
 AGENTS_CAP = 6_144
 DOCS_CAP = 24_576
-# docs/roadmap.md and docs/plans/*.md: the critic refuses a plan over 50,000 characters.
+# docs/roadmap.md, docs/plans/*.md and docs/prompts/*.md: the critic refuses a plan over 50,000
+# characters, and a prompt set grows with its plan (m1.md reached the old cap with 77 bytes left
+# before the 2026-10-06 prompt audit added the why, the Done-when and the reviewer pass; raised
+# by the user, 2026-10-06).
 PLAN_CAP = 40_960
 
 # A file over this many lines needs `## Contents` directly after its Status line.
@@ -91,7 +94,7 @@ def cap_for(file: str) -> int | None:
     body is capped in lines by docs/workflow.md#skills, not in bytes)."""
     if file == "AGENTS.md":
         return AGENTS_CAP
-    if file == "docs/roadmap.md" or posixpath.dirname(file) == "docs/plans":
+    if file == "docs/roadmap.md" or posixpath.dirname(file) in ("docs/plans", "docs/prompts"):
         return PLAN_CAP
     if file.startswith("docs/"):
         return DOCS_CAP
