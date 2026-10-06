@@ -29,8 +29,17 @@ def git(root: Path, *args: str, timeout: float | None = None) -> subprocess.Comp
     """Run git in root; the caller judges the exit code. Raises TimeoutExpired past `timeout`."""
     env = {**os.environ, **NO_PROMPT}
     command = ["git", *args]
+    # git writes commit messages in UTF-8 (i18n.logOutputEncoding); Windows' locale code page
+    # would misread or refuse a non-ASCII subject that the Linux CI reads fine.
     return subprocess.run(
-        command, cwd=root, env=env, capture_output=True, text=True, timeout=timeout
+        command,
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=timeout,
     )
 
 
@@ -110,6 +119,40 @@ def remote_sha(root: Path, branch: str, remote: str = ORIGIN) -> str | None:
     if result.returncode == 2:  # --exit-code: the remote answered and has no such ref
         return None
     raise GitError(f"`git ls-remote {remote}` failed: {failure(result)}")
+
+
+def remote_refs(root: Path, kind: str, *patterns: str, remote: str = ORIGIN) -> dict[str, str]:
+    """{ref: sha} of `git ls-remote <kind> <remote> <patterns>` (kind --heads or --tags), read
+    live. Raises GitError when the remote cannot be read, TimeoutExpired past the limit."""
+    result = git(root, "ls-remote", kind, remote, *patterns, timeout=REMOTE_TIMEOUT)
+    if result.returncode:
+        raise GitError(f"`git ls-remote {remote}` failed: {failure(result)}")
+    pairs = (line.split("\t", 1) for line in result.stdout.splitlines() if "\t" in line)
+    return {ref: sha for sha, ref in pairs}
+
+
+def remote_tag(root: Path, tag: str, remote: str = ORIGIN) -> str | None:
+    """The commit a tag on the remote points at, None when the tag is absent. An annotated tag
+    is listed as the tag object and, under `^{}`, the commit it peels to; the commit wins."""
+    ref = f"refs/tags/{tag}"
+    refs = remote_refs(root, "--tags", ref, f"{ref}^{{}}", remote=remote)
+    return refs.get(f"{ref}^{{}}") or refs.get(ref)
+
+
+def remote_branches_at(root: Path, sha: str, remote: str = ORIGIN) -> list[str]:
+    """The branches on the remote whose tip is sha, read live with `git ls-remote --heads`."""
+    refs = remote_refs(root, "--heads", remote=remote)
+    return sorted(ref.removeprefix("refs/heads/") for ref, tip in refs.items() if tip == sha)
+
+
+def resolve(root: Path, ref: str) -> str | None:
+    """The commit sha a ref names (HEAD, HEAD^2, a branch, a sha), None when it names none."""
+    return read(root, "rev-parse", "--verify", "-q", f"{ref}^{{commit}}")
+
+
+def message(root: Path, sha: str) -> str | None:
+    """The full message of a commit present locally, None when the object was never fetched."""
+    return read(root, "log", "-1", "--format=%B", sha, "--")
 
 
 def subject(root: Path, sha: str) -> str | None:

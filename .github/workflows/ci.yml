@@ -1,0 +1,41 @@
+# Tests and packaging on every push and pull request (docs/workflow.md#release).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# CI creates nothing on GitHub; naming one permission sets the others to none.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    # docs/roadmap.md#decisions D5: M0's tests are pure Python; Linux minutes cost half of Windows'.
+    runs-on: ubuntu-latest
+    env:
+      # On pull_request the checkout is GitHub's synthetic merge commit, whose subject carries no
+      # version; its second parent is the PR head (docs/plans/m0.md P27, D16).
+      REF: ${{ github.event_name == 'pull_request' && 'HEAD^2' || 'HEAD' }}
+    steps:
+      # Actions pinned to release tags (docs/plans/m0.md D13).
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0 # the full history, so HEAD^2 and every phase subject are present
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.12.23" # the uv that wrote uv.lock (pyproject.toml, build-system)
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run optilux test
+      - run: uv run optilux verify docs
+      # --no-remote: gh has no login here, and on a push to main the release workflow may
+      # already have created the release this check would refuse.
+      - run: uv run optilux pack release --check --no-remote --ref "$REF"
+      - run: uv run optilux pack build --ref "$REF"
+      - uses: actions/upload-artifact@v7.0.1
+        with:
+          name: optilux-pack
+          path: build/optilux-*.zip
+          if-no-files-found: error

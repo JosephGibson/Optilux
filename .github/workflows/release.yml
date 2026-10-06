@@ -1,0 +1,30 @@
+# The release on every push to main, that is the user's rebase merge of a milestone PR
+# (docs/workflow.md#release): `optilux pack release` builds the zip and creates v<version> at HEAD
+# when absent.
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# The workflow token may create the release and its tag; naming one permission sets the others to
+# none (docs/plans/m0.md P12).
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      # Actions pinned to release tags (docs/plans/m0.md D13).
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          version: "0.12.23" # the uv that wrote uv.lock (pyproject.toml, build-system)
+      - run: uv sync --frozen
+      - run: uv run optilux pack release
+        env:
+          # gh has no login of its own on a runner; it reads GH_TOKEN (docs/plans/m0.md P28).
+          GH_TOKEN: ${{ github.token }}
