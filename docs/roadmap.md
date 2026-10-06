@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 closed (release v0.00.06); M1 in progress: 0.01.01 (the M1 plan and prompts) is the last phase done, next 0.01.02, install and the launch spec. Latest stop: handoff.md.
+Status: M0 closed (release v0.00.06); M1 in progress: 0.01.02 (install and the launch-spec check) is the last phase done, next 0.01.03, pre-launch files and launch. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates

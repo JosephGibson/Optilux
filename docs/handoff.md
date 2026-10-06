@@ -1,8 +1,14 @@
 # Handoff
-Status: M1 in progress: 0.01.01 (the M1 plan and prompts) is done; the next prompt is 0.01.02, install and the launch spec, which /optilux-next prints.
+Status: M1 in progress: 0.01.02 (install and the launch-spec check) is done; the next prompt is 0.01.03, pre-launch files and launch, which /optilux-next prints.
 
 ## Contents
-0.01.01 Plan M1 · Open questions · Time · Next
+0.01.02 install · 0.01.01 Plan M1 · Open questions · Time · Next
+
+## 0.01.02 install
+- `optilux install [--tier bench] [--refresh] [--json]` built (optilux/platform.py, optilux/verbs/install.py); minecraft-launcher-lib 8.0 and psutil 7.2.2 locked (D17). On this machine: the first run found Mojang's republished 26.3 JSON (P6) and exited 1 naming exactly four facts (the version JSON's sha1 and URL, asset index 34's sha1 abfaa525... -> 1e4e4a68... and URL); `install --refresh` rewrote the spec (D20); `install` and `install --tier dev` then passed with the spec equal. 5,241 hashes checked per bench run (the version JSON, 82 jars, the asset index, 5,147 assets, the log config, 5 store files, 2 game copies, the Temurin archive, PresentMon), 5,242 on dev; the first run downloaded 149 files (the JSON, the index, 142 assets, the 5 Modrinth files), later runs 0.
+- Cross-check (platform.md#install-and-launch): the lib's own command for the profile has the same main class, `--assetIndex 34` and 82 jars equal by sha1; its client jar is the copy under versions/fabric-loader-0.19.5-26.3/, not a second entry.
+- The spec compare covers every fact and skips the three note keys (writtenBy, classpathRule, gameArgumentsNote), so the refresh commit changed the four facts plus the writtenBy note, which now names install. Mojang's two 26.3 JSONs and the Fabric profile are fixtures under tests/fixtures/mc-26.3/; a test rebuilds the committed spec from them byte for byte and another reproduces P6's diff.
+- Checks at the commit: 209 tests green, ruff clean, verify docs 0 violations (platform.md at 65 bytes of margin after cuts of duplicated text).
 
 ## 0.01.01 Plan M1
 - docs/plans/m1.md approved by the user (2026-10-06): nine phases 0.01.02 to 0.01.10, 21 h agent against the roadmap's rough 16 h; 39 premises verified at their sources the same day; decisions D17-D26, two of them the user's and both closed on the recommendation: D20 (Mojang moved asset index 34 on 2026-10-06; `install --refresh` once in 0.01.02, the new spec committed) and D26 (A9 judged on a swap-return stamp next to the render-HEAD one; mod.md#12-acceptance changes in 0.01.09). D23 names the stop if the spike's world is gone.
@@ -19,7 +25,8 @@ Status: M1 in progress: 0.01.01 (the M1 plan and prompts) is done; the next prom
 - Window.updateDisplay as the swap-return target (D26) is read in the pinned jar in 0.01.07; if the swap sits elsewhere, that phase names the real target.
 
 ## Time
-- 0.01.01: about 1.6 h against the standing Plan prompt's 1 h; premise verification across about twenty sources and the critique's 3.5 min dominated. M0: about 3.3 h against 7.8. M1 so far: 0.01.00 about 0.5 h (unplanned) plus this phase. Tripwire standing (roadmap.md#estimates): M0-M3 48.8 h estimated, trip at 97.6 h; actuals about 5.4 h.
+- 0.01.02: about 0.8 h against 2 h; the live installs took 14 s (first) and 7 s (later).
+- 0.01.01: about 1.6 h against the standing Plan prompt's 1 h; premise verification across about twenty sources and the critique's 3.5 min dominated. M0: about 3.3 h against 7.8. M1 so far: 0.01.00 about 0.5 h (unplanned) plus this phase. Tripwire standing (roadmap.md#estimates): M0-M3 48.8 h estimated, trip at 97.6 h; actuals about 6.2 h.
 
 ## Next
-/optilux-next prints 0.01.02 install (implementation, size L, 2 h): minecraft-launcher-lib and psutil locked, `optilux install` with the file store and the launch-spec check, `install --refresh` once for the moved asset index, commit `0.01.02: optilux install and the launch-spec check.`
+/optilux-next prints 0.01.03 launch (implementation, size L, 2 h): the pre-launch files, the gate, `launch <world>` with one announced launch of the spike world (P34 open: stop if it is absent, D23), CI to windows-latest, commit `0.01.03: Pre-launch files, launch gate and the first launch.`
