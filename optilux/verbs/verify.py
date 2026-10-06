@@ -14,7 +14,7 @@ def configure(parser: argparse.ArgumentParser) -> None:
     docs = targets.add_parser(
         "docs",
         help="doc sizes, TOC, cites, encoding and Status lines",
-        description="Check every .md at the root and under docs/ (docs/sources/ exempt).",
+        description="Check every .md at the root, under docs/ (sources/ exempt) and .claude/.",
     )
     docs.add_argument("--json", action="store_true", help="print JSON instead of text")
 

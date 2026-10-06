@@ -1,7 +1,8 @@
 """The doc rules (docs/workflow.md#docs-rules) as one pure check over a tree.
 
-`check_tree` reads the root's .md files and docs/**/*.md and returns every violation with its fix;
-it writes nothing. `optilux verify docs` prints it; tests/test_docs_check.py runs it over the repo.
+`check_tree` reads the root's .md files, docs/**/*.md and .claude/**/*.md (the skills and agents,
+no cap) and returns every violation with its fix; it writes nothing. `optilux verify docs` prints
+it; tests/test_docs_check.py runs it over the repo.
 """
 
 import posixpath
@@ -86,7 +87,8 @@ class Report:
 
 def cap_for(file: str) -> int | None:
     """The byte cap of a checked file (posix path from the root); None for the root's other .md
-    (README.md and CHANGELOG.md are human-facing, CLAUDE.md one line)."""
+    (README.md and CHANGELOG.md are human-facing, CLAUDE.md one line) and for .claude/ (a skill
+    body is capped in lines by docs/workflow.md#skills, not in bytes)."""
     if file == "AGENTS.md":
         return AGENTS_CAP
     if file == "docs/roadmap.md" or posixpath.dirname(file) == "docs/plans":
@@ -97,11 +99,12 @@ def cap_for(file: str) -> int | None:
 
 
 def doc_files(root: Path) -> list[str]:
-    """The root's .md files and every .md under docs/, sources included, as sorted posix paths.
+    """The root's .md files and every .md under docs/ (sources included) and .claude/ (the skills
+    and agents), as sorted posix paths.
 
     Not a walk of the whole tree: runtime/ is never read; .venv/ and reference/ hold others' docs.
     """
-    paths = [*root.glob("*.md"), *(root / "docs").rglob("*.md")]
+    paths = [*root.glob("*.md"), *(root / "docs").rglob("*.md"), *(root / ".claude").rglob("*.md")]
     return sorted(p.relative_to(root).as_posix() for p in paths if p.is_file())
 
 

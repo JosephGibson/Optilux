@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 in progress (plan plans/m0.md, prompts prompts/m0.md); 0.00.03 is the last phase done, next 0.00.04. Latest stop: handoff.md.
+Status: M0 in progress (plan plans/m0.md, prompts prompts/m0.md); 0.00.04 is the last phase done, next 0.00.05. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 to M6 · Findings assigned · Decisions · Estimates

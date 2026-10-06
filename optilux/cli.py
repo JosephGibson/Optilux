@@ -5,10 +5,10 @@ import sys
 from collections.abc import Sequence
 from typing import NoReturn
 
-from optilux.verbs import Verb, test, verify
+from optilux.verbs import Verb, milestone, status, test, verify
 
 # The verb registry: every verb module's VERB, in `optilux --help` order.
-VERBS: tuple[Verb, ...] = (test.VERB, verify.VERB)
+VERBS: tuple[Verb, ...] = (test.VERB, verify.VERB, status.VERB, milestone.VERB)
 
 
 class Parser(argparse.ArgumentParser):

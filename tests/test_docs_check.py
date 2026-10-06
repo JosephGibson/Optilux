@@ -152,3 +152,18 @@ def test_verify_docs_exits_1_and_names_the_fix(
     assert cli.main(["verify", "docs"]) == 1
     out = capsys.readouterr().out
     assert "docs/a.md: lf: " in out and "fix: convert every CRLF to LF" in out
+
+
+def test_claude_docs_are_checked_without_a_cap(tmp_path: Path) -> None:
+    skill = "---\nname: x\ndescription: fixture\n---\nSee a.md#first-section.\n"
+    report = docs_check.check_tree(tree(tmp_path, {".claude/skills/x/SKILL.md": skill}))
+    assert report.violations == []
+    entry = next(e for e in report.files if e.file == ".claude/skills/x/SKILL.md")
+    assert (entry.cap, entry.margin) == (None, None)
+    assert rules(tree(tmp_path, {".claude/agents/r.md": sized(100_000)})) == []
+    crlf = skill.replace("\n", "\r\n")
+    assert rules(tree(tmp_path, {".claude/agents/r.md": crlf})) == [(".claude/agents/r.md", "lf")]
+    dangling = skill.replace("a.md#first-section", "a.md#nope")
+    assert rules(tree(tmp_path, {".claude/agents/r.md": dangling})) == [
+        (".claude/agents/r.md", "cite")
+    ]
