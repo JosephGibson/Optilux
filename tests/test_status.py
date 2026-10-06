@@ -279,6 +279,21 @@ def test_cut() -> None:
     assert status.cut("one, two, three, four", 12) == "one..."  # a cut word is dropped, not shown
 
 
+def test_cut_drops_parentheticals_before_it_cuts() -> None:
+    # The point of a handoff question sits outside its cites: "(workflow.md#skills)" goes first,
+    # so "are still pending" is not the part that is lost.
+    long = "The evals for optilux-next and optilux-release (workflow.md#skills) are still pending"
+    assert (
+        status.cut(long, 70) == "The evals for optilux-next and optilux-release are still pending"
+    )
+    assert status.cut("P34 (D23) is open", 30) == "P34 (D23) is open"  # it fits: untouched
+    assert status.cut("a (b (c)) d e f g h", 10) == "a d e..."  # nested ones, then the cut
+
+
+def test_last_text_without_a_version() -> None:
+    assert status.last_text({"last_commits": []}) == "no commit with a version yet"
+
+
 def test_standing_prompts_of_this_repo() -> None:
     standing = prompts.load_standing(REPO_ROOT)
     plan, release = standing[prompts.PLAN], standing[prompts.RELEASE]
@@ -407,6 +422,23 @@ def test_status_text_prints_the_briefing_and_the_prompt_verbatim(
     assert "switch to" not in out
     assert out.endswith("\n\nnext prompt, 0.07.01 Second, verbatim:\nRun 0.07.01.\n")
     assert out.split("\n\n")[0].isascii()
+
+
+def test_status_names_the_phase_not_its_side_commit(cloned: Path) -> None:
+    # A phase with a tooling commit on top: LAST says which phase and how many commits, not just
+    # the newest message as if it were the phase. Commits of an earlier version and commits
+    # without a version do not count.
+    root = milestone_repo(cloned)
+    commit_file(root, "side.txt", b"x\n", "0.07.00: Tooling fix for the prompts.")
+    commit_file(root, "plain.txt", b"x\n", "no version here")
+    facts = status.collect(root)
+    assert facts["last_commits"] == ["0.07.00: Tooling fix for the prompts.", "0.07.00: First."]
+    assert (facts["last_title"], facts["last_commit"]) == (
+        "First",
+        "0.07.00: Tooling fix for the prompts.",
+    )
+    last = row("LAST", '0.07.00 First: 2 commits, newest "Tooling fix for the prompts."')
+    assert last in status.briefing(facts)
 
 
 def test_status_names_a_missing_estimate_and_a_gap(cloned: Path) -> None:
