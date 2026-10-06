@@ -1,12 +1,12 @@
 {
  "schema": 1,
  "platform": "mc-26.3",
- "writtenBy": "Phase -1 spike from Mojang and Fabric JSON; install --refresh rewrites it (platform.md#install-and-launch)",
+ "writtenBy": "optilux install from Mojang's and Fabric's JSON; install --refresh rewrites it (platform.md#install-and-launch)",
  "sources": {
   "versionJson": {
    "id": "26.3",
-   "url": "https://piston-meta.mojang.com/v1/packages/4fe1aa1ef8da1cb95c5bad1fb98890ca56dd8ca3/26.3.json",
-   "sha1": "4fe1aa1ef8da1cb95c5bad1fb98890ca56dd8ca3"
+   "url": "https://piston-meta.mojang.com/v1/packages/702fe59163c6ee6578607daa85811d9bc9c7cc40/26.3.json",
+   "sha1": "702fe59163c6ee6578607daa85811d9bc9c7cc40"
   },
   "fabricProfile": {
    "id": "fabric-loader-0.19.5-26.3",
@@ -16,8 +16,8 @@
  "mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient",
  "assetIndex": {
   "id": "34",
-  "sha1": "abfaa525f923f807df8b4e4d29c1b5e3a104adbe",
-  "url": "https://piston-meta.mojang.com/v1/packages/abfaa525f923f807df8b4e4d29c1b5e3a104adbe/34.json"
+  "sha1": "1e4e4a68dece1c0f51b8f93b45da8fe8da51bcd3",
+  "url": "https://piston-meta.mojang.com/v1/packages/1e4e4a68dece1c0f51b8f93b45da8fe8da51bcd3/34.json"
  },
  "logging": {
   "id": "client-1.21.2.xml",

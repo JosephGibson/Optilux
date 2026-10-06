@@ -6,9 +6,8 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 
 ## Concept
 - A platform is everything that changes with the Minecraft version or renderer: MC version, Java major, loader; renderer backend; mod tiers (exact files + sha512); data and resource pack formats; world snapshot; the mod adapter; quirks to re-verify.
-- It lives in one file, config/platforms/<id>.json, plus the mod adapter and the world snapshot.
 - Platform-independent: harness core, statistics, run-record schema; suite logic, docs, skills; the shader's pipeline spec.
-- Run identity carries a hash of the platform file's loaded sections (everything but the tiers a session does not load) and the launch spec's hash: no comparison across platforms (run-record.md#identity).
+- Run identity carries the platform file's loaded sections and the launch spec's hash: no comparison across platforms (run-record.md#identity).
 
 ## mc-26.3
 - MC 26.3 released 2026-09-15 [S1]. Java 25 required since 26.1 (released 2026-03-24) [S2].
@@ -36,7 +35,7 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 - Aperture facts to recheck when public, from a migration guide marked outdated [S8]: no buffer flipping (a texture cannot be read and written at two positions); every texture is explicit except mainDepthTex and solidDepthTex; uniforms are `ap.*` structs; command lists merge composite and compute.
 
 ## Mod tiers
-Data: config/platforms/mc-26.3.json (version, file, Modrinth version id, sha512; the played tier's missing and excluded mods with their reasons). `install` refuses a file whose sha512 differs. Signed off as pinned on 2026-10-05 (design.md D8).
+Data: config/platforms/mc-26.3.json (version, file, Modrinth version id, sha512; the played tier's missing and excluded mods with their reasons). Signed off as pinned on 2026-10-05 (design.md D8).
 
 | Tier | Adds to bench | Use |
 |---|---|---|
@@ -72,25 +71,25 @@ What optilux-helper's adapter must provide on each platform (mod.md#4-architectu
 
 ## Install and launch
 No launcher (lessons.md#game-control). Nothing is installed system-wide; no Microsoft account is used or read (singleplayer only).
-- `install` fills runtime/<platform>/ from the network, every file hash-checked:
-  - Minecraft: Mojang's version manifest -> version JSON -> client jar, libraries, natives, asset index and assets, each checked against the SHA-1 Mojang publishes. Tool: minecraft-launcher-lib 8.0: it reads 26.3's version JSON and a local Fabric profile JSON with inheritsFrom, raises InvalidChecksum on a SHA-1 mismatch, and also installs Mojang's java-runtime-epsilon under runtime/<platform>/runtime/ (unused);
-  - Fabric Loader: its profile JSON from meta.fabricmc.net; libraries from Fabric's Maven, checked against the SHA-1 Fabric publishes (the profile carries none for fabric-loader itself: take Maven's .sha1);
-  - mods and packs: the tier's Modrinth files, against the platform file's sha512;
-  - Java: Temurin from the Adoptium API, against the archive sha256 pinned in config/java/bench.json, unpacked under runtime/java/;
+- `install [--tier bench] [--refresh]` fills runtime/<platform>/ (suite.json's `platform`) from the network and re-hashes every file on every run; a hash off its pin is refused with the file named; game/saves/ and the option files are never touched:
+  - Minecraft: Mojang's manifest -> version JSON (re-fetched when its SHA-1 moved) -> client jar, libraries, natives, asset index and assets through minecraft-launcher-lib 8.0 (it installs the local Fabric profile with inheritsFrom, repairs a SHA-1 mismatch, checks none of Fabric's libraries, and adds Mojang's unused java-runtime-epsilon under runtime/<platform>/runtime/); install's own pass then hashes every classpath jar, the asset index, every asset and the log config against the spec it built;
+  - Fabric Loader: its profile JSON from meta.fabricmc.net under versions/; libraries from Fabric's Maven against the SHA-1 the profile carries, fabric-loader's own against Maven's .sha1;
+  - mods and packs: the tier's Modrinth files (through `extends`) and the reference pack into the store runtime/<platform>/files/, against the platform file's sha512; resource and shader packs copied into game/resourcepacks/ and game/shaderpacks/, mods placed by `launch` per tier;
+  - Java: Temurin from the Adoptium API, against the archive sha256 pinned in config/java/bench.json, unpacked under runtime/java/<build>/;
   - tools: PresentMon's console build from its GitHub release, against config/tools.json, into runtime/tools/.
-- The launch spec, config/platforms/<id>.launch.json (committed), is written by the first install and checked by every later one:
+- The launch spec, config/platforms/<id>.launch.json (committed), is written by the first install and compared fact by fact by every later one (its three note keys excepted):
   - main class (Fabric's KnotClient), the classpath in order with each jar's SHA-1, the asset index id and SHA-1;
   - the JVM options and game-argument template from Mojang's and Fabric's JSON;
   - no Java path, heap or flags: those live in config/java/;
-  - `install --refresh` rewrites it. The spec's hash is run identity, so a changed spec means recalibration (measurement.md#calibration) even when the platform file is unchanged; treat it as a platform change (below).
+  - a difference exits 1 naming the facts; `install --refresh` rewrites the file. The spec's hash is run identity: a changed spec means recalibration (measurement.md#calibration) and is a platform change (below).
 - Pre-launch files (suite.json display holds the exact keys):
   - options.txt must carry `version:5023`, or the schema-4892 datafixer resets preferredGraphicsBackend to default, and `graphicsPreset:"custom"`, or Minecraft's constructor applies the preset over the file (fancy set simulationDistance 12 in L1);
   - a fresh sodium-options.json makes Sodium set exclusiveFullscreen=true once (`notifications.has_edited_fullscreen_option`): ship the file with that flag set, and `performance.use_no_error_g_l_context=false` for the dev tier;
   - config/iris.properties: shaderPack, enableShaders, enableDebugOptions, disableUpdateMessage (true: no update request), maxShadowRenderDistance.
 - `launch`:
-  1. hashes every classpath jar and the asset index against the spec and refuses any mismatch (ALC did this before every launch);
+  1. hashes every classpath jar and the asset index against the spec and refuses any mismatch;
   2. starts Java from the profile with the spec's JVM options, `-Doptilux.token=<fresh>`, KnotClient, `--gameDir runtime/<platform>/game`, an offline session (`--accessToken 0 --offlineDeveloperMode`) and `--quickPlaySingleplayer <world>`;
-  3. the offline player is `--username optilux` with `--uuid` = the snapshot's players/data/<uuid>.dat name when present, else the offline UUID of that name (`UUID.nameUUIDFromBytes("OfflinePlayer:" + name)`, the platform file's `offlinePlayer`; L1 wrote exactly that file); a snapshot is taken after the bench player's first join, so later launches always load the same player (ALC);
+  3. the offline player is `--username optilux` with `--uuid` = the snapshot's players/data/<uuid>.dat name when present, else the offline UUID of that name (the platform file's `offlinePlayer`; L1 wrote exactly that file); a snapshot is taken after the bench player's first join, so later launches always load the same player (ALC);
   4. reads the started process's real command line and refuses a mismatch with the profile (config/java/bench.json) and the spec; `-Doptilux.token` is excepted (fresh per launch, never identity).
 - Cross-check, once per platform: minecraft-launcher-lib's own command for the same versions must match the spec's main class, asset index and jars by content (ALC's check against Prism).
 
@@ -99,11 +98,11 @@ The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform c
 
 | Check | Result | Evidence |
 |---|---|---|
-| S1 Python | pass | venv on 3.12.10: minecraft-launcher-lib 8.0 (sha256 ff17960c...6746), nbtlib 2.0.4 (38d571fb...9889), pillow 12.3.0 (a2b55dd6...cb09, screenshots) |
+| S1 Python | pass | venv on 3.12.10: minecraft-launcher-lib 8.0, nbtlib 2.0.4, pillow 12.3.0 (screenshots); uv.lock pins the lib from 0.01.02 |
 | S2 Java | pass | Temurin jdk-25.0.4.1+1, zip sha256 00c847d8...9283; `java -version`: "Temurin-25.0.4.1+1 (build 25.0.4.1+1-LTS)" |
 | S3 Game | pass | install in 29.9 s; 5,231 files SHA-1-equal to Mojang's and Fabric's values (82 jars, index 34, 5,147 assets, log config) |
 | S4 Mods | pass | 6 files sha512-equal to the platform file and to Modrinth's metadata |
-| S5 Launch spec | pass | KnotClient, 82 jars, asset index 34 (abfaa525...adbe); the lib's own command: same main class, `--assetIndex 34`, 82 jars equal by SHA-1 (its classpath ends with a second copy of the client jar) |
+| S5 Launch spec | pass | KnotClient, 82 jars, asset index 34 (abfaa525...adbe); the lib's own command: same main class, `--assetIndex 34`, 82 jars equal by SHA-1 (its client jar is the copy under the Fabric version folder; rerun in 0.01.02) |
 | S6 PresentMon | pass | 2.6.0 console build, sha256 b2a706bc...f1af (GitHub publishes none); `--help` lists every flag the harness uses; unelevated: "Started recording.", the session listed by `logman query -ets` and gone after exit |
 | S7 Viewfinder | client deferred | .mcp.json present; the server answered JSON-RPC in L2; this session's client never connected (needs the user's /mcp): M1's first dev session |
 | S8 AF_UNIX | pass | `hasattr(socket, "AF_UNIX")` is False on 3.12.10 |
@@ -118,7 +117,7 @@ The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform c
 | R8 MC_VERSION | pass | formatVersionString(major + two-digit minor + two-digit patch) of the version name: 26.3 -> 260300; dumps are preprocessed, so the value is not visible there |
 | R9 Offline | pass | `--offlineDeveloperMode` takes no value, `--accessToken` is required, `--uuid` optional (else createOfflinePlayerUUID); Minecraft: profileFuture completed locally, UserApiService.OFFLINE, ProfileKeyPairManager.EMPTY_KEY_MANAGER; the discovery client and Realms objects are still built |
 | R10, R11 | pass | see mc-26.3; CompositeDepthTransformer only rewrites centerDepthSmooth |
-| Iris source | note | no release tag for 1.10+; the 26.3 branch head says MOD_VERSION 1.11.6 while the jar says 1.11.7+mc26.3: read at commit adc75283b, design points confirmed in the pinned jar's bytecode; Sodium at tag mc26.3-0.9.2 |
+| Iris source | note | no release tag for 1.10+; the 26.3 branch head says 1.11.6, the jar 1.11.7+mc26.3: read at commit adc75283b, confirmed in the pinned jar's bytecode (F9); Sodium at tag mc26.3-0.9.2 |
 | L1 join | pass | 18.4 s from process start to "Loaded 1866 advancements"; "optilux[local:E:9375a0e8] logged in with entity id 11" |
 | L1 offline session | pass | "Setting user: optilux"; 26.3 logs no UUID, the player file is players/data/51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79.dat (the platform file's value); TCP to 60 s in the world: one remote, api.minecraftservices.com:443 during startup; "Ignoring chat session from optilux due to missing Services public key" |
 | L1 Iris loads Unbound | pass | "Using shaderpack: ComplementaryUnbound_r5.9.3.zip", "Creating pipeline for dimension minecraft:overworld", no failure line; "Using graphics backend OpenGL, using drivers: 3.3.0 Core Profile Context 26.9.2.260915" |
@@ -134,7 +133,7 @@ The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform c
 | L2 launch | pass, finding | 66 mods; "Viewfinder MCP server started at http://127.0.0.1:7150/mcp"; the modal Iris dialog blocked until WM_CLOSE (join 167.3 s with that wait); exclusiveFullscreen false held |
 | L2 tools | pass | tools/list: 23 tools (reload_shaders, list_shaderpacks, switch_shaderpack, set_shader_options, capture_frame, profile_frames, set_scene, control_ticks, ...); no server-command tool |
 | V1 | pass, look deferred | CLOUD_QUALITY "2" -> file "CLOUD_QUALITY=0" + reload -> "0"; Iris rewrote the file with a date header; iris.properties shaderPack=...-copy.zip + reload -> current "ComplementaryUnbound_r5.9.3-copy.zip", CLOUD_QUALITY "2"; back -> original; reloads 1.72, 0.59, 0.61 s; pre-screen: clouds at 2, none at 0; pixel diffs are swamped by TAA and animation (control pair 56.7 % changed) |
-| V3 | finding | 50 reloads, 0 failures, 0.54-0.61 s; heap after GC 674 -> 1,208 -> 1,703 MiB (20.6 MiB per reload); private bytes 11,987 -> 27,968 MiB (320 MiB per reload); dev tier with debug context and dumps: re-measure on the bench tier in M1 before trusting any cap |
+| V3 | finding | 50 reloads, 0 failures, 0.54-0.61 s; heap after GC 674 -> 1,208 -> 1,703 MiB (20.6 MiB per reload); private bytes 11,987 -> 27,968 MiB (320 MiB per reload); dev tier with debug context and dumps (F4 re-measures on bench) |
 | V4 | pass | patched_shaders/: 270 files, numbered per program with a .json each; `#version 330 core` in composite, composite1, final and terrain_solid where the source says `#version 130`; "// Generated by glsl-transformer" |
 | V5 | pass | profile_frames(120): 26 passes, ns avg/min/max/latest, sampleCount 50, nesting deferred/deferred1; Terrain solid 3.38 ms, deferred1 1.85; no cutout or translucent terrain group even with water in view; Viewfinder reported 30 fps under the debug context (not evidence) |
 | V6 | review deferred | set_scene to the water at (-533, 62, -368): "Singleplayer scene updated"; pre-screen: water through Unbound with reflections, no black translucency; no glass or ice near spawn and no tool to place any |
