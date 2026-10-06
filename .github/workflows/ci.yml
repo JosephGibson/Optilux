@@ -11,8 +11,15 @@ permissions:
 
 jobs:
   check:
-    # docs/roadmap.md#decisions D5: M0's tests are pure Python; Linux minutes cost half of Windows'.
-    runs-on: ubuntu-latest
+    # docs/plans/m1.md D19 (roadmap.md#decisions D5): Windows from 0.01.03, where the first
+    # Windows-only tests land (user32, logman, a command line read back); the mod's JUnit tests
+    # run locally through `optilux mod test`, never here.
+    runs-on: windows-latest
+    defaults:
+      run:
+        # The steps are bash, as on Linux: pwsh, Windows' default, would read "$REF" as its own
+        # variable, not the environment's.
+        shell: bash
     env:
       # On pull_request the checkout is GitHub's synthetic merge commit, whose subject carries no
       # version; its second parent is the PR head (docs/plans/m0.md P27, D16).

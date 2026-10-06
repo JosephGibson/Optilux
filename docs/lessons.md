@@ -97,7 +97,7 @@ Further facts:
 ## Windows
 - `SetForegroundWindow` is refused when the game is behind another window. The attached-thread-input request works. Windows grants activation through a one-shot right. Open: why two launches got none. [_archive/phase2-status]
 - Windows 11 Notepad starts through a windowless stub, so it is a bad focus test; use charmap.exe.
-- ALC's OS input lock: low-level hooks, started before the game, released by Escape x3. Raw mouse input bypassed it (971 events blocked, camera still turned). -> Optilux blocks input in the mod (`input.block`) and keeps rawMouseInput off.
+- ALC's OS input lock: low-level hooks, started before the game, released by Escape x3. Raw mouse input bypassed it (971 events blocked, camera still turned). -> Optilux blocks input in the mod (`input.block`), raw motion included. [MC] 26.3: the rawMouseInput option is gone (deprecated.json lists it removed; InputConstants.grabMouse uses SDL3's relative mouse mode), so the suite writes no such key (user, 2026-10-06).
 - Task Manager or qrenderdoc opening mid-session stole focus. `GetLastInputInfo` also counts the harness's own input. -> Idle check before a session; validity catches the rest.
 - HAGS on (registry value 2); present mode Independent Flip; GPUBusy/FrameTime 0.995-1.005. [HW]
 

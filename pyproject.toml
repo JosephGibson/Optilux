@@ -40,3 +40,6 @@ select = ["E", "W", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Tests of Windows-only paths (user32 through ctypes, logman, a command line read back by
+# psutil) carry this marker; tests/conftest.py skips them elsewhere (docs/plans/m1.md D19).
+markers = ["windows: needs Windows; skipped on other systems"]

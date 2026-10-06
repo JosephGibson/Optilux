@@ -1,13 +1,26 @@
-"""Shared test helpers: git without leaked GIT_* variables, and throwaway repos that prove they
-are not this checkout before anything is written (docs/workflow.md#testing)."""
+"""Shared test helpers: git without leaked GIT_* variables, throwaway repos that prove they are
+not this checkout before anything is written (docs/workflow.md#testing), and the skip of
+Windows-only tests on other systems (docs/plans/m1.md D19)."""
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from optilux import REPO_ROOT
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip the tests marked `windows` off Windows: CI ran Linux until 0.01.03, and the suite
+    stays runnable there."""
+    if sys.platform == "win32":
+        return
+    skip = pytest.mark.skip(reason="Windows only (docs/plans/m1.md D19)")
+    for item in items:
+        if "windows" in item.keywords:
+            item.add_marker(skip)
 
 
 def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[str]:

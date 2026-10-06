@@ -7,7 +7,6 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 ## Concept
 - A platform is everything that changes with the Minecraft version or renderer: MC version, Java major, loader; renderer backend; mod tiers (exact files + sha512); data and resource pack formats; world snapshot; the mod adapter; quirks to re-verify.
 - Platform-independent: harness core, statistics, run-record schema; suite logic, docs, skills; the shader's pipeline spec.
-- Run identity carries the platform file's loaded sections and the launch spec's hash: no comparison across platforms (run-record.md#identity).
 
 ## mc-26.3
 - MC 26.3 released 2026-09-15 [S1]. Java 25 required since 26.1 (released 2026-03-24) [S2].
@@ -18,11 +17,8 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 - 26.3 Snapshot 5: vanilla core shaders are compiled by ShaderC on OpenGL too; `#include` replaces `#moj_import` [S4]. Iris packs are unaffected: Unbound loads, and Iris's own patcher (glsl-transformer 3.0.0-pre3, bundled in the jar) rewrites the pack's `#version 130` to `#version 330 core` (V4).
 - Translucency: vanilla OIT is gated by the `improvedTransparency` option (GameRenderer.useImprovedTransparency); Iris sets it false whenever shaders are enabled (MixinDisableFabulousGraphics), so a pack never sees OIT. Translucent terrain and water go through Sodium's translucent pass to `gbuffers_water` (ShaderKey TERRAIN_TRANSLUCENT -> ProgramId.Water); IRIS_HAS_TRANSLUCENCY_SORTING is defined (R10).
 - Depth: 26.2 switched vanilla rendering to a reversed depth buffer [S9]. Iris 1.11.7 undoes it while a pack renders the level (five UndoReverseZ mixins: clip control reported absent, compare ops mirrored, near and far swapped, clear depth 1 - d), so depthtex0/1/2 and shadowtex0 hold forward depth with no copy or transform pass (R11); the GUI still renders reversed.
-- Formats: data pack 121.0, resource pack 97.1 (version.json in the client jar, R1).
 - Save layout: dimensions/minecraft/<dim>/ (region, entities, poi), players/data/<uuid>.dat, data/minecraft/*.dat; no DIM-1 or DIM1, no Player tag in level.dat (S9, L1).
-- ALC ran MC 1.21.11 / Iris 1.10.7 / Sodium 0.8.12. Every [MC] item in lessons.md carries its 26.3 result.
 - World: a new 26.3 world, not a port of ALC's (user, 2026-10-05). The port procedure below applies to later platforms.
-- Java: Temurin 25 plain for the bench (config/java/bench.json, jdk-25.0.4.1+1).
 
 ## Renderer transition
 - 26.4 Snapshot 1 (2026-09-22) makes Vulkan the default ("Default" behaves as "Prefer Vulkan") and removes the automatic Graphics API fallback after a startup crash [S11]. OpenGL goes once Mojang is satisfied; no date [S5].
@@ -46,7 +42,7 @@ Data: config/platforms/mc-26.3.json (version, file, Modrinth version id, sha512;
 | lod | voxy (pending a 26.3 build) | Voxy compatibility |
 | jvm | chunky; lithium and c2me-fabric as axes | post-1.0 JVM track |
 
-- World prep set (not a tier, never in a session): bench + Chunky 1.5.3, enabled only while preparing a world snapshot; the mod sends the prep commands (ALC typed them in chat). Data: the platform file's `worldPrep` key.
+- World prep set (not a tier, never in a session): the platform file's `worldPrep`, bench + Chunky 1.5.3 (ALC typed the prep commands in chat).
 - Shader perf evidence only on bench, with one declared exception, its tier in the identity: Viewfinder's per-pass timers on the dev tier after E5's overhead check and A11 (design.md#8-open-decisions). The JVM track's S4 runs on the played tier as JVM evidence (jvm.md#scenarios). ALC's reason for the rule: each extra mod changes the measured set (ModernFix startup, MoreCulling leaf geometry, ImmediatelyFast overlay cost, Voxy distant terrain).
 - Dev tier: `enableDebugOptions=true` creates a KHR_debug context and, on a fresh sodium-options.json, a modal Iris dialog over Sodium's `use_no_error_g_l_context` (L2): write it false first. The dev quit ends in a watchdog crash report, exit -8, after the world is saved (Viewfinder's MCP thread stays alive): accepted as known, no shutdown step (user, 2026-10-06).
 - ScalableLux and C2ME are alpha builds; re-pin when stable builds land.
@@ -74,7 +70,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
 - `install [--tier bench] [--refresh]` fills runtime/<platform>/ (suite.json's `platform`) from the network and re-hashes every file on every run; a hash off its pin is refused with the file named; game/saves/ and the option files are never touched:
   - Minecraft: Mojang's manifest -> version JSON (re-fetched when its SHA-1 moved) -> client jar, libraries, natives, asset index and assets through minecraft-launcher-lib 8.0 (it installs the local Fabric profile with inheritsFrom, repairs a SHA-1 mismatch, checks none of Fabric's libraries, and adds Mojang's unused java-runtime-epsilon under runtime/<platform>/runtime/); install's own pass then hashes every classpath jar, the asset index, every asset and the log config against the spec it built;
   - Fabric Loader: its profile JSON from meta.fabricmc.net under versions/; libraries from Fabric's Maven against the SHA-1 the profile carries, fabric-loader's own against Maven's .sha1;
-  - mods and packs: the tier's Modrinth files (through `extends`) and the reference pack into the store runtime/<platform>/files/, against the platform file's sha512; resource and shader packs copied into game/resourcepacks/ and game/shaderpacks/, mods placed by `launch` per tier;
+  - mods and packs: the tier's Modrinth files (through `extends`) and the reference pack into the store runtime/<platform>/files/, against the platform file's sha512; resource and shader packs copied into game/resourcepacks/ and game/shaderpacks/;
   - Java: Temurin from the Adoptium API, against the archive sha256 pinned in config/java/bench.json, unpacked under runtime/java/<build>/;
   - tools: PresentMon's console build from its GitHub release, against config/tools.json, into runtime/tools/.
 - The launch spec, config/platforms/<id>.launch.json (committed), is written by the first install and compared fact by fact by every later one (its three note keys excepted):
@@ -82,15 +78,18 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   - the JVM options and game-argument template from Mojang's and Fabric's JSON;
   - no Java path, heap or flags: those live in config/java/;
   - a difference exits 1 naming the facts; `install --refresh` rewrites the file. The spec's hash is run identity: a changed spec means recalibration (measurement.md#calibration) and is a platform change (below).
-- Pre-launch files (suite.json display holds the exact keys):
-  - options.txt must carry `version:5023`, or the schema-4892 datafixer resets preferredGraphicsBackend to default, and `graphicsPreset:"custom"`, or Minecraft's constructor applies the preset over the file (fancy set simulationDistance 12 in L1);
-  - a fresh sodium-options.json makes Sodium set exclusiveFullscreen=true once (`notifications.has_edited_fullscreen_option`): ship the file with that flag set, and `performance.use_no_error_g_l_context=false` for the dev tier;
-  - config/iris.properties: shaderPack, enableShaders, enableDebugOptions, disableUpdateMessage (true: no update request), maxShadowRenderDistance.
-- `launch`:
-  1. hashes every classpath jar and the asset index against the spec and refuses any mismatch;
-  2. starts Java from the profile with the spec's JVM options, `-Doptilux.token=<fresh>`, KnotClient, `--gameDir runtime/<platform>/game`, an offline session (`--accessToken 0 --offlineDeveloperMode`) and `--quickPlaySingleplayer <world>`;
-  3. the offline player is `--username optilux` with `--uuid` = the snapshot's players/data/<uuid>.dat name when present, else the offline UUID of that name (the platform file's `offlinePlayer`; L1 wrote exactly that file); a snapshot is taken after the bench player's first join, so later launches always load the same player (ALC);
-  4. reads the started process's real command line and refuses a mismatch with the profile (config/java/bench.json) and the spec; `-Doptilux.token` is excepted (fresh per launch, never identity).
+- Pre-launch files, written before every launch from suite.json display (identity; reasons in its `*Why` keys):
+  - options.txt: the optionsTxt keys over the game's own lines; `version:5023`, else the schema-4892 datafixer resets preferredGraphicsBackend, and `graphicsPreset:"custom"`, else Minecraft's constructor applies the preset (fancy set simulationDistance 12 in L1);
+  - sodium-options.json: sodiumOptionsFile for every tier, refused unless it hashes to sodiumOptions: has_edited_fullscreen_option (else Sodium flips exclusiveFullscreen) and use_no_error_g_l_context=false (Mod tiers, dev);
+  - config/iris.properties, fresh: shaderPack, irisProperties, the tier's irisTiers.
+- `launch <world> [--tier] [--no-token] [--set k=v] [--quit-after S]`, refusing any mismatch:
+  1. the gate (F2): no process from runtime/<platform>/, no optilux-* ETW session; AMD's PresentMon-x64.exe and RSXTraceSession recorded, never stopped;
+  2. the classpath jars, asset index and version JSON hashed against the spec, the packs against their pins;
+  3. game/mods/ made to hold exactly the tier's jars plus optilux-helper from the store (sorted sha512: identity);
+  4. Java from the profile, `-Doptilux.token=<fresh>` (not with `--no-token`), the spec's JVM options, KnotClient, `--gameDir runtime/<platform>/game`, `--accessToken 0 --offlineDeveloperMode` (no --clientId or --xuid: Main defaults both), `--quickPlaySingleplayer <world>`; JAVA_TOOL_OPTIONS and kin dropped;
+  5. `--username optilux`, `--uuid` from the world's players/data/<uuid>.dat, else the platform file's `offlinePlayer` (F8); a snapshot follows the bench player's first join (ALC);
+  6. the started command line (psutil) equal to the built one and to the profile and the spec, the token's value excepted (fresh per launch, never identity);
+  7. the join in this session's latest.log within 120 s (F11), Fabric's mod list equal to the tier; a failed check ends the game; `--quit-after S` holds S s, quits by WM_CLOSE (until the mod's `quit`) and reads the files back (F3's two keys excepted); `--set` and `--no-token` are recorded for the run record.
 - Cross-check, once per platform: minecraft-launcher-lib's own command for the same versions must match the spec's main class, asset index and jars by content (ALC's check against Prism).
 
 ## mc-26.3 verified
