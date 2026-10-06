@@ -8,9 +8,12 @@ against the launch spec and the packs against the platform file; game/mods/ is m
 exactly the tier's jars (P39); options.txt, sodium-options.json and config/iris.properties are
 written from config/suite.json display (F3). The command is built from the spec and
 config/java/bench.json, started, and its real command line read back with psutil and compared
-(D17); the join is awaited in this session's latest.log (F11); WM_CLOSE quits until the mod's
-`quit` exists (0.01.05). Every side effect on the machine goes through Host, which the tests
-replace.
+(D17); the join is awaited in this session's latest.log (F11). With a token and the helper in
+the store, the mod session follows the join (0.01.05): the pipe opened and its server pid,
+DACL and single instance checked, `hello` answering the launched pid, frames.index advancing,
+every request in a JSONL log under results/raw/ with the token redacted; the game then quits
+through the mod's `quit`, and by WM_CLOSE without one (A1). Every side effect on the machine
+goes through Host, which the tests replace.
 """
 
 import ctypes
@@ -25,12 +28,13 @@ import time
 import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
 import psutil
 
-from optilux import platform
+from optilux import modclient, platform
 from optilux.verbs.install import JAVA_DIR, JAVA_PROFILE, RUNTIME, STORE, Say, shown
 
 # The game folder under runtime/<platform>/ and what launch reads and writes in it.
@@ -119,6 +123,18 @@ WINDOW_TIMEOUT = 10.0
 WM_CLOSE = 0x0010
 # latest.log, the window and the hold are polled; a quarter second bounds the join time's error.
 POLL = 0.25
+
+# The mod session (0.01.05). The request log of a launch goes beside the run records' raw
+# artifacts (results/raw/ is ignored by git), one folder per launch.
+RAW = "results/raw"
+REQUESTS = "requests.jsonl"
+# frames.index is asked every FRAMES_GAP until it advances, for at most FRAMES_TIMEOUT: right
+# after the join Iris creates the pack's pipeline on the render thread and no frame renders
+# (0.01.05's first launch: "Creating pipeline" at the join, the next frame 3 s later).
+FRAMES_GAP = 0.5
+FRAMES_TIMEOUT = 30.0
+# An SDDL ACE: type;flags;rights;object guid;inherited guid;sid (and resource attributes).
+SDDL_ACE = re.compile(r"\(([^)]*)\)")
 
 # The keys F3 saw the game change on the spike's first launch, excepted from the read-back:
 # Sodium set exclusiveFullscreen true on a fresh sodium-options.json, the fancy preset set
@@ -256,6 +272,19 @@ class Host:
 
     def close(self, hwnd: int) -> bool:
         return post_close(hwnd)
+
+    def connect(self, token: str, pid: int, log: Path) -> modclient.Client:
+        return modclient.connect(token, pid, log)
+
+    def second_instance(self, name: str) -> int:
+        from optilux import winpipe
+
+        return winpipe.second_instance(name)
+
+    def user_sid(self) -> str:
+        from optilux import winpipe
+
+        return winpipe.current_user_sid()
 
     def clock(self) -> float:
         return time.monotonic()
@@ -933,6 +962,126 @@ def hold(process: Process, host: Host, seconds: float) -> None:
         if process.poll() is not None:
             raise LaunchError(f"the game exited with code {process.returncode} while held")
         host.sleep(min(POLL, max(until - host.clock(), 0)))
+
+
+# The mod session.
+
+
+def request_log(root: Path, now: datetime) -> Path:
+    """This launch's request log: results/raw/launch-<UTC time>/requests.jsonl."""
+    return root / RAW / f"launch-{now:%Y%m%d-%H%M%S}" / REQUESTS
+
+
+def dacl_aces(sddl: str) -> list[dict]:
+    """A DACL's ACEs from SDDL: type (A allow, D deny, ...), rights and SID each."""
+    found = []
+    for ace in SDDL_ACE.findall(sddl.split("S:", 1)[0]):
+        fields = ace.split(";")
+        found.append({"type": fields[0], "rights": fields[2], "sid": fields[5]})
+    return found
+
+
+def open_mod(
+    launched: "Launched", root: Path, host: Host, say: Say
+) -> tuple[modclient.Client, dict]:
+    """The mod's pipe after the join, checked from both sides: served by the launched pid, a
+    DACL of one allow ACE for this user (D21), a second server instance refused; then `hello`
+    answering the launched pid and frames.index advancing within FRAMES_TIMEOUT. Each check is
+    said as it passes. The open client and the facts; LaunchError (the client closed) when a
+    check fails."""
+    log = request_log(root, datetime.now(UTC))
+    try:
+        client = host.connect(launched.token, launched.pid, log)
+    except modclient.ModError as error:
+        raise LaunchError(str(error)) from None
+    try:
+        user = host.user_sid()
+        aces = dacl_aces(client.dacl or "")
+        if [(a["type"], a["sid"]) for a in aces] != [("A", user)]:
+            raise LaunchError(f"the pipe's DACL is {client.dacl}, not one allow ACE for {user}")
+        refused = host.second_instance(modclient.pipe_name(launched.token))
+        if refused == 0:
+            raise LaunchError("a second server instance of the mod's pipe was created")
+        say(
+            f"mod: pipe served by pid {client.server_pid} (the launched game); DACL "
+            f"{client.dacl} (one allow ACE, this user); a second server instance refused "
+            f"(Windows error {refused})"
+        )
+        hello = client.hello()
+        versions = ", ".join(f"{k} {v}" for k, v in hello["versions"].items())
+        say(
+            f"mod: hello: protocol {hello['protocol']}, {hello['mod']['id']} "
+            f"{hello['mod']['version']} on {hello['platform']} ({versions}), pid {hello['pid']}, "
+            f"capabilities {', '.join(hello['capabilities'])}"
+        )
+        first = client.request("frames.index")
+        asked = host.clock()
+        while True:
+            host.sleep(FRAMES_GAP)
+            second = client.request("frames.index")
+            if second["frameIndex"] > first["frameIndex"]:
+                break
+            if host.clock() - asked >= FRAMES_TIMEOUT:
+                raise LaunchError(
+                    f"frames.index stayed at {first['frameIndex']} for {FRAMES_TIMEOUT:g} s: no "
+                    "frame was rendered"
+                )
+        waited = host.clock() - asked
+        say(
+            f"mod: frames.index {first['frameIndex']} -> {second['frameIndex']} after "
+            f"{waited:.1f} s (qpcNs {first['qpcNs']} -> {second['qpcNs']})"
+        )
+    except (LaunchError, modclient.ModError, OSError, KeyError, TypeError) as error:
+        client.close()
+        malformed = isinstance(error, KeyError | TypeError)
+        detail = f"a malformed answer ({error!r})" if malformed else str(error)
+        raise LaunchError(f"the mod session: {detail}") from None
+    except BaseException:
+        client.close()
+        raise
+    facts = {
+        "pipe": {
+            "serverPid": client.server_pid,
+            "dacl": client.dacl,
+            "secondInstanceError": refused,
+        },
+        "hello": hello,
+        "frames": {"first": first, "advanced": second, "seconds": round(waited, 2)},
+        "requestLog": shown(log, root),
+    }
+    return client, facts
+
+
+def quit_mod(client: modclient.Client, process: Process, host: Host) -> dict:
+    """Quit through the mod: `quit` is answered, then the game stops as its close button makes
+    it; the exit code and the seconds from the request to the exit. LaunchError (the game killed)
+    when it outlasts QUIT_TIMEOUT."""
+    asked = host.clock()
+    try:
+        client.request("quit")
+    except modclient.ModError as error:
+        raise LaunchError(f"quit: {error}") from None
+    try:
+        code = process.wait(QUIT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        raise LaunchError(
+            f"the game outlasted quit by {QUIT_TIMEOUT:.0f} s; it was killed"
+        ) from None
+    finally:
+        client.close()
+    return {"how": "quit", "exitCode": code, "seconds": host.clock() - asked}
+
+
+def check_log(path: Path, token: str) -> dict:
+    """The request log after the session: its lines, and the token absent from its bytes
+    (docs/mod-protocol.md#client-rules); LaunchError when it is there."""
+    data = path.read_bytes()
+    if token.encode("utf-8") in data:
+        raise LaunchError(
+            f"{path.name} holds the token; fix: the redaction in optilux/modclient.py"
+        )
+    return {"lines": data.count(b"\n"), "bytes": len(data), "tokenAbsent": True}
 
 
 # The launch.

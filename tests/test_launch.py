@@ -12,12 +12,13 @@ import json
 import os
 import subprocess
 import sys
+import time
 import zipfile
 from pathlib import Path
 
 import pytest
 
-from optilux import REPO_ROOT, cli, launch, platform
+from optilux import REPO_ROOT, cli, launch, modclient, modfake, platform
 from optilux.verbs import launch as launch_verb
 
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "launch"
@@ -922,6 +923,7 @@ def test_the_cli_holds_quits_and_reads_back(
         "AMD after the join (recorded, never stopped): no PresentMon-x64.exe, no RSXTraceSession"
     )
     assert lines[8:] == [
+        "mod: no optilux-helper jar in the store, no mod session (fix: `optilux mod build`)",
         "held 2 s in the world",
         "quit: WM_CLOSE to 1 window, exit code 0 in 0.0 s",
         "read back: options.txt 23 of 23 keys as written; F3 excepted: none moved",
@@ -967,3 +969,169 @@ def test_the_cli_holds_quits_and_reads_back(
     assert cli.main(["launch", "spike", "--set", "nope=1", "--json"]) == 1
     assert json.loads(capsys.readouterr().out)["problem"].startswith("--set nope: not an option")
     assert "launch" in [verb.name for verb in cli.VERBS]
+
+
+# The mod session (0.01.05) through the protocol fake.
+
+USER_SID = "S-1-5-21-7"
+HELPER_LOG = FAKE_LOG.replace("\t- mod-a 1\n", "\t- mod-a 1\n\t- optilux-helper 0.1.0\n")
+
+
+class ModGame(FakeGame):
+    """A fake game with the helper loaded: connect() serves a protocol fake over a socket pair,
+    whose `quit` makes the process exit 0; `dacl`, `pid` and `refused` steer the pipe checks."""
+
+    def __init__(self, game: Path, log: str | None = HELPER_LOG) -> None:
+        super().__init__(game, log)
+        self.dacl = f"D:(A;;FA;;;{USER_SID})"
+        self.pid = 4242
+        self.refused = 231
+        self.fakes: list[modfake.Fake] = []
+        self.frames_step = modfake.FRAMES_PER_CALL
+
+    def connect(self, token: str, pid: int, log: Path) -> modclient.Client:
+        process, step = self.process, self.frames_step
+
+        class Exiting(modfake.Fake):
+            def _answer(self, request_id, name, args):
+                if name == "quit":
+                    process.returncode = 0
+                if name == "frames.index" and step == 0:
+                    return self._ok(request_id, {})
+                return super()._answer(request_id, name, args)
+
+        fake = Exiting(token, pid=self.pid)
+        self.fakes.append(fake)
+        stream, _ = modfake.serve_streams(fake)
+        client = modclient.Client(stream, token, log, pid)
+        client.server_pid = pid
+        client.dacl = self.dacl
+        return client
+
+    def second_instance(self, name: str) -> int:
+        return self.refused
+
+    def user_sid(self) -> str:
+        return USER_SID
+
+
+def with_helper(root: Path) -> None:
+    write(root / "runtime" / PLATFORM / "files" / "optilux-helper-0.1.0.jar", HELPER)
+
+
+def test_the_cli_runs_the_mod_session_and_quits_through_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = make_root(tmp_path)
+    with_helper(root)
+    game = root / "runtime" / PLATFORM / "game"
+    hosts: list[ModGame] = []
+
+    def fake_host() -> ModGame:
+        hosts.append(ModGame(game))
+        return hosts[-1]
+
+    monkeypatch.setattr(launch_verb, "REPO_ROOT", root)
+    monkeypatch.setattr(launch, "Host", fake_host)
+    assert cli.main(["launch", "spike", "--quit-after", "1"]) == 0
+    out, err = capsys.readouterr()
+    lines = out.splitlines()
+    assert err == ""
+    mod = [line for line in lines if line.startswith(("mod: ", "quit: ", "request log: "))]
+    assert mod[0] == (
+        f"mod: pipe served by pid 4242 (the launched game); DACL D:(A;;FA;;;{USER_SID}) (one "
+        "allow ACE, this user); a second server instance refused (Windows error 231)"
+    )
+    assert mod[1].startswith("mod: hello: protocol 1, optilux-helper fake on fake (), pid 4242, ")
+    assert mod[2].startswith("mod: frames.index 100 -> 103 after 0.5 s (qpcNs ")
+    assert mod[3] == "quit: the mod's quit, exit code 0 in 0.0 s"
+    assert mod[4].startswith("request log: results/raw/launch-") and mod[4].endswith(
+        "/requests.jsonl, 9 lines, the token absent"
+    )
+    logs = list((root / "results" / "raw").glob("launch-*/requests.jsonl"))
+    assert len(logs) == 1
+    records = modfake.log_lines(logs[0])
+    token = hosts[-1].fakes[0].token
+    assert token not in logs[0].read_text(encoding="utf-8")
+    sent = [r["message"] for r in records if r["dir"] == "sent"]
+    assert [m["cmd"] for m in sent] == ["hello", "frames.index", "frames.index", "quit"]
+    assert sent[0]["args"] == {"token": modclient.REDACTED}
+    assert lines[-1].startswith("optilux launch: ok; pid 4242")
+    # --json carries the session's facts.
+    assert cli.main(["launch", "spike", "--quit-after", "0", "--json"]) == 0
+    found = json.loads(capsys.readouterr().out)
+    assert found["ok"] is True and found["quit"]["how"] == "quit"
+    assert found["mod"]["hello"]["pid"] == 4242
+    assert found["mod"]["pipe"] == {
+        "serverPid": 4242,
+        "dacl": f"D:(A;;FA;;;{USER_SID})",
+        "secondInstanceError": 231,
+    }
+    assert found["mod"]["logCheck"]["tokenAbsent"] is True
+    assert hosts[-1].fakes[0].token not in json.dumps(found)
+
+
+def test_a_failed_mod_check_ends_the_game(tmp_path: Path) -> None:
+    root = make_root(tmp_path)
+    with_helper(root)
+    game = root / "runtime" / PLATFORM / "game"
+    for change, problem in (
+        (
+            {"dacl": f"D:(A;;FA;;;{USER_SID})(A;;FR;;;WD)"},
+            "the pipe's DACL is .*, not one allow ACE for",
+        ),
+        ({"refused": 0}, "a second server instance of the mod's pipe was created"),
+        ({"pid": 999}, "hello answered pid 999, not the launched 4242"),
+        ({"frames_step": 0}, r"frames.index stayed at 100 for 30 s: no frame was rendered"),
+    ):
+        host = ModGame(game)
+        for key, value in change.items():
+            setattr(host, key, value)
+        launched = launch.launch(root, "spike", host=host)
+        with pytest.raises(launch.LaunchError, match="the mod session: " + problem):
+            launch.open_mod(launched, root, host, lambda text: None)
+
+
+def test_the_cli_ends_the_game_when_the_mod_session_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root = make_root(tmp_path)
+    with_helper(root)
+    game = root / "runtime" / PLATFORM / "game"
+    hosts: list[ModGame] = []
+
+    def fake_host() -> ModGame:
+        hosts.append(ModGame(game))
+        hosts[-1].pid = 999  # hello answers another pid
+        return hosts[-1]
+
+    monkeypatch.setattr(launch_verb, "REPO_ROOT", root)
+    monkeypatch.setattr(launch, "Host", fake_host)
+    assert cli.main(["launch", "spike", "--quit-after", "1"]) == 1
+    out, err = capsys.readouterr()
+    assert err.startswith(
+        "optilux launch: the mod session: hello answered pid 999, not the launched 4242; the "
+        "game was ended (WM_CLOSE, exit code 0)"
+    )
+    assert hosts[-1].closed == [77]
+    fake = hosts[-1].fakes[0]
+    deadline = time.monotonic() + 5
+    while fake._write is not None and time.monotonic() < deadline:  # the client closed
+        time.sleep(0.01)
+    assert fake._write is None
+
+
+def test_the_dacl_aces_and_the_log_check(tmp_path: Path) -> None:
+    assert launch.dacl_aces(f"D:P(A;;FA;;;{USER_SID})") == [
+        {"type": "A", "rights": "FA", "sid": USER_SID}
+    ]
+    assert [a["sid"] for a in launch.dacl_aces("D:(D;;GA;;;WD)(A;;FA;;;SY)S:(ML;;NW;;;LW)")] == [
+        "WD",
+        "SY",
+    ]
+    log = tmp_path / "requests.jsonl"
+    write(log, b'{"a":1}\n{"b":2}\n')
+    assert launch.check_log(log, TOKEN) == {"lines": 2, "bytes": 16, "tokenAbsent": True}
+    write(log, f'{{"token":"{TOKEN}"}}\n'.encode())
+    with pytest.raises(launch.LaunchError, match="holds the token"):
+        launch.check_log(log, TOKEN)

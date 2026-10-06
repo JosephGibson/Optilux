@@ -49,7 +49,14 @@ class MetadataTest {
                 .toList();
             assertEquals(List.of(), nested);
             assertEquals(Set.of("schemaVersion", "id", "version", "name", "description",
-                "license", "environment", "entrypoints", "mixins", "depends"), meta.keySet());
+                "license", "environment", "entrypoints", "mixins", "depends", "custom"),
+                meta.keySet());
+            // hello's platform (docs/mod-protocol.md#commands), from the platform file's id.
+            JsonObject custom = meta.getAsJsonObject("custom");
+            assertEquals(Set.of("optilux:platform"), custom.keySet());
+            assertEquals(Pinned.inputs().get("platform").getAsString(),
+                custom.get("optilux:platform").getAsString());
+            assertNotNull(Pinned.bytes(jar, "commands.json"), "commands.json is not in the jar");
 
             JsonArray mixins = meta.getAsJsonArray("mixins");
             assertEquals(1, mixins.size());

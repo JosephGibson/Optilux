@@ -1,0 +1,298 @@
+{
+  "schema": 1,
+  "protocol": 1,
+  "doc": "docs/mod-protocol.md#commands; this file is the table in machine form (docs/mod.md#11-build-and-test): the mod's argument checks and busy rules read it, the harness's protocol fake is generated from it, and tests keep the doc's table in step",
+  "argKeys": "type (string, integer, number, boolean, object, array, id), required, default, min and max (inclusive), gt (exclusive minimum), minLength and maxLength (characters), values (the allowed strings)",
+  "resultTypes": "string, integer, number, boolean, object, array, id; `|null` admits null",
+  "common": {
+    "frameIndex": "integer",
+    "sinceReload": "integer|null",
+    "qpcNs": "integer"
+  },
+  "commonNote": "every result and event carries these at answer time (docs/mod-protocol.md#envelope); sinceReload is null until the Iris adapter reads SystemTimeUniforms.COUNTER (0.01.07)",
+  "errors": [
+    "bad-json",
+    "bad-encoding",
+    "line-too-long",
+    "bad-request",
+    "unknown-command",
+    "unsupported",
+    "unauthenticated",
+    "not-ready",
+    "busy",
+    "timeout",
+    "cancelled",
+    "iris-compile-error",
+    "failed"
+  ],
+  "resources": ["window", "capture", "path", "timers"],
+  "commands": [
+    {
+      "name": "hello",
+      "phase": "M1",
+      "args": {
+        "token": {"type": "string", "required": true, "minLength": 32, "maxLength": 128}
+      },
+      "result": {
+        "protocol": "integer",
+        "mod": "object",
+        "platform": "string",
+        "versions": "object",
+        "capabilities": "array",
+        "pid": "integer",
+        "resumed": "boolean",
+        "cancelled": "array"
+      }
+    },
+    {
+      "name": "selftest",
+      "phase": "M1",
+      "args": {},
+      "result": {"pass": "boolean", "checks": "object"}
+    },
+    {
+      "name": "state",
+      "phase": "M1",
+      "args": {},
+      "result": {
+        "inWorld": "boolean",
+        "dimension": "string|null",
+        "gamemode": "string|null",
+        "screen": "string|null",
+        "paused": "boolean",
+        "focused": "boolean",
+        "tick": "integer|null"
+      }
+    },
+    {
+      "name": "world.wait",
+      "phase": "M1",
+      "args": {
+        "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
+      },
+      "result": {"pose": "object", "time": "integer"}
+    },
+    {
+      "name": "command",
+      "phase": "M1",
+      "mutating": true,
+      "args": {
+        "text": {"type": "string", "required": true, "minLength": 1, "maxLength": 32500},
+        "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
+      },
+      "result": {"succeeded": "boolean", "messages": "array", "failures": "array"}
+    },
+    {
+      "name": "ticks.step",
+      "phase": "M1",
+      "mutating": true,
+      "args": {
+        "n": {"type": "integer", "required": true, "min": 1, "max": 72000}
+      },
+      "result": {"ticks": "integer"}
+    },
+    {
+      "name": "ready",
+      "phase": "M1",
+      "args": {
+        "stableFrames": {"type": "integer", "required": true, "min": 1, "max": 10000},
+        "minSeconds": {"type": "number", "required": true, "min": 0, "max": 3600},
+        "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
+      },
+      "result": {
+        "seconds": "number",
+        "predicateSeconds": "number",
+        "limitedBy": "string",
+        "rendererCheck": "object"
+      }
+    },
+    {
+      "name": "camera.place",
+      "phase": "M1",
+      "mutating": true,
+      "args": {
+        "dimension": {"type": "string", "minLength": 1, "maxLength": 256},
+        "x": {"type": "number", "required": true},
+        "y": {"type": "number", "required": true},
+        "z": {"type": "number", "required": true},
+        "yaw": {"type": "number", "required": true},
+        "pitch": {"type": "number", "required": true},
+        "tpSemantics": {"type": "boolean", "default": false}
+      },
+      "result": {"pose": "object", "arrivedSeconds": "number"}
+    },
+    {
+      "name": "camera.get",
+      "phase": "M1",
+      "args": {},
+      "result": {"pose": "object", "eye": "object"}
+    },
+    {
+      "name": "camera.path",
+      "phase": "M5",
+      "mutating": true,
+      "exclusive": "path",
+      "args": {
+        "kind": {"type": "string", "required": true, "values": ["yawSweep", "keyframes"]},
+        "params": {"type": "object", "required": true},
+        "clock": {"type": "string", "required": true, "values": ["frame", "wall"]},
+        "flush": {"type": "boolean", "default": false},
+        "align": {"type": "object"},
+        "capture": {"type": "object"},
+        "frames": {"type": "integer", "min": 1, "max": 1000000},
+        "seconds": {"type": "number", "gt": 0, "max": 3600}
+      },
+      "result": {"pathId": "string", "manifest": "object|null"}
+    },
+    {
+      "name": "camera.stop",
+      "phase": "M5",
+      "args": {},
+      "result": {}
+    },
+    {
+      "name": "shaders.reload",
+      "phase": "M1",
+      "mutating": true,
+      "args": {
+        "framesAfter": {"type": "integer", "default": 2, "min": 0, "max": 1000},
+        "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
+      },
+      "result": {
+        "pack": "string",
+        "pipeline": "string",
+        "seconds": "number",
+        "framesAfter": "integer",
+        "reloadFrame": "integer"
+      }
+    },
+    {
+      "name": "shaders.options",
+      "phase": "M1",
+      "args": {},
+      "result": {"pack": "string", "values": "object"}
+    },
+    {
+      "name": "shaders.dump",
+      "phase": "M3",
+      "args": {
+        "on": {"type": "boolean", "required": true}
+      },
+      "result": {"folder": "string|null", "fileList": "array"}
+    },
+    {
+      "name": "frames.index",
+      "phase": "M1",
+      "args": {},
+      "result": {}
+    },
+    {
+      "name": "frames.capture",
+      "phase": "M1",
+      "exclusive": "capture",
+      "args": {
+        "directory": {"type": "string", "required": true, "minLength": 1, "maxLength": 1024},
+        "count": {"type": "integer", "required": true, "min": 1, "max": 4096},
+        "every": {"type": "integer", "min": 1, "max": 1000000},
+        "intervalMs": {"type": "number", "gt": 0, "max": 3600000},
+        "align": {"type": "object"},
+        "flush": {"type": "boolean", "default": false},
+        "after": {"type": "integer", "min": 0, "max": 1000000},
+        "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
+      },
+      "result": {"frames": "array", "dropped": "array", "manifest": "string"}
+    },
+    {
+      "name": "window.measure",
+      "phase": "M2",
+      "exclusive": "window",
+      "args": {
+        "after": {"type": "string", "required": true, "values": ["reload", "path", "now"]},
+        "skipSeconds": {"type": "number", "min": 0, "max": 3600},
+        "seconds": {"type": "number", "gt": 0, "max": 3600},
+        "skipFrames": {"type": "integer", "min": 0, "max": 1000000},
+        "frames": {"type": "integer", "min": 1, "max": 1000000}
+      },
+      "result": {"start": "object", "end": "object", "seconds": "number"}
+    },
+    {
+      "name": "input.block",
+      "phase": "M1",
+      "mutating": true,
+      "args": {
+        "on": {"type": "boolean", "required": true}
+      },
+      "result": {"on": "boolean"}
+    },
+    {
+      "name": "hud.set",
+      "phase": "M1",
+      "mutating": true,
+      "args": {
+        "hideGui": {"type": "boolean"},
+        "debugOverlay": {"type": "boolean"}
+      },
+      "result": {"hideGui": "boolean", "debugOverlay": "boolean"}
+    },
+    {
+      "name": "timers.start",
+      "phase": "M2",
+      "exclusive": "timers",
+      "exclusiveUntil": "timers.stop",
+      "args": {
+        "perPass": {"type": "boolean", "default": true},
+        "maxPending": {"type": "integer", "min": 1, "max": 1024},
+        "maxFrames": {"type": "integer", "min": 1, "max": 1000000}
+      },
+      "result": {"on": "boolean"}
+    },
+    {
+      "name": "timers.read",
+      "phase": "M2",
+      "args": {},
+      "result": {"frames": "array"}
+    },
+    {
+      "name": "timers.stop",
+      "phase": "M2",
+      "args": {},
+      "result": {"frames": "array"}
+    },
+    {
+      "name": "metrics.read",
+      "phase": "post",
+      "args": {},
+      "result": {
+        "tickMs": "object",
+        "gcCount": "integer",
+        "gcSeconds": "number",
+        "heap": "object",
+        "loadedChunks": "integer"
+      }
+    },
+    {
+      "name": "player.path",
+      "phase": "post",
+      "mutating": true,
+      "args": {
+        "waypoints": {"type": "array", "required": true},
+        "speed": {"type": "number", "required": true, "gt": 0, "max": 1000}
+      },
+      "result": {"pathId": "string"}
+    },
+    {
+      "name": "cancel",
+      "phase": "M1",
+      "args": {
+        "id": {"type": "id", "required": true}
+      },
+      "result": {"cancelled": "boolean"}
+    },
+    {
+      "name": "quit",
+      "phase": "M1",
+      "args": {},
+      "result": {}
+    }
+  ]
+}

@@ -111,6 +111,7 @@ Iris 1.10.7 bytecode (`javap -c -p` of the pinned jar), read for Optilux on 2026
   - Default clear colours are 0, except colortex0 (fog colour) and colortex1 (1,1,1,1).
 - A new pipeline's first `beginLevelRendering` calls `levelExtractor.allChanged()` (1.11.7; 1.10.7 did it in the reload): every chunk re-meshes asynchronously, so the first frames after a reload are not final.
 - Per-pipeline state (previous camera position, previous matrices) lives in the new pipeline's fields; inference: it restarts at a reload.
+- Pipeline creation blocks the render thread: after the join's "Creating pipeline for dimension minecraft:overworld" no frame renders for about 3 s (Unbound r5.9.3, bench tier; the mod's frames.index stayed at 125 for 3.0 s, then 127; both 0.01.05 launches, 2026-10-06). A wait right after the join must outlast it. [m]
 
 ## Properties and options
 - shaders.properties runs through a C preprocessor (JCPP). [PB v, ALC v]

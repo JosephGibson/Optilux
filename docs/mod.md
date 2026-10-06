@@ -1,5 +1,5 @@
 # Helper mod (optilux-helper)
-Status: rough spec, 2026-10-05, built through M1; full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the rest is still spec.
+Status: rough spec, 2026-10-05, built through M1; full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the rest is still spec.
 
 ## Contents
 1 Stance · 2 Consumers · 3 Non-goals · 4 Architecture · 5 Safety · 6 Time and determinism · 7 Readiness · 8 Capture · 9 Input and HUD · 10 Adapter surface · 11 Build and test · 12 Acceptance · 13 Lessons · 14 Open questions
@@ -32,6 +32,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
      - a path and timers stop;
      - input blocking is released if no client reconnects within 10 s. That is long enough for a client restart, and a crashed harness must not leave the game locked.
      - A reconnecting `hello` reports `resumed` and the cancelled request ids.
+     - As built (0.01.05): the state owner holds the exclusive resources and their holders, the input-block flag with its release timer and the resume facts; a world leave (Fabric's play disconnect) answers the requests holding a resource `failed` and frees everything.
   4. services: camera, capture, readiness, reload, input, hud, timers, metrics; pure Java, unit-testable;
   5. adapters, one set per platform:
      - game (MC 26.3);
@@ -41,8 +42,9 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 
   | Thread | Runs |
   |---|---|
-  | pipe I/O | reads and writes only |
-  | request workers | small pool; a long request never blocks a short one |
+  | pipe I/O | reads and writes only, on one overlapped handle: a synchronous one serializes a pending read against every write |
+  | request workers | small pool (up to 40 threads, at most 32 requests running); a long request never blocks a short one |
+  | timer | request timeouts, the 10 s input release |
   | render thread | frame hooks and `Minecraft.execute` tasks |
   | server thread | commands and ticks |
   | writer pool | PNG |
@@ -64,7 +66,8 @@ Session start, perf capture, static and motion visuals, coverage views, the live
   - FIRST_PIPE_INSTANCE (a squatter fails) and REJECT_REMOTE_CLIENTS;
   - an explicit DACL for the current user only (ALC's default descriptor was world-readable).
 - Both ends check each other. The client checks the server PID (`GetNamedPipeServerProcessId`); the mod checks the client process's owner, and `hello` carries the token. With the user-only DACL, that is enough.
-- Bounded input: lines at most 1 MiB, strict JSON, capped counts and timeouts. Errors are coded, never free text only.
+- As built (0.01.05): the DACL holds one ACE, GENERIC_ALL for the process token's user, from jna-platform's Advapi32 (plans/m1.md D21); the mod drops a client whose process token's user differs (GetNamedPipeClientProcessId, OpenProcessToken); `launch` reads the DACL back through its handle, checks the server PID and that a second server instance is refused, and its pipe test does the same in JUnit.
+- Bounded input: lines at most 1 MiB, strict JSON (Gson's STRICT reader, duplicate keys and lone surrogates refused, nesting at most 64), capped counts (32 running requests) and timeouts. Errors are coded, never free text only.
 - The game never starts from Gradle: a task graph holding one of Loom's run tasks (`runClient`) fails before any task runs. The mod is never installed outside runtime/<platform>.
 
 ## 6. Time and determinism
@@ -137,7 +140,7 @@ What each platform's adapter must provide, and where ALC hooked it: platform.md#
 - The same sources give the same jar: archives carry no timestamps, in a fixed order. `mod build` copies mod/build/libs/optilux-helper-<version>.jar into the store runtime/<platform>/files/, removing any other helper jar; `launch` places it.
 - The jar sha512 is part of run identity: one frozen jar per calibration; a rebuild that changes it means recalibrating. The version in mod/gradle.properties is a label.
 - Tests (`mod test` runs JUnit, counts its reports and compares the tested jar's sha512 with the store's):
-  - core unit tests (no game): the token rule, the mixin config plugin with and without a token, the frame clock;
+  - core unit tests (no game): the token rule, the mixin config plugin with and without a token, the frame clock, strict JSON, the framing, the protocol core (envelope, codes, out-of-order answers, cancel, timeout, busy, the state reset, a reconnect), every answer against commands.json; a real-pipe test (the DACL read back, a second instance refused);
   - metadata test: reads the built jar; `depends` is derived on its own from the platform file and the pinned jars;
   - mixin-target test: ASM reads every target class, injected method (name and descriptor) and INVOKE from the hash-checked pinned jars; a mixin annotation it does not read fails it;
   - capture byte-exact against Python fixtures;

@@ -1,5 +1,5 @@
 # Mod protocol (draft v1)
-Status: rough draft, 2026-10-05; the harness client and the mod are written against this file. Spec of the mod: mod.md.
+Status: rough draft, 2026-10-05; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; the rest is still spec.
 
 ## Contents
 Transport · Envelope · Errors · Events · Commands · Choreography · Client rules
@@ -8,20 +8,22 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 - Windows named pipe, `\\.\pipe\optilux-` + the first 32 hex digits of SHA-256("optilux-pipe:" + token).
 - One client at a time. A client may reconnect. On disconnect, state survives and work does not: running requests are cancelled, and input blocking is released after 10 s without a reconnect (mod.md#4-architecture).
 - UTF-8, one JSON value per line (`\n`; a trailing `\r` is dropped).
-- Lines are at most 1 MiB. An overlong or malformed line is answered at once with a coded error, never by a timeout.
+- Lines are at most 1 MiB before the `
+`. An overlong or malformed line is answered at once with a coded error and `id: null`, never by a timeout: an overlong one the moment it passes 1 MiB, its rest skipped up to its `
+`.
 - Security: see mod.md#5-safety. `hello` must carry the token before any other command.
 
 ## Envelope
-- Request: `{"id": int|string(1..64), "cmd": "<namespace.verb>", "args": {...}}`. Unknown top-level fields are refused.
+- Request: `{"id": int|string(1..64), "cmd": "<namespace.verb>", "args": {...}}`. Unknown top-level fields are refused; `args` may be left out for `{}`; the id of a running request is refused. Lines are judged in order, so a request right behind `hello` is authenticated.
 - Response: `{"id", "ok": true, "result": {...}}` or `{"id", "ok": false, "error": {"code", "message"}}`.
-  - Every result carries `frameIndex`, `sinceReload` and `qpcNs` at answer time. `qpcNs` is raw QueryPerformanceCounter time in ns; PresentMon's CPUStartQPCTime x 1e6 is on the same clock (mod.md#6-time-and-determinism).
+  - Every result carries `frameIndex`, `sinceReload` and `qpcNs` at answer time (`sinceReload` null until the Iris adapter, 0.01.07). `qpcNs` is raw QueryPerformanceCounter time in ns; PresentMon's CPUStartQPCTime x 1e6 is on the same clock (mod.md#6-time-and-determinism).
 - Concurrency:
-  - requests run concurrently;
+  - requests run concurrently, at most 32 at once (more answer `busy`, `cancel` excepted);
   - responses may arrive out of order, matched by `id`;
   - exclusive resources (window, capture, path, timers) answer `busy`; while one is active, `camera.place`, `camera.path`, `command`, `ticks.step`, `shaders.reload`, `hud.set` and `input.block` also answer `busy`, so no mutation lands inside a measurement.
-- Long requests can be cancelled with `cancel {"id"}`. The cancelled request answers `cancelled`. Game-thread work already queued for a request answered `timeout` or `cancelled` skips its mutation when it runs (mod.md#4-architecture).
+- Long requests can be cancelled with `cancel {"id"}`. The cancelled request answers `cancelled`; `cancel` answers `cancelled: true`, or false when that id was not running. Game-thread work already queued for a request answered `timeout` or `cancelled` skips its mutation when it runs (mod.md#4-architecture).
 - Event: `{"event": "<name>", "data": {...}, "frameIndex", "sinceReload", "qpcNs"}`. Events have no `id`; the mod pushes them after `hello`.
-- Versioning: `hello` returns `protocol` (integer) and `capabilities` (list). The client adapts to capabilities, never to version strings. A missing capability answers `unsupported`.
+- Versioning: `hello` returns `protocol` (integer) and `capabilities` (the commands this build answers). The client adapts to capabilities, never to version strings. A missing capability answers `unsupported`.
 
 ## Errors
 | Code | Meaning |
@@ -30,7 +32,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 | unknown-command, unsupported | no such command; capability absent on this platform |
 | unauthenticated | anything before a valid `hello` |
 | not-ready | no world, no player, or a screen open when one is required |
-| busy | exclusive resource in use |
+| busy | exclusive resource in use, or 32 requests running |
 | timeout | the request's own `timeoutSeconds` expired (game work may still finish: see mod.md#4-architecture) |
 | cancelled | stopped by `cancel` |
 | iris-compile-error | reload failed; message holds Iris's error (cut at 16 KiB) |
@@ -46,11 +48,11 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 - `timers.dropped` (count), `hook.error` (an exception inside a frame hook; the session marks the run invalid)
 
 ## Commands
-Phase: the milestone that first needs the command (design.md#6-milestones): M1 game control, M2 perf loop, M3 visual loop, M5 temporal; post = after 1.0.
+Phase: the milestone that first needs the command (design.md#6-milestones): M1 game control, M2 perf loop, M3 visual loop, M5 temporal; post = after 1.0. mod/src/main/resources/commands.json is this table in machine form: argument types, ranges and defaults, result fields, `mutating` and `exclusive` for `busy`; the mod's checks, the client and the fake read it, and a test keeps it equal to this table.
 
 | Command | Args | Result | Phase |
 |---|---|---|---|
-| hello | token | protocol, mod, platform, versions (minecraft, loader, iris, sodium, java), capabilities, pid; on reconnect `resumed` and the cancelled request ids | M1 |
+| hello | token | protocol, mod (id, version), platform, versions (minecraft, loader, iris, sodium, java), capabilities, pid; `resumed` and the ids cancelled by the last disconnect (false and empty at the first hello) | M1 |
 | selftest | - | per-capability pass/fail (frame clock, renderer probe, reload, capture to temp, input); needs a world and answers `not-ready` before `world.wait` | M1 |
 | state | - | inWorld, dimension, gamemode, screen, paused, focused, frameIndex, tick | M1 |
 | world.wait | timeoutSeconds | joined pose and time; replaces latest.log polling | M1 |
@@ -104,7 +106,7 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
 
 ## Client rules
 - Timeouts nest: the mod's `timeoutSeconds` < the client wait < any outer wait. A client timeout ends the request, not the session; send `cancel`.
-- Log every request, response and event as JSONL in the run folder, with the token in `hello` redacted: the token is never written to a file (mod.md#5-safety). ALC had no per-request log.
+- Log every request, response and event as JSONL in the run folder (`launch`: results/raw/launch-<UTC time>/requests.jsonl), with the token in `hello` redacted: the token is never written to a file (mod.md#5-safety). ALC had no per-request log.
 - Treat `hook.error`, `focus.lost`, `screen.opened`, `reload.done` and `dimension.changed` during a window or capture as invalidating it.
 - The harness keeps verifying frame hashes against the manifest. The mod's answer is used to proceed, the files to judge.
 - Tests: a protocol fake generated from the command table, covering every command, including capture, path and timers.

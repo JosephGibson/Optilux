@@ -2,10 +2,12 @@
 (docs/platform.md#install-and-launch).
 
 Starts the platform's game in a world through optilux.launch: the gate, the hashes, game/mods/,
-the pre-launch files, the started command line's check and the join. Without --quit-after the
-game keeps running when the verb exits; with it the verb stays that long in the world, quits by
-WM_CLOSE (until the mod's `quit`, 0.01.05) and reads the option files back. Exit 0 when every
-check passed, with --quit-after also an exit code 0 and the files read back as written.
+the pre-launch files, the started command line's check and the join; with a token and the helper
+in the store, the mod session: the pipe checked, `hello`, frames.index advancing. Without
+--quit-after the game keeps running when the verb exits (the pipe is closed); with it the verb
+stays that long in the world, quits through the mod's `quit` (by WM_CLOSE without a mod
+session), checks the request log for the token and reads the option files back. Exit 0 when
+every check passed, with --quit-after also an exit code 0 and the files read back as written.
 """
 
 import argparse
@@ -13,7 +15,7 @@ import json
 import math
 import sys
 
-from optilux import REPO_ROOT, launch, platform
+from optilux import REPO_ROOT, launch, modclient, platform
 from optilux.verbs import Verb
 
 PREFIX = "optilux launch"
@@ -43,9 +45,13 @@ def held(quit_facts: dict, back: dict) -> list[str]:
     iris = back["iris"]
     sodium = back["sodium"]
     kept = options["keys"] - len(options["moved"]) - len(options["excepted"])
+    how = (
+        "the mod's quit"
+        if quit_facts["how"] == "quit"
+        else f"WM_CLOSE to {quit_facts['windows']} window"
+    )
     return [
-        f"quit: WM_CLOSE to {quit_facts['windows']} window, exit code {quit_facts['exitCode']} in "
-        f"{quit_facts['seconds']:.1f} s",
+        f"quit: {how}, exit code {quit_facts['exitCode']} in {quit_facts['seconds']:.1f} s",
         f"read back: options.txt {kept} of {options['keys']} keys as written"
         + (f"; moved: {moved}" if moved else "")
         + f"; F3 excepted: {excepted or 'none moved'}",
@@ -75,7 +81,8 @@ def configure(parser: argparse.ArgumentParser) -> None:
         "--quit-after",
         type=float,
         metavar="SECONDS",
-        help="stay this long in the world, then quit by WM_CLOSE and read the files back",
+        help="stay this long in the world, then quit (the mod's quit, else WM_CLOSE) and read "
+        "the files back",
     )
 
 
@@ -97,18 +104,41 @@ def run(args: argparse.Namespace) -> int:
         )
         result = launched.facts
         ok = True
-        if args.quit_after is None:
-            say(f"running: pid {launched.pid}; close its window to quit")
-        else:
+        client = None
+        if launched.token is not None and launched.facts["mods"]["helper"] is not None:
             try:
-                launch.hold(launched.process, host, args.quit_after)
-                say(f"held {args.quit_after:g} s in the world")
-                result["quit"] = launch.quit_game(launched.process, host)
+                client, result["mod"] = launch.open_mod(launched, root, host, say)
             except BaseException as error:
                 how = launch.end(launched.process, host)
                 if isinstance(error, launch.LaunchError):
                     raise launch.LaunchError(f"{error}; the game was ended ({how})") from None
                 raise
+        elif launched.token is not None:
+            say(
+                "mod: no optilux-helper jar in the store, no mod session (fix: `optilux mod build`)"
+            )
+        if args.quit_after is None:
+            if client is not None:
+                client.close()
+            say(f"running: pid {launched.pid}; close its window to quit")
+        else:
+            try:
+                launch.hold(launched.process, host, args.quit_after)
+                say(f"held {args.quit_after:g} s in the world")
+                if client is not None:
+                    result["quit"] = launch.quit_mod(client, launched.process, host)
+                else:
+                    result["quit"] = launch.quit_game(launched.process, host)
+            except BaseException as error:
+                if client is not None:
+                    client.close()
+                how = launch.end(launched.process, host)
+                if isinstance(error, launch.LaunchError):
+                    raise launch.LaunchError(f"{error}; the game was ended ({how})") from None
+                raise
+            if client is not None:
+                log = root / result["mod"]["requestLog"]
+                result["mod"]["logCheck"] = launch.check_log(log, launched.token)
             try:
                 result["readBack"] = launch.read_back(launched.game, launched.prelaunch)
             except (OSError, ValueError) as error:
@@ -117,8 +147,13 @@ def run(args: argparse.Namespace) -> int:
             result["timings"]["quitSeconds"] = round(result["quit"]["seconds"], 2)
             for line in held(result["quit"], result["readBack"]):
                 say(line)
+            if client is not None:
+                say(
+                    f"request log: {result['mod']['requestLog']}, "
+                    f"{result['mod']['logCheck']['lines']} lines, the token absent"
+                )
             ok = result["quit"]["exitCode"] == 0 and result["readBack"]["ok"]
-    except (launch.LaunchError, platform.PlatformError) as error:
+    except (launch.LaunchError, platform.PlatformError, modclient.ModError) as error:
         if args.json:
             print(json.dumps({"ok": False, "problem": str(error)}))
         else:
