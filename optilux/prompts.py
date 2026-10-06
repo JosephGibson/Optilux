@@ -26,6 +26,12 @@ PLAN, RELEASE = "Plan", "Release"
 # The estimate line of a plan phase and of a standing prompt: agent hours, the first number on the
 # line, written `2 agent` as docs/templates/plan.md has it or `1.5 h` as plans/m0.md does.
 ESTIMATE = re.compile(r"^- Estimate: (\d+(?:\.\d+)?)(?: ?h)?\b")
+# What a plan phase's estimate line may add after the hours (plans/m1.md section 5):
+# `; machine: 1 launch.` and ` Attended: the user's look review.`, each up to its full stop.
+MACHINE = re.compile(r"machine: (.+?)\.?(?:\s+Attended:|$)")
+ATTENDED = re.compile(r"Attended: (.+?)\.?$")
+# A plan phase's heading: `### 0.MM.PP <title>`.
+PLAN_PHASE = re.compile(r"^### (0\.\d{2}\.\d{2})(?:\s|$)")
 # Size buckets of an estimate in agent hours (user, 2026-10-06). M is a typical phase: ALC's took
 # about 1 h (docs/workflow.md#git) and M0's were estimated at 1-1.5 h; XL is past two typical
 # phases, a candidate for a split. The last bucket is open-ended.
@@ -62,6 +68,16 @@ class Section:
     heading: str
     blocks: list[tuple[int, str]]
     lines: list[str] = field(default_factory=list)  # outside the fenced blocks
+
+
+@dataclass(frozen=True)
+class PlanPhase:
+    """What a plan says of one phase beside its commit: the estimate in agent hours, the machine
+    time it needs (launches, downloads) and what needs the user, each as the plan words it."""
+
+    estimate: float
+    machine: str | None
+    attended: str | None
 
 
 @dataclass(frozen=True)
@@ -203,23 +219,47 @@ def plan_name(milestone: int) -> str:
     return f"docs/plans/m{milestone}.md"
 
 
-def phase_estimate(root: Path, milestone: int, version: str) -> float | None:
-    """The estimate of a phase in its plan: the `- Estimate:` line under `### <version> ...`,
-    up to the next heading; None when the plan, the phase or the line is missing."""
-    path = root / plan_name(milestone)
+def unfenced_lines(path: Path) -> list[str]:
+    """The lines of a text file outside fenced code, LF-normalized; empty when it is no file."""
     if not path.is_file():
-        return None
+        return []
     text = path.read_bytes().decode("utf-8", errors="replace").replace("\r\n", "\n")
-    body: list[str] | None = None
-    for _, line in docs_check.unfenced(docs_check.split_lines(text)):
+    return [line for _, line in docs_check.unfenced(docs_check.split_lines(text))]
+
+
+def plan_title(root: Path, milestone: int) -> str | None:
+    """The milestone's name: the plan's title without its `# `, None without a plan."""
+    lines = unfenced_lines(root / plan_name(milestone))
+    return next((line[2:].strip() for line in lines if line.startswith("# ")), None)
+
+
+def plan_phases(root: Path, milestone: int) -> dict[str, PlanPhase]:
+    """The phases of a plan that carry a `- Estimate:` line: the first one under each
+    `### <version> ...`, up to the next heading. Empty without a plan."""
+    found: dict[str, PlanPhase] = {}
+    version: str | None = None
+    for line in unfenced_lines(root / plan_name(milestone)):
         if line.startswith("#"):
-            if body is not None:
-                break
-            if line.startswith(f"### {version} ") or line.rstrip() == f"### {version}":
-                body = []
-        elif body is not None:
-            body.append(line)
-    return estimate_in(body) if body is not None else None
+            heading = PLAN_PHASE.match(line)
+            version = heading.group(1) if heading else None
+        elif version is not None and version not in found:
+            estimate = ESTIMATE.match(line)
+            if estimate:
+                rest = line[estimate.end() :]
+                machine, attended = MACHINE.search(rest), ATTENDED.search(rest)
+                found[version] = PlanPhase(
+                    float(estimate.group(1)),
+                    machine.group(1) if machine else None,
+                    attended.group(1) if attended else None,
+                )
+    return found
+
+
+def phase_estimate(root: Path, milestone: int, version: str) -> float | None:
+    """The estimate of a phase in its plan; None when the plan, the phase or the line is
+    missing."""
+    phase = plan_phases(root, milestone).get(version)
+    return phase.estimate if phase else None
 
 
 def load_standing(root: Path) -> dict[str, Standing]:

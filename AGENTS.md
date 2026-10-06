@@ -17,7 +17,7 @@ Status: M1 in progress: 0.01.01 (the M1 plan and prompts) is the last phase done
 - optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts. Run `uv run optilux <verb>`.
 - tests/: pytest, run by `uv run optilux test`.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
-- .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`: the next prompt with its kind and size) and optilux-release (the PR checklist, the release watch, the switch block); agents/researcher.md and reviewer.md (read-only).
+- .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`: the briefing and the next prompt) and optilux-release (the PR checklist, the release watch, the switch block); agents/researcher.md and reviewer.md (read-only).
 - .github/: workflows/ci.yml (push and pull_request: ruff, tests, verify docs, `pack release --check`, `pack build`, the zip as an artifact) and release.yml (push to main: `pack release`).
 - mod/ (planned): optilux-helper (Fabric).
 - shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256); `pack release` publishes it as the GitHub release v<version>, titled `Optilux <version>: <Name>`. M0 holds the placeholder: shaders/shaders.properties, one comment line, no programs; M3's hello pack replaces it.
