@@ -103,12 +103,13 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 - CI: Python tests + packaging. The in-game compile check runs locally through the mod.
 
 ## Hooks and guards
+Bodies in optilux/hooks.py, run by the venv's python as `python -m optilux.hooks <name>`; .githooks/ holds the sh shims (`git config --local core.hooksPath .githooks`), .claude/settings.json the Claude Code hooks and allow rules. Inert outside this repository.
 - Claude Code hooks:
-  - PreToolUse git guard: force push, `--no-verify`, push to main, attribution;
-  - PostToolUse: ruff on edited .py, doc limits on edited docs.
+  - PreToolUse git guard (Bash and PowerShell; exit 2 blocks): a push with `--force`, `-f`, `--force-with-lease`, `--mirror` or a `+` refspec; `--no-verify`, `commit -n`, `-c core.hooksPath`; a push naming main, `--all`, or a bare push on main; an attribution token in a commit's message, trailer or author. Passes `git push -u origin m<MM>` and `gh` through a variable;
+  - PostToolUse post_edit (Edit, Write): ruff on an edited .py, `verify docs` on an edited .md; findings return as context, never a block.
 - Git hooks:
-  - commit-msg: format + no attribution;
-  - pre-commit: ruff, doc limits, similarity on shader changes (from M3, when the tool exists);
+  - commit-msg: one line, at most 72 characters, `0.MM.PP: ` then text, no attribution token (Co-Authored-By, Anthropic, Generated, Claude; the tool name "Claude Code" passes unless "by", "with" or "via" precede it);
+  - pre-commit: ruff on staged .py, `verify docs` when a .md is staged; similarity on shader changes from M3, when the tool exists.
 - ALC lessons:
   - Never hash files another tool rewrites (Prism rewrote instance.cfg and stopped a run at its gate).
   - Pre-write permission allow rules before an unattended run (auto mode blocked settings edits and a hash re-record).

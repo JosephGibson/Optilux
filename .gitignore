@@ -8,3 +8,4 @@ __pycache__/
 *.pyc
 mod/.gradle/
 build/
+.claude/settings.local.json

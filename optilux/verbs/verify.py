@@ -27,8 +27,7 @@ def print_text(report: docs_check.Report) -> None:
         margin = "-" if entry.margin is None else f"{entry.margin:,}"
         print(f"{entry.file:<{width}}  {entry.size:>7,}  {cap:>7}  {margin:>7}")
     for violation in report.violations:
-        where = violation.file if violation.line is None else f"{violation.file}:{violation.line}"
-        print(f"{where}: {violation.rule}: {violation.detail}\n  fix: {violation.fix}")
+        print(violation.text())
     count = len(report.violations)
     print(f"optilux verify docs: {len(report.files)} files, {count} violations")
 
