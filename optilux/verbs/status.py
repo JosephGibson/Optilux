@@ -1,13 +1,22 @@
-"""`optilux status`: where the milestone stands, and the next stored prompt verbatim.
+"""`optilux status`: where the milestone stands, and the next prompt verbatim with a heads-up on
+its kind and size.
 
 Read-only, and always exit 0: the optilux-next skill injects its output, and an injected command
 that fails cancels the skill (docs/workflow.md#skills). Every problem becomes a printed line with
 its fix instead of an exit code.
+
+The next prompt follows the milestone cycle (docs/workflow.md#running-a-milestone):
+- the milestone has no prompt set yet: the standing Plan prompt, which writes it;
+- the set has a prompt for the next phase: that prompt, sized by the phase's plan estimate;
+- every phase is committed and origin/main lacks the newest: the standing Release prompt;
+- every phase is committed and merged: the block that switches to the next milestone's branch,
+  then that milestone's Plan prompt.
 """
 
 import argparse
 import json
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 from optilux import REPO_ROOT, docs_check, prompts, repo
@@ -17,6 +26,24 @@ from optilux.verbs import Verb
 STATUS_DOCS = ("AGENTS.md", "docs/roadmap.md")
 # The hooks path the git hooks need (docs/workflow.md#hooks-and-guards).
 HOOKS_PATH = ".githooks"
+# The kinds of next prompt the heads-up names (user, 2026-10-06).
+PLANNING, IMPLEMENTATION, RELEASE = "planning", "implementation", "release"
+
+
+@dataclass
+class Next:
+    """The next prompt: its kind, the phase it commits (None for the release), title, source
+    file, estimate in agent hours with the file that gives it, text, and the switch block that
+    must run first (None when the branch is already right)."""
+
+    kind: str | None = None
+    phase: str | None = None
+    title: str | None = None
+    source: str | None = None
+    estimate: float | None = None
+    estimate_source: str | None = None
+    prompt: str | None = None
+    switch: list[str] | None = None
 
 
 def status_line(path: Path) -> str | None:
@@ -49,22 +76,73 @@ def remote_version(root: Path, branch: str, problems: list[str]) -> tuple[str | 
     return sha, version
 
 
-def next_prompt(
-    root: Path, milestone: int, phase: str, problems: list[str]
-) -> prompts.Prompt | None:
+def standing(root: Path, name: str, milestone: int, phase: str | None, problems: list[str]) -> Next:
+    """The standing Plan or Release prompt, filled in for the milestone."""
+    try:
+        prompt = prompts.load_standing(root)[name]
+    except prompts.PromptError as error:
+        problems.append(str(error))
+        return Next(phase=phase)
+    return Next(
+        kind=PLANNING if name == prompts.PLAN else RELEASE,
+        phase=phase,
+        title=f"{name} M{milestone}",
+        source=prompts.STANDING,
+        estimate=prompt.estimate,
+        estimate_source=prompts.STANDING,
+        prompt=prompts.fill(prompt.text, milestone, phase or ""),
+    )
+
+
+def switch_lines(root: Path, milestone: int) -> list[str]:
+    """The commands from a merged milestone to the next one's branch: cut it, then delete the
+    merged branch where it still exists (the rebase merge gave main new SHAs, hence -D)."""
+    old = repo.branch_name(milestone)
+    lines = [f"uv run optilux milestone start {milestone + 1}"]
+    if repo.local_branch_exists(root, old):
+        lines.append(f"git branch -D {old}")
+    try:
+        on_origin = repo.remote_sha(root, old) is not None
+    except (repo.GitError, subprocess.TimeoutExpired):
+        on_origin = False  # origin/main's read already reported the remote
+    if on_origin:
+        lines.append(f"git push origin --delete {old}")
+    return lines
+
+
+def next_step(
+    root: Path, milestone: int, local: str | None, main: str | None, problems: list[str]
+) -> Next:
+    """The next prompt in the milestone cycle (module docstring)."""
+    phase = prompts.next_phase(local, milestone)
+    if not prompts.prompt_file(root, milestone).is_file():
+        return standing(root, prompts.PLAN, milestone, phase, problems)
     try:
         prompt_set = prompts.load(root, milestone)
     except prompts.PromptError as error:
         problems.append(str(error))
-        return None
+        return Next(phase=phase)
     prompt = prompt_set.phase(phase)
-    if prompt is None:
-        last = prompt_set.phases[-1].version
+    if prompt is not None:
+        plan = prompts.plan_name(milestone)
+        estimate = prompts.phase_estimate(root, milestone, phase)
+        if estimate is None:
+            fix = f"add `- Estimate: <h> h.` to `### {phase}` in {plan}"
+            problems.append(f"no estimate for {phase} in {plan}; fix: {fix}")
+        return Next(
+            IMPLEMENTATION, phase, prompt.title, prompt_set.file, estimate, plan, prompt.text
+        )
+    last = prompt_set.phases[-1].version
+    if phase <= last:
         fix = f"add `## {phase} <title>` to {prompt_set.file} (its phases end at {last})"
-        if phase > last:
-            fix += f", or start the next milestone: `optilux milestone start {milestone + 1}`"
         problems.append(f"no stored prompt for {phase}; fix: {fix}")
-    return prompt
+        return Next(phase=phase)
+    if main is None or main != local:
+        return standing(root, prompts.RELEASE, milestone, None, problems)
+    following = milestone + 1
+    step = standing(root, prompts.PLAN, following, prompts.next_phase(None, following), problems)
+    step.switch = switch_lines(root, milestone)
+    return step
 
 
 def collect(root: Path) -> dict:
@@ -96,14 +174,18 @@ def collect(root: Path) -> dict:
     if milestone is None:
         match = prompts.VERSION.fullmatch(local or "")
         milestone = int(match.group(1)) if match else 0
-    phase = prompts.next_phase(local, milestone)
-    prompt = next_prompt(root, milestone, phase, problems)
+    step = next_step(root, milestone, local, main_version, problems)
     facts.update(
         milestone=milestone,
-        next_phase=phase,
-        next_title=prompt.title if prompt else None,
-        prompt_file=prompts.prompt_name(milestone),
-        prompt=prompt.text if prompt else None,
+        next_kind=step.kind,
+        next_phase=step.phase,
+        next_title=step.title,
+        next_source=step.source,
+        next_estimate=step.estimate,
+        next_estimate_source=step.estimate_source,
+        next_size=prompts.size(step.estimate) if step.estimate is not None else None,
+        prompt=step.prompt,
+        switch=step.switch,
     )
     facts["status_lines"] = {doc: status_line(root / doc) for doc in STATUS_DOCS}
     for doc, line in facts["status_lines"].items():
@@ -120,16 +202,29 @@ def collect(root: Path) -> dict:
     return facts
 
 
+def heads_up(facts: dict) -> str:
+    """The kind and size of the next prompt, in one line."""
+    kind = facts["next_kind"]
+    if kind is None:
+        return "no next prompt: see the problems below"
+    hours, source = facts["next_estimate"], facts["next_estimate_source"]
+    if hours is None:
+        return f"{kind}, size unknown (no estimate)"
+    return f"{kind}, size {facts['next_size']} ({hours:g} h estimate, {source})"
+
+
 def print_text(facts: dict) -> None:
     if "branch" not in facts:
         print(f"problem: {facts['problems'][0]}")
         return
+    print(f"heads-up:   {heads_up(facts)}")
     pushed = {True: "pushed", False: "not pushed", None: "no push check on main"}[facts["pushed"]]
     print(f"branch:     {facts['branch'] or 'detached'}, {pushed}")
     main = facts["version_main"] or (facts["main_sha"] or "absent")[:7]
     print(f"version:    {facts['version_local'] or 'none'} local, {main} on origin/main")
-    title = f" {facts['next_title']}" if facts["next_title"] else ""
-    print(f"next phase: {facts['next_phase']}{title} ({facts['prompt_file']})")
+    name = " ".join(filter(None, (facts["next_phase"], facts["next_title"])))
+    source = facts["next_source"] or prompts.prompt_name(facts["milestone"])
+    print(f"next phase: {name} ({source})")
     for doc, line in facts["status_lines"].items():
         print(f"{doc}: {line or 'no Status line'}")
     changes = facts["changes"]
@@ -140,8 +235,11 @@ def print_text(facts: dict) -> None:
     print(f"hooks path: {hooks} ({'set' if facts['hooks_set'] else 'not set'})")
     for problem in facts["problems"]:
         print(f"problem:    {problem}")
+    if facts["switch"]:
+        print(f"\nswitch to m{facts['milestone'] + 1} first, paste:")
+        print("\n".join(facts["switch"]))
     if facts["prompt"] is not None:
-        print(f"\nnext prompt, {facts['next_phase']}{title}, verbatim:")
+        print(f"\nnext prompt, {name}, verbatim:")
         print(facts["prompt"], end="")
 
 
@@ -156,7 +254,7 @@ def run(args: argparse.Namespace) -> int:
 
 VERB = Verb(
     name="status",
-    help="where the milestone stands and the next stored prompt",
+    help="where the milestone stands and the next prompt, with its kind and size",
     run=run,
     structured=True,
 )

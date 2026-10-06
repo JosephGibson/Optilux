@@ -45,9 +45,12 @@ EXTERNAL_ATTR = 0o100644 << 16
 # build/ is gitignored (.gitignore), so a local build never dirties the tree.
 DEFAULT_OUT = "build"
 ASSET = "optilux-{version}.zip"
-# roadmap.md#decisions D6: the tag is v<version>, the release title the same.
+# roadmap.md#decisions D6: the tag is v<version>; the title names the product, the version and the
+# milestone, whose name comes from its CHANGELOG heading (user, 2026-10-06).
 TAG = "v{version}"
-# The release body is the milestone's user-facing entry, `## 0.MM` (docs/workflow.md#release).
+TITLE = "Optilux {version}: {name}"
+# The release body is the milestone's user-facing entry under `## 0.MM <Name>`
+# (docs/workflow.md#release).
 CHANGELOG = "CHANGELOG.md"
 # The GitHub CLI: logged in on this machine (docs/plans/m0.md P4); preinstalled on GitHub's hosted
 # runners and authenticated there through GH_TOKEN (P28). Found on PATH like git.
@@ -151,22 +154,43 @@ def report(prefix: str, built: Built, root: Path) -> None:
     print(f"sha256: {built.sha256}")
 
 
+@dataclass(frozen=True)
+class Entry:
+    """A milestone's CHANGELOG section: its heading, the milestone name the heading carries
+    after `## 0.MM `, and the text up to the next `## ` heading."""
+
+    heading: str
+    name: str
+    text: str
+
+
 def milestone_heading(version: str) -> str:
-    """The CHANGELOG heading of a version's milestone: 0.00.06 -> `## 0.00`."""
+    """The CHANGELOG heading prefix of a version's milestone: 0.00.06 -> `## 0.00`."""
     return f"## {version.rsplit('.', 1)[0]}"
 
 
-def changelog_entry(root: Path, version: str) -> str:
-    """The text under CHANGELOG.md's `## 0.MM` heading up to the next `## `; PackError without."""
-    heading = milestone_heading(version)
-    fix = f"add `{heading}` with the milestone's user-facing entry before its PR"
+def changelog_entry(root: Path, version: str) -> Entry:
+    """The `## 0.MM <Name>` section of CHANGELOG.md for version's milestone; PackError when it is
+    missing, names no milestone or is empty."""
+    prefix = milestone_heading(version)
+    fix = f"add `{prefix} <Name>` with the milestone's user-facing entry"
     path = root / CHANGELOG
     if not path.is_file():
         raise PackError(f"no {CHANGELOG} under {root}; fix: {fix}")
     lines = path.read_text(encoding="utf-8").splitlines()
-    starts = [index for index, line in enumerate(lines) if line.rstrip() == heading]
+    starts = [
+        index
+        for index, line in enumerate(lines)
+        if line.rstrip() == prefix or line.startswith(f"{prefix} ")
+    ]
     if not starts:
-        raise PackError(f"{CHANGELOG} has no `{heading}` section; fix: {fix}")
+        raise PackError(f"{CHANGELOG} has no `{prefix} <Name>` section; fix: {fix}")
+    heading = lines[starts[0]].rstrip()
+    name = heading.removeprefix(prefix).strip()
+    if not name:
+        detail = f"`{heading}` names no milestone"
+        title = TITLE.format(version="<version>", name="<Name>")
+        raise PackError(f"{CHANGELOG}'s {detail}; fix: head it `{prefix} <Name>` (title `{title}`)")
     body = []
     for line in lines[starts[0] + 1 :]:
         if line.startswith("## "):
@@ -175,7 +199,7 @@ def changelog_entry(root: Path, version: str) -> str:
     text = "\n".join(body).strip()
     if not text:
         raise PackError(f"{CHANGELOG}'s `{heading}` section is empty; fix: {fix}")
-    return text + "\n"
+    return Entry(heading, name, text + "\n")
 
 
 def run_gh(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -263,7 +287,8 @@ def release(root: Path, out_dir: Path) -> None:
         )
     built = build(root, out_dir, version)
     report(RELEASE, built, root)
-    notes = changelog_entry(root, version)
+    entry = changelog_entry(root, version)
+    title = TITLE.format(version=version, name=entry.name)
     tag = TAG.format(version=version)
     existing = release_of(root, tag)
     tagged = live(lambda: repo.remote_tag(root, tag))
@@ -284,7 +309,7 @@ def release(root: Path, out_dir: Path) -> None:
         return
     with tempfile.TemporaryDirectory() as temp:
         notes_file = Path(temp) / "notes.md"
-        notes_file.write_bytes(notes.encode("utf-8"))
+        notes_file.write_bytes(entry.text.encode("utf-8"))
         asset = shown(built.path, root)
         result = run_gh(
             root,
@@ -293,7 +318,7 @@ def release(root: Path, out_dir: Path) -> None:
             tag,
             asset,
             "--title",
-            tag,
+            title,
             "--notes-file",
             str(notes_file),
             "--target",
@@ -303,7 +328,7 @@ def release(root: Path, out_dir: Path) -> None:
         fix = "read gh's reason; the workflow needs `permissions: contents: write` and GH_TOKEN"
         raise PackError(f"`gh release create {tag}` failed: {gh_failure(result)}; fix: {fix}")
     url = (result.stdout.strip().splitlines() or ["(gh printed no URL)"])[-1]
-    print(f"{RELEASE}: created release {tag} at {head[:7]} with {built.path.name}: {url}")
+    print(f"{RELEASE}: created release {tag} '{title}' at {head[:7]} with {built.path.name}: {url}")
 
 
 def check(root: Path, ref: str, remote: bool) -> list[tuple[str, str]]:
@@ -326,8 +351,8 @@ def check(root: Path, ref: str, remote: bool) -> list[tuple[str, str]]:
     if version is not None:
         try:
             entry = changelog_entry(root, version)
-            lines = len(entry.splitlines())
-            found.append((OK, f"{CHANGELOG} `{milestone_heading(version)}`: {lines} lines"))
+            lines = len(entry.text.splitlines())
+            found.append((OK, f"{CHANGELOG} `{entry.heading}`: {lines} lines"))
         except PackError as error:
             found.append((PROBLEM, str(error)))
         tag = TAG.format(version=version)
@@ -442,8 +467,9 @@ def configure(parser: argparse.ArgumentParser) -> None:
         "release",
         help="build the zip and create GitHub release v<version> at HEAD when absent",
         description="Build build/optilux-<version>.zip, then create release v<version> at HEAD "
-        "with the CHANGELOG `## 0.MM` entry as its body, unless it exists; an existing tag must "
-        "be at HEAD. --check applies the release rules before the merge instead.",
+        "titled `Optilux <version>: <Name>`, with the CHANGELOG `## 0.MM <Name>` entry as its "
+        "body, unless it exists; an existing tag must be at HEAD. --check applies the release "
+        "rules before the merge instead.",
     )
     target.add_argument(
         "--check",

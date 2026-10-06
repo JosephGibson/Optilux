@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M0 closed pending merge: 0.00.06 (CI, release workflow, optilux-release) is the last phase, and the milestone PR awaits the user's rebase merge. Latest stop: docs/handoff.md.
+Status: M1 in progress: 0.01.00 (next prompt with kind and size, release titles, switch block) is the last phase done, next 0.01.01, the M1 plan (docs/prompts/standing.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -17,10 +17,10 @@ Status: M0 closed pending merge: 0.00.06 (CI, release workflow, optilux-release)
 - optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts. Run `uv run optilux <verb>`.
 - tests/: pytest, run by `uv run optilux test`.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
-- .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status` and the next prompt) and optilux-release (the PR checklist, then the release watch); agents/researcher.md and reviewer.md (read-only).
+- .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`: the next prompt with its kind and size) and optilux-release (the PR checklist, the release watch, the switch block); agents/researcher.md and reviewer.md (read-only).
 - .github/: workflows/ci.yml (push and pull_request: ruff, tests, verify docs, `pack release --check`, `pack build`, the zip as an artifact) and release.yml (push to main: `pack release`).
 - mod/ (planned): optilux-helper (Fabric).
-- shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256); `pack release` publishes it as the GitHub release v<version>. M0 holds the placeholder: shaders/shaders.properties, one comment line, no programs; M3's hello pack replaces it.
+- shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256); `pack release` publishes it as the GitHub release v<version>, titled `Optilux <version>: <Name>`. M0 holds the placeholder: shaders/shaders.properties, one comment line, no programs; M3's hello pack replaces it.
 - config/: platforms (+ launch specs), suite, profiles, java, tools; views and pipeline planned.
 - docs/.
 - Ignored: results/raw/, runtime/, snapshots/, reference/, build/, .venv/. Committed: results/records/, config/calibrations/.
@@ -42,7 +42,7 @@ Status: M0 closed pending merge: 0.00.06 (CI, release workflow, optilux-release)
 - docs/sources/: external documents kept verbatim (the user's optimization playbook).
 - docs/roadmap.md: milestones M0-M6; the current one in detail (phases, exits, estimates); findings and decisions assigned, each decision with an owner.
 - docs/plans/: one plan per milestone (m0.md first), written from docs/templates/plan.md, premises verified at their source.
-- docs/prompts/: stored prompt sets, one prompt per phase plus Resume (m0.md first).
+- docs/prompts/: stored prompt sets, one prompt per phase plus Resume (m0.md first); standing.md, the Plan and Release prompts every milestone uses.
 - docs/templates/: plan.md, the strict plan template.
 
 ## Terms
