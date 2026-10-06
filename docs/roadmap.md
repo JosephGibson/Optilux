@@ -50,7 +50,7 @@ Change, exit and agent-time estimate per phase; files, tests, decisions and comm
 
 ### 0.01.06 Game adapter commands
 - Change: `state`, `world.wait`, `command` at OWNER, `ticks.step`, `camera.place` with `/tp` semantics and the dimension argument, `camera.get`, `hud.set`, `input.block` with raw input, the world, focus and screen events.
-- Exit: one launch runs the commands end to end, a Nether round trip included.
+- Exit: one launch runs the commands end to end, a Nether round trip included; a SendInput nudge turns the camera (A7's positive control, early).
 - Estimate: 3 h.
 
 ### 0.01.07 Renderer and Iris adapters, capture, selftest
@@ -64,7 +64,7 @@ Change, exit and agent-time estimate per phase; files, tests, decisions and comm
 - Estimate: 2.5 h.
 
 ### 0.01.09 A4, A7, A9 and the reload memory table
-- Change: PresentMon start and stop (CTRL_BREAK_EVENT, F1's mechanism) and the row match for A9; A4 on a broken copy of Unbound; A7 with and without raw input; F4's 50 reloads on the bench tier with heap after GC and private bytes every 10.
+- Change: PresentMon start and stop (CTRL_BREAK_EVENT, F1's mechanism) and the row match for A9; A4 on a broken copy of Unbound; A7 blocked and unblocked (26.3 has no raw-input switch, plans/m1.md D24); F4's 50 reloads on the bench tier with heap after GC and private bytes every 10.
 - Exit: the records hold A4, A7, A9 passed and F4's table.
 - Estimate: 2 h.
 
