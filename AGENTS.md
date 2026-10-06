@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M0 in progress; 0.00.04 (status, milestone start, optilux-next, agents) is the last phase done, next 0.00.05 (docs/prompts/m0.md). Latest stop: docs/handoff.md.
+Status: M0 in progress; 0.00.05 (placeholder pack, pack build, license) is the last phase done, next 0.00.06 (docs/prompts/m0.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -19,10 +19,10 @@ Status: M0 in progress; 0.00.04 (status, milestone start, optilux-next, agents) 
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status` and the next prompt); agents/researcher.md and reviewer.md (read-only).
 - mod/ (planned): optilux-helper (Fabric).
-- shader/ (planned): the pack.
+- shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256). M0 holds the placeholder: shaders/shaders.properties, one comment line, no programs; M3's hello pack replaces it.
 - config/: platforms (+ launch specs), suite, profiles, java, tools; views and pipeline planned.
 - docs/.
-- Ignored: results/raw/, runtime/, snapshots/, reference/, .venv/. Committed: results/records/, config/calibrations/.
+- Ignored: results/raw/, runtime/, snapshots/, reference/, build/, .venv/. Committed: results/records/, config/calibrations/.
 
 ## Docs
 - docs/design.md: goals, architecture, interfaces, milestones, decisions.
