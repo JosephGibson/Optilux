@@ -1,5 +1,5 @@
 # Workflow
-Status: draft; hooks and the read-only agents are built in M0; each skill follows the creation rule.
+Status: draft; the hooks, optilux-next, `milestone start` and the read-only agents are built (M0); each later skill follows the creation rule.
 
 ## Contents
 Skills · Agents · Running a milestone · Docs rules · Git · Release · Hooks and guards · Testing · Code conventions
@@ -21,7 +21,7 @@ Rules (Anthropic's skill best practices, https://platform.claude.com/docs/en/age
 
 | Skill | Draft v0 name | Does | Freedom |
 |---|---|---|---|
-| optilux-next | /next, status | Prints `optilux status`, the Status line and the next stored prompt verbatim; forked, read-only | low |
+| optilux-next | /next, status, next prompt | Built: injects `uv run optilux status` (branch and pushed or not, versions local and on origin/main, next phase, the Status lines, tree, hooks path, problems with fixes) and prints its lines and the next stored prompt verbatim; `allowed-tools: Bash(uv run optilux status*)`; read-only, in the main context (a fork would hand the prompt back as a result instead of printing it) | low |
 | optilux-milestone | /milestone, /phase | Milestone kickoff: injects the roadmap section and run rules, loads the stored prompt set | low |
 | optilux-plan | /plan | Writes docs/plans/m<MM>.md from docs/templates/plan.md (strict template, at most 40,960 bytes); premises verified at the source | medium |
 | optilux-bench | (Benchmark) | Validates a run spec, announces the launch, runs `optilux run`, summarizes the run record | low |
@@ -40,8 +40,8 @@ Rules (Anthropic's skill best practices, https://platform.claude.com/docs/en/age
   - Codex mirrors of skills: Claude-only; ALC's generated dual layout needed a generator and a drift check.
 
 ## Agents
-- researcher: read-only (repo + web). Leads with the answer, cites path and heading, ends with "Not found:". Proposes no fixes.
-- reviewer: read-only, one dimension per call, findings cited by path and heading.
+- researcher (.claude/agents/researcher.md; tools Read, Grep, Glob, WebFetch, WebSearch): read-only over the repo and the web. Leads with the answer, cites path and heading or URL, marks inferred claims, ends with "Not found:". Proposes no fixes.
+- reviewer (.claude/agents/reviewer.md; tools Read, Grep, Glob): read-only, one dimension per call (correctness when none is named); each finding carries a severity, quoted evidence and a cite by path and heading, or is marked "unverified"; no rewrite. Both end with "Not found:".
 - MCP: Viewfinder (dev tier; dev sessions only, offline.md#tools). In a dev session one controller drives the scene, Viewfinder or the helper mod, never both.
 - ALC facts:
   - Delegate breadth, not a known-file lookup: ~238k subagent tokens bought ~8k in the main window.
@@ -67,7 +67,7 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 - Limits:
   - AGENTS.md at most 6,144 bytes; any .md under docs/ at most 24,576 bytes (sources/ exempt); a plan (optilux-plan output, docs/roadmap.md) at most 40,960 bytes (the critic refuses over 50,000 characters). Raised from 4,096 and 16,384 (user, 2026-10-06): those left the three most-edited docs at zero margin; the cap exists to force cuts of duplicated text, not to split a doc by concern;
   - TOC: a `## Contents` section directly after the Status line in any file over 100 lines;
-  - `optilux verify docs` enforces size, TOC, links (every `path#heading` cite resolves to a heading in that file), UTF-8 without BOM, LF and Status lines over the root's .md and docs/; optilux/docs_check.py holds the slug rule; a test runs it over the repo.
+  - `optilux verify docs` enforces size, TOC, links (every `path#heading` cite resolves to a heading in that file), UTF-8 without BOM, LF and Status lines over the root's .md, docs/ and .claude/ (skills and agents: every rule but the byte cap); optilux/docs_check.py holds the slug rule; a test runs it over the repo.
 - AGENTS.md links one level deep. The Terms section is canonical; no synonyms.
 - docs/sources/ holds external documents verbatim (the user's playbook). They are cited, never edited, and exempt from the limits.
 - Status lines: ASCII, at most two sentences, pointing to the handoff.
@@ -84,7 +84,7 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 - Push after every commit, as a backup; no git hook runs on push (Hooks and guards).
 - PR per milestone: one-line title `0.MM: <summary>`, no body.
 - No VERSION file. The release version is the prefix of the newest commit on main, and the commit-msg hook enforces the format, so it is checkable before the merge.
-- `optilux milestone start` cuts the branch from origin/main with `--no-track` (ALC: VS Code Sync otherwise merges main into it). It is scripted like ALC's release-next, written after a hand-made branch broke.
+- `optilux milestone start` cuts the branch from origin/main with `--no-track` (ALC: VS Code Sync otherwise merges main into it). It refuses a dirty tree and an existing local or remote branch, fetches first and prints the next step; scripted like ALC's release-next, written after a hand-made branch broke.
 - Bootstrap, once, by hand at the start of M0 (design.md D6): create the private repo `Optilux`; first commit on main `0.00.00: Repo bootstrap.` with .gitattributes, AGENTS.md, docs and config; `git push -u origin main`; `git switch -c m0 --no-track origin/main`. Every later branch is cut by `optilux milestone start`.
 - The user merges with Rebase and merge. Rebased commits get new SHAs on main, so:
   - docs cite versions, never SHAs;
