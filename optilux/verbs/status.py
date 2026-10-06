@@ -7,6 +7,9 @@ its fix instead of an exit code.
 
 The next prompt follows the milestone cycle (docs/workflow.md#running-a-milestone):
 - the milestone has no prompt set yet: the standing Plan prompt, which writes it;
+- the set starts at the phase after the next one: the Plan prompt again, since the plan phase
+  is the one before the set's first phase and is still in progress (its set is written, not
+  committed); a set starting any later leaves a gap, which is a problem;
 - the set has a prompt for the next phase: that prompt, sized by the phase's plan estimate;
 - every phase is committed and origin/main lacks the newest: the standing Release prompt;
 - every phase is committed and merged: the block that switches to the next milestone's branch,
@@ -132,7 +135,9 @@ def next_step(
         return Next(
             IMPLEMENTATION, phase, prompt.title, prompt_set.file, estimate, plan, prompt.text
         )
-    last = prompt_set.phases[-1].version
+    first, last = prompt_set.phases[0].version, prompt_set.phases[-1].version
+    if prompts.next_phase(phase, milestone) == first:
+        return standing(root, prompts.PLAN, milestone, phase, problems)
     if phase <= last:
         fix = f"add `## {phase} <title>` to {prompt_set.file} (its phases end at {last})"
         problems.append(f"no stored prompt for {phase}; fix: {fix}")
