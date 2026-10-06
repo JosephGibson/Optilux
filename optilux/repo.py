@@ -84,12 +84,18 @@ def version_of(subject: str) -> str | None:
     return match.group(1) if match else None
 
 
-def newest_version(root: Path, ref: str = "HEAD") -> str | None:
-    """The version prefix of the newest commit on ref whose subject carries one."""
+def newest_subject(root: Path, ref: str = "HEAD") -> str | None:
+    """The subject of the newest commit on ref that carries a version prefix."""
     log = read(root, "log", "--format=%s", ref)
     if log is None:
         return None
-    return next(filter(None, map(version_of, log.splitlines())), None)
+    return next((line for line in log.splitlines() if version_of(line)), None)
+
+
+def newest_version(root: Path, ref: str = "HEAD") -> str | None:
+    """The version prefix of the newest commit on ref whose subject carries one."""
+    subject = newest_subject(root, ref)
+    return version_of(subject) if subject else None
 
 
 def changes(root: Path) -> list[str]:
