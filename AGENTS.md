@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M0 in progress; 0.00.05 (placeholder pack, pack build, license) is the last phase done, next 0.00.06 (docs/prompts/m0.md). Latest stop: docs/handoff.md.
+Status: M0 closed pending merge: 0.00.06 (CI, release workflow, optilux-release) is the last phase, and the milestone PR awaits the user's rebase merge. Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -17,9 +17,10 @@ Status: M0 in progress; 0.00.05 (placeholder pack, pack build, license) is the l
 - optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts. Run `uv run optilux <verb>`.
 - tests/: pytest, run by `uv run optilux test`.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
-- .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status` and the next prompt); agents/researcher.md and reviewer.md (read-only).
+- .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status` and the next prompt) and optilux-release (the PR checklist, then the release watch); agents/researcher.md and reviewer.md (read-only).
+- .github/: workflows/ci.yml (push and pull_request: ruff, tests, verify docs, `pack release --check`, `pack build`, the zip as an artifact) and release.yml (push to main: `pack release`).
 - mod/ (planned): optilux-helper (Fabric).
-- shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256). M0 holds the placeholder: shaders/shaders.properties, one comment line, no programs; M3's hello pack replaces it.
+- shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256); `pack release` publishes it as the GitHub release v<version>. M0 holds the placeholder: shaders/shaders.properties, one comment line, no programs; M3's hello pack replaces it.
 - config/: platforms (+ launch specs), suite, profiles, java, tools; views and pipeline planned.
 - docs/.
 - Ignored: results/raw/, runtime/, snapshots/, reference/, build/, .venv/. Committed: results/records/, config/calibrations/.

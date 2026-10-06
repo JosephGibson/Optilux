@@ -1,5 +1,5 @@
 # Workflow
-Status: draft; the hooks, optilux-next, `milestone start` and the read-only agents are built (M0); each later skill follows the creation rule.
+Status: draft; M0 built the hooks, optilux-next, optilux-release, `milestone start`, the read-only agents, CI and the release workflow; each later skill follows the creation rule.
 
 ## Contents
 Skills · Agents · Running a milestone · Docs rules · Git · Release · Hooks and guards · Testing · Code conventions
@@ -25,7 +25,7 @@ Rules (Anthropic's skill best practices, https://platform.claude.com/docs/en/age
 | optilux-milestone | /milestone, /phase | Milestone kickoff: injects the roadmap section and run rules, loads the stored prompt set | low |
 | optilux-plan | /plan | Writes docs/plans/m<MM>.md from docs/templates/plan.md (strict template, at most 40,960 bytes); premises verified at the source | medium |
 | optilux-bench | (Benchmark) | Validates a run spec, announces the launch, runs `optilux run`, summarizes the run record | low |
-| optilux-release | /release | Checklist: verify, push, PR; after the user's merge, watches the release workflow | low |
+| optilux-release | /release | Built: before the PR `verify docs`, `test`, `pack release --check`, push, `gh pr create --title "0.MM: <summary>" --body ""`, `gh pr checks --watch`; after the user's merge `gh run watch` on the release run and `gh release view v<version>`; no allowed-tools, so `gh pr create` keeps its permission prompt | low |
 | optilux-research | (Shader Expert research) | docs/research/<topic>.md with sources; built after 2-3 manual research tasks | high |
 
 - When each skill is built:
@@ -97,10 +97,14 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 - Script multi-step git operations and test them. ALC: a hand-made branch skipped its version commit and the hook then refused it.
 
 ## Release
-- GitHub Action on push to main: take the version from the newest commit's prefix, build the pack zip (shader/ + LICENSE + README with the credit), create release `v<version>` if absent. Private repo, private releases.
-- Release notes: each milestone adds its user-facing entry to CHANGELOG.md before its PR. The release body is that entry.
-- Every release rule must be checkable before the merge. ALC's gate judged the merge method and message after the fact and refused 3 merges.
-- CI: Python tests + packaging. The in-game compile check runs locally through the mod.
+- .github/workflows/release.yml, on push to main (the user's rebase merge), runs `optilux pack release` with `permissions: contents: write` and GH_TOKEN from the workflow token:
+  - HEAD must be origin/main's tip: a release cut from m<MM> would tag a commit the rebase merge replaces;
+  - version = the newest commit's prefix; `pack build` first (shader/ + LICENSE + README with the credit; one tree, one sha256), so the release needs no other workflow's files; the tree must be clean;
+  - `gh release view v<version>`; a tag v<version> already on origin must be at HEAD, else exit 1 (a tag is never moved);
+  - when absent, `gh release create v<version> build/optilux-<version>.zip --title v<version> --notes-file <entry> --target <HEAD sha>`; `--target` because gh would otherwise tag the default branch's head at run time. Private repo, private releases.
+- Release notes: each milestone adds its user-facing entry, `## 0.MM`, to CHANGELOG.md before its PR. The release body is that entry.
+- Every release rule must be checkable before the merge: `optilux pack release --check [--no-remote] [--ref R]` checks the subject of R (default HEAD) by the commit-msg rule, the CHANGELOG entry, no release and no tag for the version on GitHub (skipped with `--no-remote`), a clean tree, and R as a branch tip on origin. ALC's gate judged the merge method and message after the fact and refused 3 merges.
+- CI, .github/workflows/ci.yml on push and pull_request (ubuntu-latest, roadmap.md#decisions D5; actions pinned to release tags): `uv sync --frozen`, ruff check and format, `optilux test`, `optilux verify docs`, `pack release --check --no-remote`, `pack build`, the zip as an artifact. On pull_request the checkout is GitHub's synthetic merge commit, whose subject carries no version, so the check and the build read it through `--ref HEAD^2`, the PR head; push events use HEAD. The in-game compile check runs locally through the mod.
 
 ## Hooks and guards
 Bodies in optilux/hooks.py, run by the venv's python as `python -m optilux.hooks <name>`; .githooks/ holds the sh shims (`git config --local core.hooksPath .githooks`), .claude/settings.json the Claude Code hooks and allow rules. Inert outside this repository.
