@@ -230,7 +230,7 @@ def outlook(root: Path, milestone: int, local: str | None, phase: str | None) ->
     try:
         prompt_set = prompts.load(root, milestone)
     except prompts.PromptError:
-        return {"progress": None, "upcoming": []}
+        return {"progress": None, "upcoming": [], "last_title": None}
     plan = prompts.plan_phases(root, milestone)
     versions = [p.version for p in prompt_set.phases]
     hours = {v: plan[v].estimate for v in versions if v in plan}
@@ -254,7 +254,8 @@ def outlook(root: Path, milestone: int, local: str | None, phase: str | None) ->
         for p in prompt_set.phases
         if phase is not None and p.version > phase
     ]
-    return {"progress": progress, "upcoming": upcoming[:2]}
+    last = next((p.title for p in prompt_set.phases if p.version == local), None)
+    return {"progress": progress, "upcoming": upcoming[:2], "last_title": last}
 
 
 def open_questions(root: Path) -> list[str]:
@@ -321,6 +322,7 @@ def collect(root: Path) -> dict:
         prompt=step.prompt,
         switch=step.switch,
         last_commit=repo.newest_subject(root),
+        last_commits=repo.newest_version_run(root),
         open_questions=open_questions(root),
         **outlook(root, milestone, local, step.phase),
     )
@@ -353,7 +355,10 @@ def collect(root: Path) -> dict:
 
 
 def cut(text: str, width: int = CUT) -> str:
-    """The text cut to the width with an ellipsis, at a word where it can."""
+    """The text cut to the width. A text that is too long first drops its parentheticals, which
+    carry cites and asides, not the point; one still too long ends in an ellipsis at a word."""
+    while len(text) > width and (shorter := re.sub(r"\s*\([^()]*\)", "", text)) != text:
+        text = shorter
     if len(text) <= width:
         return text
     return text[: width - 3].rsplit(" ", 1)[0].rstrip(",;:") + "..."
@@ -398,6 +403,20 @@ def decision_rows(facts: dict) -> list[str]:
     return out
 
 
+def last_text(facts: dict) -> str:
+    """The newest version's commit. A phase with side commits (tooling, a prompt fix) shows its
+    count and the newest message, so the newest commit is not read as the phase itself."""
+    subjects = facts["last_commits"]
+    if not subjects:
+        return "no commit with a version yet"
+    if len(subjects) == 1:
+        return subjects[0]
+    newest = subjects[0]
+    message = newest.split(": ", 1)[1] if ": " in newest else newest
+    name = " ".join(filter(None, (facts["version_local"], facts["last_title"])))
+    return f'{name}: {len(subjects)} commits, newest "{cut(message, 44)}"'
+
+
 def state_rows(facts: dict) -> list[str]:
     """The briefing's rows on the milestone: progress, the last commit, what follows the next
     prompt and the handoff's open questions."""
@@ -412,7 +431,7 @@ def state_rows(facts: dict) -> list[str]:
             hours = f"{progress['hours_done']:g} of {progress['hours_total']:g} h agent"
         bar = f"[{'#' * filled}{'.' * (BAR - filled)}] {counts} ({span}), {hours}"
     out = rows("PROGRESS", [bar])
-    out += rows("LAST", [facts["last_commit"] or "no commit with a version yet"])
+    out += rows("LAST", [last_text(facts)])
     then = []
     for phase in facts["upcoming"]:
         cost = "no estimate"

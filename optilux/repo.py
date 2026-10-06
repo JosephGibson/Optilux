@@ -92,6 +92,22 @@ def newest_subject(root: Path, ref: str = "HEAD") -> str | None:
     return next((line for line in log.splitlines() if version_of(line)), None)
 
 
+def newest_version_run(root: Path, ref: str = "HEAD") -> list[str]:
+    """The subjects, newest first, of the commits on ref that carry the newest version prefix: a
+    phase with side commits (tooling, a prompt fix) has several. Commits without a version are
+    skipped; the run ends at the first commit of another version."""
+    log = read(root, "log", "--format=%s", ref)
+    run: list[str] = []
+    for line in (log or "").splitlines():
+        version = version_of(line)
+        if version is None:
+            continue
+        if run and version != version_of(run[0]):
+            break
+        run.append(line)
+    return run
+
+
 def newest_version(root: Path, ref: str = "HEAD") -> str | None:
     """The version prefix of the newest commit on ref whose subject carries one."""
     subject = newest_subject(root, ref)
