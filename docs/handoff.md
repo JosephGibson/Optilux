@@ -109,3 +109,4 @@ Each in roadmap.md#qa-pass-open-questions with its phase or milestone:
 
 ## Next
 /optilux-next prints 0.01.13 Debug, timing and the acceptance re-run (L, 2 h; 2-6 launches). Plan around: the provisional snapshot retaken before any `run` (this launch changed spike); the jar unchanged (eb840262...); 0.01.13's rows above; its session runs uncapped without input now.
+- 0.01.12.1, after the close-out: commits carry a patch number, `0.MM.PP.N: ` (roadmap.md D32), so 0.01.13 commits as `0.01.13.0: ...` and M1 releases as v0.01.13.0.

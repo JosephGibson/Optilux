@@ -84,9 +84,12 @@ class PackError(RuntimeError):
 
 
 def check_version(text: str) -> str:
-    """`text` when it is a release version (0.MM.PP); PackError otherwise."""
+    """`text` when it is a release version (0.MM.PP.N, or 0.MM.PP as releases before 0.01.12.1
+    have it); PackError otherwise."""
     if repo.version_of(f"{text}: ") != text:
-        raise PackError(f"version {text!r} is not of the form 0.MM.PP; fix: give --version 0.MM.PP")
+        raise PackError(
+            f"version {text!r} is not of the form 0.MM.PP.N; fix: give --version 0.MM.PP.N"
+        )
     return text
 
 
@@ -100,7 +103,7 @@ def version_from_git(root: Path, ref: str = "HEAD", fix: str = BUILD_FIX) -> str
         )
     version = repo.version_of(subject)
     if version is None:
-        raise PackError(f"the subject of {ref} {subject!r} carries no 0.MM.PP prefix; fix: {fix}")
+        raise PackError(f"the subject of {ref} {subject!r} carries no 0.MM.PP.N prefix; fix: {fix}")
     return version
 
 
@@ -161,8 +164,8 @@ class Entry:
 
 
 def milestone_heading(version: str) -> str:
-    """The CHANGELOG heading prefix of a version's milestone: 0.00.06 -> `## 0.00`."""
-    return f"## {version.rsplit('.', 1)[0]}"
+    """The CHANGELOG heading prefix of a version's milestone: 0.01.13.0 -> `## 0.01`."""
+    return f"## {'.'.join(version.split('.')[:2])}"
 
 
 def changelog_entry(root: Path, version: str) -> Entry:
@@ -453,7 +456,7 @@ def configure(parser: argparse.ArgumentParser) -> None:
     source.add_argument(
         "--version",
         metavar="V",
-        help="0.MM.PP (default: the prefix of the subject of --ref)",
+        help="0.MM.PP.N (default: the prefix of the subject of --ref)",
     )
     source.add_argument(
         "--ref",

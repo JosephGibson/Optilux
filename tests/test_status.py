@@ -159,6 +159,8 @@ def test_load_names_a_missing_file(tmp_path: Path) -> None:
         ("0.00.03", 0, "0.00.04"),
         ("0.00.06", 1, "0.01.00"),
         ("0.01.09", 1, "0.01.10"),
+        ("0.01.12.1", 1, "0.01.13"),  # a patch: the next phase is still the one after
+        ("0.01.13.0", 1, "0.01.14"),
     ],
 )
 def test_next_phase(newest: str | None, milestone: int, expected: str) -> None:
@@ -301,7 +303,7 @@ def test_standing_prompts_of_this_repo() -> None:
     filled = prompts.fill(plan.text, 2, "0.02.00")
     assert filled.startswith("Plan milestone M2 as phase 0.02.00 on branch m2 in C:\\Projects\\")
     assert "docs/plans/m1.md as the worked example" in filled and "`## 0.02 <Name>`" in filled
-    assert "Commit `0.02.00: M2 plan and prompts.`" in filled
+    assert "Commit `0.02.00.0: M2 plan and prompts.`" in filled
     assert "{" not in filled
     assert release.text == "/optilux-release\n"
 
@@ -439,6 +441,27 @@ def test_status_names_the_phase_not_its_side_commit(cloned: Path) -> None:
     )
     last = row("LAST", '0.07.00 First: 2 commits, newest "Tooling fix for the prompts."')
     assert last in status.briefing(facts)
+
+
+def test_status_reads_a_patch_as_its_phase(cloned: Path) -> None:
+    # A patch after a phase (0.07.00.1) leaves that phase done and the one after it next; LAST
+    # counts it with the phase's commits, the three-part subject of before 0.01.12.1 among them.
+    root = milestone_repo(cloned)
+    commit_file(root, "patch.txt", b"x\n", "0.07.00.1: Patch the prompts.")
+    facts = status.collect(root)
+    assert (facts["version_local"], facts["next_phase"], facts["next_title"]) == (
+        "0.07.00.1",
+        "0.07.01",
+        "Second",
+    )
+    assert (facts["progress"]["done"], facts["last_title"]) == (1, "First")
+    assert facts["last_commits"] == ["0.07.00.1: Patch the prompts.", "0.07.00: First."]
+    last = row("LAST", '0.07.00 First: 2 commits, newest "Patch the prompts."')
+    assert last in status.briefing(facts)
+    commit_file(root, "second.txt", b"x\n", "0.07.01.0: Second.")
+    facts = status.collect(root)
+    assert facts["last_commits"] == ["0.07.01.0: Second."]  # the run ends at the other phase
+    assert (facts["progress"]["done"], facts["last_title"]) == (2, "Second")
 
 
 def test_status_names_a_missing_estimate_and_a_gap(cloned: Path) -> None:

@@ -109,7 +109,7 @@ def test_refuses_a_pack_file_named_like_a_root_file(tree: Path, tmp_path: Path) 
 def test_version_from_the_newest_commit(packed_repo: Path) -> None:
     assert pack.version_from_git(packed_repo) == "0.00.05"
     commit_file(packed_repo, "note.txt", b"x\n", "Merge without a prefix")
-    with pytest.raises(pack.PackError, match=r"'Merge without a prefix' carries no 0.MM.PP prefix"):
+    with pytest.raises(pack.PackError, match=r"'Merge without a prefix' carries no 0.MM.PP.N "):
         pack.version_from_git(packed_repo)
     empty = fresh_repo(packed_repo.parent / "empty", "main")
     with pytest.raises(pack.PackError, match=r"finds no commit in .*; fix: commit, or give"):
@@ -117,10 +117,11 @@ def test_version_from_the_newest_commit(packed_repo: Path) -> None:
 
 
 def test_check_version() -> None:
-    assert pack.check_version("0.01.12") == "0.01.12"
-    for bad in ("dev", "0.1.2", "1.00.00", "0.00.05: x", "v0.00.05"):
+    assert pack.check_version("0.01.13.0") == "0.01.13.0"
+    assert pack.check_version("0.01.12") == "0.01.12"  # releases before 0.01.12.1
+    for bad in ("dev", "0.1.2", "1.00.00", "0.00.05: x", "v0.00.05", "0.01.12.01", "0.01.12."):
         with pytest.raises(
-            pack.PackError, match=r"is not of the form 0.MM.PP; fix: give --version"
+            pack.PackError, match=r"is not of the form 0.MM.PP.N; fix: give --version"
         ):
             pack.check_version(bad)
 
@@ -155,8 +156,8 @@ def test_cli_takes_out_and_version(
     assert cli.main(["pack", "build", "--out", str(out_dir), "--version", "dev"]) == 1
     err = capsys.readouterr().err
     assert err == (
-        "optilux pack build: version 'dev' is not of the form 0.MM.PP; "
-        "fix: give --version 0.MM.PP\n"
+        "optilux pack build: version 'dev' is not of the form 0.MM.PP.N; "
+        "fix: give --version 0.MM.PP.N\n"
     )
 
 

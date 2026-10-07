@@ -82,7 +82,7 @@ user / Claude Code --skills--> optilux CLI (Python)
 - Suite and profiles: config/suite.json, config/profiles/*.json.
 
 ## 6. Milestones
-Sketch; roadmap.md holds the milestones, phases and prompt sets (docs/prompts/). Version 0.MM.PP = milestone MM, phase PP. One commit per phase, one PR and one release per milestone.
+Sketch; roadmap.md holds the milestones, phases and prompt sets (docs/prompts/). Version 0.MM.PP.N = milestone MM, phase PP, patch N (0 for the phase itself). One commit per phase, one PR and one release per milestone.
 - Phase -1: this design set; open decisions closed; runtime spike. Exit: spike passes and its findings are folded into these docs; user approves the set.
 - Phase 0: roadmap. Exit: docs/roadmap.md + the prompt set for M0.
 - M0 foundation: repo, AGENTS.md, hooks, CI (tests + packaging), release workflow shipping a placeholder pack, `optilux status`, doc-limit test. Exit: a merged PR produces a private release.

@@ -10,8 +10,10 @@ from pathlib import Path
 ORIGIN = "origin"
 # main moves only by the user's rebase merge of a milestone PR (docs/workflow.md#git).
 MAIN = "main"
-# docs/workflow.md#git: every commit's subject starts with its phase, `0.MM.PP: `.
-VERSION = re.compile(r"(0\.(\d{2})\.(\d{2})): ")
+# docs/workflow.md#git: every commit's subject starts with its version, `0.MM.PP.N: `, the phase
+# and its patch number (0 for the phase, 1, 2, ... for a fix after it). Subjects before 0.01.12.1
+# carry the phase alone, `0.MM.PP: `, and are read as written.
+VERSION = re.compile(r"(0\.(\d{2})\.(\d{2})(?:\.(?:0|[1-9]\d*))?): ")
 # Milestone branches are m0, m1, ... (docs/workflow.md#git), the number unpadded.
 BRANCH = re.compile(r"m(\d{1,2})")
 # A remote call that needs credentials fails at once instead of hanging on a prompt.
@@ -79,9 +81,15 @@ def head(root: Path) -> str | None:
 
 
 def version_of(subject: str) -> str | None:
-    """The version prefix of a commit subject (`0.00.03: ...` -> `0.00.03`), or None."""
+    """The version prefix of a commit subject (`0.01.12.1: ...` -> `0.01.12.1`, `0.00.03: ...`
+    -> `0.00.03`), or None."""
     match = VERSION.match(subject)
     return match.group(1) if match else None
+
+
+def phase_of(version: str) -> str:
+    """The phase of a version, its patch number dropped (`0.01.12.1` -> `0.01.12`)."""
+    return ".".join(version.split(".")[:3])
 
 
 def newest_subject(root: Path, ref: str = "HEAD") -> str | None:
@@ -93,16 +101,19 @@ def newest_subject(root: Path, ref: str = "HEAD") -> str | None:
 
 
 def newest_version_run(root: Path, ref: str = "HEAD") -> list[str]:
-    """The subjects, newest first, of the commits on ref that carry the newest version prefix: a
-    phase with side commits (tooling, a prompt fix) has several. Commits without a version are
-    skipped; the run ends at the first commit of another version."""
+    """The subjects, newest first, of the commits on ref whose version is of the newest version's
+    phase: a phase with side commits (tooling, a prompt fix) or patches has several. Commits
+    without a version are skipped; the run ends at the first commit of another phase."""
     log = read(root, "log", "--format=%s", ref)
     run: list[str] = []
+    phase = None
     for line in (log or "").splitlines():
         version = version_of(line)
         if version is None:
             continue
-        if run and version != version_of(run[0]):
+        if phase is None:
+            phase = phase_of(version)
+        elif phase_of(version) != phase:
             break
         run.append(line)
     return run
