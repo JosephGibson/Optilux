@@ -1,5 +1,5 @@
 # Optilux design
-Status: Phase 0 closed 2026-10-06; roadmap.md holds the milestones and M0's phases, prompts in docs/prompts/m0.md. Next: M0 (handoff.md).
+Status: what Optilux is: goals, architecture, interfaces, milestones and decisions. Built through M1 (the harness's install, launch and run, the helper mod's M1 commands, the release path); the measuring and visual loops and the shader are spec, M2 on.
 
 ## Contents
 1 Goals · 2 Non-goals · 3 Core rule · 4 Architecture · 5 Interfaces · 6 Milestones · 7 Decisions taken · 8 Open decisions
@@ -41,15 +41,15 @@ user / Claude Code --skills--> optilux CLI (Python)
 - harness: Python package `optilux`, CLI `optilux <verb>`; one `.venv`, pinned requirements.
 - helper mod `optilux-helper`: full redesign and rewrite (user, 2026-10-05). Pure-Java core plus one adapter set per platform. Spec in mod.md, wire contract in mod-protocol.md; written from these docs alone, no ALC code (user, 2026-10-06).
 - shader pack `optilux`: backend iris-gl; a backend-neutral pipeline spec (shader.md#pipeline-spec) so an Aperture backend can follow.
-- platform layer: config/platforms/<id>.json, the mod adapter and the world snapshot (platform.md).
+- platform layer: config/platforms/<id>.json, the mod adapter and the world snapshot (platform.md). At M1 three 26.3 specifics sit outside it: suite.json's display block (options.txt's version and keys, Sodium's file format), launch.py's join line in latest.log and session.py's reading of the time-set answer.
 - data:
-  - config/: tracked inputs (platforms with their launch specs, suite, profiles, java, tools, views, pipeline.json) and calibrations/ (committed).
+  - config/: tracked inputs (platforms with their launch specs, suite, profiles, java, tools, views; pipeline.json from M3) and calibrations/ (committed, from M2).
   - results/records/: run records, committed (the ledger; per-capture summaries, ~200 KB budget); results/raw/: frame samples and heavy artifacts, ignored and disposable.
-    - Records are append-only, so git stores each once, compressed; growth is linear. `verify records` enforces the budget. Past 100 MB of records (~500 sessions, est.), stop and choose an archive for older ones.
+    - Records are append-only, so git stores each once, compressed; growth is linear. `verify records` (M2) enforces the budget. Past 100 MB of records (~500 sessions, est.), stop and choose an archive for older ones.
   - runtime/: installed games, ignored.
   - snapshots/: worlds, ignored.
   - reference/: Complementary source for study, ignored, never redistributed.
-- Experts (draft v0 roles) are bundles, not programs:
+- Experts (draft v0 roles; their skills and modules are not built yet) are bundles, not programs:
   - Shader Expert = main session + optilux-bench and optilux-research skills + read-only researcher agent + `optilux.shader` + Viewfinder's MCP in dev sessions (offline.md).
   - JVM Expert = `optilux.jvm` reporter (rank, graph, recommend) + JVM scenarios (post-1.0).
 
@@ -82,7 +82,7 @@ user / Claude Code --skills--> optilux CLI (Python)
 - Suite and profiles: config/suite.json, config/profiles/*.json.
 
 ## 6. Milestones
-Sketch; roadmap.md holds the milestones, phases and prompt sets (docs/prompts/). Version 0.MM.PP.N = milestone MM, phase PP, patch N (0 for the phase itself). One commit per phase, one PR and one release per milestone.
+Sketch; roadmap.md holds the milestones, phases and prompt sets (docs/prompts/). Commits, versions, PRs and releases: workflow.md#git and workflow.md#release (roadmap.md D33).
 - Phase -1: this design set; open decisions closed; runtime spike. Exit: spike passes and its findings are folded into these docs; user approves the set.
 - Phase 0: roadmap. Exit: docs/roadmap.md + the prompt set for M0.
 - M0 foundation: repo, AGENTS.md, hooks, CI (tests + packaging), release workflow shipping a placeholder pack, `optilux status`, doc-limit test. Exit: a merged PR produces a private release.
@@ -92,7 +92,7 @@ Sketch; roadmap.md holds the milestones, phases and prompt sets (docs/prompts/).
   - The case to avoid is ALC's M3: it built a new mod and the measuring path that used it together. That took two run plans (118 KB and 57 KB), and the mod ran 3x its estimate.
 - Tripwire: if M0-M3 together run past twice their summed estimates, stop and re-plan before building more infrastructure.
 - M1 game control: install, launch, the mod's M1 commands (mod-protocol.md#commands). Exit: mod acceptance A1-A4, A7, A9, A10 (mod.md#12-acceptance) on unmodified Complementary, in a provisional world with three views (one per dimension): a copy of the spike's `spike` world placed under snapshots/provisional/ by hand and hashed; its Nether and End views are reached with `camera.place`'s `dimension` argument, then the snapshot is retaken; the `world` verbs replace this in M2. A2 and A3 are re-run on the final views in M2.
-- M2 perf loop: the new world with the view roles placed; run, compare, report, run records; calibration per mode. Exit, all of:
+- M2 perf loop: the bench world's views (placed in M1) pre-generated and checked GPU-bound; compare, report, run records; calibration per mode. Exit, all of:
   - each mode calibrated on unmodified Complementary;
   - quick + full: twin null, and a known positive (shadows off) detected with the right sign beyond the calibrated threshold. ALC's 0.667 ms is context, not a gate: the platform, pack build and views all differ;
   - the CPU floor measured per view with a passthrough pack (measurement.md#validity);
@@ -138,8 +138,8 @@ Sketch; roadmap.md holds the milestones, phases and prompt sets (docs/prompts/).
 
 ## 8. Open decisions
 Section 7's decisions are closed (D5-D8, D10 and D11 carry labels; the rest are unlabeled). These close by evidence:
-- E1 Transport: switch only if the named pipe fails the mod's M1 acceptance (mod.md#12-acceptance).
-  - Fallback: loopback TCP (127.0.0.1, ephemeral port; any local process can connect, so the token is the only gate). AF_UNIX is not an option on the harness side: CPython for Windows undefines it (Modules/socketmodule.h), the user's 3.12.10 has no socket.AF_UNIX, and the enabling change (python/cpython issue 77589, PR 137420) is unreleased.
+- E1 Transport: closed by evidence: the named pipe passed the mod's M1 acceptance (mod.md#12-acceptance; results/records/m1-acceptance-10.json), so no switch.
+  - The fallback, not taken: loopback TCP (127.0.0.1, ephemeral port; any local process can connect, so the token is the only gate). AF_UNIX is not an option on the harness side: CPython for Windows undefines it (Modules/socketmodule.h), the user's 3.12.10 has no socket.AF_UNIX, and the enabling change (python/cpython issue 77589, PR 137420) is unreleased.
   - ALC's pipe failures were bugs in its own code, fixed in review (lessons.md#mod), not pipe faults. I/O stays off the render thread (mod.md#4-architecture).
 - E2 Leaf lighting: forward or deferred lighting for cutout terrain. Decided in M4 by building both on the forest view and comparing cost rows and look (playbook.md#6-did-not-work).
 - E3 Per-pass GPU timers: Viewfinder's (dev tier) or optilux-helper's own, whichever passes A11 first (M2). Viewfinder's timings are dev tier, so cost rows can carry them only from dev-tier sessions calibrated with timer twins, the dev tier in the row's identity (platform.md#mod-tiers; measurement.md#verdicts-and-cost-rows); otherwise E3 falls to optilux-helper's timers. Without either, cost rows below the CPU floor need a heavier base.
