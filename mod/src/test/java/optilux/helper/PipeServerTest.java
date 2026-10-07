@@ -20,8 +20,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import optilux.helper.core.Errors;
 import optilux.helper.core.PipeName;
 import optilux.helper.core.Protocol;
@@ -121,6 +126,94 @@ class PipeServerTest {
             assertEquals(true, ((Map<String, Object>) hello.get("result")).get("resumed"));
         } finally {
             K32.CloseHandle(again);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void anErrorOnThePipeThreadLeavesTheServerServing() throws Exception {
+        // docs/mod.md#4-architecture: an Error never kills a thread. A worker pool that cannot
+        // start a thread throws one (OutOfMemoryError: unable to create native thread) on the
+        // pipe thread, inside Protocol.line; the next client is still served.
+        byte[] random = new byte[32];
+        new SecureRandom().nextBytes(random);
+        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(random);
+        String name = PipeName.of(token);
+        var timers = Executors.newSingleThreadScheduledExecutor();
+        var pool = Executors.newCachedThreadPool();
+        AtomicBoolean failed = new AtomicBoolean();
+        ExecutorService failing = new AbstractExecutorService() {
+            @Override
+            public void execute(Runnable task) {
+                if (failed.compareAndSet(false, true)) {
+                    throw new OutOfMemoryError("unable to create native thread (a test)");
+                }
+                pool.execute(task);
+            }
+
+            @Override
+            public void shutdown() {
+                pool.shutdown();
+            }
+
+            @Override
+            public List<Runnable> shutdownNow() {
+                return pool.shutdownNow();
+            }
+
+            @Override
+            public boolean isShutdown() {
+                return pool.isShutdown();
+            }
+
+            @Override
+            public boolean isTerminated() {
+                return pool.isTerminated();
+            }
+
+            @Override
+            public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+                return pool.awaitTermination(timeout, unit);
+            }
+        };
+        Protocol protocol = new Protocol(Wire.COMMANDS, token, Map.of("frames.index", r -> Map.of()),
+            () -> ProtocolTest.FACTS, new Protocol.Stamps() {
+                @Override
+                public long frameIndex() {
+                    return 1;
+                }
+
+                @Override
+                public Long sinceReload() {
+                    return 0L;
+                }
+
+                @Override
+                public long qpcNs() {
+                    return 2;
+                }
+            }, new State(timers, Duration.ofSeconds(10)), failing, timers);
+        Thread thread = new Thread(new PipeServer(name, protocol, Qpc.kernel32()), "optilux-pipe-test");
+        thread.setDaemon(true);
+        thread.start();
+        String hello = "{\"id\":\"h\",\"cmd\":\"hello\",\"args\":{\"token\":\"" + token + "\"}}\n";
+        HANDLE first = open(name);
+        write(first, hello);
+        long until = System.nanoTime() + 5_000_000_000L;
+        while (!failed.get() && System.nanoTime() < until) {
+            Thread.sleep(5);
+        }
+        assertTrue(failed.get(), "the Error was thrown");
+        K32.CloseHandle(first);
+        HANDLE again = open(name);
+        try {
+            write(again, hello);
+            Map<String, Object> answer = Wire.parse(readLine(again));
+            assertEquals(true, answer.get("ok"));
+        } finally {
+            K32.CloseHandle(again);
+            pool.shutdownNow();
+            timers.shutdownNow();
         }
     }
 

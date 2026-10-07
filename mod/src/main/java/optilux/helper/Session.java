@@ -3,7 +3,6 @@ package optilux.helper;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +25,6 @@ import optilux.helper.core.FrameClock;
 import optilux.helper.core.PipeName;
 import optilux.helper.core.Protocol;
 import optilux.helper.core.State;
-import optilux.helper.win.Kernel32;
 import optilux.helper.win.PipeServer;
 import optilux.helper.win.Qpc;
 import org.slf4j.Logger;
@@ -140,9 +138,6 @@ final class Session {
         return new Session(protocol);
     }
 
-    Protocol protocol() {
-        return protocol;
-    }
 
     /** hello's mod, platform, versions and pid; fixed for the game's life. */
     private static Map<String, Object> facts(ModContainer self) {

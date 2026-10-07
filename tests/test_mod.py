@@ -337,3 +337,13 @@ def test_the_wrapper_is_pinned_and_gradle_finds_no_other_jdk() -> None:
     build = (mod / "build.gradle").read_text(encoding="utf-8")
     assert "id 'net.fabricmc.fabric-loom' version '1.18.2'" in build
     assert "withSourcesJar" not in build and "accessWidener" not in build
+
+
+def test_a_gradle_that_hangs_is_stopped_with_the_fix(monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+    import sys
+
+    monkeypatch.setattr(mod_verb, "GRADLE_TIMEOUT", 0.5)
+    command = [sys.executable, "-c", "import time; time.sleep(5)"]
+    with pytest.raises(mod_verb.ModError, match=r"ran past 0.5 s"):
+        mod_verb.run_gradle(command, Path.cwd(), dict(os.environ), False)

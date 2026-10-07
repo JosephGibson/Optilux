@@ -3,6 +3,7 @@
 branch cannot skip a step."""
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
@@ -10,6 +11,9 @@ from optilux import REPO_ROOT, prompts, repo
 from optilux.verbs import Verb
 
 PREFIX = "optilux milestone start"
+# `git fetch origin` before the cut: a few seconds on this repo; past this the network is down.
+FETCH_TIMEOUT = 120.0
+NETWORK = "check the network"
 
 
 def configure(parser: argparse.ArgumentParser) -> None:
@@ -48,10 +52,19 @@ def start(root: Path, number: int) -> int:
         remote = repo.remote_sha(root, branch)
     except repo.GitError as error:
         return refuse(str(error), "check the network and `git remote -v`")
+    except subprocess.TimeoutExpired as error:
+        return refuse(
+            f"origin did not answer `git ls-remote` in {error.timeout:g} s", "check the network"
+        )
     if remote is not None:
         fix = f"`git switch -c {branch} --no-track origin/{branch}` to continue it"
         return refuse(f"origin has {branch} already ({remote[:7]})", fix)
-    fetched = repo.git(root, "fetch", repo.ORIGIN)
+    try:
+        fetched = repo.git(root, "fetch", repo.ORIGIN, timeout=FETCH_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return refuse(
+            f"origin did not answer `git fetch` in {FETCH_TIMEOUT:g} s", "check the network"
+        )
     if fetched.returncode:
         return refuse(f"`git fetch origin` failed: {repo.failure(fetched)}", "check the network")
     switched = repo.git(root, "switch", "-c", branch, "--no-track", f"{repo.ORIGIN}/{repo.MAIN}")

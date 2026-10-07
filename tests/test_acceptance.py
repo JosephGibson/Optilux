@@ -244,3 +244,35 @@ def test_f4_reports_the_growth_per_reload_from_its_first_row_to_its_last() -> No
     first = {"heapUsedMiB": 597.3, "privateMiB": 13174.6}
     last = {"heapUsedMiB": 1599.6, "privateMiB": 16809.7}
     assert acceptance.per_reload(first, last, 50) == {"heapMiB": 20.05, "privateMiB": 72.7}
+
+
+def test_a4_counts_every_invalidating_event_but_its_own_reloads() -> None:
+    """A4 reloads on purpose (reload.failed, then reload.done); focus.lost, dimension.changed,
+    screen.opened or hook.error across its window invalidate it (mod-protocol.md#client-rules)."""
+    reloads = [{"event": "reload.failed"}, {"event": "reload.done"}]
+    assert acceptance.a4_clean(reloads) is True
+    for event in ("focus.lost", "dimension.changed", "screen.opened", "hook.error"):
+        assert acceptance.a4_clean([*reloads, {"event": event}]) is False, event
+
+
+def test_a_request_log_with_the_token_or_unchecked_fails_the_run() -> None:
+    """The token check runs on every session's request log, a failed one's too (m1-acceptance-1
+    and -2 had none): a log holding the token, or a session with no check, fails the run."""
+    launched = {"mod": {"hello": {}}}
+    assert (
+        status({**launched, "logCheck": {"tokenAbsent": True}}, {"A10": {"pass": True}})[0] == "ok"
+    )
+    found, _, problems = status(
+        {**launched, "logCheck": {"tokenAbsent": False}}, {"A10": {"pass": True}}
+    )
+    assert found == "failed" and "holds the token" in problems[0]
+    found, _, problems = status(launched, {"A10": {"pass": True}})
+    assert found == "failed" and "not checked" in problems[0]
+
+
+def test_an_answer_no_request_sent_fails_the_run() -> None:
+    """The mod answers a line it cannot read with `id: null`: the client files it as stray, and
+    the run says so instead of ending on a timeout."""
+    stray = [{"id": None, "ok": False, "error": {"code": "bad-json", "message": "at 3"}}]
+    found, _, problems = status({"stray": stray}, {"A10": {"pass": True}})
+    assert found == "failed" and "1 answer" in problems[0] and "bad-json" in problems[0]

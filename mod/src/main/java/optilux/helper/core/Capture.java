@@ -165,7 +165,11 @@ public final class Capture {
         manifest.put("complete", stopped == null && dropped.isEmpty());
         manifest.put("stopped", stopped);
         manifest.put("count", count);
-        manifest.put(intervalNs > 0 ? "intervalMs" : "every", intervalNs > 0 ? intervalNs / 1e6 : every);
+        if (intervalNs > 0) {
+            manifest.put("intervalMs", intervalNs / 1e6);
+        } else {
+            manifest.put("every", every); // a frame count: an integer, never widened to a double
+        }
         manifest.put("frames", frames);
         manifest.put("dropped", dropped);
         Path path = folder.resolve(MANIFEST);

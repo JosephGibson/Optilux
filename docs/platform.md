@@ -81,7 +81,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
 - Pre-launch files, written before every launch from suite.json display (identity; reasons in its `*Why` keys):
   - options.txt: the optionsTxt keys over the game's own lines; the file as written is recorded, its hash and every key the harness does not write;
   - sodium-options.json: sodiumOptionsFile for every tier, refused unless it hashes to sodiumOptions: has_edited_fullscreen_option (else Sodium flips exclusiveFullscreen) and use_no_error_g_l_context=false (Mod tiers, dev);
-  - config/iris.properties, fresh: shaderPack, irisProperties, the tier's irisTiers.
+  - config/iris.properties, fresh: shaderPack, irisProperties, the tier's irisTiers; a saved shaderpacks/<pack>.txt is refused (defaults).
 - `launch <world> [--tier] [--no-token] [--set k=v] [--quit-after S]`, refusing any mismatch:
   1. the gate (F2): no process from runtime/<platform>/, no optilux-* ETW session, no Gradle build; AMD's PresentMon-x64.exe and RSXTraceSession and the other JVMs (idle Gradle daemons) recorded, never stopped;
   2. the classpath jars, asset index and version JSON hashed against the spec, the packs against their pins;
@@ -89,7 +89,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   4. Java from the profile, `-Doptilux.token=<fresh>` (not with `--no-token`), the spec's JVM options, KnotClient, `--gameDir runtime/<platform>/game`, `--accessToken 0 --offlineDeveloperMode` (no --clientId or --xuid: Main defaults both), `--quickPlaySingleplayer <world>`; JAVA_TOOL_OPTIONS and kin dropped;
   5. `--username optilux`, `--uuid` from the world's players/data/<uuid>.dat, else the platform file's `offlinePlayer` (F8); a snapshot follows the bench player's first join (ALC);
   6. the started command line (psutil) equal to the built one and to the profile and the spec, the token's value excepted (fresh per launch, never identity);
-  7. the join in this session's latest.log within 120 s (F11), Fabric's mod list equal to the tier; a failed check ends the game; `--quit-after S` holds S s, quits through the mod's `quit` (WM_CLOSE without a mod session) and reads the files back: every written key, the Iris keys, Sodium's text; `--set` and `--no-token` are recorded for the run record.
+  7. the join in this session's latest.log within 120 s (F11), Fabric's mod list equal to the tier; a failed check ends the game; `--quit-after S` holds S s, quits through the mod's `quit` (WM_CLOSE without a mod session) and reads the files back: every written key, the Iris keys, Sodium's text (`--set` and `--no-token`: run-record.md#identity).
 - Cross-check, once per platform: minecraft-launcher-lib's own command for the same versions must match the spec's main class, asset index and jars by content (ALC's check against Prism).
 
 ## mc-26.3 verified

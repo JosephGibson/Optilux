@@ -655,3 +655,24 @@ def test_a_name_from_the_network_or_a_config_stays_under_runtime(
     tools.write_text(json.dumps(pins), encoding="utf-8")
     with pytest.raises(install.InstallError, match="no plain file name"):
         install.install(tmp_path, "bench", False, quiet)
+
+
+def test_an_unpack_that_stops_leaves_no_jdk_that_reads_as_present(
+    tmp_path: Path, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The JDK lands under runtime/java/<build>/ only when its whole archive unpacked: a stop
+    midway (a full disk) leaves no java.exe that a later install would call present."""
+    real = zipfile.ZipFile.extractall
+
+    def stops(self: zipfile.ZipFile, path: object = None, *args: object, **kwargs: object) -> None:
+        self.extract(f"{JDK_BUILD}/bin/java.exe", path)  # type: ignore[arg-type]
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(zipfile.ZipFile, "extractall", stops)
+    with pytest.raises(install.InstallError, match="No space left"):
+        install.install(tmp_path, "bench", False, quiet)
+    home = tmp_path / "runtime" / "java" / JDK_BUILD
+    assert not (home / "bin" / "java.exe").exists()
+    monkeypatch.setattr(zipfile.ZipFile, "extractall", real)
+    outcome = install.install(tmp_path, "bench", False, quiet)
+    assert outcome.java["unpacked"] == "unpacked" and (home / "bin" / "java.exe").is_file()

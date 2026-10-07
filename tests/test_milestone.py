@@ -109,3 +109,30 @@ def test_a_git_status_that_fails_is_no_clean_tree(tmp_path: Path) -> None:
 
     with pytest.raises(repo.GitError, match="git status"):
         repo.changes(tmp_path)
+
+
+def test_a_remote_that_does_not_answer_is_refused(
+    cloned: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ls-remote past its limit, or a fetch past its own, refuses with the fix: no traceback."""
+    import subprocess
+
+    from optilux import repo
+
+    def slow(*args: object, **kwargs: object) -> str:
+        raise subprocess.TimeoutExpired("git ls-remote", 30)
+
+    monkeypatch.setattr(repo, "remote_sha", slow)
+    assert milestone.start(cloned, 1) == 1
+    assert "did not answer" in capsys.readouterr().err
+    monkeypatch.setattr(repo, "remote_sha", lambda root, branch: None)
+    real = repo.git
+
+    def no_fetch(root: Path, *args: str, timeout: float | None = None):
+        if args[:1] == ("fetch",):
+            raise subprocess.TimeoutExpired("git fetch", timeout or 0)
+        return real(root, *args, timeout=timeout)
+
+    monkeypatch.setattr(repo, "git", no_fetch)
+    assert milestone.start(cloned, 1) == 1
+    assert "did not answer" in capsys.readouterr().err

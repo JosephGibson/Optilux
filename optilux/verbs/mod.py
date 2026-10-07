@@ -72,14 +72,27 @@ class Outcome:
 
 
 Runner = Callable[[list[str], Path, dict[str, str], bool], int]
+# A build or a test run takes 10-20 s warm; the first one downloaded 1-2 GB (0.01.04): 30 min is
+# far past either, short of a hang.
+GRADLE_TIMEOUT = 1800.0
 
 
 def run_gradle(command: list[str], cwd: Path, env: dict[str, str], to_stderr: bool) -> int:
-    """Gradle's exit code; its output goes to the terminal (to stderr under --json). The tests
-    replace it."""
-    return subprocess.run(  # noqa: S603 argv list: the wrapper under mod/, no shell
-        command, cwd=cwd, env=env, stdout=sys.stderr if to_stderr else None
-    ).returncode
+    """Gradle's exit code; its output goes to the terminal (to stderr under --json). ModError
+    past GRADLE_TIMEOUT. The tests replace it."""
+    try:
+        return subprocess.run(  # noqa: S603 argv list: the wrapper under mod/, no shell
+            command,
+            cwd=cwd,
+            env=env,
+            stdout=sys.stderr if to_stderr else None,
+            timeout=GRADLE_TIMEOUT,
+        ).returncode
+    except subprocess.TimeoutExpired:
+        raise ModError(
+            f"Gradle ran past {GRADLE_TIMEOUT:g} s and was stopped; fix: look for a lock under "
+            "~/.gradle or a stalled download, then rerun"
+        ) from None
 
 
 def jar_metadata(path: Path) -> tuple[str, str]:

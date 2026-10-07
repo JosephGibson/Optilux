@@ -243,9 +243,14 @@ def perform(
             s.drain()
             session_facts["steps"] = s.steps
             session_facts["events"] = s.events
+            session_facts["stray"] = list(client.stray)
             if "A4" in spec.items:  # the game has exited here: its pack copy can go
                 session_facts["a4Cleanup"] = remove_broken(launched.game)
-        session_facts["logCheck"] = launch.check_log(raw / REQUESTS, launched.mod_token())
+            # Every session's request log, a failed one's too (m1-acceptance-1 and -2 had none).
+            try:
+                session_facts["logCheck"] = launch.check_log(raw / REQUESTS, launched.mod_token())
+            except (launch.LaunchError, OSError) as error:
+                session_facts["logCheck"] = {"tokenAbsent": False, "problem": str(error)}
         session_facts["readBack"] = launch.read_back(launched.game, launched.prelaunch)
         shutil.copyfile(launched.log, raw / "session-latest.log")
         recorded["optionsTxt"] = launched.facts["optionsFile"]  # as the game read it
@@ -325,6 +330,13 @@ def run(args: argparse.Namespace) -> int:
 
     try:
         found = perform(root, Path(args.spec), RunHost(), record.Machine(), say, announce)
+    except OSError as error:  # a file the run reads or writes before its session (a lock)
+        problem = f"{error}; fix: quit whatever holds or removed that file, then rerun"
+        if args.json:
+            print(json.dumps({"ok": False, "problem": problem}))
+        else:
+            print(f"{PREFIX}: {problem}", file=sys.stderr)
+        return 1
     except (record.RecordError, platform.PlatformError, launch.LaunchError) as error:
         if args.json:
             print(json.dumps({"ok": False, "problem": str(error)}))

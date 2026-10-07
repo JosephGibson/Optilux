@@ -1251,3 +1251,16 @@ def test_the_quits_kill_a_game_that_will_not_go(tmp_path: Path) -> None:
     with pytest.raises(launch.LaunchError, match="outlasted quit"):
         launch.quit_mod(client, process, FakeGame(tmp_path, None))  # type: ignore[arg-type]
     assert process.killed and client.closed
+
+
+def test_saved_pack_settings_refuse_a_launch_at_the_packs_defaults(tmp_path: Path) -> None:
+    """Iris.loadExternalShaderpack reads a pack's saved options from shaderpacks/<pack>.txt; a
+    launch at the pack's defaults (profile null) refuses one before writing anything."""
+    root = make_root(tmp_path)
+    game = root / "runtime" / PLATFORM / "game"
+    before = (game / "options.txt").read_bytes()
+    write(game / "shaderpacks" / "Ref.zip.txt", b"SHADOW_QUALITY=2\n")
+    host = FakeGame(game, FAKE_LOG)
+    with pytest.raises(launch.LaunchError, match=r"Ref\.zip\.txt holds saved settings"):
+        launch.launch(root, "spike", host=host)
+    assert host.started is None and (game / "options.txt").read_bytes() == before

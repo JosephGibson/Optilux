@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -132,6 +133,9 @@ public final class Protocol {
     private final ExecutorService workers;
     private final ScheduledExecutorService timers;
     private final Map<Object, Request> running = new HashMap<>();
+    // Mutating requests whose handler has not ended, an early answer notwithstanding: no
+    // measurement (an exclusive request) starts over one (docs/mod-protocol.md#envelope).
+    private final Set<Request> mutations = new HashSet<>();
     private volatile Connection connection;
 
     /**
@@ -339,10 +343,17 @@ public final class Protocol {
                 throw new Errors.Refused(Errors.BUSY, String.join(", ", state.held().keySet())
                     + " active: no mutation lands inside a measurement");
             }
+            if (command.exclusive() != null && !mutations.isEmpty()) {
+                throw new Errors.Refused(Errors.BUSY, mutations.iterator().next().command()
+                    + " is running: no measurement starts over a mutation");
+            }
             if (command.exclusive() != null && !state.acquire(command.exclusive(), request)) {
                 throw new Errors.Refused(Errors.BUSY, command.exclusive() + " is in use");
             }
             running.put(request.id, request);
+            if (command.mutating()) {
+                mutations.add(request);
+            }
         }
         Object timeout = request.args.get("timeoutSeconds");
         if (timeout instanceof Double seconds) {
@@ -355,6 +366,7 @@ public final class Protocol {
         } catch (RejectedExecutionException error) {
             answer(request, error(request.id, Errors.BUSY, "no worker is free"));
             release(request, false);
+            ended(request);
         }
     }
 
@@ -368,6 +380,7 @@ public final class Protocol {
         }
         if (!runs) {
             release(request, false); // answered before it started: the handler never runs
+            ended(request);
             return;
         }
         Map<String, Object> body;
@@ -395,6 +408,7 @@ public final class Protocol {
                 request.worker = null;
                 Thread.interrupted(); // an interrupt meant for this request ends with it
             }
+            ended(request);
         }
         boolean holds = ok && request.command.exclusiveUntil() != null;
         if (!holds) {
@@ -426,6 +440,11 @@ public final class Protocol {
                 }
             }
         }
+    }
+
+    /** The request's handler has ended (or never runs): a measurement may start over it now. */
+    private synchronized void ended(Request request) {
+        mutations.remove(request);
     }
 
     /** Answer early (timeout, cancel, disconnect, world leave) and interrupt a running handler. */
