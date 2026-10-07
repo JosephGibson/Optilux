@@ -6,7 +6,7 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 
 ## Concept
 - A platform is everything that changes with the Minecraft version or renderer: MC version, Java major, loader; renderer backend; mod tiers (exact files + sha512); data and resource pack formats; world snapshot; the mod adapter; quirks to re-verify.
-- Platform-independent: harness core, statistics, run-record schema; suite logic, docs, skills; the shader's pipeline spec; the exceptions at M1 in design.md#4-architecture.
+- Platform-independent: harness core, statistics, run-record schema; suite logic, docs, skills; the shader's pipeline spec. Exceptions at M1: design.md#4-architecture.
 
 ## mc-26.3
 - MC 26.3 released 2026-09-15 [S1]. Java 25 required since 26.1 (released 2026-03-24) [S2].

@@ -10,7 +10,7 @@ The harness installs the pinned Minecraft, Fabric, mods, Java and tools hash-che
 - `optilux run <spec>` runs an acceptance session and writes a JSON run record, with everything that can move a measurement, under results/records/. The mod's acceptance checks pass on unmodified Complementary Unbound in a provisional world: inert without the token, captures byte-identical to F2 screenshots, exact `/tp` placement, compile errors reported, input blocked, frames matched to PresentMon's clock, and the selftest; with a table of memory use over 50 shader reloads.
 - The bench world (seed 263) and its eleven views were chosen with the user.
 - CI runs the tests, ruff and pyright on Windows, and checks on every pull request the release its merge will create.
-- Versions are now MAJOR.MINOR.PATCH, kept in the file VERSION: this release is 0.2.0, each later milestone a minor release (0.3.0 next) and a patch release only for a fix. Releases are titled `Optilux <version>: <name>`.
+- Versions are now MAJOR.MINOR.PATCH, kept in the file VERSION: this release is 0.2.0, each later milestone before 1.0 a minor release (0.3.0 next) and a patch release only for a fix. Releases are titled `Optilux <version>: <name>`.
 
 ## 0.00 Foundation
 Foundation. Nothing to run yet: no shader pack to install and no benchmark to start.

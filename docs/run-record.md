@@ -1,5 +1,5 @@
 # Run record
-Status: draft; the identity contract, the record's fields and the run spec, split from measurement.md on 2026-10-06; measurement rules: measurement.md. As built, 0.01.08 to 0.01.12.4: optilux/record.py (the spec's checks, the identity, the writer, the tree hash), session.py's status rules and `run` for acceptance runs; measurement and calibration records come with M2.
+Status: draft; the identity contract, the record's fields and the run spec, split from measurement.md on 2026-10-06; measurement rules: measurement.md. As built, 0.01.08 to 0.01.13: optilux/record.py (the spec's checks, the identity, the writer, the tree hash), session.py's status rules and `run` for acceptance runs; measurement and calibration records come with M2.
 
 ## Record
 One JSON per session, failures included, committed under results/records/<name>.json. It is the ledger; there is no hand-written ledger.

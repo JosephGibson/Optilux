@@ -155,6 +155,8 @@ A7_HOLD_SECONDS = 1.5
 A7_PRIME_WAIT = 1.0
 
 
+# 26.3's chat screen as the mod names an open screen (GameAdapter: its class name), read live in
+# m1-acceptance-10's A7: the control's key opens it, the blocked key must not.
 CHAT_SCREEN = "net.minecraft.client.gui.screens.ChatScreen"
 
 
