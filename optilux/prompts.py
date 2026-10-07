@@ -142,8 +142,10 @@ def one_block(section: Section, file: str, what: str) -> str:
     return text
 
 
-def parse_phase(section: Section, milestone: int, previous: str | None, file: str) -> Prompt:
-    version, major, minor, title = PHASE.fullmatch(section.heading).groups()
+def parse_phase(
+    section: Section, match: re.Match[str], milestone: int, previous: str | None, file: str
+) -> Prompt:
+    version, major, minor, title = match.groups()
     name = f"`## {version}`"
     if not title:
         raise error(file, section.line, f"{name} has no title", f"write {name[:-1]} <title>`")
@@ -168,9 +170,9 @@ def parse(text: str, milestone: int, file: str = "docs/prompts/m<MM>.md") -> Pro
             raise error(file, section.line, detail, f"move `## {RESUME}` to the end")
         if section.heading == RESUME:
             resume = one_block(section, file, "the Resume prompt")
-        elif PHASE.fullmatch(section.heading):
+        elif match := PHASE.fullmatch(section.heading):
             previous = phases[-1].version if phases else None
-            phases.append(parse_phase(section, milestone, previous, file))
+            phases.append(parse_phase(section, match, milestone, previous, file))
         elif phases:
             detail = f"`## {section.heading}` is neither a phase nor `## {RESUME}`"
             fix = f"head it {form} or move it before the first phase"

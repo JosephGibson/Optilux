@@ -101,3 +101,11 @@ def test_verbs_are_registered() -> None:
     names = [verb.name for verb in cli.VERBS]
     assert "status" in names and "milestone" in names
     assert cli.build_parser().parse_args(["status", "--json"]).json is True
+
+
+def test_a_git_status_that_fails_is_no_clean_tree(tmp_path: Path) -> None:
+    """Outside a repository git status exits 128: that is an error, not an empty change list."""
+    from optilux import repo
+
+    with pytest.raises(repo.GitError, match="git status"):
+        repo.changes(tmp_path)

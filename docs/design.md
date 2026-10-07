@@ -75,7 +75,7 @@ user / Claude Code --skills--> optilux CLI (Python)
 - Mod protocol: mod-protocol.md.
   - Named pipe, JSON lines, token-gated.
   - Concurrent requests matched by id; push events.
-  - frameIndex + sinceReload + qpcNs on every answer.
+  - frameIndex + sinceReload + qpcNs on every result and event.
   - The harness adapts to `capabilities`, never to the MC version string.
 - Run spec (input) and run record (output): run-record.md.
 - Platform file: platform.md, config/platforms/mc-26.3.json.

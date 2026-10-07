@@ -26,7 +26,7 @@ public final class Errors {
     }
 
     /** A coded refusal: a handler throws it, the protocol answers {"ok": false, "error"}. */
-    public static final class Refused extends Exception {
+    @SuppressWarnings("serial") public static final class Refused extends Exception { // never serialized
         private final String code;
 
         public Refused(String code, String message) {

@@ -25,10 +25,11 @@ def section(name: str) -> str:
 
 
 def table_rows(text: str) -> list[list[str]]:
-    rows = []
-    for line in text.splitlines():
-        if line.startswith("| ") and not line.startswith("|---"):
-            rows.append([cell.strip() for cell in line.strip().strip("|").split("|")])
+    rows = [
+        [cell.strip() for cell in line.strip().strip("|").split("|")]
+        for line in text.splitlines()
+        if line.startswith("| ") and not line.startswith("|---")
+    ]
     return rows[1:]  # the header
 
 
@@ -161,11 +162,11 @@ def test_the_client_against_the_fake(tmp_path: Path) -> None:
     fake.refusals["state"] = ("not-ready", "no world")
     with pytest.raises(modclient.ModRefused, match="state: not-ready: no world"):
         client.request("state")
-    with pytest.raises(ValueError, match="frames.index: unknown argument x; it takes none"):
+    with pytest.raises(ValueError, match=r"frames.index: unknown argument x; it takes none"):
         client.request("frames.index", {"x": 1})
-    with pytest.raises(ValueError, match="no command camera.spin"):
+    with pytest.raises(ValueError, match=r"no command camera.spin"):
         client.request("camera.spin")
-    with pytest.raises(ValueError, match="hud.set.hideGui must be true or false"):
+    with pytest.raises(ValueError, match=r"hud.set.hideGui must be true or false"):
         client.request("hud.set", {"hideGui": 1})
     assert fake.emit("world.left", {"reason": "test"})
     event = client.next_event(5)
@@ -255,7 +256,7 @@ def test_the_fake_answers_busy_and_unsupported_as_the_mod(tmp_path: Path) -> Non
     worker = threading.Thread(target=lambda: client.request("frames.capture", capture))
     worker.start()
     time.sleep(0.1)
-    with pytest.raises(modclient.ModRefused, match="frames.capture: busy: capture is in use"):
+    with pytest.raises(modclient.ModRefused, match=r"frames.capture: busy: capture is in use"):
         client.request("frames.capture", capture)
     with pytest.raises(modclient.ModRefused, match="command: busy: capture active"):
         client.request("command", {"text": "/tick freeze", "timeoutSeconds": 5})
@@ -301,7 +302,7 @@ def test_the_game_helpers_against_the_fake(tmp_path: Path) -> None:
 
 
 def test_the_render_helpers_against_the_fake(tmp_path: Path) -> None:
-    client, fake = session(tmp_path)
+    client, _fake = session(tmp_path)
     client.hello()
     ready = client.ready(10, 0.5, 60)
     assert ready["limitedBy"] == "stableFrames" and ready["rendererCheck"]["holds"] is True
@@ -315,7 +316,7 @@ def test_the_render_helpers_against_the_fake(tmp_path: Path) -> None:
     assert event["event"] == "reload.done" and event["data"]["pack"] == "fake-pack.zip"
     after = client.request("frames.index")
     assert after["sinceReload"] == after["frameIndex"] - reloaded["reloadFrame"]
-    with pytest.raises(modclient.ModError, match="not the requested other.zip"):
+    with pytest.raises(modclient.ModError, match=r"not the requested other.zip"):
         client.shaders_reload(30, pack="other.zip")
     assert client.shaders_options()["values"] == {"FAKE_BOOL": True, "FAKE_VALUE": "2"}
     captured = client.frames_capture(tmp_path / "captures", 3, 30, every=1)
@@ -345,15 +346,15 @@ def test_a_capture_is_judged_by_its_files(tmp_path: Path) -> None:
     answer, folder = capture()
     assert modclient.verify_manifest(answer)["frames"] == 2
     (folder / "frame-00002.png").write_bytes(modfake.png(1, 1, bytes(4)))
-    with pytest.raises(modclient.ModError, match="frame-00002.png: sha256"):
+    with pytest.raises(modclient.ModError, match=r"frame-00002.png: sha256"):
         modclient.verify_manifest(answer)
     answer, folder = capture()
     (folder / "frame-00001.png").unlink()
-    with pytest.raises(modclient.ModError, match="frame-00001.png"):
+    with pytest.raises(modclient.ModError, match=r"frame-00001.png"):
         modclient.verify_manifest(answer)
     answer, folder = capture()
     (folder / "extra.png").write_bytes(b"")
-    with pytest.raises(modclient.ModError, match="does not list: extra.png"):
+    with pytest.raises(modclient.ModError, match=r"does not list: extra.png"):
         modclient.verify_manifest(answer)
     answer, folder = capture()
     (folder / "frame-00001.png").write_bytes(b"GIF89a")
@@ -374,17 +375,17 @@ def test_the_game_helpers_refuse_what_they_cannot_use(tmp_path: Path) -> None:
     client, fake = session(tmp_path)
     client.hello()
     fake.refusals["camera.get"] = ("not-ready", "not in a world")
-    with pytest.raises(modclient.ModRefused, match="camera.get: not-ready"):
+    with pytest.raises(modclient.ModRefused, match=r"camera.get: not-ready"):
         client.camera_get()
-    with pytest.raises(ValueError, match="camera.place: missing argument timeoutSeconds"):
+    with pytest.raises(ValueError, match=r"camera.place: missing argument timeoutSeconds"):
         client.request("camera.place", {"x": 0, "y": 0, "z": 0, "yaw": 0, "pitch": 0})
-    with pytest.raises(modclient.ModRefused, match="ticks.step: failed: ticks are not frozen"):
+    with pytest.raises(modclient.ModRefused, match=r"ticks.step: failed: ticks are not frozen"):
         client.ticks_step(1, 5)
     pose = {"x": 0, "y": 0, "z": 0, "yaw": 0, "pitch": 95}
-    with pytest.raises(modclient.ModRefused, match="camera.place: bad-request: .*pitch 95"):
+    with pytest.raises(modclient.ModRefused, match=r"camera.place: bad-request: .*pitch 95"):
         client.camera_place(pose, 5)
     assert client.camera_place(pose, 5, tp_semantics=True)["pose"]["pitch"] == 95  # no /tp here
-    with pytest.raises(modclient.ModRefused, match="camera.place: bad-request: .*the_moon"):
+    with pytest.raises(modclient.ModRefused, match=r"camera.place: bad-request: .*the_moon"):
         client.camera_place({**pose, "pitch": 0, "dimension": "minecraft:the_moon"}, 5)
     # A command the game ran without success, and an answer that lacks a field.
     real = fake._game
@@ -537,3 +538,124 @@ def test_sids_compare_in_full_form() -> None:
     assert winpipe.canonical_sid("SY") == "S-1-5-18"
     sid = winpipe.current_user_sid()
     assert winpipe.canonical_sid(sid) == sid
+
+
+def raw_peer(tmp_path: Path) -> tuple[modclient.Client, modclient.Stream]:
+    """A client on one end of a socket pair; the test writes the mod's side by hand."""
+    mine, theirs = modfake.socket_streams()
+    return modclient.Client(mine, TOKEN, tmp_path / "requests.jsonl", os.getpid()), theirs
+
+
+def read_request(stream: modclient.Stream) -> dict:
+    line = b""
+    while not line.endswith(b"\n"):
+        line += stream.read(65536)
+    return json.loads(line)
+
+
+STAMPS = {"frameIndex": 5, "sinceReload": 5, "qpcNs": 1}
+
+
+def test_a_line_whose_id_no_request_can_have_leaves_the_reader_running(tmp_path: Path) -> None:
+    """An id that is a list cannot key a request: the line is stray, and the answer after it
+    still reaches its request (the reader once died on it, and every wait timed out)."""
+    client, mod = raw_peer(tmp_path)
+
+    def answer() -> None:
+        request = read_request(mod)
+        mod.write(b'{"id":[1],"ok":true,"result":{}}\n')
+        mod.write(json.dumps({"id": request["id"], "ok": True, "result": STAMPS}).encode() + b"\n")
+
+    threading.Thread(target=answer, daemon=True).start()
+    assert client.request("frames.index", wait=2.0)["frameIndex"] == 5
+    assert client.stray == [{"id": [1], "ok": True, "result": {}}]
+    client.close()
+
+
+def test_an_answer_the_reader_takes_as_the_wait_ends_is_returned(tmp_path: Path) -> None:
+    """The reader pops the waiter, then sets its answer: a wait ending between the two is not a
+    timeout (the answer would be lost and a cancel sent for a request that completed)."""
+
+    class Slow(modclient.Client):
+        def _dispatch(self, line: bytes) -> None:
+            message = json.loads(line)
+            with self._lock:
+                waiter = self._pending.pop(message["id"])
+            time.sleep(0.6)  # past the request's wait
+            waiter.answer = message
+            waiter.done.set()
+
+    mine, mod = modfake.socket_streams()
+    client = Slow(mine, TOKEN, tmp_path / "requests.jsonl", os.getpid())
+
+    def answer() -> None:
+        request = read_request(mod)
+        mod.write(json.dumps({"id": request["id"], "ok": True, "result": STAMPS}).encode() + b"\n")
+
+    threading.Thread(target=answer, daemon=True).start()
+    assert client.request("frames.index", wait=0.3)["frameIndex"] == 5
+    client.close()
+
+
+def test_the_fake_refuses_the_capture_arguments_the_mod_refuses(tmp_path: Path) -> None:
+    client, _ = session(tmp_path)
+    client.hello()
+    for later in ({"flush": True}, {"align": {"after": 1}}, {"after": 3}):
+        args = {"directory": str(tmp_path / "c"), "count": 1, "timeoutSeconds": 10.0, **later}
+        with pytest.raises(modclient.ModRefused) as refused:
+            client.request("frames.capture", args)
+        assert refused.value.code == "unsupported", later
+    client.close()
+
+
+def test_input_block_waits_out_a_capture_that_answered_timeout(tmp_path: Path) -> None:
+    """The mod answers `timeout` first and frees the capture when its handler returns
+    (Protocol.stop): until then input.block answers busy, and A2's cleanup waits for it."""
+    client, fake = session(tmp_path)
+    client.hello()
+    fake.delays["frames.capture"] = 1.5
+    with pytest.raises(modclient.ModRefused) as refused:
+        client.frames_capture(tmp_path / "c", 1, 0.2, every=1)
+    assert refused.value.code == "timeout"
+    with pytest.raises(modclient.ModRefused) as busy:
+        client.input_block(True)
+    assert busy.value.code == "busy"
+    assert client.input_block_when_free(True, 5.0)["on"] is True
+    client.close()
+
+
+def test_the_manifest_check_refuses_an_unreadable_or_incomplete_manifest(tmp_path: Path) -> None:
+    client, _ = session(tmp_path)
+    client.hello()
+    shot = client.frames_capture(tmp_path / "c", 1, 10.0, every=1)
+    manifest = Path(shot["manifest"])
+    good = manifest.read_text(encoding="utf-8")
+    manifest.write_text("{not json", encoding="utf-8")
+    with pytest.raises(modclient.ModError, match=r"capture.json"):
+        modclient.verify_manifest(shot)
+    manifest.write_text("[]", encoding="utf-8")
+    with pytest.raises(modclient.ModError, match=r"capture.json"):
+        modclient.verify_manifest(shot)
+    data = json.loads(good)
+    del data["frames"][0]["swapQpcNs"]
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(modclient.ModError, match="swapQpcNs"):
+        modclient.verify_manifest({**shot, "frames": data["frames"]})
+    client.close()
+
+
+def test_a_request_in_flight_hears_the_pipe_close_at_once(tmp_path: Path) -> None:
+    """A game that dies mid-request ends the wait as ModGone, not after the full wait plus a
+    cancel to a dead pipe."""
+    client, mod = raw_peer(tmp_path)
+
+    def die() -> None:
+        read_request(mod)
+        mod.close()
+
+    threading.Thread(target=die, daemon=True).start()
+    began = time.monotonic()
+    with pytest.raises(modclient.ModGone, match="closed first"):
+        client.request("frames.index", wait=10.0)
+    assert time.monotonic() - began < 5.0
+    client.close()

@@ -77,7 +77,7 @@ Runner = Callable[[list[str], Path, dict[str, str], bool], int]
 def run_gradle(command: list[str], cwd: Path, env: dict[str, str], to_stderr: bool) -> int:
     """Gradle's exit code; its output goes to the terminal (to stderr under --json). The tests
     replace it."""
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 argv list: the wrapper under mod/, no shell
         command, cwd=cwd, env=env, stdout=sys.stderr if to_stderr else None
     ).returncode
 
@@ -233,7 +233,7 @@ def test_counts(results: Path) -> dict:
     """The JUnit XML reports' totals: tests, failures (errors included), skipped, classes."""
     counts = {"tests": 0, "failures": 0, "skipped": 0, "classes": 0}
     for report in sorted(results.glob("TEST-*.xml")):
-        suite = ElementTree.parse(report).getroot()
+        suite = ElementTree.parse(report).getroot()  # noqa: S314 Gradle's own reports, mod/build/
         counts["tests"] += int(suite.get("tests", 0))
         counts["failures"] += int(suite.get("failures", 0)) + int(suite.get("errors", 0))
         counts["skipped"] += int(suite.get("skipped", 0))

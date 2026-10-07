@@ -104,8 +104,15 @@ def tree_text(files: list[tuple[str, str]]) -> str:
 def tree_hash(folder: Path) -> tuple[str, int]:
     """The tree hash of a folder (docs/plans/m1.md 0.01.08): sha256 over its sorted relative paths
     and contents, as the sha256 of its manifest; and the file count."""
+    digest, count, _ = tree(folder)
+    return digest, count
+
+
+def tree(folder: Path) -> tuple[str, int, str]:
+    """tree_hash's hash and count, and the manifest they come from, from one read."""
     files = tree_files(folder)
-    return hashlib.sha256(tree_text(files).encode("utf-8")).hexdigest(), len(files)
+    text = tree_text(files)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest(), len(files), text
 
 
 # The views file.
@@ -335,11 +342,13 @@ def platform_identity(plat: platform.Platform, tier: str) -> dict:
     tier's chain; and the tier. The whole file's hash is recorded apart, never matched."""
     loaded = dict(plat.data)
     loaded["tiers"] = {name: plat.data["tiers"][name] for name in plat.chain(tier)}
-    return {"sha256": sha256_of(loaded), "tier": tier, "tiers": plat.chain(tier)}
+    # Notes stripped as the suite's are: a reworded `why` never forces a recalibration.
+    stripped = strip_notes(loaded)
+    return {"sha256": sha256_of(stripped), "tier": tier, "tiers": plat.chain(tier)}
 
 
 def file_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return platform.sha256(path)  # streamed: a world region or the A4 zip is never held whole
 
 
 def java_identity(java_home: Path, java_profile: dict, running: str) -> dict:
@@ -562,6 +571,12 @@ def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tu
             "fix: the display's optionsTxt"
         )
     screen = machine.display_mode(primary[0]["name"])
+    if screen.get("dpiAware") is not True:
+        raise RecordError(
+            "the display mode was read without DPI awareness (SetThreadDpiAwarenessContext "
+            "failed), so it may be a scaled size (D22); fix: rerun, and read record.Machine."
+            "display_mode if it repeats"
+        )
     resolution = f"{screen['width']}x{screen['height']}"
     if resolution != display["resolution"]:
         raise RecordError(
@@ -570,6 +585,13 @@ def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tu
             "system settings)"
         )
     hags = machine.registry(GRAPHICS_DRIVERS, "HwSchMode")
+    driver = machine.driver(primary[0]["adapter"])
+    if driver is None:
+        raise RecordError(
+            f"no driver key under HKLM\\{DISPLAY_CLASS} has DriverDesc {primary[0]['adapter']!r}, "
+            "and the record notes the driver version (AGENTS.md); fix: find the adapter's key "
+            "there and correct record.Machine.driver's match"
+        )
     found = {
         "gpu": primary[0]["adapter"],
         "hags": hags == HAGS_ON,
@@ -578,7 +600,7 @@ def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tu
         "windowsBuild": machine.windows_build(),
     }
     recorded = {
-        "driver": machine.driver(primary[0]["adapter"]),
+        "driver": driver,
         "windowsRevision": machine.registry(CURRENT_VERSION, "UBR"),
         "display": {
             "name": primary[0]["name"],

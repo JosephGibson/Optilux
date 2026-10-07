@@ -31,6 +31,7 @@ import struct
 import threading
 import time
 import zlib
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -203,7 +204,7 @@ class Fake:
                     if skipping:
                         skipping = False
                     else:
-                        self._line(line.removesuffix(b"\r"))
+                        self._line(line.removesuffix(b"\r"), write)
                 if not skipping and len(buffer) > modclient.MAX_LINE:
                     write(self._error(None, "line-too-long", "the line passed 1 MiB"))
                     buffer, skipping = b"", True
@@ -251,8 +252,7 @@ class Fake:
     def _error(self, request_id: Any, code: str, message: str) -> dict:
         return {"id": request_id, "ok": False, "error": {"code": code, "message": message}}
 
-    def _line(self, raw: bytes) -> None:
-        write = self._write
+    def _line(self, raw: bytes, write: Callable[[dict], None]) -> None:
         try:
             message = modclient.strict_json(raw.decode("utf-8"))
         except UnicodeDecodeError:
@@ -337,9 +337,12 @@ class Fake:
         command = self.commands["byName"][name]
         with self._lock:
             resource = command.get("exclusive")
-            if resource is not None and self._held.get(resource) == request_id:
-                if not (ok and command.get("exclusiveUntil")):
-                    del self._held[resource]
+            if (
+                resource is not None
+                and self._held.get(resource) == request_id
+                and not (ok and command.get("exclusiveUntil"))
+            ):
+                del self._held[resource]
             if ok:
                 for other in self.commands["commands"]:
                     if other.get("exclusiveUntil") == name:
@@ -357,11 +360,16 @@ class Fake:
             if self._running.pop(request_id, None) is None:
                 return
             write = self._write
-        if timed_out:
-            answer = self._error(request_id, "timeout", f"timeoutSeconds {own} expired")
-        else:
-            answer = self._answer(request_id, name, args)
-        self._free(name, request_id, ok=not timed_out)
+        if timed_out and own is not None:
+            # The mod's order (Protocol.stop): `timeout` goes out first, and the resource stays
+            # held until the stopped handler returns.
+            if write is not None:
+                write(self._error(request_id, "timeout", f"timeoutSeconds {own} expired"))
+            stop.wait(delay - own)
+            self._free(name, request_id, ok=False)
+            return
+        answer = self._answer(request_id, name, args)
+        self._free(name, request_id, ok=True)
         if write is not None:
             write(answer)
 
@@ -444,6 +452,12 @@ class Fake:
 
     def _capture(self, args: dict) -> dict:
         """frames.capture as the mod writes it: PNGs and capture.json in a new attempt folder."""
+        for later in ("align", "flush", "after"):
+            if args.get(later) not in (None, False):
+                raise Refusal(
+                    "unsupported",
+                    f"frames.capture.{later} is not built in this mod (align M3, flush M5)",
+                )
         directory = Path(args["directory"])
         if not directory.is_absolute():
             raise Refusal("bad-request", f"frames.capture.directory {directory} is not absolute")

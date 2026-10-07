@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 closed (release v0.00.06); M1 in progress: 0.01.11 (the bench world and its views) is the last phase done, next 0.01.12, review and cleanup. Latest stop: handoff.md.
+Status: M0 closed (release v0.00.06); M1 in progress: 0.01.12 (review and cleanup) is the last phase done, next 0.01.13, debug, timing and the acceptance re-run. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -95,26 +95,27 @@ The QA pass is two phases (D27, D28): this offline half, then 0.01.13 with the g
 - Estimate: 2 h; machine: 2-6 launches.
 
 ### QA pass open questions
-handoff.md's open questions on 2026-10-07, each with the phase or milestone that closes it.
+handoff.md's open questions on 2026-10-07, each with the phase or milestone that closes it; 0.01.12's outcomes in its handoff.
 
 | Open question | Lands in | How |
 |---|---|---|
-| The views session's driver: the mod held connected while the user flies | 0.01.11 | solved for that session; whatever it commits is reviewed in 0.01.12 |
+| The views session's driver | closed in 0.01.12 | nothing committed (scratch tools under results/raw/views-flights/tools/, ignored); if M2's world prep reuses them, their file queue takes requests without the token |
 | PresentMode reads "Composed: Copy with GPU GDI" against the spike's "Hardware: Independent Flip" | 0.01.13; M2 | the cause found with one variable per launch, at most two extra launches, no system setting changed; fixed if a file Optilux writes causes it; M2's validity rules decide whether composed copy may be measured |
-| A2's F2 press checks only `focused`, where A7's injections also require the game's window in the foreground (run.py `inject`); no test covers either check | 0.01.12 | A2's press takes A7's check; both tested on a fake; 0.01.13's run shows it live |
+| A2's F2 press checked only `focused` | landed in 0.01.12 | A2 starts and presses through A7's check (session.in_front, acceptance.inject), tested on fakes; 0.01.13's run shows it live |
 | The live world differs from its snapshot after every launch | M2 | `world restore`; until then every run retakes the snapshot first |
-| Byte caps: AGENTS.md 0, platform.md 54, mod.md 36, plans/m1.md 31, prompts/m1.md 20 bytes of margin | 0.01.12 | margin regained by cutting duplicated text, never by splitting a doc by concern |
+| Byte caps | landed in 0.01.12 | duplicated text cut: AGENTS.md 98 bytes of margin, platform.md 82, mod.md 98, plans/m1.md 147, prompts/m1.md 201 |
 | A9's capture: 46 s for 120 frames at 4K, the readback on the render thread | M2 | the session budget, with 0.01.13's step times; an asynchronous readback changes the capture path and the jar |
-| release.yml on ubuntu-latest, CI on windows-latest | 0.01.12 | CI's zip artifact and a local `pack build` compared by sha256 (DEFLATE output can vary with the zlib build), a difference being a defect; release.yml to windows-latest, so the released zip is built as CI builds it (one run per milestone) |
-| VS Code's Java and Gradle extensions import mod/; `launch` does not look for a running Gradle | 0.01.12; M2 | the gate refuses a running Gradle build and records other java processes, as it records AMD's PresentMon; M2's validity rules decide what blocks a measured run |
+| release.yml on ubuntu-latest, CI on windows-latest | landed in 0.01.12 | release.yml on windows-latest; CI's zip and a local `pack build` compared by sha256 (handoff.md) |
+| VS Code's Java and Gradle extensions import mod/; `launch` did not look for a running Gradle | landed in 0.01.12; M2 | the gate refuses a Gradle build and records the other JVMs (0.01.12's launch recorded three idle daemons); M2's validity rules decide what blocks a measured run |
 | Gradle's other downloads trusted by coordinate | M2 | revisited with the mod's next dependency change; verification metadata not taken in the QA pass (D28) |
-| A JVM fatal-error log would list the token | 0.01.12 | the security dimension: closed with evidence if the token dies with its launch, else moved off the command line |
+| A JVM fatal-error log would list the token | closed in 0.01.12 | the token dies with its launch: fresh per launch, one pipe per JVM, a stale token finds no pipe or answers unauthenticated, the gate keeps launches apart (handoff.md) |
 | Whether `/function` reports success without `/return` on 26.3 | 0.01.13 | read once through `command` in the timed session |
-| 0.01.11: options.txt keeps the game's inactivityFpsLimit "afk" (not in display.optionsTxt): 30 fps after a minute without player input, 10 fps after 9 more | 0.01.12 | display.optionsTxt writes "minimized" (an identity change, before M2 calibrates) with its test; 0.01.13's session runs uncapped without input |
-| 0.01.11: world prep's kill spares only the dragon and optilux_bench, so it takes end_dragon's ten end crystals and the untagged mobs behind the entities view | 0.01.12; M2 | suite.json world.setup and measurement.md: the kill also spares minecraft:end_crystal; M2's prep implements it and retakes the reference frames |
-| 0.01.11: the entities frame shows no hand; the capture point follows renderLevel, which skips the hand when the GUI is hidden (F1 or hud.set hideGui), so a session hiding the GUI never shows the held torch | 0.01.12 | the phase's one launch, on world spike (bench_263 stays equal to its snapshot): creative, a torch in hand, hud.set hideGui false, one frames.capture; the frame shows the hand or not; measurement.md#session then says how the entities view's HUD is set |
-| 0.01.11: the user's End city candidate, (317.1, 75.1, 1054.8) in the End, 1,058 blocks from the main island | 0.01.12 | D29: role end_city in suite.json viewRoles after entities (end, time 6000, clear, pitchHint -10; stresses: End sky over the outer islands, purpur, end-rod light, chorus; pick: an End city on an outer island); its view in config/views/bench_263.json from 0.01.11's kept pose and frame (the snapshot holds its chunks), the file's use text and measurement.md's role count to eleven, the views test |
-| 0.01.11: the candidate worlds bench_7800 and bench_20261005 under runtime/mc-26.3/game/saves/ | 0.01.12 | D30: deleted once no views file, snapshot, record or spec names them, the one runtime/ write outside install, launch, mod build, run and the game |
+| options.txt kept the game's inactivityFpsLimit "afk": 30 fps after a minute without input | landed in 0.01.12 | display.optionsTxt writes "minimized", read back in 0.01.12's launch; 0.01.13's session runs uncapped without input |
+| World prep's kill took end_dragon's end crystals | landed in 0.01.12; M2 | suite.json world.setup and measurement.md spare minecraft:end_crystal; M2's prep implements it and retakes the reference frames |
+| The entities frame showed no hand | landed in 0.01.12 | hiding the GUI also drops the held item (0.01.12's two frames); measurement.md#session hides it at every view but entities; M2's session sets it per view |
+| The End city view | landed in 0.01.12 | D29: end_city, suite.json's eleventh role, in config/views/bench_263.json and measurement.md; M2 pre-generates a second End area |
+| The candidate worlds bench_7800 and bench_20261005 | the user | D30's deletion was refused by the session's permission classifier (2026-10-07); nothing names them: the user deletes the two folders under runtime/mc-26.3/game/saves/ |
+| 0.01.12's review findings assigned onward (handoff.md) | 0.01.13; M2 | 0.01.13: the token check on a failed session's request log, `run`'s errors before its session, stray `id: null` answers; M2, before it calibrates: the identity rows (unwritten options matched, PresentMon and the harness in identity, the render target against the display, HAGS as applied, identity read before the session, the suite's descriptive copies), the mod's rows (busy both ways, capture.json's `every` an integer, a hello after its disconnect, a stopped capture's frames, an Error on the pipe thread, dead code), PresentMon's waits re-reading the CSV, Gradle's and git fetch's timeouts, the JDK unpack, perform's session skeleton |
 
 ## M1 to M6
 One line each, from design.md#6-milestones; phase lists are provisional until each plan is approved. F and Q numbers refer to Findings assigned.

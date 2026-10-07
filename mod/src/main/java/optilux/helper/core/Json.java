@@ -51,7 +51,7 @@ public final class Json {
     }
 
     /** A line that is not one strict JSON value; the message says where. */
-    public static final class Malformed extends Exception {
+    @SuppressWarnings("serial") public static final class Malformed extends Exception { // never serialized
         public Malformed(String message) {
             super(message);
         }

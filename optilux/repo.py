@@ -31,7 +31,7 @@ def git(root: Path, *args: str, timeout: float | None = None) -> subprocess.Comp
     command = ["git", *args]
     # git writes commit messages in UTF-8 (i18n.logOutputEncoding); Windows' locale code page
     # would misread or refuse a non-ASCII subject that the Linux CI reads fine.
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603 argv list, no shell
         command,
         cwd=root,
         env=env,
@@ -115,8 +115,12 @@ def newest_version(root: Path, ref: str = "HEAD") -> str | None:
 
 
 def changes(root: Path) -> list[str]:
-    """`git status --porcelain` lines: empty when the tree is clean."""
-    return (read(root, "status", "--porcelain") or "").splitlines()
+    """`git status --porcelain` lines: empty when the tree is clean; GitError when git status
+    fails (outside a repository, a safe.directory refusal), which is no clean tree."""
+    result = git(root, "status", "--porcelain")
+    if result.returncode != 0:
+        raise GitError(f"git status failed: {failure(result)}")
+    return result.stdout.strip().splitlines()
 
 
 def hooks_path(root: Path) -> str | None:

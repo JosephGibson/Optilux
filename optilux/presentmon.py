@@ -12,13 +12,15 @@ A9's row match lives here too: the rows of a capture's span against the capture'
 builds the session and the window cut on this.
 """
 
+import contextlib
 import csv
 import io
+import itertools
 import signal
 import statistics
 import subprocess
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -58,7 +60,7 @@ class Host:
     def start(self, command: list[str], log: Path) -> Process:
         log.parent.mkdir(parents=True, exist_ok=True)
         with log.open("wb") as out:  # the child holds its own handle
-            return subprocess.Popen(
+            return subprocess.Popen(  # noqa: S603 argv list from tools.json's pinned exe
                 command,
                 stdin=subprocess.DEVNULL,
                 stdout=out,
@@ -74,10 +76,9 @@ class Host:
         import ctypes
 
         if hasattr(signal, "SIGBREAK"):
-            try:
+            # Off the main thread signal() raises ValueError: the handler stays as it is.
+            with contextlib.suppress(ValueError):
                 signal.signal(signal.SIGBREAK, signal.SIG_IGN)
-            except ValueError:  # not the main thread: the handler stays as it is
-                pass
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
         kernel32.GenerateConsoleCtrlEvent.argtypes = [ctypes.c_uint32, ctypes.c_uint32]
         kernel32.GenerateConsoleCtrlEvent.restype = ctypes.c_int
@@ -118,7 +119,6 @@ class Recording:
     log: Path
     command: list[str]
     started: float
-    facts: dict = field(default_factory=dict)
 
 
 def tail(path: Path, size: int = 400) -> str:
@@ -173,7 +173,8 @@ def stop(found: Recording, host: Host) -> dict:
         code = process.wait(STOP_TIMEOUT if error == 0 else 0)
     except subprocess.TimeoutExpired:
         process.kill()
-        process.wait(STOP_TIMEOUT)
+        with contextlib.suppress(subprocess.TimeoutExpired):  # the error below says it all
+            process.wait(STOP_TIMEOUT)
         why = (
             f"outlasted CTRL_BREAK_EVENT by {STOP_TIMEOUT:.0f} s"
             if error == 0
@@ -308,11 +309,9 @@ def a9_match(rows: list[dict], frames: list[dict], limit_ms: float = A9_LIMIT_MS
     if any(not f.get("swapQpcNs") for f in stamps):
         return {"pass": False, "problem": "a frame carries no swap stamp (swapQpcNs 0)"}
     indexes = [f["frameIndex"] for f in stamps]
-    gaps = [b - a for a, b in zip(indexes, indexes[1:], strict=False) if b - a != 1]
+    gaps = [b - a for a, b in itertools.pairwise(indexes) if b - a != 1]
     swaps = [f["swapQpcNs"] for f in stamps]
-    shortest = (
-        min(b - a for a, b in zip(swaps, swaps[1:], strict=False)) / 1e6 if len(swaps) > 1 else None
-    )
+    shortest = min(b - a for a, b in itertools.pairwise(swaps)) / 1e6 if len(swaps) > 1 else None
     half_ns = round((limit_ms if shortest is None else shortest / 2) * 1e6)
     first, last = swaps[0], swaps[-1]
     span = span_rows(rows, first, last, half_ns)

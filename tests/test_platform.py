@@ -113,7 +113,7 @@ def pin(slug: str, digest: str = "ab" * 64) -> dict:
 
 
 def test_refuses_a_bad_file_tier_or_pin(tmp_path: Path) -> None:
-    with pytest.raises(platform.PlatformError, match="config/suite.json names no platform"):
+    with pytest.raises(platform.PlatformError, match=r"config/suite.json names no platform"):
         platform.current_id(tmp_path)
     (tmp_path / "config").mkdir()
     (tmp_path / "config" / "suite.json").write_text('{"platform": "mc-fixture"}')
@@ -139,16 +139,16 @@ def test_refuses_a_bad_file_tier_or_pin(tmp_path: Path) -> None:
     )
     plat = platform.load(tmp_path)
     assert [p.file for p in plat.tier_files("bench")] == ["a.jar"]
-    with pytest.raises(platform.PlatformError, match="tier 'nope' is not in mc-fixture.json; fix"):
+    with pytest.raises(platform.PlatformError, match=r"tier 'nope' is not in mc-fixture.json; fix"):
         plat.tier_files("nope")
     with pytest.raises(platform.PlatformError, match="tier 'loop' extends itself"):
         plat.tier_files("loop")
-    with pytest.raises(platform.PlatformError, match="lists a file twice: a.jar"):
+    with pytest.raises(platform.PlatformError, match=r"lists a file twice: a.jar"):
         plat.tier_files("twice")
     with pytest.raises(platform.PlatformError, match="sha512 is not 128 hex digits"):
         plat.tier_files("short")
     with pytest.raises(
-        platform.PlatformError, match="blank mod c in mc-fixture.json has no version"
+        platform.PlatformError, match=r"blank mod c in mc-fixture.json has no version"
     ):
         plat.tier_files("blank")
 
@@ -279,10 +279,10 @@ def test_spec_diff_skips_notes_and_names_added_and_removed_facts() -> None:
 
 def test_build_spec_refuses_a_bad_profile() -> None:
     bare = json.loads((FIXTURES / "fabric-loader-0.19.5-26.3.json").read_text(encoding="utf-8"))
-    with pytest.raises(platform.PlatformError, match="fabric-loader:0.19.5 carries no sha1; fix"):
+    with pytest.raises(platform.PlatformError, match=r"fabric-loader:0.19.5 carries no sha1; fix"):
         platform.build_spec("mc-26.3", version_json(NEW), source(NEW), bare, PROFILE_URL)
     other = {**profile(), "inheritsFrom": "26.4"}
-    with pytest.raises(platform.PlatformError, match="inherits from '26.4', not version '26.3'"):
+    with pytest.raises(platform.PlatformError, match=r"inherits from '26.4', not version '26.3'"):
         platform.build_spec("mc-26.3", version_json(NEW), source(NEW), other, PROFILE_URL)
 
 
@@ -292,7 +292,17 @@ def test_load_spec(tmp_path: Path) -> None:
     assert path == tmp_path / "config" / "platforms" / "mc-fixture.launch.json"
     path.parent.mkdir(parents=True)
     path.write_text("{broken")
-    with pytest.raises(platform.PlatformError, match="is not JSON .*; fix: `install --refresh`"):
+    with pytest.raises(platform.PlatformError, match=r"is not JSON .*; fix: `install --refresh`"):
         platform.load_spec(tmp_path, "mc-fixture")
     path.write_text(platform.spec_text({"schema": 1}))
     assert platform.load_spec(tmp_path, "mc-fixture") == {"schema": 1}
+
+
+def test_a_pinned_file_name_is_one_plain_name(tmp_path: Path) -> None:
+    """A file name from the platform file is joined under runtime/: it may not climb out."""
+    for bad in ("../a.jar", "mods/a.jar", "..", "a\\b.jar"):
+        write_platform(
+            tmp_path, fixture_platform(bench={"extends": None, "mods": [{**pin("a"), "file": bad}]})
+        )
+        with pytest.raises(platform.PlatformError, match="plain file name"):
+            platform.load(tmp_path).tier_files("bench")

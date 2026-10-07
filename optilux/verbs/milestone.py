@@ -35,7 +35,11 @@ def start(root: Path, number: int) -> int:
         return refuse(f"{root} is not a git repository", "run inside the Optilux checkout")
     if not repo.has_remote(root):
         return refuse("no `origin` remote", "`git remote add origin <url>` first")
-    if changes := repo.changes(root):
+    try:
+        changes = repo.changes(root)
+    except repo.GitError as error:
+        return refuse(str(error), "run inside the Optilux checkout")
+    if changes:
         shown = "; ".join(change.strip() for change in changes[:5])
         return refuse(f"the tree is not clean ({len(changes)} changes: {shown})", "commit first")
     if repo.local_branch_exists(root, branch):

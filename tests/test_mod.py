@@ -90,7 +90,7 @@ def make_root(tmp_path: Path) -> Path:
             {"path": "libraries/a.jar", "sha1": "0" * 40, "from": "mojang:a"},
             {
                 "path": "versions/26.3/26.3.jar",
-                "sha1": hashlib.sha1(CLIENT).hexdigest(),
+                "sha1": hashlib.sha1(CLIENT, usedforsecurity=False).hexdigest(),
                 "from": "mojang:client",
             },
         ]
@@ -159,7 +159,7 @@ def test_depends_are_exact_at_the_versions_the_pinned_jars_declare(tmp_path: Pat
     }  # the bench tier only: dev's viewfinder is no dependency
     store = root / "runtime" / PLATFORM / "files"
     write(store / MODS["iris"][0], jar({"id": "iris", "version": "9"}))
-    with pytest.raises(mod_verb.ModError, match="store jar .*iris-fabric-1.11.7.*: sha512 "):
+    with pytest.raises(mod_verb.ModError, match=r"store jar .*iris-fabric-1.11.7.*: sha512 "):
         mod_verb.depends(root, plat)
     # A jar on its pin that declares no version is refused, never guessed.
     bare = jar({"id": "iris"})
@@ -188,12 +188,12 @@ def test_inputs_name_the_versions_and_the_pinned_jars(tmp_path: Path) -> None:
     assert data["targetJars"][0] == {
         "path": f"{base}/versions/26.3/26.3.jar",
         "algorithm": "sha1",
-        "digest": hashlib.sha1(CLIENT).hexdigest(),
+        "digest": hashlib.sha1(CLIENT, usedforsecurity=False).hexdigest(),
     }
     assert [t["algorithm"] for t in data["targetJars"]] == ["sha1", "sha512", "sha512"]
     assert data["platformFile"] == plat.path.as_posix() and data["store"] == f"{base}/files"
     write(root / "runtime" / PLATFORM / "versions" / "26.3" / "26.3.jar", b"other")
-    with pytest.raises(mod_verb.ModError, match="client jar .*26.3.jar: sha1 "):
+    with pytest.raises(mod_verb.ModError, match=r"client jar .*26.3.jar: sha1 "):
         mod_verb.inputs(root, plat)
 
 
@@ -271,7 +271,7 @@ def test_test_runs_junit_and_counts_its_reports(tmp_path: Path) -> None:
         mod_verb.ModError, match=r"Gradle exited 1 after .* \(2 of 7 tests failed\)"
     ):
         mod_verb.mod(root, "test", quiet, runner=FakeGradle(1, (5, 2, 0)), host=FakeHost())
-    with pytest.raises(mod_verb.ModError, match="JUnit reports .*'tests': 0,"):
+    with pytest.raises(mod_verb.ModError, match=r"JUnit reports .*'tests': 0,"):
         mod_verb.mod(root, "test", quiet, runner=FakeGradle(0, None), host=FakeHost())
 
 
@@ -292,7 +292,7 @@ def test_a_running_game_or_a_missing_jdk_runs_no_gradle(tmp_path: Path) -> None:
     ):
         mod_verb.mod(root, "build", quiet, runner=gradle, host=FakeHost([game]))
     (root / "runtime" / "java" / BENCH["runtime"]["build"] / "bin" / "java.exe").unlink()
-    with pytest.raises(mod_verb.ModError, match="bin/java.exe; fix: run `optilux install`"):
+    with pytest.raises(mod_verb.ModError, match=r"bin/java.exe; fix: run `optilux install`"):
         mod_verb.mod(root, "build", quiet, runner=gradle, host=FakeHost())
     assert gradle.calls == []
 

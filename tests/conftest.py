@@ -3,6 +3,7 @@ not this checkout before anything is written (docs/workflow.md#testing), and the
 Windows-only tests on other systems (docs/plans/m1.md D19)."""
 
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
@@ -10,6 +11,14 @@ from pathlib import Path
 import pytest
 
 from optilux import REPO_ROOT
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Every pytest process ignores CTRL_BREAK: test_presentmon sends a real one to a child's
+    group, and should the group be gone the console hands it to every process on it, the
+    parallel run's other workers included (presentmon.Host.ctrl_break)."""
+    if hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, signal.SIG_IGN)
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
@@ -27,7 +36,9 @@ def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProce
     # Inside a hook, GIT_INDEX_FILE and GIT_DIR would point at this repo; strip every GIT_*.
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     command = ["git", *args]
-    return subprocess.run(command, cwd=repo, env=env, capture_output=True, text=True, check=check)
+    return subprocess.run(  # noqa: S603 git and its arguments, no shell
+        command, cwd=repo, env=env, capture_output=True, text=True, check=check
+    )
 
 
 def fresh_repo(path: Path, branch: str) -> Path:

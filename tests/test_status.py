@@ -315,7 +315,7 @@ def test_standing_prompts_of_this_repo() -> None:
 )
 def test_standing_faults_name_the_fix(tmp_path: Path, text: str, detail: str) -> None:
     (tmp_path / "docs" / "prompts").mkdir(parents=True)
-    with pytest.raises(prompts.PromptError, match="standing.md: no such file; fix: restore"):
+    with pytest.raises(prompts.PromptError, match=r"standing.md: no such file; fix: restore"):
         prompts.load_standing(tmp_path)
     (tmp_path / prompts.STANDING).write_text(text, encoding="utf-8")
     with pytest.raises(prompts.PromptError) as caught:

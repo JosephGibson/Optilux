@@ -339,3 +339,40 @@ def test_a9_on_the_real_spans_and_stamps(run: str, pid: str, swap: tuple, head: 
     assert (found["headOffsetMs"]["median"], found["headOffsetMs"]["absMax"]) == head
     first_row = presentmon.qpc_ns(sorted(rows, key=presentmon.qpc_ns)[2])
     assert (first_row > frames["frames"][0]["qpcNs"]) is (run == "5")
+
+
+def test_presentmons_session_prefix_is_the_one_the_launch_gate_reads() -> None:
+    """A run killed mid-A9 leaves its ETW session; the next launch's gate finds it by prefix."""
+    from optilux import launch
+
+    assert presentmon.SESSION_PREFIX == launch.OWN_SESSION
+
+
+def test_a_presentmon_that_survives_its_kill_still_fails_with_the_fix(tmp_path: Path) -> None:
+    """The kill's own wait timing out is said in the error, never raised over it."""
+
+    class Undying(FakeProcess):
+        def kill(self) -> None:
+            self.killed = True  # still running
+
+    found, host = started(tmp_path, Undying(deaf=True))
+    with pytest.raises(presentmon.PresentMonError, match="logman stop optilux-run-1 -ets"):
+        presentmon.stop(found, host)
+
+
+def test_a_presentmon_that_exits_nonzero_on_the_break_fails(tmp_path: Path) -> None:
+    class Failing(FakeHost):
+        def ctrl_break(self, pid: int) -> int:
+            self.process.returncode = 2
+            return 0
+
+    found, _ = started(tmp_path, FakeProcess())
+    with pytest.raises(presentmon.PresentMonError, match="exited with code 2"):
+        presentmon.stop(found, Failing(found.process))
+
+
+def test_a9_refuses_a_frame_without_a_swap_stamp() -> None:
+    frames = [{"frameIndex": 1, "qpcNs": 7_000_000, "swapQpcNs": 0}]
+    found = presentmon.a9_match([], frames)
+    assert found["pass"] is False and "swap stamp" in found["problem"]
+    assert presentmon.a9_match([], [])["pass"] is False

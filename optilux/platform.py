@@ -118,14 +118,17 @@ class Platform:
     def tier_files(self, tier: str) -> list[Pinned]:
         """Every pinned file a tier needs: its chain's mods and resource packs, then the reference
         packs; PlatformError on a malformed pin or a file name listed twice."""
-        files: list[Pinned] = []
-        for name in self.chain(tier):
-            for key, kind in LISTS.items():
-                for entry in self.data["tiers"][name].get(key, []):
-                    if "file" in entry:
-                        files.append(self._pinned(entry, kind, name))
-        for entry in self.data.get(REFERENCE_PACKS, []):
-            files.append(self._pinned(entry, "referencePack", REFERENCE_PACKS))
+        files = [
+            self._pinned(entry, kind, name)
+            for name in self.chain(tier)
+            for key, kind in LISTS.items()
+            for entry in self.data["tiers"][name].get(key, [])
+            if "file" in entry
+        ]
+        files += [
+            self._pinned(entry, "referencePack", REFERENCE_PACKS)
+            for entry in self.data.get(REFERENCE_PACKS, [])
+        ]
         names = [pinned.file for pinned in files]
         twice = sorted({name for name in names if names.count(name) > 1})
         if twice:
@@ -136,18 +139,23 @@ class Platform:
 
     def pending(self, tier: str) -> list[str]:
         """The mods of a tier's chain pinned without a file (no build for this version yet)."""
-        found = []
-        for name in self.chain(tier):
-            for entry in self.data["tiers"][name].get("mods", []):
-                if "file" not in entry:
-                    found.append(f"{entry['slug']}: {entry.get('why', entry.get('status', ''))}")
-        return found
+        return [
+            f"{entry['slug']}: {entry.get('why', entry.get('status', ''))}"
+            for name in self.chain(tier)
+            for entry in self.data["tiers"][name].get("mods", [])
+            if "file" not in entry
+        ]
 
     def _pinned(self, entry: dict, kind: str, tier: str) -> Pinned:
         where = f"{tier} {kind} {entry.get('slug', '?')} in {self.path.name}"
         for key in ("slug", "version", "file", "modrinthVersionId", "sha512"):
             if not entry.get(key):
                 raise PlatformError(f"{where} has no {key}; fix: pin it from Modrinth")
+        if not plain_name(entry["file"]):
+            raise PlatformError(
+                f"{where}: file {entry['file']!r} is not a plain file name; fix: name the file "
+                "alone (it is joined under runtime/)"
+            )
         digest = entry["sha512"]
         if len(digest) != SHA512_DIGITS or any(ch not in "0123456789abcdef" for ch in digest):
             raise PlatformError(f"{where}: sha512 is not {SHA512_DIGITS} hex digits; fix: re-pin")
@@ -160,6 +168,11 @@ class Platform:
             sha512=digest,
             tier=tier,
         )
+
+
+def plain_name(name: str) -> bool:
+    """One path part that stays where it is joined: no separator, not . or .."""
+    return name not in ("", ".", "..") and "/" not in name and "\\" not in name
 
 
 def current_id(root: Path) -> str:

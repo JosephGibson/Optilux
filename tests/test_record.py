@@ -13,8 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from optilux import REPO_ROOT, launch, platform, record
-from optilux.verbs import run
+from optilux import REPO_ROOT, acceptance, launch, modclient, platform, record, session
 
 PLAT = platform.load(REPO_ROOT)
 SUITE = json.loads((REPO_ROOT / platform.SUITE).read_text(encoding="utf-8"))
@@ -308,10 +307,10 @@ def test_the_system_facts_come_from_the_primary_display() -> None:
 
 
 def test_a_display_or_window_mode_off_the_suite_is_refused() -> None:
-    with pytest.raises(record.RecordError, match="runs 2560x1440.*never changes system"):
+    with pytest.raises(record.RecordError, match=r"runs 2560x1440.*never changes system"):
         record.system_facts(FakeMachine(2560, 1440), options(), SUITE["display"])
     windowed = {**options(), "fullscreen": "false"}
-    with pytest.raises(record.RecordError, match="give windowed.*fix:"):
+    with pytest.raises(record.RecordError, match=r"give windowed.*fix:"):
         record.system_facts(FakeMachine(), windowed, SUITE["display"])
 
 
@@ -440,7 +439,7 @@ def test_thread_names_come_from_a_jcmd_dump() -> None:
         '"optilux-pipe" #40 daemon prio=5\n'
         '"Server thread" #50 prio=5\n'
     )
-    assert run.thread_names(dump) == ["Render thread", "optilux-pipe", "Server thread"]
+    assert acceptance.thread_names(dump) == ["Render thread", "optilux-pipe", "Server thread"]
 
 
 def test_the_helpers_lines_are_sorted_by_kind() -> None:
@@ -457,19 +456,19 @@ def test_the_helpers_lines_are_sorted_by_kind() -> None:
             "[00:00:03] [main/INFO]: unrelated",
         ]
     )
-    found = run.helper_lines(log)
+    found = acceptance.helper_lines(log)
     assert [len(found[key]) for key in ("inert", "declined", "applied", "active")] == [1, 1, 1, 1]
 
 
 def test_a_pngs_size_comes_from_its_header() -> None:
     header = b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + (3840).to_bytes(4, "big")
-    assert run.png_size(header + (2160).to_bytes(4, "big")) == (3840, 2160)
-    assert run.png_size(b"GIF89a") is None
+    assert acceptance.png_size(header + (2160).to_bytes(4, "big")) == (3840, 2160)
+    assert acceptance.png_size(b"GIF89a") is None
 
 
 def test_tp_literals_keep_an_integer_integer() -> None:
     # /tp centres integer x and z only (+0.5): the command text must keep the JSON's kind.
-    found = [run.literal(v) for v in (-525, 91.0, -79.5, 495.0)]
+    found = [acceptance.literal(v) for v in (-525, 91.0, -79.5, 495.0)]
     assert found == ["-525", "91.0", "-79.5", "495.0"]
 
 
@@ -487,12 +486,14 @@ class FakeClient:
 
 def test_time_already_at_the_views_value_counts_as_set() -> None:
     already = ["Clock minecraft:overworld is already set to 6000 tick(s)"]
-    assert run.set_time(FakeClient([]), 6000)["succeeded"] is True
-    assert run.set_time(FakeClient(already), 6000)["failures"] == already
-    with pytest.raises(run.modclient.ModError, match="time set 6000"):
-        run.set_time(FakeClient(["Unknown or incomplete command"]), 6000)
-    with pytest.raises(run.modclient.ModError):
-        run.set_time(FakeClient(["Clock minecraft:overworld is already set to 600 tick(s)"]), 6000)
+    assert session.set_time(FakeClient([]), 6000)["succeeded"] is True
+    assert session.set_time(FakeClient(already), 6000)["failures"] == already
+    with pytest.raises(modclient.ModError, match="time set 6000"):
+        session.set_time(FakeClient(["Unknown or incomplete command"]), 6000)
+    with pytest.raises(modclient.ModError):
+        session.set_time(
+            FakeClient(["Clock minecraft:overworld is already set to 600 tick(s)"]), 6000
+        )
 
 
 # F4: GC.heap_info as Temurin 25 prints it (tests/fixtures/run/gc-heap-info.txt, a JVM started with
@@ -501,7 +502,7 @@ def test_time_already_at_the_views_value_counts_as_set() -> None:
 
 def test_the_heap_after_gc_comes_from_gc_heap_info() -> None:
     text = (REPO_ROOT / "tests" / "fixtures" / "run" / "gc-heap-info.txt").read_text("utf-8")
-    assert run.heap_info(text) == {
+    assert acceptance.heap_info(text) == {
         "heap": "garbage-first heap",
         "reservedKiB": 6291456,
         "committedKiB": 6291456,
@@ -512,14 +513,14 @@ def test_the_heap_after_gc_comes_from_gc_heap_info() -> None:
         "0x0000000800000000)\n Metaspace       used 151234K, committed 152000K, reserved "
         "1179648K\n"
     )
-    found = run.heap_info(older)
+    found = acceptance.heap_info(older)
     assert (found["usedKiB"], found["committedKiB"], found["metaspaceUsedKiB"]) == (
         725195,
         None,
         151234,
     )
-    with pytest.raises(run.RunError, match="no heap line"):
-        run.heap_info("1234:\nCommand executed successfully\n")
+    with pytest.raises(session.RunError, match="no heap line"):
+        acceptance.heap_info("1234:\nCommand executed successfully\n")
 
 
 # A4: the broken copy of a fixture zip.
@@ -544,23 +545,83 @@ def test_the_broken_pack_differs_in_its_program_alone(tmp_path: Path) -> None:
     before = source.read_bytes()
     packs = tmp_path / "shaderpacks"
     packs.mkdir()
-    target = packs / f"{run.A4_PREFIX}Pack.zip"
-    facts = run.write_broken_pack(source, target, run.A4_PROGRAM, run.A4_BODY)
+    target = packs / f"{acceptance.A4_PREFIX}Pack.zip"
+    facts = acceptance.write_broken_pack(source, target, acceptance.A4_PROGRAM, acceptance.A4_BODY)
     assert source.read_bytes() == before
     with zipfile.ZipFile(source) as old, zipfile.ZipFile(target) as new:
         assert new.namelist() == old.namelist()
         for a, b in zip(old.infolist(), new.infolist(), strict=True):
             assert (b.date_time, b.compress_type) == (a.date_time, a.compress_type)
-            wanted = run.A4_BODY if a.filename == run.A4_PROGRAM else old.read(a)
+            wanted = acceptance.A4_BODY if a.filename == acceptance.A4_PROGRAM else old.read(a)
             assert new.read(b) == wanted
-    assert facts["entries"] == 4 and facts["program"] == run.A4_PROGRAM
-    assert facts["brokenSha256"] == hashlib.sha256(run.A4_BODY).hexdigest()
-    assert run.A4_IDENTIFIER.encode() in run.A4_BODY
-    with pytest.raises(run.RunError, match="exists"):
-        run.write_broken_pack(source, target, run.A4_PROGRAM, run.A4_BODY)
-    with pytest.raises(run.RunError, match="holds no shaders/world9"):
-        run.write_broken_pack(source, packs / "x.zip", "shaders/world9/final.fsh", b"")
+    assert facts["entries"] == 4 and facts["program"] == acceptance.A4_PROGRAM
+    assert facts["brokenSha256"] == hashlib.sha256(acceptance.A4_BODY).hexdigest()
+    assert acceptance.A4_IDENTIFIER.encode() in acceptance.A4_BODY
+    with pytest.raises(session.RunError, match="exists"):
+        acceptance.write_broken_pack(source, target, acceptance.A4_PROGRAM, acceptance.A4_BODY)
+    with pytest.raises(session.RunError, match="holds no shaders/world9"):
+        acceptance.write_broken_pack(source, packs / "x.zip", "shaders/world9/final.fsh", b"")
     game = tmp_path
-    assert [p.name for p in run.broken_copies(game)] == [target.name]
-    assert run.remove_broken(game) == {"removed": [target.name], "kept": []}
-    assert run.broken_copies(game) == [] and source.is_file()
+    assert [p.name for p in acceptance.broken_copies(game)] == [target.name]
+    assert acceptance.remove_broken(game) == {"removed": [target.name], "kept": []}
+    assert acceptance.broken_copies(game) == [] and source.is_file()
+
+
+def test_a_note_in_the_platform_file_is_not_identity() -> None:
+    """As for the suite: editing a `why` never forces a recalibration."""
+    plat = platform.load(REPO_ROOT)
+    edited = platform.Platform(plat.id, plat.path, {**plat.data, "why": "a reworded note"})
+    edited.data["tiers"] = {
+        name: {**tier, "why": "another note"} for name, tier in plat.data["tiers"].items()
+    }
+    assert record.platform_identity(edited, "bench") == record.platform_identity(plat, "bench")
+    moved = platform.Platform(plat.id, plat.path, {**plat.data, "minecraft": "26.4"})
+    assert record.platform_identity(moved, "bench") != record.platform_identity(plat, "bench")
+
+
+def test_a_driver_or_display_mode_that_cannot_be_read_refuses_the_run() -> None:
+    """The record notes the driver version (AGENTS.md); a mode read without DPI awareness may be
+    scaled (D22): neither is passed on as a reading."""
+
+    class NoDriver(FakeMachine):
+        def driver(self, adapter: str) -> str | None:
+            return None
+
+    class Unaware(FakeMachine):
+        def display_mode(self, name: str) -> dict:
+            return {**super().display_mode(name), "dpiAware": False}
+
+    with pytest.raises(record.RecordError, match="driver"):
+        record.system_facts(NoDriver(), options(), SUITE["display"])
+    with pytest.raises(record.RecordError, match="DPI"):
+        record.system_facts(Unaware(), options(), SUITE["display"])
+
+
+def test_the_system_and_tree_refusals() -> None:
+    class TwoPrimaries(FakeMachine):
+        def displays(self) -> list[dict]:
+            return [{"name": "a", "adapter": "GPU X", "flags": 0x5}] * 2
+
+    with pytest.raises(record.RecordError, match="2 primary displays"):
+        record.system_facts(TwoPrimaries(), options(), SUITE["display"])
+    exclusive = {**options(), "exclusiveFullscreen": "true"}
+    assert record.window_mode(exclusive) == "exclusive fullscreen"
+    with pytest.raises(record.RecordError, match="exclusive fullscreen"):
+        record.system_facts(FakeMachine(), exclusive, SUITE["display"])
+
+
+def test_the_presentmon_pin_and_the_spec_file_are_checked_before_a_launch(tmp_path: Path) -> None:
+    pin = {"presentmon": {"file": "PresentMon.exe", "sha256": "ab" * 32}}
+    (tmp_path / "config").mkdir()
+    (tmp_path / "config" / "tools.json").write_text(json.dumps(pin), encoding="utf-8")
+    with pytest.raises(record.RecordError, match="install"):
+        session.check_presentmon(tmp_path)
+    (tmp_path / "runtime" / "tools").mkdir(parents=True)
+    (tmp_path / "runtime" / "tools" / "PresentMon.exe").write_bytes(b"MZ")
+    with pytest.raises(record.RecordError, match="its pin"):
+        session.check_presentmon(tmp_path)
+    with pytest.raises(record.RecordError, match="cannot read"):
+        session.load_spec(tmp_path / "absent.json")
+    (tmp_path / "bad.json").write_text("{", encoding="utf-8")
+    with pytest.raises(record.RecordError, match="JSON"):
+        session.load_spec(tmp_path / "bad.json")

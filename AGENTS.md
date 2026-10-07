@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M1 in progress: 0.01.11 (the bench world's views) is the last phase done, next 0.01.12, review and cleanup (docs/plans/m1.md). Latest stop: docs/handoff.md.
+Status: M1 in progress: 0.01.12 (review and cleanup) is the last phase done, next 0.01.13, debug, timing and the acceptance re-run (docs/plans/m1.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -14,17 +14,17 @@ Status: M1 in progress: 0.01.11 (the bench world's views) is the last phase done
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout
-- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper, presentmon.py PresentMon and A9's match. Run `uv run optilux <verb>`.
-- tests/: pytest, run by `uv run optilux test`; fixtures/ saved 26.3 JSON, log, logman, jcmd and PresentMon output; `windows`-marked tests skip elsewhere.
+- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, session.py a game session, acceptance.py M1's items, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper, presentmon.py PresentMon and A9's match, docs_check.py the doc rules. Run `uv run optilux <verb>`.
+- tests/: pytest, run in parallel by `uv run optilux test` (`--serial`: one process); fixtures/ saved 26.3 JSON, log, logman, jcmd and PresentMon output; `windows`-marked tests skip elsewhere.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`), optilux-release (the PR checklist, the release watch, the switch block), optilux-plan; agents/researcher.md and reviewer.md (read-only).
-- .github/: workflows/ci.yml (push and pull_request, windows-latest: ruff, tests, verify docs, `pack release --check`, `pack build`, the zip as an artifact) and release.yml (push to main: `pack release`).
+- .github/: workflows/ci.yml (push and pull_request) and release.yml (push to main), both windows-latest (docs/workflow.md#release).
 - mod/: optilux-helper (Fabric), a Gradle project (Loom, wrapper pinned by sha256); `mod build` puts its jar into runtime/<platform>/files/, `mod test` runs its JUnit tests.
-- shader/: the pack; `pack build` zips it with LICENSE and README.md as build/optilux-<version>.zip (one tree, one sha256); `pack release` publishes it as the GitHub release v<version>, titled `Optilux <version>: <Name>`. M0's placeholder (shaders/shaders.properties, no programs) stays until M3's hello pack.
+- shader/: the pack, zipped by `pack build` and released by `pack release` (docs/workflow.md#release). M0's placeholder (shaders/shaders.properties, no programs) stays until M3's hello pack.
 - config/: platforms (+ launch specs), suite, profiles, java, tools, views; pipeline planned.
 - snapshots/<world>/: world copies, tree-hashed; results/: records/<run>.json and raw/<run>/.
 - docs/.
-- Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/. Committed: results/records/, config/calibrations/.
+- Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/, .coverage. Committed: results/records/, config/calibrations/.
 
 ## Docs
 - docs/design.md: goals, architecture, interfaces, milestones, decisions.
@@ -39,12 +39,11 @@ Status: M1 in progress: 0.01.11 (the bench world's views) is the last phase done
 - docs/jvm.md: JVM track (after 1.0).
 - docs/workflow.md: skills, agents, milestones, docs rules, git, release, hooks, tests.
 - docs/lessons.md: what AlaCarteShaders (ALC) learned, tagged by platform dependence.
-- docs/handoff.md: the latest stop: what passed, what failed, what is deferred, what the next phase plans around.
+- docs/handoff.md: the latest stop: what passed, failed or was deferred, and what the next phase plans around.
 - docs/sources/: external documents kept verbatim (the user's optimization playbook).
 - docs/roadmap.md: milestones M0-M6; the current one in detail (phases, exits, estimates); findings and decisions assigned, each decision with an owner.
-- docs/plans/: one plan per milestone (m0.md first), written from docs/templates/plan.md, premises verified at their source.
+- docs/plans/: one plan per milestone (m0.md first), from the strict template docs/templates/plan.md, premises verified at their source.
 - docs/prompts/: stored prompt sets, one prompt per phase plus Resume (m0.md first); standing.md, the Plan and Release prompts every milestone uses.
-- docs/templates/: plan.md, the strict plan template.
 
 ## Terms
 - view: fixed camera pose in the bench world; perf views are gated, coverage views are visual only.

@@ -119,10 +119,10 @@ def test_changelog_entry(tmp_path: Path) -> None:
     )
     last = pack.changelog_entry(tmp_path, "0.01.03")  # the last section ends at EOF
     assert (last.name, last.text) == ("Game control", "Next.\n")
-    with pytest.raises(pack.PackError, match="has no `## 0.02 <Name>` section; fix: add `## 0.02"):
+    with pytest.raises(pack.PackError, match=r"has no `## 0.02 <Name>` section; fix: add `## 0.02"):
         pack.changelog_entry(tmp_path, "0.02.01")
     (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n## 0.00 Foundation\n\n## 0.01 X\nx\n")
-    with pytest.raises(pack.PackError, match="`## 0.00 Foundation` section is empty; fix: add"):
+    with pytest.raises(pack.PackError, match=r"`## 0.00 Foundation` section is empty; fix: add"):
         pack.changelog_entry(tmp_path, "0.00.06")
     (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n## 0.00\nFoundation.\n")
     with pytest.raises(
@@ -132,7 +132,7 @@ def test_changelog_entry(tmp_path: Path) -> None:
     ):
         pack.changelog_entry(tmp_path, "0.00.06")
     (tmp_path / "CHANGELOG.md").unlink()
-    with pytest.raises(pack.PackError, match="no CHANGELOG.md under"):
+    with pytest.raises(pack.PackError, match=r"no CHANGELOG.md under"):
         pack.changelog_entry(tmp_path, "0.00.06")
 
 
@@ -263,8 +263,10 @@ def test_release_creates_the_release_when_absent(
     notes = create[create.index("--notes-file") + 1]
     assert gh.calls == [
         view("v0.00.06"),
-        ["release", "create", "v0.00.06", "build/optilux-0.00.06.zip"]
-        + ["--title", "Optilux 0.00.06: Foundation", "--notes-file", notes, "--target", sha],
+        [
+            *["release", "create", "v0.00.06", "build/optilux-0.00.06.zip"],
+            *["--title", "Optilux 0.00.06: Foundation", "--notes-file", notes, "--target", sha],
+        ],
     ]
     assert gh.notes == ENTRY
     assert not Path(notes).exists()  # the temporary notes file is gone

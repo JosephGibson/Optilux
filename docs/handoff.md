@@ -1,107 +1,105 @@
 # Handoff
-Status: M1 in progress: 0.01.11 (the bench world's seed and its ten views, found with the user) is done; the next prompt is 0.01.12, review and cleanup, which /optilux-next prints.
+Status: M1 in progress: 0.01.12 (review and cleanup: static checks, the review's fixes, parallel tests) is done; the next prompt is 0.01.13, debug, timing and the acceptance re-run, which /optilux-next prints.
 
 ## Contents
-0.01.11 the bench world · Seeds · Snapshot · The ten views · End city candidate · Checks · Choices · F4's table · Earlier · Open questions · Time · Next
+0.01.12 review and cleanup · Tools · Findings · The held-torch launch · Open questions closed · Choices · Not done · Open questions · Time · Next
 
-## 0.01.11 the bench world
-- Start gate: branch m1, pushed; tests 360 passed, `mod test` 80 passed, verify docs 0 violations, ruff clean; the tree held the uncommitted QA split (D27, D28: plans/m1.md, prompts/m1.md, roadmap.md, handoff.md, test_status.py), folded into this phase's commit at the user's word (2026-10-07), as 0.01.09's amendment was.
-- Two announced bench-tier launches through a scratchpad driver (launch.launch and launch.open_mod, requests from a file queue, run in the background; no SendInput, input.block never on):
-  - Launch 1 (10:47:06, pid 5032), world spike: joined in 14.2 s; the user created the three candidate worlds from the title screen; the mod's quit at 11:08:03, exit 0 in 1.7 s; request log 1,903 lines, the token absent; options.txt (23 keys), iris.properties and the Sodium flags read back unmoved. Raw: results/raw/views-seeds/.
-  - Launch 2 (11:09:16, pid 16236), world bench_263: joined in 13.6 s, `Seed: [263]`; `/tick freeze`, spectator; the flights; the player put back at spawn (-5.5, 75, 8.5), spectator, time 6000, clear; the mod's quit at 11:58:44, exit 0 in 2.7 s; request log 13,881 lines, the token absent; the read-back unmoved. Raw: results/raw/views-flights/ (frames, previews, views.jsonl, PresentMon probes).
-- config/views/bench_263.json (sha256 e074f336f4499d8319c45511da33eed8ed9ef6bf88e3ecabb081c7877810c143) loads through record.load_views; suite.json world.seed 263 and its source; test_record.py checks the file holds suite.json's roles in order with each role's dimension, time and weather, and the seed.
+## 0.01.12 review and cleanup
+- Start gate (13:05 ADT): branch m1 clean and pushed; 361 tests passed in 39.8 s wall (pytest 39.2 s); `mod test` 80 passed; verify docs 0 violations; ruff clean. Last CI run before: 1m27s (its test step 63 s).
+- The seam (D27): optilux/verbs/run.py (1,725 lines) split into optilux/session.py (the session skeleton M2 reuses: RunHost, Session, session_start, settle_view, the focus checks, record_status), optilux/acceptance.py (A1-A4, A7, A9, F4 and their verdicts as pure functions) and verbs/run.py (perform and the verb, 396 lines).
+- After: 404 tests, parallel 12.2 s wall (`optilux test`), serial 42.7 s (`--serial`); ruff (wider rules) and pyright basic clean; javac -Xlint:all,-classfile -Werror clean on main and test sources; `mod test` 80 passed; the jar unchanged, sha512 eb840262... (`mod build`: the store's copy equal); verify docs 0 violations. Branch coverage 79 % to 81 % (run.py's former code 18 % to 31 %).
 
-## Seeds
-Candidates proposed unscreened: no seed map covers 26.3, which adds dappled_forest, sulfur_caves and the abandoned camps (the client jar's worldgen lists), so `/locate` in game was the screen. Worlds created by the user: Default, Peaceful, structures on, no bonus chest, commands on. `/locate` through the mod's `command` from the join point (the Nether from the spawn / 8): results/raw/views-seeds/locate-<seed>.json.
+## Tools
+At D28's pins, locked by uv: coverage 7.16.2, pyright 1.1.414 (nodejs-wheel-binaries 24.19.0), pytest-xdist 3.8.0.
+- ruff BLE, S, SIM, RUF, PERF: 1,000 hits. 905 S101 (assert in tests): off for tests/ in pyproject.toml (pytest's assert is the test). 47 RUF043 (pytest.raises patterns, regexes): raw strings. Fixed: 7 PERF401, 3 SIM102, SIM105, SIM212, 2 RUF007, RUF021, RUF005, 2 RUF059, 2 RUF100, 4 S324 (sha1 with usedforsecurity=False). Suppressed on the line with the reason: 16 S603 (argv lists, no shell), 2 S105 (a property name, a placeholder), 4 S310 (URLs from committed pins), S314 (Gradle's own XML), BLE001 (run.py: the record is written whatever broke).
+- pyright basic: 19 errors, all narrowing pyright could not see; made explicit (Launched.mod_token refuses a --no-token launch; session_text, modclient's ids, modfake's writer, parse_phase's match, pm_exe). Now a CI step.
+- javac: 2 [serial] on Errors.Refused and Json.Malformed (suppressed on the declaration line, so the class files and the jar keep their bytes); 31 [classfile] from Minecraft's Guava jar (errorprone annotations absent): `-Xlint:all,-classfile`.
+- pytest-xdist: `optilux test` runs `-n auto`; `--serial` for one process.
 
-| Role | 263 | 7800 | 20261005 |
-|---|---|---|---|
-| forest_noon, rain | forest 258 | forest 250 | forest 417 |
-| ocean_sunset, night | beach 250, cold ocean 226 | beach 0, cold ocean 45 | beach 615, frozen ocean 550 |
-| underwater | cold ocean 226; lukewarm 2,815 | cold ocean 45; lukewarm 921 | frozen ocean 550; lukewarm 1,601 |
-| cave | deep_dark 0, mineshaft 123 | sulfur_caves 91, mineshaft 189 | mineshaft 21, deep_dark 45 |
-| entities | plains 0 | plains 45 | plains 724 |
-| nether_crimson | 163 | 264 | 258 |
-| nether_soul | 115 | 250 | 0 |
+## Findings
+Dimensions: py and mod correctness, fail failure paths, id identity, conc concurrency and protocol, sec security, doc docs against code, cov coverage, simp simplification; cr /code-review high on main...m1; crw its first pass, which read the uncommitted tree only (it compared m1 with origin/m1), kept. Each was read at its source; "holds" = confirmed there. Tests failing before each fix: 7 + 4 + 18 + 1 + 2 + the install names (the session's output).
+- py1 fail1 cov-H2 cr1, medium, holds: A1's control passed on an unread session thread dump ("unread: ..." is truthy); fixed (acceptance.a1_seen), test.
+- py2 id2, medium, holds: the read-back excepted exclusiveFullscreen and simulationDistance, identity keys both; fixed: every written key and Sodium's text must read back, test; platform.md.
+- py3, low, holds: settle_view ignored visualSettleS.underwater; fixed (the role's settle, else default), test.
+- py4, low, holds: A4's irisRestored reads back the file just written; no change: recovery.pack carries the restore, no verdict moves.
+- py5 cr3, low, holds: the git guard missed `cmd /c` and long-option prefixes (`--no-verif`, `--forc`) and read `-uno` as -n; fixed, tests.
+- py6, low, unverified: an iris.properties value with = # ! would read back escaped; rejected: no pinned value holds one.
+- mod1, low, holds: an exclusive request is accepted while a mutation runs; owner M2 (window.measure; before calibration).
+- mod2, low, holds (JLS 15.25, not run): capture.json writes `every` as 2.0; owner M2.
+- mod3 doc3, low, holds: suite.json capture.maxPendingFrames was read by nothing; fixed: removed, mod.md#8-capture names CaptureAdapter.MAX_PENDING.
+- mod4, low, unverified: readiness has no term for chunks in flight; owner M2 (A5, readiness).
+- fail2, medium, holds: a hook failure before `hello` sends no event; fixed: the session's latest.log is read, a hook failure makes the run invalid, test.
+- fail3, medium, plausible (Iris side unread): an Iris load failing outside shaders.reload is only logged; fixed as fail2, test.
+- fail4 doc1, low, holds: A9 ignored invalidating events; fixed (acceptance.a9_pass), test.
+- fail5 conc6 cr2, low, holds: the client's reader died on a list id (TypeError) and on any non-OSError; fixed (stray, reason kept), test. Stray `id: null` answers: owner 0.01.13 (the request logs).
+- fail6, low, holds: the wait after a kill (launch.end, presentmon.stop) could replace the error; fixed both, tests.
+- fail7 cr7, low, holds: a missing driver version was recorded as null; fixed: refused with the fix, test.
+- fail8, low, holds: a mode read without DPI awareness passed; fixed: refused, test.
+- fail9, low, holds: a failed git status read as a clean tree; fixed (repo.GitError; status, pack, milestone and run handle it), test.
+- fail10, low, holds: Gradle runs without a timeout; owner M2.
+- fail11, low, holds: minecraft-launcher-lib and `milestone start`'s fetch have no timeout; owner M2 (the lib's own, D17: noted).
+- fail12, low, unverified: a partial JDK unpack reads as present; owner M2.
+- fail13, low, holds: `run` errors before its session are tracebacks and burn the name; owner 0.01.13.
+- fail14, low, holds: the git guard passed an unreadable event; fixed: fails closed (exit 2), test.
+- id1, high, holds: options.txt keys the harness does not write were neither recorded nor matched, the hash taken after the quit; fixed: the file as the game reads it is recorded (hash and 174 unwritten keys with values, this launch); matching them: owner M2.
+- id3, medium, holds: PresentMon's build and flags are in no identity key; owner M2 (its session).
+- id4, medium, holds: the harness is recorded, never matched, though the roadmap says it becomes identity; owner M2 (calibrate).
+- id5, low, holds: resolution and GPU come from the primary display, the render target is never compared; owner M2 (validity).
+- id6, low, unverified: HwSchMode is the requested HAGS state; owner M2.
+- id7 id9, low, holds: the spec and views hashes are read after the session; identity null after a launch failure; owner M2.
+- id8, low, holds: the suite hash covers descriptive copies no code reads; owner M2.
+- conc1, medium, holds: the mod answers `timeout` before freeing the resource, the fake did the reverse, so A2's cleanup could end the session on `busy`; fixed: the fake keeps the mod's order, A2 waits (input_block_when_free), test.
+- conc2, low, plausible (no M1 path): a hello after its own disconnect cancels the 10 s release; owner M2.
+- conc3, low, holds: a timeout could be raised for an answer the reader already took; fixed, test.
+- conc4, low, holds: an event may precede hello's answer; doc fixed (mod-protocol.md).
+- conc5, low, holds: a stopped capture's frames outlive its resource; owner M2.
+- conc7, low, holds: the pipe thread catches RuntimeException only; owner M2.
+- sec1, low, holds: the token check skips a failed session's request log (m1-acceptance-1, -2); owner 0.01.13.
+- sec2, low, holds: pinned file names were not checked as one part; fixed (platform.plain_name; pins, tools.json), tests.
+- sec3, low, holds: Fabric's profile id became a folder before any check; fixed, test.
+- doc2 crw1, medium, holds: pyright was no CI step; fixed (ci.yml).
+- doc4 doc5 cov-M11 crw3, medium, holds: workflow.md#testing missed the tools and its list missed most of M1's tests; reconciled.
+- doc6, low, holds: `-classfile` against D28's flags (closed): reported; the evidence is the 31 warnings above.
+- doc7, doc8, doc11-doc15, low, hold: stamps on results only (design.md, mod.md); error causes, events, the 10 s release, the table test (mod-protocol.md); capture tests, F3 (mod.md); session-threads.txt (run-record.md); WM_CLOSE without a mod session (platform.md); docs fixed.
+- doc9, low, holds: the table test ignores the Result column; doc says what it checks.
+- doc10, low, holds: the fake accepted align, flush, after; fixed, test.
+- doc16, low, holds: AGENTS.md Layout; fixed. doc17, low: test.py's timing cite; fixed.
+- cov-H1 to H8, M1-M9, high to medium, hold: perform and the items had no tests; the verdicts are now pure functions with tests (A1, A2, A4, A7, A9, F4, record_status), and launch's quits, presentmon.stop, the manifest, record's and session's refusals tested; the glue that drives the game: owner 0.01.13 (its live run). cov-M10: subprocess code shows as missed; noted in workflow.md. cov-L1 to L6: low, fail closed: left.
+- simp1, medium, holds: A2 repeated inject without its foreground check; fixed with the A2 row, test.
+- simp2, medium, holds: perform keeps the session skeleton inline; record_status out, the rest: owner M2 (calibrate extracts its runner).
+- simp3-7 simp22, low, hold: dead or duplicated Java (Session.protocol, PipeServer.problem, aceCount, two imports, the BigDecimal branch, delegates); owner M2 (the jar stays unchanged here).
+- simp8-10 simp18 simp24 cr9, low, hold: winpipe.client_pid, Recording.facts, RequestLog.lines removed; record.file_sha256 streams through platform.sha256; the "never reached" comment fixed. interval_ms and load_commands' root kept (M2, the tests).
+- simp11, low, holds: Spec.notes, pack, resource_packs unread; owner M2. simp12: commands.json's schema unread; rejected (a format version). simp13: test-only code listed; no change.
+- simp14 simp21 simp23, low: duplicates whose messages or isolation differ; rejected.
+- simp15 simp16, low, hold: the snapshot was read twice and A1's controls ran without A1; fixed (record.tree; only for A1).
+- simp17 simp19, low, hold: REQUESTS, hooks.MAIN and pack.shown now one definition; SESSION_PREFIX tied to OWN_SESSION by a test; the other equal constants left. simp20: the end-the-game policies; owner M2.
+- crw2, medium, holds: a real CTRL_BREAK could reach the parallel run's workers; fixed: every pytest process ignores SIGBREAK (conftest).
+- crw4, low: the raw-string patterns stay loose regexes as before; rejected (style only). crw5 crw6, low, hold: parse_phase's second match, pm_exe's double test; fixed. crw7, low: Launched.mod_token; rejected (it names the fault). crw8: S603 suppressions per line; rejected (the prompt's rule). crw9: @SuppressWarnings over serialVersionUID; rejected (the jar's bytes kept).
+- cr4, low, holds: platform identity hashed the `why` notes; fixed (stripped as the suite's), test. cr5, low, holds: A4's "final" substring; fixed ("final.fsh"), test. cr6, low: `launch` prints no announcement; rejected (the rule binds the agent; `run` announces because one call launches twice). cr8, low, holds: a9_match's process check is redundant with `--process_id`; kept as a guard. cr10, low, holds: wait_rows re-reads the CSV each poll; owner M2.
 
-The user picked 263 (the recommendation): the most compact nearest sites. Warm ocean lies 3.7-4.2 km out in all three. bench_7800 and bench_20261005 stay under runtime/mc-26.3/game/saves/ (deletable in game).
+## The held-torch launch
+Announced, bench tier, world spike (13:47:40, pid 8988, joined in 15.8 s, the mod's quit, exit 0 in 0.9 s); no input injected, input.block never on. Gate: three idle Gradle daemons and one other JVM recorded, none blocking. Creative, a torch in the main hand, camera at the joined pose: hideGui false frame 0ef1d676... shows the torch; hideGui true frame e88fdd77... shows no hand (results/raw/held-torch/). Gamemode spectator and an empty hand restored. options.txt with inactivityFpsLimit "minimized" (sha256 7cdae2e9..., 174 unwritten keys) read back: 24 of 24 keys, the Iris keys, Sodium's flags and text; the request log holds no token.
 
-## Snapshot
-- First copy (11:08, after launch 1): snapshots/bench_263/ da7ee4207564a4334616d40080af2c1dec78458d36b13218b4e652df0a8355f8, 42 files, equal to the live world.
-- Retaken after the flights (11:58:50): **fc515d355c076ad023cc3619745da0f43e7011e19b2b06bff820339fa3c52f67**, 104 files, 148,253,469 bytes, equal to the live world. It holds the entities role's seven mobs.
-
-## The ten views
-Each pose flown by the user in spectator (creative for entities), read with camera.get, rounded to 0.1 (yaw wrapped to -180..180), the role's weather (120 ticks stepped when it changed) and time set, camera.place at the rounded pose, `ready` (10 frames, settle 1 s, underwater 2 s), one 4K frame. Every frame kept by the user (cave, nether_crimson and underwater confirmed after the flights). GPUBusy: one 5 s PresentMon window each, median, informal (not M2's check); "capped": the inactivity cap below held, so it reads high.
-
-| View | Pose (x, y, z, yaw, pitch) | Frame | GPUBusy ms |
-|---|---|---|---|
-| forest_noon | 22.6, 102.8, 533.0, -136.0, 37.2 (attempt 2) | 2db48ebc | 11.54 (10.42 at pitch 15) |
-| ocean_sunset | -218.4, 81.0, 779.9, 77.4, 34.1 (attempt 3) | e381ed75 | 10.73 |
-| cave | 28.3, -52.5, 426.9, 14.4, -13.8 | 5209aba3 | 9.18 |
-| rain | -20.5, 76.8, 491.2, -89.5, 30.3 (attempt 2) | 4b26c24c | 9.93 (11.76 at forest_noon's pose) |
-| nether_crimson | 230.2, 86.6, 15.7, 175.7, 27.0 | 25b4faf2 | 6.77 |
-| end_dragon | 56.9, 101.6, -19.9, 66.0, 38.7 | fdc8306a | 16.76 capped |
-| night | -301.9, 72.5, 637.6, -11.1, -9.4 | ea1aa10b | 7.81 |
-| underwater | -333.1, 54.5, 908.5, -145.6, 34.9 | 7df29a9d | 11.11 |
-| nether_soul | -9.0, 91.4, -321.3, -54.0, 27.3 | dcff6592 | 7.15 |
-| entities | -366.8, 80.0, 244.4, -5.8, 19.0 | 80b13c92 | 12.52 capped |
-
-- ocean_sunset: attempt 1 faced a small enclosed sea (land on the horizon); a biome map (`execute if biome ... #minecraft:is_ocean`, 96-block cells within 2.4 km) found one open ocean, x -680..-200, z 490..1060, and its east shore.
-- cave: a lava lake found by testing air at y -46 and -52 over lava at -56 on a 16-block grid near the views.
-- entities: seven mobs summoned in place under the freeze (chicken, sheep, cow, pig, villager, horse, llama) 7-13 m ahead, facing the camera: NoAI, PersistenceRequired, Silent, tag optilux_bench; creative, a torch in the main hand.
-- end_dragon: ten end crystals on the pillars, no dragon (ticks frozen before the End first loaded; M2's frozen sessions see the same). The role's beams are Complementary's End beams (playbook.md), not crystal beams.
-- Pre-generation extents for M2: overworld x -367..28, z 244..909; Nether x -9..230, z -321..16; the End around the main island; each plus 256 blocks.
-
-## End city candidate
-The user asked for an End city view; scouted here, then the user made it an 11th perf role, end_city, added in 0.01.12 (D29, 2026-10-07). Nearest city (368, ~, 992), 1,058 blocks from the main island. Kept pose: the End, (317.1, 75.1, 1054.8), yaw -120.3, pitch -9.0, time 6000; frame a2727557 (results/raw/views-flights/end_city/attempt-001/); GPUBusy 9.42 ms. Shulkers survive Peaceful: two closed ones at 56 and 62 m are in view; the ship's elytra item frame at 65 m is past its render limit.
-
-## Checks
-- The entity counts the capture script printed for the first six views were void: the game answers "Test passed. Count: N" and the pattern sought "count: " (lowercase). Fixed for the last four, and every kept view rechecked: each non-player entity within 128 blocks of the eye listed (`execute as @e[...] run data get entity @s Pos`, the camera at the view so its chunks load) and projected into the camera (vertical FOV 90 at 16:9). In-frustum hits beyond their render limit (64 blocks times the bounding box's mean size: chicken about 32, cow and sheep about 67, item 16, strider 75): forest_noon chickens 74-79 m and cows 110-117 m (crops of the frame at their pixels show canopy only), rain chickens 125-127 m, night sheep 111-117 m, cave items 117 m, nether_crimson striders 95-127 m, nether_soul striders 111 m; ocean_sunset and underwater none. entities: the seven tagged at 7-13 m, and untagged horses at 57-62 m (rendered: small shapes mid-frame), a villager at 65.5 m and cows near 70 m. All untagged; M2's world prep kills them.
-- Eye block: air for every view, water for underwater; no frame near-black (darkest: cave 7.5 % of pixels under 8, its unlit roof).
-- The game's frame rate read 29.9 fps by frames.index at three poses (156 frames in 5.21 s each) while the user was away: options.txt keeps inactivityFpsLimit "afk", the game's default, which "Limits framerate to 30 when the game is not getting any player input for more than a minute. Further limits it to 10 after 9 more minutes" (en_us.json). Uncapped windows ran 85-148 fps; the capped ones read GPUBusy high (rain at forest_noon's pose 21.58 ms capped, 11.76 uncapped). Open question below.
-- PresentMode: every row of the session's 14 probes reads "Composed: Copy with GPU GDI".
+## Open questions closed
+- A JVM fatal-error log would list the token: closed (sec): a fresh token per launch, never stored (records hold `token: true`); one pipe per JVM, never recreated; a stale token finds no pipe or answers unauthenticated; the gate keeps launches apart; hs_err would land in runtime/<platform>/game/, which the harness never copies.
+- release.yml: on windows-latest. CI's zip for 0.01.11 (run 37648615599), a local `pack build --ref HEAD` and the v0.00.06 release asset built on ubuntu all hash 689c6994...: no difference seen.
+- inactivityFpsLimit, the end crystals, the hand, end_city, A2's check, the Gradle gate, the byte caps: roadmap.md#qa-pass-open-questions.
 
 ## Choices
-- Candidate seeds 20261005, 263 and 7800, unscreened (above); worlds Peaceful (no hostile mobs in any view; the entities role uses passive mobs), commands on, creative at creation, spectator for the flights.
-- World id bench_263: the views file, the snapshot and the save folder share it ([a-z0-9_], record.VIEW_ID).
-- One launch for all candidate worlds (created from the title screen), a second for the flights; `/locate` from the join point, the Nether from spawn / 8; the views file's `why`s written once (its bytes are identity).
-- Each role's time and weather set before its flight, so the user framed it lit as captured; the pose re-placed rounded before the frame, so the frame is the recorded pose.
-- The driver, the informal GPUBusy probe, the entity projection, `/locate` and the ocean map: scratch tools, nothing committed (roadmap.md's QA row on the driver: nothing to review in 0.01.12); copies kept in results/raw/views-flights/tools/ (ignored) for M2's world prep and view checks.
+- S101 off for tests/ in pyproject.toml rather than 905 line suppressions.
+- `-Xlint:all,-classfile`: the 31 warnings name a third-party jar, no line of ours.
+- The mod's findings go to M2: the jar stays eb840262..., so 0.01.13's re-run proves the harness changes alone.
+- The entities view keeps the GUI shown (measurement.md#session), the only way the held torch is drawn; its HUD cost is constant across variants. The user may veto before M2.
 
-## F4's table
-m1-acceptance-7's reloadTable (bench tier, 50 `shaders.reload`, heap after GC, private bytes): M2 sets capture.reloadCap from it.
-
-| reloads | heap after GC MiB | private MiB | available MiB |
-|---|---|---|---|
-| 0 | 597.3 | 13,174.6 | 13,336 |
-| 10 | 947.5 | 13,990.0 | 13,312 |
-| 20 | 1,096.1 | 14,684.0 | 13,184 |
-| 30 | 1,216.4 | 15,396.9 | 13,083 |
-| 40 | 1,406.8 | 16,077.8 | 12,912 |
-| 50 | 1,599.6 | 16,809.7 | 12,724 |
-
-- Per reload: heap 20.05 MiB, private 72.7 MiB (repeated in -5 and -6); the current reloadCap 288 would add about 20 GiB of private bytes.
-
-## Earlier
-- 0.01.10: dev session 1, the look review passed, optilux-plan built and its evals; the full section is in the 0.01.10 handoff (git history).
-- 0.01.09: A4, A7, A9, A10 and F4's table in m1-acceptance-7; 0.01.08 run and acceptance (A1-A3, A10 in m1-acceptance-3); 0.01.07 renderer and Iris adapters (mod jar eb840262..., unchanged since); 0.01.06 game adapter; 0.01.05 transport; 0.01.04 mod project; 0.01.03 launch; 0.01.02 install; 0.01.01 Plan M1 (approved 2026-10-06, D17-D26).
+## Not done
+- D30: deleting runtime/mc-26.3/game/saves/bench_7800 and bench_20261005 was refused by this session's permission classifier ("Irreversible Local Destruction"); nothing names them. The user deletes them, or allows the command for the next session.
 
 ## Open questions
-Each has its phase or milestone in roadmap.md#qa-pass-open-questions; 0.01.11's five close in 0.01.12 (user, 2026-10-07; D29, D30).
-- inactivityFpsLimit "afk" caps every session without player input at 30 fps after a minute, 10 after 10 (0.01.12: display.optionsTxt writes "minimized", an identity change before M2 calibrates).
-- World prep's kill spares only the dragon and optilux_bench: it would take end_dragon's ten end crystals and change the entities frame (0.01.12 spares end crystals in the spec; M2 implements it).
-- The entities frame shows no hand: the capture point follows renderLevel, which skips the hand when the GUI is hidden (F1 or hud.set hideGui); whether F1 was on is unread (0.01.12: one launch on world spike, hideGui false, a frame).
-- end_city, the 11th role (0.01.12, D29); the candidate worlds bench_7800 and bench_20261005 deleted (0.01.12, D30, the user's exception to the runtime/ rule).
-- PresentMode: "Composed: Copy with GPU GDI" in every row of 0.01.09's runs and this session's probes, against the spike's "Hardware: Independent Flip" (0.01.13; M2).
-- A2's F2 press still needs only `focused`; A7's foreground check belongs there too (0.01.12).
-- The live world differs from its snapshot after every launch; every run needs a retake first (M2's `world restore`). bench_263 equals its snapshot now.
-- Byte caps: AGENTS.md 9 bytes of margin, platform.md 54, mod.md 36, plans/m1.md 58, prompts/m1.md 5: the next sentence in any needs a cut first (0.01.12).
-- The A9 capture takes 46 s for 120 frames at 4K (M2).
-- Carried: release.yml runs on ubuntu-latest while CI is windows-latest; VS Code's Java and Gradle extensions import mod/; Gradle's other downloads trusted by coordinate; `launch` does not look for a running Gradle; a JVM fatal-error log would list the token; whether `/function` reports success without `/return` on 26.3 is unread.
+Each in roadmap.md#qa-pass-open-questions with its phase: PresentMode (0.01.13; M2); `/function` without `/return` (0.01.13); the review's rows for 0.01.13 and M2 (above); the live world against its snapshot, A9's 46 s capture, Gradle's downloads (M2); D30's two worlds (the user).
 
 ## Time
-- 0.01.11: 04:36 ADT to the commit at 12:36:51, CI green at 12:38: 8.0 h on the clock, of which about 5.8 h waited on the user's answer to the start gate's question (asked within the first 20 minutes; the next step at 10:46); about 2.2 h of work against 2 h, the flights included, about 2.4 h with the close-out (the first commit's handoff said 12:20 and 1.8 h). M1 so far about 13.5 h of 28; tripwire: M0-M3 55.8 h, trip at 111.6 h, actuals about 16.8 h (M0 3.3, M1 13.5).
-- 0.01.10: 1.1 h against 1.5. 0.01.09: 1.3 h against 2. 0.01.08: 1.0 h against 2.5. 0.01.07: 0.7 h. 0.01.06: 0.8 h. 0.01.05: 1.1 h. 0.01.04: 0.7 h. 0.01.03: 1.6 h. 0.01.02: 0.8 h. 0.01.01: 1.6 h. 0.01.00: 0.5 h. M0: 3.3 h against 7.8.
+- 0.01.12: 13:05 ADT to the commit at about 14:10: about 1.1 h against 3 h, the launch included. M1 so far about 14.6 h of 28; tripwire 55.8 h, trip at 111.6 h; actuals about 17.9 h (M0 3.3, M1 14.6).
+- Earlier: 0.01.11 2.2 h against 2; 0.01.10 1.1 h against 1.5; the rest in git history.
 
 ## Next
-/optilux-next prints 0.01.12 Review and cleanup (offline, L, 3 h), then 0.01.13 debug, timing and the acceptance re-run on the final jar (L, 2 h). Plan around: 0.01.11's five rows close in 0.01.12 (the inactivity cap, the crystals in the kill, the held-torch launch on world spike, end_city, the two worlds), the cap before 0.01.13's timed session; the provisional snapshot retaken before any `run`; bench_263 is not used by M1's acceptance runs.
+/optilux-next prints 0.01.13 Debug, timing and the acceptance re-run (L, 2 h; 2-6 launches). Plan around: the provisional snapshot retaken before any `run` (this launch changed spike); the jar unchanged (eb840262...); 0.01.13's rows above; its session runs uncapped without input now.
