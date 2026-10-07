@@ -75,9 +75,10 @@ Each in roadmap.md#qa-pass-open-questions with its phase or milestone:
 - The live world against its snapshot, Gradle's other downloads, 0.01.12's review rows for M2 (M2).
 
 ## Commits and time
-- 0.01.13.0: Debug, timing and the acceptance re-run on the final jar (this commit). Earlier commits and versions: git log.
-- 0.01.13: 15:32 ADT to the commit at about 18:30: 3.0 h against 2 h. Of it, 1.8 h was waiting on the user: m1-acceptance-8's stop to the go to rerun (15:40-16:14) and the question on D31's start rule (16:55-18:11); the work, launches included, about 1.2 h.
-- M1: 14.5 h through 0.01.12 (its handoff), 1.3 h for 0.01.12's close-out and patches .1-.5 (14:05-15:24 by the commit log; no handoff gives it), 3.0 h here: about 18.8 h against 28. Tripwire: M0-M3 55.8 h, trip at 111.6 h; actuals about 22.1 h (M0 3.3, M1 18.8).
+- 0.01.13.0: Debug, timing and the acceptance re-run on the final jar; then this close-out (handoff time and CI). Earlier commits and versions: git log.
+- 0.01.13: 15:32 ADT to the commit at 18:21: 2.8 h against 2 h. Of it, 1.8 h was waiting on the user: m1-acceptance-8's stop to the go to rerun (15:40-16:14) and the question on D31's start rule (16:55-18:11); the work, launches included, about 1.0 h.
+- CI on the phase commit: green, run 37688757828, 1m44s (its serial test step 65 s, pyright 5 s).
+- M1: 14.5 h through 0.01.12 (its handoff), 1.3 h for 0.01.12's close-out and patches .1-.5 (14:05-15:24 by the commit log; no handoff gives it), 2.8 h here: about 18.6 h against 28. Tripwire: M0-M3 55.8 h, trip at 111.6 h; actuals about 21.9 h (M0 3.3, M1 18.6).
 
 ## Next
 /optilux-next prints the Release prompt (/optilux-release): verify docs, the tests and `pack release --check`, the push, the PR `0.01 Game control: <what it delivers>`, its checks; after the user's rebase merge, the release v0.01.13.0 with optilux-0.01.13.0.zip, then the switch block to m2 and M2's Plan prompt.
