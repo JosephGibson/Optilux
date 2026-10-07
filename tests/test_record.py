@@ -299,7 +299,7 @@ def test_the_system_facts_come_from_the_primary_display() -> None:
         "gpu": "GPU X",
         "hags": True,
         "resolution": "3840x2160",
-        "windowMode": "borderless fullscreen",
+        "windowMode": "exclusive fullscreen",
         "windowsBuild": 26200,
     }
     assert recorded["driver"] == "1.2.3" and recorded["windowsRevision"] == 9457
@@ -604,10 +604,13 @@ def test_the_system_and_tree_refusals() -> None:
 
     with pytest.raises(record.RecordError, match="2 primary displays"):
         record.system_facts(TwoPrimaries(), options(), SUITE["display"])
-    exclusive = {**options(), "exclusiveFullscreen": "true"}
-    assert record.window_mode(exclusive) == "exclusive fullscreen"
-    with pytest.raises(record.RecordError, match="exclusive fullscreen"):
-        record.system_facts(FakeMachine(), exclusive, SUITE["display"])
+    # The suite's exclusive fullscreen (0.01.13: borderless presents as Composed: Copy with GPU
+    # GDI); written options that give another mode are refused.
+    assert record.window_mode(options()) == "exclusive fullscreen"
+    borderless = {**options(), "exclusiveFullscreen": "false"}
+    assert record.window_mode(borderless) == "borderless fullscreen"
+    with pytest.raises(record.RecordError, match="borderless fullscreen"):
+        record.system_facts(FakeMachine(), borderless, SUITE["display"])
 
 
 def test_the_presentmon_pin_and_the_spec_file_are_checked_before_a_launch(tmp_path: Path) -> None:
