@@ -1,6 +1,7 @@
-# The release on every push to main, that is the user's rebase merge of a milestone PR
-# (docs/workflow.md#release): `optilux pack release` builds the zip and creates v<version> at HEAD
-# when absent.
+# The release on every push to main, that is the user's rebase merge of a PR
+# (docs/workflow.md#release): the release rules CI checked on the PR, then `optilux pack release`,
+# which applies them again, builds the zip and creates v<VERSION> at HEAD when absent. A version
+# released already at another commit fails the run.
 name: Release
 
 on:
@@ -29,7 +30,10 @@ jobs:
         with:
           version: "0.12.23" # the uv that wrote uv.lock (pyproject.toml, build-system)
       - run: uv sync --frozen
-      - run: uv run optilux pack release
+      - run: uv run optilux pack release --check
         env:
           # gh has no login of its own on a runner; it reads GH_TOKEN (docs/plans/m0.md P28).
+          GH_TOKEN: ${{ github.token }}
+      - run: uv run optilux pack release
+        env:
           GH_TOKEN: ${{ github.token }}

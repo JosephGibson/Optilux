@@ -21,14 +21,15 @@ jobs:
         # variable, not the environment's.
         shell: bash
     env:
-      # On pull_request the checkout is GitHub's synthetic merge commit, whose subject carries no
-      # version; its second parent is the PR head (docs/plans/m0.md P27, D16).
+      # On pull_request the checkout is GitHub's synthetic merge commit, whose subject is no
+      # commit-msg subject and which no branch tip on origin names; its second parent is the PR
+      # head, the commit the rebase merge puts on main (docs/plans/m0.md P27, D16).
       REF: ${{ github.event_name == 'pull_request' && 'HEAD^2' || 'HEAD' }}
     steps:
       # Actions pinned to release tags (docs/plans/m0.md D13).
       - uses: actions/checkout@v7.0.1
         with:
-          fetch-depth: 0 # the full history, so HEAD^2 and every phase subject are present
+          fetch-depth: 0 # the full history, so HEAD^2 and origin/main's VERSION are present
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           version: "0.12.23" # the uv that wrote uv.lock (pyproject.toml, build-system)
@@ -42,8 +43,9 @@ jobs:
       # 0.01.12); the local default stays parallel (12 s against 43 s).
       - run: uv run optilux test --serial
       - run: uv run optilux verify docs
-      # --no-remote: gh has no login here, and on a push to main the release workflow may
-      # already have created the release this check would refuse.
+      # The rules release.yml applies after the merge (docs/workflow.md#release), before it:
+      # VERSION newer than origin/main's and no tag v<VERSION> elsewhere, both read with git.
+      # --no-remote skips only the GitHub release lookup: gh has no login here.
       - run: uv run optilux pack release --check --no-remote --ref "$REF"
       - run: uv run optilux pack build --ref "$REF"
       - uses: actions/upload-artifact@v7.0.1

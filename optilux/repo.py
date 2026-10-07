@@ -8,12 +8,14 @@ import subprocess
 from pathlib import Path
 
 ORIGIN = "origin"
-# main moves only by the user's rebase merge of a milestone PR (docs/workflow.md#git).
+# main moves only by the user's rebase merge of a PR (docs/workflow.md#git).
 MAIN = "main"
-# docs/workflow.md#git: every commit's subject starts with its version, `0.MM.PP.N: `, the phase
-# and its patch number (0 for the phase, 1, 2, ... for a fix after it). Subjects before 0.01.12.1
-# carry the phase alone, `0.MM.PP: `, and are read as written.
-VERSION = re.compile(r"(0\.(\d{2})\.(\d{2})(?:\.(?:0|[1-9]\d*))?): ")
+# The release version, MAJOR.MINOR.PATCH, in the root file VERSION (docs/workflow.md#release).
+VERSION_FILE = "VERSION"
+VERSION = re.compile(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)")
+# M0's and M1's subjects began with their phase, `0.MM.PP: ` or `0.MM.PP.N: ` (roadmap.md D32);
+# no commit carries it from D33 on, and refs from before VERSION existed are read through it.
+LEGACY = re.compile(r"(0\.(\d{2})\.(\d{2})(?:\.(?:0|[1-9]\d*))?): ")
 # Milestone branches are m0, m1, ... (docs/workflow.md#git), the number unpadded.
 BRANCH = re.compile(r"m(\d{1,2})")
 # A remote call that needs credentials fails at once instead of hanging on a prompt.
@@ -80,10 +82,44 @@ def head(root: Path) -> str | None:
     return read(root, "rev-parse", "--verify", "-q", "HEAD")
 
 
+def file_at(root: Path, ref: str, path: str) -> str | None:
+    """A file's text at a commit present locally; None when the commit or the file is absent."""
+    result = git(root, "show", f"{ref}:{path}")
+    return result.stdout if result.returncode == 0 else None
+
+
+def version_at(root: Path, ref: str) -> str | None:
+    """The text of VERSION at ref, stripped; None when ref has no VERSION (before 0.2.0)."""
+    text = file_at(root, ref, VERSION_FILE)
+    return text.strip() if text is not None else None
+
+
+def released_at(root: Path, ref: str) -> str | None:
+    """The version a ref carries: its VERSION, or for a ref from before VERSION existed the
+    newest `0.MM.PP.N: ` subject prefix on it (v0.00.06 for M0); None when neither is there."""
+    return version_at(root, ref) or newest_version(root, ref)
+
+
+def version_key(text: str | None) -> tuple[int, int, int] | None:
+    """A version as numbers for ordering: 0.2.0 -> (0, 2, 0). A legacy prefix maps its milestone
+    to the minor, 0.00.06 -> (0, 0, 6), so v0.00.06 sorts below 0.2.0 (D33). None otherwise."""
+    if match := VERSION.fullmatch(text or ""):
+        return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    if match := LEGACY.fullmatch(f"{text}: "):
+        return (0, int(match.group(2)), int(match.group(3)))
+    return None
+
+
+def next_minor(text: str | None) -> str:
+    """The version a milestone after `text` ships as: its minor plus one (0.2.0 -> 0.3.0)."""
+    major, minor, _ = version_key(text) or (0, 0, 0)
+    return f"{major}.{minor + 1}.0"
+
+
 def version_of(subject: str) -> str | None:
-    """The version prefix of a commit subject (`0.01.12.1: ...` -> `0.01.12.1`, `0.00.03: ...`
-    -> `0.00.03`), or None."""
-    match = VERSION.match(subject)
+    """The legacy version prefix of a commit subject (`0.01.12.1: ...` -> `0.01.12.1`,
+    `0.00.03: ...` -> `0.00.03`), or None."""
+    match = LEGACY.match(subject)
     return match.group(1) if match else None
 
 

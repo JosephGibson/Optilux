@@ -1,6 +1,7 @@
 [project]
 name = "optilux"
-# Never bumped: the release version is the newest commit's prefix (docs/workflow.md, Git).
+# The package's placeholder, never bumped and never released: the release version is the root
+# file VERSION (docs/workflow.md#release).
 version = "0.0.0"
 description = "Shader and runtime benchmark harness for Minecraft."
 requires-python = ">=3.12"
