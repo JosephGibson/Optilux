@@ -1014,6 +1014,9 @@ class ModGame(FakeGame):
     def user_sid(self) -> str:
         return USER_SID
 
+    def canonical_sid(self, text: str) -> str:
+        return {"LA": "S-1-5-21-500"}.get(text, text)
+
 
 def with_helper(root: Path) -> None:
     write(root / "runtime" / PLATFORM / "files" / "optilux-helper-0.1.0.jar", HELPER)
@@ -1135,3 +1138,15 @@ def test_the_dacl_aces_and_the_log_check(tmp_path: Path) -> None:
     write(log, f'{{"token":"{TOKEN}"}}\n'.encode())
     with pytest.raises(launch.LaunchError, match="holds the token"):
         launch.check_log(log, TOKEN)
+
+
+def test_a_dacl_written_with_an_alias_passes(tmp_path: Path) -> None:
+    root = make_root(tmp_path)
+    with_helper(root)
+    host = ModGame(root / "runtime" / PLATFORM / "game")
+    host.dacl = "D:P(A;;FA;;;LA)"  # the built-in Administrator, as SDDL names it
+    host.user_sid = lambda: "S-1-5-21-500"
+    launched = launch.launch(root, "spike", host=host)
+    client, facts = launch.open_mod(launched, root, host, lambda text: None)
+    client.close()
+    assert facts["pipe"]["dacl"] == "D:P(A;;FA;;;LA)"

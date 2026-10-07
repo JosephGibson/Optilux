@@ -286,6 +286,11 @@ class Host:
 
         return winpipe.current_user_sid()
 
+    def canonical_sid(self, text: str) -> str:
+        from optilux import winpipe
+
+        return winpipe.canonical_sid(text)
+
     def clock(self) -> float:
         return time.monotonic()
 
@@ -997,7 +1002,8 @@ def open_mod(
     try:
         user = host.user_sid()
         aces = dacl_aces(client.dacl or "")
-        if [(a["type"], a["sid"]) for a in aces] != [("A", user)]:
+        found = [(a["type"], host.canonical_sid(a["sid"])) for a in aces]
+        if found != [("A", user)]:
             raise LaunchError(f"the pipe's DACL is {client.dacl}, not one allow ACE for {user}")
         refused = host.second_instance(modclient.pipe_name(launched.token))
         if refused == 0:
