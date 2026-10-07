@@ -26,7 +26,8 @@ TOC_MAX_LINES = 100
 CONTENTS = "## Contents"
 
 STATUS = "Status:"
-# Status lines point to the handoff; the detail lives there, not in the line.
+# A Status line says what its doc covers and how far it is built, never where the milestone
+# stands (docs/workflow.md#doc-ownership); the detail lives in the doc, not in the line.
 STATUS_MAX_SENTENCES = 2
 
 # docs/sources/ holds external documents verbatim: cite targets, never checked.
