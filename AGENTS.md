@@ -1,16 +1,16 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M1 closed pending merge: 0.01.13 (debug, timing and the acceptance re-run) is the last phase, and the milestone PR awaits the user's rebase merge. Latest stop: docs/handoff.md.
+Status: the entry point: rules, layout, docs and terms. Where the milestone stands: `uv run optilux status`, from git and docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
 - Python core (`optilux` package); Java only for the helper mod; PowerShell only where Windows forces it.
-- Configs are JSON under config/. Platform specifics live only in config/platforms/, the mod adapter and the world snapshot.
-- Shader: full rewrite. Complementary source may be studied (reference/, gitignored, never committed). No 1-1 copies; `optilux verify similarity` must pass.
+- Configs are JSON under config/. Platform specifics live in config/platforms/, the mod adapter, the world snapshot and suite.json's display block, plus two 26.3 log matches (docs/design.md#4-architecture).
+- Shader: full rewrite. Complementary source may be studied (reference/, gitignored, never committed). No 1-1 copies; `optilux verify similarity` (M3) must pass.
 - Never compare runs with different identities. Never fabricate, estimate silently or pass a missing measurement.
 - Never change system settings. Never touch the user's played Minecraft instance. Graphics drivers are assumed good: no workarounds, never part of identity (records note the version).
 - Announce every game launch.
-- Git: one milestone branch; one commit per phase, `0.MM.PP.0: <summary>`, a later fix to it `0.MM.PP.1`, `.2`, ...; one line, at most 72 characters; push after each commit; one PR per milestone, rebase-merged by the user; no force push, no `--no-verify`.
+- Git (docs/workflow.md#git): Conventional Commits, one line of at most 72 characters naming no milestone, phase, version or date; one logical, test-green change per commit, pushed after it; PRs rebase-merged by the user; no force push, no `--no-verify`.
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout
@@ -21,10 +21,10 @@ Status: M1 closed pending merge: 0.01.13 (debug, timing and the acceptance re-ru
 - .github/: workflows/ci.yml (push and pull_request) and release.yml (push to main), both windows-latest (docs/workflow.md#release).
 - mod/: optilux-helper (Fabric), a Gradle project (Loom, wrapper pinned by sha256); `mod build` puts its jar into runtime/<platform>/files/, `mod test` runs its JUnit tests.
 - shader/: the pack, zipped by `pack build` and released by `pack release` (docs/workflow.md#release). M0's placeholder (shaders/shaders.properties, no programs) stays until M3's hello pack.
-- config/: platforms (+ launch specs), suite, profiles, java, tools, views; pipeline planned.
+- config/: platforms (+ launch specs), suite, profiles, java, tools, views; pipeline and calibrations planned.
 - snapshots/<world>/: world copies, tree-hashed; results/: records/<run>.json and raw/<run>/.
 - docs/.
-- Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/, .coverage. Committed: results/records/, config/calibrations/.
+- VERSION: the release version (docs/workflow.md#release). Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/, .coverage.
 
 ## Docs
 - docs/design.md: goals, architecture, interfaces, milestones, decisions.
@@ -37,11 +37,11 @@ Status: M1 closed pending merge: 0.01.13 (debug, timing and the acceptance re-ru
 - docs/gpu-iris.md: GPU and Iris facts with evidence tags.
 - docs/mod.md, docs/mod-protocol.md: helper mod spec and wire contract (full rewrite).
 - docs/jvm.md: JVM track (after 1.0).
-- docs/workflow.md: skills, agents, milestones, docs rules, git, release, hooks, tests.
+- docs/workflow.md: skills, agents, milestones, doc ownership and rules, git, release, hooks, tests.
 - docs/lessons.md: what AlaCarteShaders (ALC) learned, tagged by platform dependence.
-- docs/handoff.md: the latest stop: what passed, failed or was deferred, and what the next phase plans around.
+- docs/handoff.md: the latest stop: the last phase done, what passed, failed or was deferred, the next step.
 - docs/sources/: external documents kept verbatim (the user's optimization playbook).
-- docs/roadmap.md: milestones M0-M6; the current one in detail (phases, exits, estimates); findings and decisions assigned, each decision with an owner.
+- docs/roadmap.md: milestones M0-M6, the current one in detail; findings assigned; decisions, each with an owner.
 - docs/plans/: one plan per milestone (m0.md first), from the strict template docs/templates/plan.md, premises verified at their source.
 - docs/prompts/: stored prompt sets, one prompt per phase plus Resume (m0.md first); standing.md, the Plan and Release prompts every milestone uses.
 
