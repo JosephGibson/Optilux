@@ -7,7 +7,7 @@ GPU: Uniform math · Occupancy · Latency · Depth and discard · Bandwidth · T
 Iris: Custom uniforms · Passes and buffers · Frame counters and reload · Properties and options · Programs and alpha tests · Toolchain quirks
 
 ## Sources and tags
-- ALC and PB both ran Iris 1.10.7, Sodium 0.8.x, MC 1.21.11, RX 7800 XT, 4K. Frame counters and reload, the settings re-read, the error path and the `#version` rewrite were verified on Iris 1.11.7 in the spike and M1 (platform.md#mc-263-verified; A4); every other Iris fact is [MC]: re-verify on 1.11.7 with `javap -c -p`.
+- ALC and PB both ran Iris 1.10.7, Sodium 0.8.x, MC 1.21.11, RX 7800 XT, 4K. Frame counters and reload (the default clear colours excepted), the settings re-read, the error path, the dump layout and the `#version` rewrite were verified on Iris 1.11.7 in the spike and M1 (platform.md#mc-263-verified; A4); every other Iris fact is [MC]: re-verify on 1.11.7 with `javap -c -p`.
 - Tags: m = measured in game; v = verified offline (ISA, jar bytecode, numeric check); b = built, never timed. CONFLICT = the sources disagree; measure before relying on either.
 
 ## Uniform math
@@ -104,7 +104,7 @@ Iris 1.10.7 bytecode (`javap -c -p` of the pinned jar), read for Optilux on 2026
 - frameTimeCounter: a float that adds the frame's whole milliseconds / 1000 each frame. Wall-clock, so it differs per session; set to 0 at 3600.
 - Both reset to 0 at every pipeline creation (`PipelineManager.preparePipeline`):
   - `Iris.reload()`;
-  - a dimension change;
+  - a change to a dimension without a cached pipeline (`destroyPipeline()` clears the cache; platform.md#mc-263-verified R5);
   - the first level render after a join.
   - So frameCounter counts frames since the last reload; the first frame after one sees 1 (inference).
 - A new pipeline's first frame clears every colortex, `Clear=false` ones included. TAA history therefore starts empty after a reload.

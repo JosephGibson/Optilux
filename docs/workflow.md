@@ -100,7 +100,7 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 - Commits (roadmap.md D33): Conventional Commits, `type(scope)!: summary`, the type one of feat, fix, perf, refactor, test, docs, build, ci, chore, revert, the scope optional and lowercase, `!` for a breaking change. One line, at most 72 characters, no body and no trailer; the subject never names a milestone, phase, version or date. The commit-msg hook enforces it (Hooks and guards).
 - A commit is one logical, test-green change: `optilux test` and `optilux verify docs` pass before it. A phase may take several (ALC's phases took about 1 h). Push after every commit, as a backup; no git hook runs on push.
 - Shader features and candidates are options (shader.md#method), so a regression is isolated by switching one off as well as by bisect.
-- M0's and M1's subjects carry their phase (`0.MM.PP.N: `, roadmap.md D32); they stay as written, and `optilux status` reads them.
+- M0's and M1's subjects carry their phase (`0.MM.PP: `, from 0.01.12.1 `0.MM.PP.N: `, roadmap.md D32); they stay as written, and `optilux status` reads them.
 - A PR is the integration and review boundary: one per milestone, plus one per patch release. Title `<version> <Name>: <what it delivers>`, the version and name as `optilux pack release --check` prints them, at most 72 characters, no trailing period; no body.
 - The user merges with Rebase and merge only (roadmap.md D7). Rebased commits get new SHAs on main, so docs cite versions and phases, never SHAs; the merged branch is deleted and the next one is cut from the new main.
 - Never: force push, `--no-verify`, other remotes, history rewrites, worktrees.
@@ -130,7 +130,7 @@ Bodies in optilux/hooks.py, run by the venv's python as `python -m optilux.hooks
   - A guard that refuses `gh` through a variable or `git push -u` is pure friction; drop it.
 
 ## Testing
-- `optilux test` runs pytest in parallel (pytest-xdist, a worker per logical CPU; optilux/verbs/test.py has the timing); `--serial` runs one process, as CI does (ci.yml has its runner's timing). The suite passes both ways.
+- `optilux test` runs pytest in parallel (pytest-xdist's auto: a worker per physical core, psutil being installed; optilux/verbs/test.py has the timing); `--serial` runs one process, as CI does (ci.yml has its runner's timing). The suite passes both ways.
 - Unit tests for (reconciled with M1's tests in 0.01.12):
   - the run record: identity, the run spec, the views file, the run's status and the acceptance items' verdicts on fakes;
   - platform pins (sha512, sha1, sha256), install and the launch spec;

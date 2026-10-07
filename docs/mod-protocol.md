@@ -18,7 +18,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 - Concurrency:
   - requests run concurrently, at most 32 at once (more answer `busy`, `cancel` excepted);
   - responses may arrive out of order, matched by `id`;
-  - exclusive resources (window, capture, path, timers) answer `busy`; while one is active, `camera.place`, `camera.path`, `command`, `ticks.step`, `shaders.reload`, `hud.set` and `input.block` also answer `busy`, and an exclusive request answers `busy` while a mutating one still runs, so no mutation lands inside a measurement.
+  - exclusive resources (window, capture, path, timers) answer `busy`; while one is active, every mutating command (commands.json: `camera.place`, `camera.path`, `command`, `ticks.step`, `shaders.reload`, `hud.set`, `input.block`, `selftest`, `player.path`) also answers `busy`, and an exclusive request answers `busy` while a mutating one still runs, so no mutation lands inside a measurement.
 - Long requests can be cancelled with `cancel {"id"}`. The cancelled request answers `cancelled`; `cancel` answers `cancelled: true`, or false when that id was not running. Game-thread work already queued for a request answered `timeout` or `cancelled` skips its mutation when it runs (mod.md#4-architecture).
 - Event: `{"event": "<name>", "data": {...}, "frameIndex", "sinceReload", "qpcNs"}`. Events have no `id`; the mod pushes them once it has read `hello`'s line, so one may precede hello's answer.
 - Versioning: `hello` returns `protocol` (integer) and `capabilities` (the commands this build answers). The client adapts to capabilities, never to version strings. A missing capability answers `unsupported`.

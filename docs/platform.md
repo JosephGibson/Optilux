@@ -6,7 +6,7 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 
 ## Concept
 - A platform is everything that changes with the Minecraft version or renderer: MC version, Java major, loader; renderer backend; mod tiers (exact files + sha512); data and resource pack formats; world snapshot; the mod adapter; quirks to re-verify.
-- Platform-independent: harness core, statistics, run-record schema; suite logic, docs, skills; the shader's pipeline spec.
+- Platform-independent: harness core, statistics, run-record schema; suite logic, docs, skills; the shader's pipeline spec; the exceptions at M1 in design.md#4-architecture.
 
 ## mc-26.3
 - MC 26.3 released 2026-09-15 [S1]. Java 25 required since 26.1 (released 2026-03-24) [S2].
@@ -31,7 +31,7 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 - Aperture facts to recheck when public, from a migration guide marked outdated [S8]: no buffer flipping (a texture cannot be read and written at two positions); every texture is explicit except mainDepthTex and solidDepthTex; uniforms are `ap.*` structs; command lists merge composite and compute.
 
 ## Mod tiers
-Data: config/platforms/mc-26.3.json (version, file, Modrinth version id, sha512; the played tier's missing and excluded mods with their reasons). Signed off as pinned on 2026-10-05 (design.md D8).
+Data: config/platforms/mc-26.3.json (version, file, Modrinth id, sha512; the played tier's missing and excluded mods with their reasons). Signed off as pinned on 2026-10-05 (design.md D8).
 
 | Tier | Adds to bench | Use |
 |---|---|---|
@@ -90,7 +90,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   5. `--username optilux`, `--uuid` from the world's players/data/<uuid>.dat, else the platform file's `offlinePlayer` (F8); a snapshot follows the bench player's first join (ALC);
   6. the started command line (psutil) equal to the built one and to the profile and the spec, the token's value excepted (fresh per launch, never identity);
   7. the join in this session's latest.log within 120 s (F11), Fabric's mod list equal to the tier; a failed check ends the game; `--quit-after S` holds S s, quits through the mod's `quit` (WM_CLOSE without a mod session) and reads the files back: every written key, the Iris keys, Sodium's text (`--set` and `--no-token`: run-record.md#identity).
-- Cross-check, once per platform: minecraft-launcher-lib's own command for the same versions must match the spec's main class, asset index and jars by content (ALC's check against Prism).
+- Cross-check, once per platform: minecraft-launcher-lib's own command for the same versions must match the spec's main class, asset index and jars by content.
 
 ## mc-26.3 verified
 The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform change step 3 reruns these checks on a new platform. Evidence is quoted; the raw records live under runtime/ (ignored). 0.01.10 closed the deferred rows; the user's look review passed.
@@ -146,10 +146,10 @@ The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform c
 4. Port the world: copy the snapshot, open it on the new version, re-check every camera, re-snapshot and hash.
 5. Recalibrate every mode.
 6. Re-capture the reference baselines.
-7. Code changes stay in the mod adapter and the shader backend.
+7. Code changes stay in the mod adapter, the shader backend and those exceptions.
 
 ## Sources
-Secondary sources are marked; the spike confirmed what the bench depends on (above).
+Secondary sources are marked; the spike confirmed what the bench depends on.
 - [S1] https://syntaxmine.com/articles/what-breaks-in-minecraft-26-3 (secondary): release, mod versions, formats, OIT.
 - [S2] https://minecraft.wiki/w/Java_Edition_26.1: Java 25, 26.1 release.
 - [S3] https://syntaxmine.com/articles/minecraft-vulkan-renderer-26-2 (secondary): Vulkan experimental in 26.2/26.3, with fallback.

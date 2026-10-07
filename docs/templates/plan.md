@@ -11,7 +11,7 @@ Rules · Template · Filling it
 - Phases: `M<N>.P<PP>`, M<N>.P00 the plan itself; each is one reviewable outcome of one or more test-green commits (workflow.md#git) with its change, tests, exit and estimate. The commits are written when they are made, never in the plan. Estimates are agent hours; machine time is listed apart and does not count toward the sizing rule (design.md#6-milestones).
 - Decisions: each carries an owner (user or Claude) and the recommendation an unattended run takes (workflow.md#running-a-milestone). A closed decision (design.md#7-decisions-taken-user-2026-10-05) is cited, never reopened. Decisions that belong to the sequence of milestones live in roadmap.md#decisions; the plan adds only its own.
 - Cites: by path and heading or quoted content, never by line number. No time-sensitive instructions; superseded text is deleted, not archived.
-- The roadmap holds the milestone's place, its exit and the findings assigned to it; the plan holds the detail. Neither repeats the other: each cites.
+- The roadmap holds the milestone's place, its exit, the findings assigned to it and each phase in brief (change, exit, estimate); the plan holds the detail (files, tests, decisions), which the roadmap cites rather than copies.
 - Size: a plan that would pass the cap splits the milestone before it starts (design.md#6-milestones).
 - Review: the user approves the plan (section 10) before its prompt set is written; /critique is optional, and each finding is folded in after verification at its source or listed with a reason in the handoff.
 
