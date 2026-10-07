@@ -238,11 +238,11 @@ def test_the_pre_launch_files_and_their_read_back(tmp_path: Path) -> None:
     }
     # Any written key, F3's two included (both are identity), an Iris key or a Sodium flag that
     # moved fails the read-back.
-    text = options.decode().replace("exclusiveFullscreen:false", "exclusiveFullscreen:true")
+    text = options.decode().replace("exclusiveFullscreen:true", "exclusiveFullscreen:false")
     write(game / "options.txt", text.encode())
     back = launch.read_back(game, pre)
     assert not back["ok"] and back["options"]["moved"] == {
-        "exclusiveFullscreen": {"written": "false", "read": "true"}
+        "exclusiveFullscreen": {"written": "true", "read": "false"}
     }
     text = options.decode()
     write(game / "options.txt", text.replace("maxFps:120", "maxFps:60").encode())
@@ -949,10 +949,10 @@ def test_the_cli_holds_quits_and_reads_back(
     assert not any(a.startswith("-Doptilux.") for a in hosts[-1].started["command"])
     assert b"maxFps:120\n" in (game / "options.txt").read_bytes()
     # An F3 key the game moved fails the launch like any written key: it is identity.
-    flips.append({"exclusiveFullscreen": "true"})
+    flips.append({"exclusiveFullscreen": "false"})
     assert cli.main(["launch", "spike", "--quit-after", "0"]) == 1
     assert (
-        "read back: options.txt 23 of 24 keys as written; moved: exclusiveFullscreen: false -> true"
+        "read back: options.txt 23 of 24 keys as written; moved: exclusiveFullscreen: true -> false"
     ) in capsys.readouterr().out.splitlines()
     flips.append({})
     # A quit that does not exit 0 fails the run.

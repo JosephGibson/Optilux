@@ -558,8 +558,9 @@ class Machine:
 def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tuple[dict, dict]:
     """(identity, recorded) of the system: GPU, HAGS, resolution, window mode and Windows build,
     then the facts recorded but never matched (the driver, the update revision, the display's
-    rate). The resolution is the primary display's mode, as borderless fullscreen renders at it
-    (D22); RecordError, naming the fix, when it or the window mode is not the suite's display."""
+    rate). The resolution is the primary display's mode, which exclusive fullscreen keeps (no
+    fullscreenResolution is written; D22); RecordError, naming the fix, when it or the window
+    mode is not the suite's display."""
     displays = machine.displays()
     primary = [d for d in displays if d["flags"] & PRIMARY]
     if len(primary) != 1:
