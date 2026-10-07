@@ -88,7 +88,7 @@ gpt-6-astra, xhigh, repo mode, 421.7 s, 0.88 M tokens in (0.76 M cached): Codex'
 - r2, high: run-record.md promised that `run` checks nothing else holds the GPU; the gate checks only games under runtime/, optilux- ETW sessions and Gradle builds; doc fixed, the check is M2's (validity).
 - r3, medium: `profile: null` was not enforced; Iris reads shaderpacks/<pack>.txt (Iris.loadExternalShaderpack, the 1.11.7 bytecode); `launch` refuses one, test.
 - r4, medium: A4 ignored focus.lost and dimension.changed; fixed (acceptance.a4_clean), test.
-- Seen there: runtime/mc-26.3/game/shaderpacks/ holds ComplementaryUnbound_r5.9.3-copy.zip, no A4 copy and never selected; left alone.
+- Seen there: runtime/mc-26.3/game/shaderpacks/ held ComplementaryUnbound_r5.9.3-copy.zip, the spike's V1 pack-switch copy (byte-equal to the reference pack, 2026-10-06 03:32; its evidence is platform.md#mc-263-verified V1); deleted at the user's word (2026-10-07).
 
 ## The held-torch launch
 Announced, bench tier, world spike (13:47:40, pid 8988, joined in 15.8 s, the mod's quit, exit 0 in 0.9 s); no input injected, input.block never on. Gate: three idle Gradle daemons and one other JVM recorded, none blocking. Creative, a torch in the main hand, camera at the joined pose: hideGui false frame 0ef1d676... shows the torch; hideGui true frame e88fdd77... shows no hand (results/raw/held-torch/). Gamemode spectator and an empty hand restored. options.txt with inactivityFpsLimit "minimized" (sha256 7cdae2e9..., 174 unwritten keys) read back: 24 of 24 keys, the Iris keys, Sodium's flags and text; the request log holds no token.
