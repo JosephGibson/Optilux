@@ -1,5 +1,5 @@
 # Mod protocol (v1)
-Status: protocol 1, built and accepted for M1's 17 commands, the rest spec; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block and the world, dimension, focus and screen events; 0.01.07: ready, shaders.reload, shaders.options, frames.capture, selftest, sinceReload and the reload and capture events; the rest is still spec.
+Status: protocol 1, built and accepted for M1's 17 commands, the rest spec; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block, the world, dimension, focus and screen events and hook.error; 0.01.07: ready, shaders.reload, shaders.options, frames.capture, selftest, sinceReload and the reload and capture events; the rest is still spec.
 
 ## Contents
 Transport · Envelope · Errors · Events · Commands · Choreography · Client rules

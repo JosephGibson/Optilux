@@ -104,7 +104,7 @@ Iris 1.10.7 bytecode (`javap -c -p` of the pinned jar), read for Optilux on 2026
 - frameTimeCounter: a float that adds the frame's whole milliseconds / 1000 each frame. Wall-clock, so it differs per session; set to 0 at 3600.
 - Both reset to 0 at every pipeline creation (`PipelineManager.preparePipeline`):
   - `Iris.reload()`;
-  - a change to a dimension without a cached pipeline (`destroyPipeline()` clears the cache; platform.md#mc-263-verified R5);
+  - a dimension change;
   - the first level render after a join.
   - So frameCounter counts frames since the last reload; the first frame after one sees 1 (inference).
 - A new pipeline's first frame clears every colortex, `Clear=false` ones included. TAA history therefore starts empty after a reload.
