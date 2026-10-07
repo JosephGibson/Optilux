@@ -11,7 +11,7 @@ Output of `uv run optilux status`, run just now (it always exits 0; a problem is
 !`uv run optilux status`
 
 Reply with exactly these, nothing else:
-1. The briefing: every line above up to the first blank line, in one fenced block, as printed.
+1. The briefing: every line above from the first down to the line before the first blank line, in one fenced block, as printed. The dashed rules do not end it; its last rows are `TREE`, `CHECKS` and any `PROBLEM` rows.
 2. Only if a line `switch to m<N> first, paste:` follows: that line, then the commands under it in one fenced block, unchanged.
 3. The next prompt, verbatim, last in the reply: every line after the line `next prompt, <phase> <title>, verbatim:`, in one fenced block, with nothing added, dropped, reworded or explained. If that line is absent, say so with the `PROBLEM` row that explains it.
 
