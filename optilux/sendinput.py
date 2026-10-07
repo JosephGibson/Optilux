@@ -1,7 +1,7 @@
 """A minimal SendInput helper (user32, through ctypes; plans/m1.md P33).
 
 The harness's own OS input, for the few checks that need a real device path: 0.01.06's mouse nudge
-with input.block off (A7's positive control), A2's F2 press and A7's blocked arm reuse it. SendInput
+with input.block off, A2's F2 press, and A7's positive control and blocked arm. SendInput
 injects into the foreground window's input stream; it is refused across integrity levels (UIPI)
 without saying so, so a caller judges the effect in the game, never the return value alone.
 Windows only: user32 is loaded on first use; tests pass a fake.
@@ -20,6 +20,12 @@ KEYEVENTF_KEYUP = 0x0002
 # key's scan code from the message, so an injected key carries both, as a keyboard's would.
 VK_F2 = 0x71
 SCAN_F2 = 0x3C
+# A7's keys: T opens the chat screen (Gui's keyChat), Escape closes it, which grabs the mouse
+# (Gui.setScreen(null) calls MouseHandler.grabMouse; read in the 26.3 jar, 0.01.09).
+VK_T = 0x54
+SCAN_T = 0x14
+VK_ESCAPE = 0x1B
+SCAN_ESCAPE = 0x01
 # Fixed-width fields, so the layout is Windows' on any host: 40 bytes per INPUT on 64-bit.
 LONG = ctypes.c_int32
 DWORD = ctypes.c_uint32

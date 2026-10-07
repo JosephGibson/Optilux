@@ -32,17 +32,22 @@ SCHEMA = 1
 # The run spec (run-record.md#run-spec).
 NAME = re.compile(r"[a-z0-9-]{1,40}")
 SPEC_REQUIRED = ("name", "kind", "views", "world", "variants", "tier", "resourcePacks", "items")
-# mode and treatment belong to measurement runs (M2) and must be absent or null before then.
-SPEC_OPTIONAL = ("notes", "mode", "treatment")
+# mode and treatment belong to measurement runs (M2) and must be absent or null before then;
+# reloads is F4's reload table (docs/plans/m1.md 0.01.09).
+SPEC_OPTIONAL = ("notes", "mode", "treatment", "reloads")
 KINDS = ("measurement", "calibration", "acceptance")
 ITEMS = tuple(f"A{number}" for number in range(1, 13))
-# The items `run` performs in M1 (docs/plans/m1.md 0.01.08); 0.01.09 adds A4, A7 and A9.
-RUNNABLE = ("A1", "A2", "A3", "A10")
-NEXT_PHASE = ("A4", "A7", "A9")
+# The items `run` performs in M1 (docs/plans/m1.md 0.01.08 and 0.01.09), in the record's order.
+RUNNABLE = ("A1", "A2", "A3", "A4", "A7", "A9", "A10")
 # The resource-pack set launch writes (suite.json resourcePacks; M3 adds the deterministic one).
 PACK_SET = "standard"
-# An acceptance session reloads twice: selftest's reload and the start-of-run reload.
+# An acceptance session reloads twice: selftest's reload and the start-of-run reload; A4 twice
+# more (the broken copy, then the recovery).
 ACCEPTANCE_RELOADS = 2
+A4_RELOADS = 2
+# F4's table (roadmap.md#findings-assigned): heap after GC and private bytes every RELOAD_EVERY
+# reloads.
+RELOAD_EVERY = 10
 
 # The views file (measurement.md#baseline-suite): config/views/<world id>.json.
 VIEW_KEYS = ("id", "dim", "x", "y", "z", "yaw", "pitch", "time", "weather")
@@ -177,6 +182,7 @@ class Spec:
     items: tuple[str, ...]
     notes: str | None
     data: dict
+    reloads: int = 0
 
 
 def check_spec(
@@ -185,8 +191,8 @@ def check_spec(
     """A run spec checked before anything launches (run-record.md#run-spec): its fields, a
     single-use name, an acceptance kind (M2 brings the others), the bench tier, the views file and
     its snapshot, the world under `saves`, one variant of the reference pack `pack` at its
-    defaults, the standard resource-pack set, items `run` performs, and the reload budget. Each
-    refusal names its fix."""
+    defaults, the standard resource-pack set, items `run` performs, F4's reload count (`reloads`,
+    a multiple of RELOAD_EVERY) and the session's reload budget. Each refusal names its fix."""
     if not isinstance(data, dict):
         raise RecordError("the spec is no JSON object; fix: give its fields as an object")
     missing = [key for key in SPEC_REQUIRED if key not in data]
@@ -252,28 +258,39 @@ def check_spec(
             f"(of {known}); fix: set {PACK_SET} (M3 adds the deterministic set)"
         )
     items = data["items"]
+    runnable = ", ".join(RUNNABLE)
     if not isinstance(items, list) or not items:
-        raise RecordError("items lists no acceptance item; fix: name A1, A2, A3 or A10")
+        raise RecordError(f"items lists no acceptance item; fix: name some of {runnable}")
     if len(set(items)) != len(items):
         raise RecordError(f"items {items} names one item twice; fix: name each once")
     for item in items:
         if item not in ITEMS:
             raise RecordError(f"item {item!r} is no acceptance item; fix: one of A1..A12")
-        if item in NEXT_PHASE:
-            raise RecordError(f"item {item} lands in 0.01.09; fix: drop it from this run")
         if item not in RUNNABLE:
             raise RecordError(f"item {item} comes in a later milestone; fix: drop it")
-    cap = suite["capture"]["reloadCap"]
-    if ACCEPTANCE_RELOADS > cap:
+    reloads = data.get("reloads", 0)
+    if (
+        isinstance(reloads, bool)
+        or not isinstance(reloads, int)
+        or reloads < 0
+        or reloads % RELOAD_EVERY
+    ):
         raise RecordError(
-            f"the session plans {ACCEPTANCE_RELOADS} reloads, over capture.reloadCap {cap}; fix: "
-            "raise the cap from F4's table"
+            f"reloads {reloads!r} is no count of F4's reloads; fix: a multiple of {RELOAD_EVERY} "
+            "(the table's row step), or leave it out"
+        )
+    planned = ACCEPTANCE_RELOADS + (A4_RELOADS if "A4" in items else 0) + reloads
+    cap = suite["capture"]["reloadCap"]
+    if planned > cap:
+        raise RecordError(
+            f"the session plans {planned} reloads, over capture.reloadCap {cap}; fix: fewer "
+            "reloads, or raise the cap from F4's table"
         )
     notes = data.get("notes")
     if notes is not None and not isinstance(notes, str):
         raise RecordError("notes must be text; fix: write them as one string")
     order = tuple(item for item in RUNNABLE if item in items)
-    return Spec(name, kind, views, world, pack, "bench", PACK_SET, order, notes, data)
+    return Spec(name, kind, views, world, pack, "bench", PACK_SET, order, notes, data, reloads)
 
 
 # The identity.

@@ -1,12 +1,14 @@
-"""The run record (docs/run-record.md, docs/plans/m1.md 0.01.08): the tree hash on a fixture tree,
-the run spec's checks on fixtures (every refusal naming its fix), the views file, the identity
-and the record writer against the identity key list, the system facts on a fake machine."""
+"""The run record (docs/run-record.md, docs/plans/m1.md 0.01.08 and 0.01.09): the tree hash on a
+fixture tree, the run spec's checks on fixtures (every refusal naming its fix), the views file,
+the identity and the record writer against the identity key list, the system facts on a fake
+machine; run's readers: the jcmd outputs and the broken-pack writer on a fixture zip."""
 
 import copy
 import hashlib
 import json
 import re
 import shutil
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -139,8 +141,11 @@ REFUSALS = [
     (put("items", []), "no acceptance item"),
     (put("items", ["A1", "A1"]), "twice"),
     (put("items", ["A13"]), "no acceptance item"),
-    (put("items", ["A4"]), "0.01.09"),
     (put("items", ["A5"]), "later milestone"),
+    (put("reloads", 15), "multiple of 10"),
+    (put("reloads", -10), "multiple of 10"),
+    (put("reloads", True), "multiple of 10"),
+    (put("reloads", 290), "over capture.reloadCap 288"),
     (put("notes", 3), "notes must be text"),
 ]
 
@@ -182,6 +187,19 @@ def test_the_reload_budget_is_checked(fixture_root) -> None:
     suite["capture"]["reloadCap"] = 1
     with pytest.raises(record.RecordError, match="reloadCap 1; fix:"):
         record.check_spec(root, spec(), PLAT, suite, saves, PACK)
+
+
+def test_the_0_01_09_items_and_f4s_reloads_are_taken(fixture_root) -> None:
+    root, saves = fixture_root
+    data = {**spec(), "items": ["A9", "A10", "A7", "A4"], "reloads": 50}
+    found = check(root, saves, data)
+    assert found.items == ("A4", "A7", "A9", "A10") and found.reloads == 50
+    assert check(root, saves, spec()).reloads == 0
+    # The session's reloads: two at the start, A4's two, F4's fifty.
+    suite = copy.deepcopy(SUITE)
+    suite["capture"]["reloadCap"] = 53
+    with pytest.raises(record.RecordError, match="plans 54 reloads"):
+        record.check_spec(root, data, PLAT, suite, saves, PACK)
 
 
 # The views file.
@@ -462,3 +480,74 @@ def test_time_already_at_the_views_value_counts_as_set() -> None:
         run.set_time(FakeClient(["Unknown or incomplete command"]), 6000)
     with pytest.raises(run.modclient.ModError):
         run.set_time(FakeClient(["Clock minecraft:overworld is already set to 600 tick(s)"]), 6000)
+
+
+# F4: GC.heap_info as Temurin 25 prints it (tests/fixtures/run/gc-heap-info.txt, a JVM started with
+# the bench heap, 2026-10-07), and the older line without a committed size.
+
+
+def test_the_heap_after_gc_comes_from_gc_heap_info() -> None:
+    text = (REPO_ROOT / "tests" / "fixtures" / "run" / "gc-heap-info.txt").read_text("utf-8")
+    assert run.heap_info(text) == {
+        "heap": "garbage-first heap",
+        "reservedKiB": 6291456,
+        "committedKiB": 6291456,
+        "usedKiB": 23182,
+    }
+    older = (
+        "1234:\r\n garbage-first heap   total 6291456K, used 725195K [0x0000000680000000, "
+        "0x0000000800000000)\n Metaspace       used 151234K, committed 152000K, reserved "
+        "1179648K\n"
+    )
+    found = run.heap_info(older)
+    assert (found["usedKiB"], found["committedKiB"], found["metaspaceUsedKiB"]) == (
+        725195,
+        None,
+        151234,
+    )
+    with pytest.raises(run.RunError, match="no heap line"):
+        run.heap_info("1234:\nCommand executed successfully\n")
+
+
+# A4: the broken copy of a fixture zip.
+
+
+def fixture_zip(path: Path) -> Path:
+    with zipfile.ZipFile(path, "w") as out:
+        out.writestr(zipfile.ZipInfo("shaders/", (2024, 1, 2, 3, 4, 6)), b"")
+        entry = zipfile.ZipInfo("shaders/world0/final.fsh", (2024, 1, 2, 3, 4, 6))
+        entry.compress_type = zipfile.ZIP_DEFLATED
+        out.writestr(entry, b'#version 130\n#include "/program/final.glsl"\n')
+        stored = zipfile.ZipInfo("shaders/shaders.properties", (2023, 5, 6, 7, 8, 10))
+        out.writestr(stored, b"sliders=A B\n" * 40)
+        deflated = zipfile.ZipInfo("shaders/program/final.glsl", (2023, 5, 6, 7, 8, 12))
+        deflated.compress_type = zipfile.ZIP_DEFLATED
+        out.writestr(deflated, b"void main() {}\n" * 50)
+    return path
+
+
+def test_the_broken_pack_differs_in_its_program_alone(tmp_path: Path) -> None:
+    source = fixture_zip(tmp_path / "Pack.zip")
+    before = source.read_bytes()
+    packs = tmp_path / "shaderpacks"
+    packs.mkdir()
+    target = packs / f"{run.A4_PREFIX}Pack.zip"
+    facts = run.write_broken_pack(source, target, run.A4_PROGRAM, run.A4_BODY)
+    assert source.read_bytes() == before
+    with zipfile.ZipFile(source) as old, zipfile.ZipFile(target) as new:
+        assert new.namelist() == old.namelist()
+        for a, b in zip(old.infolist(), new.infolist(), strict=True):
+            assert (b.date_time, b.compress_type) == (a.date_time, a.compress_type)
+            wanted = run.A4_BODY if a.filename == run.A4_PROGRAM else old.read(a)
+            assert new.read(b) == wanted
+    assert facts["entries"] == 4 and facts["program"] == run.A4_PROGRAM
+    assert facts["brokenSha256"] == hashlib.sha256(run.A4_BODY).hexdigest()
+    assert run.A4_IDENTIFIER.encode() in run.A4_BODY
+    with pytest.raises(run.RunError, match="exists"):
+        run.write_broken_pack(source, target, run.A4_PROGRAM, run.A4_BODY)
+    with pytest.raises(run.RunError, match="holds no shaders/world9"):
+        run.write_broken_pack(source, packs / "x.zip", "shaders/world9/final.fsh", b"")
+    game = tmp_path
+    assert [p.name for p in run.broken_copies(game)] == [target.name]
+    assert run.remove_broken(game) == {"removed": [target.name], "kept": []}
+    assert run.broken_copies(game) == [] and source.is_file()
