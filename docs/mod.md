@@ -1,5 +1,5 @@
 # Helper mod (optilux-helper)
-Status: rough spec, 2026-10-05, built through M1; full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the MC 26.3 game adapter, ticks, poses, input and HUD (4, 6, 9), 0.01.06; the Sodium and Iris adapters, readiness, capture and selftest (6-8, 11), 0.01.07; the rest is still spec.
+Status: spec, built through M1 and accepted (m1-acceptance-10); full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the MC 26.3 game adapter, ticks, poses, input and HUD (4, 6, 9), 0.01.06; the Sodium and Iris adapters, readiness, capture and selftest (6-8, 11), 0.01.07; the rest is still spec.
 
 ## Contents
 1 Stance · 2 Consumers · 3 Non-goals · 4 Architecture · 5 Safety · 6 Time and determinism · 7 Readiness · 8 Capture · 9 Input and HUD · 10 Adapter surface · 11 Build and test · 12 Acceptance · 13 Lessons · 14 Open questions
@@ -16,7 +16,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 ## 3. Non-goals
 - Keystrokes or OS input.
 - Player simulation beyond camera poses and a server-side flight path.
-- Any network listener, except E1's loopback TCP fallback if the pipe fails acceptance (design.md#8-open-decisions).
+- Any network listener: E1's TCP fallback was not taken (design.md#8-open-decisions).
 - Several clients at once.
 - Running without a token.
 - UI.
@@ -135,7 +135,7 @@ What each platform's adapter must provide, and where ALC hooked it: platform.md#
   - the wrapper 9.7.1, pinned with distributionSha256Sum; its jar equals Gradle's published sha256;
   - JAVA_HOME and org.gradle.java.home set to the Temurin `install` unpacked under runtime/java/ (gradlew.bat needs JAVA_HOME); JDK detection and auto-download off in mod/gradle.properties;
   - `--no-daemon`: org.gradle.jvmargs forks a single-use daemon that stops with the build;
-  - refused while the launch gate is closed (a process from runtime/<platform>/ or an optilux-* ETW session), so never started beside a session; `launch` does not look for Gradle.
+  - refused while the launch gate is closed (a process from runtime/<platform>/, an optilux-* ETW session or another Gradle build), so never started beside a session.
   - The first build here took 41 s on a Gradle cache filled on 2026-10-05; ALC estimated 1-2 GB of downloads from empty.
 - Inputs: the verb writes mod/build/optilux/inputs.json from the platform file and the hash-checked pinned jars, and Gradle reads nothing else under config/ or runtime/:
   - the versions Loom resolves (minecraft, fabric-loader; fabric-api from Fabric's Maven);
@@ -163,7 +163,7 @@ Each item is recorded in an acceptance run record (run-record.md#record); design
 - A4 compile error: a deliberately broken pack -> `iris-compile-error` with the message; recovery reload works.
 - A5 readiness: over >= 30 waits on the hello pack (TAA off), the first frame after predicate-ready equals a reference taken after the view's calibrated visual settle plus 2 s (decoded pixels), 30 of 30; only then may the predicate replace the settle as the visual floor (section 7); any miss keeps the settle and reports the rate. It runs in M3, on a deterministic pack.
 - A6 motion: one `camera.path` sequence identical across 2 sessions (hello pack, TAA on, flushed).
-- A7 input: mouse (raw on and off) and keys move nothing and open nothing while blocked.
+- A7 input: mouse (26.3's one path, plans/m1.md D24) and keys move nothing and open nothing while blocked.
 - A8 overhead: in one session, the same variant with per-pass timers on vs off, judged by the in-session threshold; pass = no effect beyond it. The mod sits in both arms of every verdict, so additive cost cancels. The presence arm (mod present vs no jar, launch-level bracketing) and the known-effect arm (the shadows-off ratio through the mod equals a mod-free one) move to the JVM track's J1, where launch-level bracketing exists (jvm.md#build-order; user, 2026-10-06).
 - A9 clocks: PresentMon's CPUStartQPCTime x 1e6 (the previous Present's return) against both frame stamps (section 6), matched by order over one capture: the swap-return stamp differs by under 1 ms at the median and the maximum, under half the shortest frame, so each frame maps to one row; the HEAD stamp's offset is reported beside it (plans/m1.md D26; measurement.md#tools).
 - A10 `selftest` passes at every session start, after `world.wait` (mod-protocol.md#choreography).

@@ -1,5 +1,5 @@
 # Platform
-Status: mc-26.3 pinned 2026-10-05; the spike's results in "mc-26.3 verified" are approved as written (user, 2026-10-06; handoff.md).
+Status: mc-26.3 pinned 2026-10-05; the spike's results in "mc-26.3 verified" are approved as written (user, 2026-10-06; plans/m1.md P22).
 
 ## Contents
 Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface · Install and launch · mc-26.3 verified · Platform change · Sources
@@ -25,7 +25,7 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 - Iris runs on OpenGL only: Iris 1.11.0+26.2, "Note that Vulkan is not supported" [S10]. Its successor, Aperture, is the Vulkan path [S6][S7][S8]:
   - runs on Vulkan with Sodium; uses Slang shaders and a programmable pipeline configuration; does not load old packs; is in private beta to shader developers.
 - Policy:
-  1. Stay on the newest MC version where OpenGL + Iris work. The bench forces OpenGL through the platform file's `renderer.optionKey`.
+  1. Stay on the newest MC version where OpenGL + Iris work. The bench forces OpenGL through suite.json's display.optionsTxt.
   2. Keep the pipeline spec backend-neutral (shader.md#pipeline-spec). An aperture backend then reuses passes, buffers, budgets, suite and run records.
   3. When Aperture is public, add a new platform (aperture backend) and port pass by pass. Each pass is compared against the iris-gl pass on the same views; identity differs, so it is a cost and look comparison, not a verdict.
 - Aperture facts to recheck when public, from a migration guide marked outdated [S8]: no buffer flipping (a texture cannot be read and written at two positions); every texture is explicit except mainDepthTex and solidDepthTex; uniforms are `ap.*` structs; command lists merge composite and compute.
