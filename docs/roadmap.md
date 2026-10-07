@@ -110,6 +110,7 @@ handoff.md's open questions on 2026-10-07, each with the phase or milestone that
 | Gradle's other downloads trusted by coordinate | M2 | revisited with the mod's next dependency change; verification metadata not taken in the QA pass (D28) |
 | A JVM fatal-error log would list the token | closed in 0.01.12 | the token dies with its launch: fresh per launch, one pipe per JVM, a stale token finds no pipe or answers unauthenticated, the gate keeps launches apart (handoff.md) |
 | Whether `/function` reports success without `/return` on 26.3 | 0.01.13 | read once through `command` in the timed session |
+| CI's test step: 82 s with pytest-xdist on the 4 vCPU runner against 63 s serially (0.01.12) | 0.01.13 | CI run once with `optilux test --serial`; the faster kept for ci.yml, the local default stays parallel (12 s against 43 s) |
 | options.txt kept the game's inactivityFpsLimit "afk": 30 fps after a minute without input | landed in 0.01.12 | display.optionsTxt writes "minimized", read back in 0.01.12's launch; 0.01.13's session runs uncapped without input |
 | World prep's kill took end_dragon's end crystals | landed in 0.01.12; M2 | suite.json world.setup and measurement.md spare minecraft:end_crystal; M2's prep implements it and retakes the reference frames |
 | The entities frame showed no hand | landed in 0.01.12 | hiding the GUI also drops the held item (0.01.12's two frames); measurement.md#session hides it at every view but entities; M2's session sets it per view |
