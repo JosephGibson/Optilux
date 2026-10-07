@@ -187,10 +187,9 @@ def remote_tag(root: Path, tag: str, remote: str = ORIGIN) -> str | None:
     return refs.get(f"{ref}^{{}}") or refs.get(ref)
 
 
-def remote_branches_at(root: Path, sha: str, remote: str = ORIGIN) -> list[str]:
-    """The branches on the remote whose tip is sha, read live with `git ls-remote --heads`."""
-    refs = remote_refs(root, "--heads", remote=remote)
-    return sorted(ref.removeprefix("refs/heads/") for ref, tip in refs.items() if tip == sha)
+def is_ancestor(root: Path, sha: str, tip: str) -> bool:
+    """Whether sha is tip or behind it; False when either commit is not present locally."""
+    return git(root, "merge-base", "--is-ancestor", sha, tip).returncode == 0
 
 
 def resolve(root: Path, ref: str) -> str | None:
