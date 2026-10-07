@@ -38,7 +38,9 @@ jobs:
       # Basic mode over optilux/ (docs/roadmap.md#decisions D28); the Node it runs on comes
       # locked with it (pyright[nodejs], uv.lock).
       - run: uv run pyright
-      - run: uv run optilux test
+      # Serially: the 4 vCPU runner ran pytest-xdist slower (82 and 95 s against 63 s serially,
+      # 0.01.12); the local default stays parallel (12 s against 43 s).
+      - run: uv run optilux test --serial
       - run: uv run optilux verify docs
       # --no-remote: gh has no login here, and on a push to main the release workflow may
       # already have created the release this check would refuse.

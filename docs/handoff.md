@@ -89,23 +89,22 @@ Announced, bench tier, world spike (13:47:40, pid 8988, joined in 15.8 s, the mo
 - S101 off for tests/ in pyproject.toml rather than 905 line suppressions.
 - `-Xlint:all,-classfile`: the 31 warnings name a third-party jar, no line of ours.
 - The mod's findings go to M2: the jar stays eb840262..., so 0.01.13's re-run proves the harness changes alone.
-- The entities view keeps the GUI shown (measurement.md#session), the only way the held torch is drawn; its HUD cost is constant across variants. The user may veto before M2.
+- The entities view keeps the GUI shown (measurement.md#session), the only way the held torch is drawn; its HUD cost is constant across variants. Taken by the user with the other recommendations (2026-10-07).
 
 ## Not done
-- D30: deleting runtime/mc-26.3/game/saves/bench_7800 and bench_20261005 was refused by this session's permission classifier ("Irreversible Local Destruction"); nothing names them. The user deletes them, or allows the command for the next session.
+- D30: deleting runtime/mc-26.3/game/saves/bench_7800 and bench_20261005 was refused twice by the permission classifier ("Irreversible Local Destruction"), the second time after the user took the recommendations; nothing names them. The user deletes them (in game, or Remove-Item).
 
 ## Open questions
 Each in roadmap.md#qa-pass-open-questions with its phase or milestone:
 - PresentMode "Composed: Copy with GPU GDI" against the spike's flip (0.01.13; M2).
 - Whether `/function` reports success without `/return` (0.01.13).
-- CI's test step: 82 s in parallel (4 vCPU runner) against 63 s serially before; the local suite runs 3.4x faster in parallel (0.01.13: CI once with `--serial`, the faster kept).
 - The review's rows for 0.01.13 (sec1, fail13, the stray `id: null` answers, the items' glue live) and for M2 (Findings above).
 - The live world against its snapshot, A9's 46 s capture, Gradle's other downloads (M2).
 - D30's two candidate worlds (the user).
 
 ## Time
 - 0.01.12: 13:05 ADT to the commit at 14:03, CI green at 14:05: 1.0 h against 3 h, the launch included; the close-out after. M1 so far about 14.5 h of 28; tripwire 55.8 h, trip at 111.6 h; actuals about 17.8 h (M0 3.3, M1 14.5).
-- CI: 1m27s before (run 37648615599, test step 63 s); 2m17s on the phase commit (run 37656044338: pyright 7 s, uv sync 4 s, test step 82 s).
+- CI: 1m27s before (run 37648615599, test step 63 s); 2m17s on the phase commit (run 37656044338: pyright 7 s, uv sync 4 s, test step 82 s), 95 s on the close-out; ci.yml then runs the tests serially (user, 2026-10-07: recommendations taken).
 - Earlier: 0.01.11 2.2 h against 2; 0.01.10 1.1 h against 1.5; the rest in git history.
 
 ## Next
