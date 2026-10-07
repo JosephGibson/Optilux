@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 closed (release v0.00.06); M1 in progress: 0.01.06 (the game adapter) is the last phase done, next 0.01.07, the renderer and Iris adapters. Latest stop: handoff.md.
+Status: M0 closed (release v0.00.06); M1 in progress: 0.01.07 (the renderer and Iris adapters) is the last phase done, next 0.01.08, the run skeleton and A1-A3, A10. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates

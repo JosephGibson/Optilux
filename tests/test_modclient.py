@@ -140,7 +140,10 @@ def test_the_fake_answers_every_command_typed_from_commands_json(tmp_path: Path)
     for command in COMMANDS["commands"]:
         if command["name"] == "quit":
             continue
-        result = client.request(command["name"], minimal_args(command))
+        args = minimal_args(command)
+        if command["name"] == "frames.capture":
+            args["directory"] = str(tmp_path / "captures")  # the mod takes an absolute folder
+        result = client.request(command["name"], args)
         assert set(result) == set(command["result"]) | common, command["name"]
     client.request("quit")
     client.close()
@@ -248,7 +251,7 @@ def test_the_fake_answers_busy_and_unsupported_as_the_mod(tmp_path: Path) -> Non
     with pytest.raises(modclient.ModRefused, match="state: unsupported"):
         client.request("state")
     fake.delays["frames.capture"] = 0.5
-    capture = {"directory": "d", "count": 3, "timeoutSeconds": 5}
+    capture = {"directory": str(tmp_path / "d"), "count": 3, "timeoutSeconds": 5}
     worker = threading.Thread(target=lambda: client.request("frames.capture", capture))
     worker.start()
     time.sleep(0.1)
@@ -294,6 +297,76 @@ def test_the_game_helpers_against_the_fake(tmp_path: Path) -> None:
     assert client.hud_set(debug_overlay=False)["debugOverlay"] is False
     assert client.input_block(True)["on"] is True and fake.game["inputBlocked"]
     assert client.input_block(False)["on"] is False
+    client.close()
+
+
+def test_the_render_helpers_against_the_fake(tmp_path: Path) -> None:
+    client, fake = session(tmp_path)
+    client.hello()
+    ready = client.ready(10, 0.5, 60)
+    assert ready["limitedBy"] == "stableFrames" and ready["rendererCheck"]["holds"] is True
+    client.request("frames.index")
+    reloaded = client.shaders_reload(30, pack="fake-pack.zip")
+    assert reloaded["pack"] == "fake-pack.zip" and reloaded["framesAfter"] == 2
+    # Answered after framesAfter frames of the new pipeline: sinceReload counts from reloadFrame.
+    assert reloaded["frameIndex"] - reloaded["reloadFrame"] == reloaded["framesAfter"] + 1
+    assert reloaded["sinceReload"] == reloaded["frameIndex"] - reloaded["reloadFrame"]
+    event = client.next_event(5)
+    assert event["event"] == "reload.done" and event["data"]["pack"] == "fake-pack.zip"
+    after = client.request("frames.index")
+    assert after["sinceReload"] == after["frameIndex"] - reloaded["reloadFrame"]
+    with pytest.raises(modclient.ModError, match="not the requested other.zip"):
+        client.shaders_reload(30, pack="other.zip")
+    assert client.shaders_options()["values"] == {"FAKE_BOOL": True, "FAKE_VALUE": "2"}
+    captured = client.frames_capture(tmp_path / "captures", 3, 30, every=1)
+    assert [f["name"] for f in captured["frames"]] == [f"frame-{n:05d}.png" for n in (1, 2, 3)]
+    assert captured["verified"]["frames"] == 3 and captured["verified"]["complete"] is True
+    assert Path(captured["manifest"]).parent.name == "attempt-001"
+    again = client.frames_capture(tmp_path / "captures", 1, 30)
+    assert Path(again["manifest"]).parent.name == "attempt-002", "a new folder per attempt"
+    with pytest.raises(modclient.ModRefused, match="not absolute"):
+        client.frames_capture(Path("relative"), 1, 30)
+    result = client.selftest(60)
+    assert result["pass"] is True and set(result["checks"]) == set(modfake.SELFTEST_CHECKS)
+    client.close()
+
+
+def test_a_capture_is_judged_by_its_files(tmp_path: Path) -> None:
+    client, _ = session(tmp_path)
+    client.hello()
+
+    def capture() -> tuple[dict, Path]:
+        answer = client.answer(
+            "frames.capture",
+            {"directory": str(tmp_path / "c"), "count": 2, "every": 1, "timeoutSeconds": 30},
+        )
+        return answer, Path(answer["manifest"]).parent
+
+    answer, folder = capture()
+    assert modclient.verify_manifest(answer)["frames"] == 2
+    (folder / "frame-00002.png").write_bytes(modfake.png(1, 1, bytes(4)))
+    with pytest.raises(modclient.ModError, match="frame-00002.png: sha256"):
+        modclient.verify_manifest(answer)
+    answer, folder = capture()
+    (folder / "frame-00001.png").unlink()
+    with pytest.raises(modclient.ModError, match="frame-00001.png"):
+        modclient.verify_manifest(answer)
+    answer, folder = capture()
+    (folder / "extra.png").write_bytes(b"")
+    with pytest.raises(modclient.ModError, match="does not list: extra.png"):
+        modclient.verify_manifest(answer)
+    answer, folder = capture()
+    (folder / "frame-00001.png").write_bytes(b"GIF89a")
+    with pytest.raises(modclient.ModError, match="is no PNG"):
+        modclient.verify_manifest(answer)
+    answer, folder = capture()
+    with pytest.raises(modclient.ModError, match="its frames differ"):
+        modclient.verify_manifest({**answer, "frames": answer["frames"][:1]})
+    manifest = json.loads((folder / modclient.MANIFEST).read_text(encoding="utf-8"))
+    manifest["frames"][0]["name"] = "../frame-00001.png"
+    (folder / modclient.MANIFEST).write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(modclient.ModError, match="no file name beside the manifest"):
+        modclient.verify_manifest({**answer, "frames": manifest["frames"]})
     client.close()
 
 

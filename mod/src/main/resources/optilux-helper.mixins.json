@@ -6,9 +6,14 @@
     "compatibilityLevel": "JAVA_25",
     "client": [
         "GameRendererMixin",
+        "IrisMixin",
         "KeyboardHandlerMixin",
         "MinecraftMixin",
-        "MouseHandlerMixin"
+        "MouseHandlerMixin",
+        "RenderRegionAccessor",
+        "RenderSectionAccessor",
+        "RenderSectionManagerAccessor",
+        "SodiumWorldRendererAccessor"
     ],
     "injectors": {
         "defaultRequire": 1

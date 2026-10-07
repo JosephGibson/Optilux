@@ -2,6 +2,7 @@ package optilux.helper;
 
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import optilux.helper.core.Token;
 import org.objectweb.asm.tree.ClassNode;
 import org.slf4j.Logger;
@@ -12,10 +13,12 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 /**
  * The mixin config's plugin, the inert gate's mixin layer (docs/mod.md#5-safety): every mixin
  * is refused unless -Doptilux.token is valid, and each decision is logged, so a session's log
- * shows which mixins were applied.
+ * shows which mixins were applied; `selftest` reads the applied ones back.
  */
 public final class MixinGate implements IMixinConfigPlugin {
     private static final Logger LOG = LoggerFactory.getLogger("optilux-helper");
+    /** The simple names of the mixins applied in this game. */
+    static final Set<String> APPLIED = ConcurrentHashMap.newKeySet();
     private String problem = "not loaded";
 
     @Override
@@ -56,5 +59,6 @@ public final class MixinGate implements IMixinConfigPlugin {
     public void postApply(String targetClassName, ClassNode targetClass, String mixinClassName,
         IMixinInfo mixinInfo) {
         LOG.info("optilux-helper: mixin {} applied to {}", mixinClassName, targetClassName);
+        APPLIED.add(mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1));
     }
 }

@@ -53,6 +53,10 @@ ID_RANGE = (-(2**63), 2**63 - 1)
 COMMAND_TIMEOUT = 10.0
 # A pose's fields besides its dimension; the game holds x, y, z as doubles, yaw and pitch as floats.
 POSE_KEYS = ("x", "y", "z", "yaw", "pitch")
+# A capture's manifest beside its frames, and each frame's fields (docs/mod.md#8-capture).
+MANIFEST = "capture.json"
+FRAME_KEYS = ("name", "sha256", "frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
+PNG_SIGNATURE = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
 
 
 class ModError(RuntimeError):
@@ -424,6 +428,51 @@ class Client:
             raise ModError(f"input.block {on}: the mod answered on {result['on']}")
         return result
 
+    # The renderer and shader-loader adapters' commands, capture and selftest.
+
+    def ready(self, stable_frames: int, min_seconds: float, timeout: float) -> dict:
+        """Wait for the readiness predicate (docs/mod.md#7-readiness): seconds, predicateSeconds,
+        limitedBy and the renderer's own check."""
+        args = {"stableFrames": stable_frames, "minSeconds": min_seconds, "timeoutSeconds": timeout}
+        return self.answer("ready", args)
+
+    def shaders_reload(
+        self, timeout: float, frames_after: int = 2, pack: str | None = None
+    ) -> dict:
+        """Reload the shader pack; ModError when `pack` is given and the pack Iris loaded differs
+        (a pack switch: docs/mod-protocol.md#commands)."""
+        args = {"framesAfter": frames_after, "timeoutSeconds": timeout}
+        result = self.answer("shaders.reload", args)
+        if pack is not None and result["pack"] != pack:
+            raise ModError(f"shaders.reload loaded {result['pack']}, not the requested {pack}")
+        return result
+
+    def shaders_options(self) -> dict:
+        return self.answer("shaders.options")
+
+    def frames_capture(
+        self,
+        directory: Path,
+        count: int,
+        timeout: float,
+        every: int | None = None,
+        interval_ms: float | None = None,
+    ) -> dict:
+        """`count` frames into a new attempt folder under `directory` (absolute), judged by the
+        files (verify_manifest); the answer with the check's facts under `verified`."""
+        args: dict[str, Any] = {"directory": str(directory), "count": count}
+        if every is not None:
+            args["every"] = every
+        if interval_ms is not None:
+            args["intervalMs"] = interval_ms
+        args["timeoutSeconds"] = timeout
+        result = self.answer("frames.capture", args)
+        return {**result, "verified": verify_manifest(result)}
+
+    def selftest(self, timeout: float) -> dict:
+        """Each capability tried in the game (A10); the answer, pass or not."""
+        return self.answer("selftest", {"timeoutSeconds": timeout})
+
     def next_event(self, timeout: float) -> dict | None:
         try:
             return self.events.get(timeout=timeout)
@@ -504,6 +553,56 @@ def pose_differences(wanted: dict, got: dict) -> list[str]:
         elif key not in ("yaw", "pitch") and have != want:
             found.append(f"{key} {have!r} != {want!r}")
     return found
+
+
+def verify_manifest(result: dict) -> dict:
+    """Judge a capture by its files (docs/mod-protocol.md#client-rules: the answer is used to
+    proceed, the files to judge): capture.json read back holds the answer's frames and dropped;
+    each frame's file beside it is a PNG whose SHA-256 equals the manifest's; the folder holds no
+    other file. The facts (folder, frames, bytes, complete); ModError naming the first mismatch."""
+    path = Path(result["manifest"])
+    folder = path.parent
+    try:
+        manifest = strict_json(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ModError(f"the capture manifest {path}: {error}") from None
+    if not isinstance(manifest, dict):
+        raise ModError(f"the capture manifest {path} is no JSON object")
+    for key in ("frames", "dropped"):
+        if manifest.get(key) != result[key]:
+            raise ModError(f"{path}: its {key} differ from the answer's")
+    listed = {MANIFEST}
+    size = 0
+    for frame in manifest["frames"]:
+        missing = [key for key in FRAME_KEYS if key not in frame]
+        if missing:
+            raise ModError(f"{path}: a frame lacks {', '.join(missing)}")
+        name = frame["name"]
+        if not isinstance(name, str) or Path(name).name != name or name == MANIFEST:
+            raise ModError(f"{path}: frame name {name!r} is no file name beside the manifest")
+        try:
+            data = (folder / name).read_bytes()
+        except OSError as error:
+            raise ModError(f"the capture frame {folder / name}: {error}") from None
+        if not data.startswith(PNG_SIGNATURE):
+            raise ModError(f"the capture frame {folder / name} is no PNG")
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != frame["sha256"]:
+            raise ModError(
+                f"the capture frame {folder / name}: sha256 {digest}, the manifest says "
+                f"{frame['sha256']}"
+            )
+        listed.add(name)
+        size += len(data)
+    stray = sorted(entry.name for entry in folder.iterdir() if entry.name not in listed)
+    if stray:
+        raise ModError(f"{folder} holds files the manifest does not list: {', '.join(stray)}")
+    return {
+        "folder": str(folder),
+        "frames": len(manifest["frames"]),
+        "bytes": size,
+        "complete": manifest.get("complete"),
+    }
 
 
 def encode(message: dict) -> bytes:
