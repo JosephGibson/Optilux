@@ -235,7 +235,8 @@ def outlook(root: Path, milestone: int, local: str | None, phase: str | None) ->
     versions = [p.version for p in prompt_set.phases]
     hours = {v: plan[v].estimate for v in versions if v in plan}
     known = len(hours) == len(versions)
-    done = [v for v in versions if local is not None and v <= local]
+    current = repo.phase_of(local) if local else None
+    done = [v for v in versions if current is not None and v <= current]
     progress = {
         "first": versions[0],
         "last": versions[-1],
@@ -254,7 +255,7 @@ def outlook(root: Path, milestone: int, local: str | None, phase: str | None) ->
         for p in prompt_set.phases
         if phase is not None and p.version > phase
     ]
-    last = next((p.title for p in prompt_set.phases if p.version == local), None)
+    last = next((p.title for p in prompt_set.phases if p.version == current), None)
     return {"progress": progress, "upcoming": upcoming[:2], "last_title": last}
 
 
@@ -284,7 +285,7 @@ def collect(root: Path) -> dict:
     if branch is None:
         problems.append("HEAD is detached; fix: `git switch` to the milestone branch")
     if local is None:
-        problems.append("no commit with a `0.MM.PP: ` subject; fix: commit the first phase")
+        problems.append("no commit with a `0.MM.PP.N: ` subject; fix: commit the first phase")
     main_sha, main_version = remote_version(root, repo.MAIN, problems)
     facts.update(main_sha=main_sha, version_main=main_version)
     pushed = None
@@ -408,8 +409,8 @@ def decision_rows(facts: dict) -> list[str]:
 
 
 def last_text(facts: dict) -> str:
-    """The newest version's commit. A phase with side commits (tooling, a prompt fix) shows its
-    count and the newest message, so the newest commit is not read as the phase itself."""
+    """The newest version's commit. A phase with side commits (tooling, a prompt fix) or patches
+    shows its count and the newest message, so the newest commit is not read as the phase itself."""
     subjects = facts["last_commits"]
     if not subjects:
         return "no commit with a version yet"
@@ -417,7 +418,8 @@ def last_text(facts: dict) -> str:
         return subjects[0]
     newest = subjects[0]
     message = newest.split(": ", 1)[1] if ": " in newest else newest
-    name = " ".join(filter(None, (facts["version_local"], facts["last_title"])))
+    phase = repo.phase_of(facts["version_local"])
+    name = " ".join(filter(None, (phase, facts["last_title"])))
     return f'{name}: {len(subjects)} commits, newest "{cut(message, 44)}"'
 
 

@@ -84,12 +84,13 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 
 ## Git
 - One branch at a time: the milestone branch (`m0`, `m1`, ...; design.md D6), cut by `optilux milestone start` (below). The private repo `Optilux` is created at the start of M0.
-- Commits: one per phase; one line, at most 72 characters, in the user's form `0.MM.PP: <summary>` (e.g. `0.01.02: Run records added to harness.`).
+- Commits: one per phase; one line, at most 72 characters, in the user's form `0.MM.PP.N: <summary>` (e.g. `0.01.13.0: Debug, timing and the acceptance re-run.`; user, 2026-10-07, roadmap.md D32).
+  - N is the patch number: 0 for the phase's commits, its close-out included; a fix found after them, before the next phase, takes the next one (0.01.12.1, 0.01.12.2, ...). The commit-msg hook refuses the phase alone (`0.MM.PP: `) from 0.01.12.1; `status` and `pack` read the older subjects as written.
   - A phase is one reviewable, test-green change (ALC's phases took ~1 h), so a regression bisects to one phase; rebase merge keeps every phase commit on main.
   - Shader features and candidates are options (shader.md#method), so a regression is also isolated by switching them off, without bisect.
 - Push after every commit, as a backup; no git hook runs on push (Hooks and guards).
 - PR per milestone: one-line title `0.MM <Name>: <what it delivers>`, the name as in the CHANGELOG heading, at most 72 characters, no trailing period (user, 2026-10-06; M0's was `0.00: Foundation.`); no body.
-- No VERSION file. The release version is the prefix of the newest commit on main, and the commit-msg hook enforces the format, so it is checkable before the merge.
+- No VERSION file. The release version is the prefix of the newest commit on main, four parts from M1 on (v0.01.13.0; M0's was v0.00.06), and the commit-msg hook enforces the format, so it is checkable before the merge.
 - `optilux milestone start` cuts the branch from origin/main with `--no-track` (ALC: VS Code Sync otherwise merges main into it). It refuses a dirty tree and an existing local or remote branch, fetches first and prints the next step; scripted like ALC's release-next, written after a hand-made branch broke.
 - Bootstrap, once, by hand at the start of M0 (design.md D6): create the private repo `Optilux`; first commit on main `0.00.00: Repo bootstrap.` with .gitattributes, AGENTS.md, docs and config; `git push -u origin main`; `git switch -c m0 --no-track origin/main`. Every later branch is cut by `optilux milestone start`.
 - The user merges with Rebase and merge. Rebased commits get new SHAs on main, so:
@@ -118,7 +119,7 @@ Bodies in optilux/hooks.py, run by the venv's python as `python -m optilux.hooks
   - PreToolUse git guard (Bash and PowerShell; exit 2 blocks): a push with `--force`, `-f`, `--force-with-lease`, `--mirror` or a `+` refspec; `--no-verify`, `commit -n`, `-c core.hooksPath`; a push naming main, `--all`, or a bare push on main; an attribution token in a commit's message, trailer or author. Passes `git push -u origin m<MM>` and `gh` through a variable;
   - PostToolUse post_edit (Edit, Write): ruff on an edited .py, `verify docs` on an edited .md; findings return as context, never a block.
 - Git hooks:
-  - commit-msg: one line, at most 72 characters, `0.MM.PP: ` then text, no attribution token (Co-Authored-By, Anthropic, Generated, Claude; the tool name "Claude Code" passes unless "by", "with" or "via" precede it);
+  - commit-msg: one line, at most 72 characters, `0.MM.PP.N: ` then text, no attribution token (Co-Authored-By, Anthropic, Generated, Claude; the tool name "Claude Code" passes unless "by", "with" or "via" precede it);
   - pre-commit: ruff on staged .py, `verify docs` when a .md is staged; similarity on shader changes from M3, when the tool exists.
 - ALC lessons:
   - Never hash files another tool rewrites (Prism rewrote instance.cfg and stopped a run at its gate).

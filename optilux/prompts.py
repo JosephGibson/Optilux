@@ -20,7 +20,8 @@ SECTION = re.compile(r"^## (\S.*?)\s*$")
 # A phase heading's text: the version, then the title.
 PHASE = re.compile(r"(0\.(\d{2})\.(\d{2}))(?:\s+(.*))?")
 RESUME = "Resume"
-VERSION = re.compile(r"0\.(\d{2})\.(\d{2})")
+# A commit's version (repo.VERSION): the phase, then the patch number, ignored here.
+VERSION = re.compile(r"0\.(\d{2})\.(\d{2})(?:\.\d+)?")
 STANDING = "docs/prompts/standing.md"
 PLAN, RELEASE = "Plan", "Release"
 # The estimate line of a plan phase and of a standing prompt: agent hours, the first number on the

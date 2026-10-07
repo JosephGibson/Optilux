@@ -16,12 +16,15 @@ from optilux import REPO_ROOT, hooks
 @pytest.mark.parametrize(
     "message",
     [
-        "0.00.03: Git and Claude Code hooks.\n",
-        "0.00.01: Python project and optilux test.",
-        "0.12.34: x",
-        "# Please enter the commit message.\n0.00.02: Doc check.\n# Lines with '#' are ignored.\n",
-        "0.00.05: Regenerated lockfile.",
-        "0.00.05: " + "x" * 63,  # 72 characters exactly
+        "0.00.03.0: Git and Claude Code hooks.\n",
+        "0.00.01.0: Python project and optilux test.",
+        "0.12.34.0: x",
+        "0.01.12.1: A patch after the phase.",
+        "0.01.12.10: The tenth patch.",
+        "# Please enter the commit message.\n0.00.02.0: Doc check.\n"
+        "# Lines with '#' are ignored.\n",
+        "0.00.05.0: Regenerated lockfile.",
+        "0.00.05.0: " + "x" * 61,  # 72 characters exactly
     ],
 )
 def test_commit_msg_accepts(message: str) -> None:
@@ -31,17 +34,20 @@ def test_commit_msg_accepts(message: str) -> None:
 @pytest.mark.parametrize(
     ("message", "reason"),
     [
-        ("bad", "not `0.MM.PP: <summary>`"),
-        ("0.0.3: Short version.", "not `0.MM.PP: <summary>`"),
-        ("0.00.03:No space.", "not `0.MM.PP: <summary>`"),
-        ("0.00.03: ", "not `0.MM.PP: <summary>`"),
-        ("0.00.05: " + "x" * 64, "73 characters"),
-        ("0.00.03: Hooks.\n\nA body.", "more than one line"),
-        ("0.00.03: Hooks.\n\nCo-Authored-By: Claude <noreply@anthropic.com>", "attribution"),
-        ("0.00.03: Generated hooks.", "attribution token 'Generated'"),
-        ("0.00.03: Hooks written by Claude Code.", "attribution token 'by Claude'"),
-        ("0.00.03: Claude's hooks.", "attribution token 'Claude'"),
-        ("0.00.03: Hooks, see anthropic.com.", "attribution token 'anthropic'"),
+        ("bad", "not `0.MM.PP.N: <summary>`"),
+        ("0.00.03: The phase alone.", "not `0.MM.PP.N: <summary>`"),
+        ("0.0.3.0: Short version.", "not `0.MM.PP.N: <summary>`"),
+        ("0.01.12.01: Padded patch.", "not `0.MM.PP.N: <summary>`"),
+        ("0.01.12.: No patch.", "not `0.MM.PP.N: <summary>`"),
+        ("0.00.03.0:No space.", "not `0.MM.PP.N: <summary>`"),
+        ("0.00.03.0: ", "not `0.MM.PP.N: <summary>`"),
+        ("0.00.05.0: " + "x" * 62, "73 characters"),
+        ("0.00.03.0: Hooks.\n\nA body.", "more than one line"),
+        ("0.00.03.0: Hooks.\n\nCo-Authored-By: Claude <noreply@anthropic.com>", "attribution"),
+        ("0.00.03.0: Generated hooks.", "attribution token 'Generated'"),
+        ("0.00.03.0: Hooks written by Claude Code.", "attribution token 'by Claude'"),
+        ("0.00.03.0: Claude's hooks.", "attribution token 'Claude'"),
+        ("0.00.03.0: Hooks, see anthropic.com.", "attribution token 'anthropic'"),
     ],
 )
 def test_commit_msg_refuses(message: str, reason: str) -> None:
@@ -204,9 +210,9 @@ def commit(repo: Path, message: str) -> subprocess.CompletedProcess[str]:
 
 def test_commit_msg_hook_end_to_end(repo: Path) -> None:
     refused = commit(repo, "bad")
-    assert refused.returncode != 0 and "commit-msg: refused: not `0.MM.PP" in refused.stderr
-    assert commit(repo, "0.00.01: Good.").returncode == 0
-    assert git(repo, "log", "--format=%s").stdout.splitlines() == ["0.00.01: Good."]
+    assert refused.returncode != 0 and "commit-msg: refused: not `0.MM.PP.N" in refused.stderr
+    assert commit(repo, "0.00.01.0: Good.").returncode == 0
+    assert git(repo, "log", "--format=%s").stdout.splitlines() == ["0.00.01.0: Good."]
 
 
 def test_pre_commit_hook_end_to_end(repo: Path) -> None:
@@ -216,11 +222,11 @@ def test_pre_commit_hook_end_to_end(repo: Path) -> None:
     ):
         (repo / name).write_bytes(bad)
         git(repo, "add", name)
-        refused = commit(repo, f"0.00.01: Add {name}.")
+        refused = commit(repo, f"0.00.01.0: Add {name}.")
         assert refused.returncode != 0 and finding in refused.stderr
         (repo / name).write_bytes(good)
         git(repo, "add", name)
-        accepted = commit(repo, f"0.00.01: Add {name}.")
+        accepted = commit(repo, f"0.00.01.0: Add {name}.")
         assert accepted.returncode == 0, accepted.stderr
 
 

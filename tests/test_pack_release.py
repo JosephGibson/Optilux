@@ -13,7 +13,7 @@ from conftest import commit_file, git
 from optilux import cli
 from optilux.verbs import pack
 
-PHASE = "0.00.06: CI, release workflow, optilux-release."
+PHASE = "0.00.06.0: CI, release workflow, optilux-release."
 CHANGELOG = (
     "# Changelog\n\nUser-facing changes.\n\n"
     "## 0.00 Foundation\nFoundation.\n- One.\n- Two.\n\n"
@@ -72,7 +72,7 @@ def push_tag(root: Path, tag: str, ref: str = "HEAD") -> None:
 
 @pytest.fixture
 def pushed(cloned: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """`cloned` with the fixture pack and CHANGELOG committed as 0.00.06 on m0, pushed to origin."""
+    """`cloned` with the fixture pack and CHANGELOG committed as 0.00.06.0 on m0, pushed."""
     root = cloned
     git(root, "switch", "-q", "-c", "m0")
     for name, content in TREE.items():
@@ -87,7 +87,7 @@ def pushed(cloned: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 @pytest.fixture
 def on_main(pushed: Path) -> Path:
-    """After the user's merge: main fast-forwarded to the 0.00.06 commit and pushed, checked out."""
+    """After the user's merge: main fast-forwarded to the 0.00.06.0 commit, pushed, checked out."""
     git(pushed, "switch", "-q", "main")
     git(pushed, "merge", "-q", "--ff-only", "m0")
     git(pushed, "push", "-q", "origin", "main")
@@ -117,10 +117,10 @@ def test_changelog_entry(tmp_path: Path) -> None:
     assert pack.changelog_entry(tmp_path, "0.00.06") == pack.Entry(
         "## 0.00 Foundation", "Foundation", ENTRY
     )
-    last = pack.changelog_entry(tmp_path, "0.01.03")  # the last section ends at EOF
+    last = pack.changelog_entry(tmp_path, "0.01.03.2")  # the last section ends at EOF
     assert (last.name, last.text) == ("Game control", "Next.\n")
     with pytest.raises(pack.PackError, match=r"has no `## 0.02 <Name>` section; fix: add `## 0.02"):
-        pack.changelog_entry(tmp_path, "0.02.01")
+        pack.changelog_entry(tmp_path, "0.02.01.0")
     (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n## 0.00 Foundation\n\n## 0.01 X\nx\n")
     with pytest.raises(pack.PackError, match=r"`## 0.00 Foundation` section is empty; fix: add"):
         pack.changelog_entry(tmp_path, "0.00.06")
@@ -145,21 +145,21 @@ def test_check_passes_on_a_pushed_phase(
     assert capsys.readouterr().out == (
         f"ok:      subject of HEAD ({sha}): {PHASE}\n"
         "ok:      CHANGELOG.md `## 0.00 Foundation`: 3 lines\n"
-        "ok:      no release and no tag v0.00.06 on GitHub\n"
+        "ok:      no release and no tag v0.00.06.0 on GitHub\n"
         "ok:      tree clean\n"
         f"ok:      HEAD ({sha}) is the tip of origin/m0\n"
         "optilux pack release --check: 5 ok, 0 skipped, 0 problems\n"
     )
-    assert gh.calls == [view("v0.00.06")]
+    assert gh.calls == [view("v0.00.06.0")]
 
 
 def test_check_without_remote_never_calls_gh(
     pushed: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    gh = fake(monkeypatch, "v0.00.06")  # a release that would refuse, were it looked up
+    gh = fake(monkeypatch, "v0.00.06.0")  # a release that would refuse, were it looked up
     assert cli.main(["pack", "release", "--check", "--no-remote"]) == 0
     out = capsys.readouterr().out
-    assert "skipped: no release and no tag v0.00.06 on GitHub (--no-remote)\n" in out
+    assert "skipped: no release and no tag v0.00.06.0 on GitHub (--no-remote)\n" in out
     assert out.endswith("optilux pack release --check: 4 ok, 1 skipped, 0 problems\n")
     assert gh.calls == []
 
@@ -173,9 +173,9 @@ def test_check_reads_the_pr_head_of_a_merge_commit(
     assert gh.calls == []
     found = problems(pack.check(merged, "HEAD", remote=False))
     assert len(found) == 2
-    assert found[0].startswith("subject of HEAD 'Merge 1234567 into 89abcde': not `0.MM.PP: ")
+    assert found[0].startswith("subject of HEAD 'Merge 1234567 into 89abcde': not `0.MM.PP.N: ")
     assert "is no branch tip on origin; fix: push it (`git push origin <branch>`)" in found[1]
-    assert pack.version_from_git(merged, "HEAD^2") == "0.00.06"
+    assert pack.version_from_git(merged, "HEAD^2") == "0.00.06.0"
     with pytest.raises(pack.PackError, match="the subject of HEAD 'Merge 1234567 into 89abcde'"):
         pack.version_from_git(merged)
 
@@ -184,7 +184,8 @@ def test_build_takes_the_version_from_ref(
     merged: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     assert cli.main(["pack", "build", "--ref", "HEAD^2"]) == 0
-    assert "wrote build/optilux-0.00.06.zip (3 entries, version 0.00.06)" in capsys.readouterr().out
+    wrote = "wrote build/optilux-0.00.06.0.zip (3 entries, version 0.00.06.0)"
+    assert wrote in capsys.readouterr().out
     assert cli.main(["pack", "build"]) == 1
     assert "fix: give --version, or --ref a commit that carries one" in capsys.readouterr().err
     with pytest.raises(SystemExit) as caught:
@@ -195,17 +196,17 @@ def test_build_takes_the_version_from_ref(
 def test_check_refuses_an_existing_release_or_tag(
     pushed: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    fake(monkeypatch, "v0.00.06")
-    url = URL.format(tag="v0.00.06")
+    fake(monkeypatch, "v0.00.06.0")
+    url = URL.format(tag="v0.00.06.0")
     assert problems(pack.check(pushed, "HEAD", remote=True)) == [
-        f"release v0.00.06 exists already ({url}); "
+        f"release v0.00.06.0 exists already ({url}); "
         "fix: commit the next phase, whose version has none"
     ]
     fake(monkeypatch)
-    push_tag(pushed, "v0.00.06", "main")
+    push_tag(pushed, "v0.00.06.0", "main")
     tagged = head(pushed, "main")[:7]
     assert problems(pack.check(pushed, "HEAD", remote=True)) == [
-        f"tag v0.00.06 exists on origin ({tagged}) without a release; "
+        f"tag v0.00.06.0 exists on origin ({tagged}) without a release; "
         "fix: commit the next phase, whose version has none"
     ]
 
@@ -217,14 +218,15 @@ def test_check_refuses_a_bad_subject_a_missing_entry_and_an_unpushed_ref(
     commit_file(pushed, "note.txt", b"x\n", "WIP")
     git(pushed, "push", "-q", "origin", "m0")
     assert problems(pack.check(pushed, "HEAD", remote=True)) == [
-        "subject of HEAD 'WIP': not `0.MM.PP: <summary>`: start with the phase, e.g. `0.00.03: ...`"
+        "subject of HEAD 'WIP': not `0.MM.PP.N: <summary>`: start with the phase and its patch "
+        "number, e.g. `0.01.13.0: ...`"
     ]
     assert problems(pack.check(pushed, "HEAD~1", remote=True)) == [
         f"HEAD~1 ({head(pushed, 'HEAD~1')[:7]}) is no branch tip on origin; "
         "fix: push it (`git push origin m0`), or check a branch tip instead"
     ]
     changelog = b"# Changelog\n\n## 0.00 Foundation\nFoundation.\n"
-    commit_file(pushed, "CHANGELOG.md", changelog, "0.01.01: Next.")
+    commit_file(pushed, "CHANGELOG.md", changelog, "0.01.01.0: Next.")
     found = problems(pack.check(pushed, "HEAD", remote=True))
     assert len(found) == 2
     assert found[0].startswith("CHANGELOG.md has no `## 0.01 <Name>` section; fix: add `## 0.01")
@@ -239,7 +241,7 @@ def test_check_refuses_a_dirty_tree_and_an_unreadable_remote(
     git(pushed, "remote", "set-url", "origin", (pushed.parent / "gone.git").as_posix())
     found = problems(pack.check(pushed, "HEAD", remote=True))
     assert found[0] == (
-        "`gh release view v0.00.06` failed: HTTP 401: Bad credentials "
+        "`gh release view v0.00.06.0` failed: HTTP 401: Bad credentials "
         "(https://api.github.com/graphql); "
         "fix: `gh auth status` here; on a runner, GH_TOKEN from the workflow token"
     )
@@ -258,24 +260,24 @@ def test_release_creates_the_release_when_absent(
     gh = fake(monkeypatch)
     sha = head(on_main)
     assert cli.main(["pack", "release"]) == 0
-    assert (on_main / "build/optilux-0.00.06.zip").is_file()
+    assert (on_main / "build/optilux-0.00.06.0.zip").is_file()
     create = gh.calls[1]
     notes = create[create.index("--notes-file") + 1]
     assert gh.calls == [
-        view("v0.00.06"),
+        view("v0.00.06.0"),
         [
-            *["release", "create", "v0.00.06", "build/optilux-0.00.06.zip"],
-            *["--title", "Optilux 0.00.06: Foundation", "--notes-file", notes, "--target", sha],
+            *["release", "create", "v0.00.06.0", "build/optilux-0.00.06.0.zip"],
+            *["--title", "Optilux 0.00.06.0: Foundation", "--notes-file", notes, "--target", sha],
         ],
     ]
     assert gh.notes == ENTRY
     assert not Path(notes).exists()  # the temporary notes file is gone
     out = capsys.readouterr().out
-    assert out.startswith("optilux pack release: wrote build/optilux-0.00.06.zip (3 entries")
+    assert out.startswith("optilux pack release: wrote build/optilux-0.00.06.0.zip (3 entries")
     assert out.endswith(
-        "optilux pack release: created release v0.00.06 'Optilux 0.00.06: Foundation' "
-        f"at {sha[:7]} with optilux-0.00.06.zip: "
-        f"{URL.format(tag='v0.00.06')}\n"
+        "optilux pack release: created release v0.00.06.0 'Optilux 0.00.06.0: Foundation' "
+        f"at {sha[:7]} with optilux-0.00.06.0.zip: "
+        f"{URL.format(tag='v0.00.06.0')}\n"
     )
     assert pack.check(on_main, "HEAD", remote=False)[-2] == (pack.OK, "tree clean")
 
@@ -283,12 +285,12 @@ def test_release_creates_the_release_when_absent(
 def test_release_at_head_exists_already(
     on_main: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    gh = fake(monkeypatch, "v0.00.06")
-    push_tag(on_main, "v0.00.06")
+    gh = fake(monkeypatch, "v0.00.06.0")
+    push_tag(on_main, "v0.00.06.0")
     assert cli.main(["pack", "release"]) == 0
-    assert gh.calls == [view("v0.00.06")]
+    assert gh.calls == [view("v0.00.06.0")]
     assert capsys.readouterr().out.endswith(
-        f"exists at HEAD {head(on_main)[:7]}: {URL.format(tag='v0.00.06')}; nothing to do\n"
+        f"exists at HEAD {head(on_main)[:7]}: {URL.format(tag='v0.00.06.0')}; nothing to do\n"
     )
 
 
@@ -299,13 +301,13 @@ def test_release_refuses_a_tag_elsewhere(
     capsys: pytest.CaptureFixture[str],
     released: bool,
 ) -> None:
-    gh = fake(monkeypatch, *(["v0.00.06"] if released else []))
-    push_tag(on_main, "v0.00.06", "HEAD~1")
+    gh = fake(monkeypatch, *(["v0.00.06.0"] if released else []))
+    push_tag(on_main, "v0.00.06.0", "HEAD~1")
     assert cli.main(["pack", "release"]) == 1
-    assert gh.calls == [view("v0.00.06")]  # nothing created
+    assert gh.calls == [view("v0.00.06.0")]  # nothing created
     tagged, sha = head(on_main, "HEAD~1")[:7], head(on_main)[:7]
     assert capsys.readouterr().err == (
-        f"optilux pack release: tag v0.00.06 on origin is at {tagged}, not HEAD {sha}; "
+        f"optilux pack release: tag v0.00.06.0 on origin is at {tagged}, not HEAD {sha}; "
         "fix: never move a tag: commit the next phase, whose version gets its own release\n"
     )
 
@@ -313,10 +315,10 @@ def test_release_refuses_a_tag_elsewhere(
 def test_release_refuses_a_release_without_its_tag(
     on_main: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    gh = fake(monkeypatch, "v0.00.06")
+    gh = fake(monkeypatch, "v0.00.06.0")
     assert cli.main(["pack", "release"]) == 1
-    assert gh.calls == [view("v0.00.06")]
-    assert "exists but origin has no tag v0.00.06 (a draft?)" in capsys.readouterr().err
+    assert gh.calls == [view("v0.00.06.0")]
+    assert "exists but origin has no tag v0.00.06.0 (a draft?)" in capsys.readouterr().err
 
 
 def test_release_refuses_a_dirty_tree_and_reports_gh_failures(
@@ -331,7 +333,7 @@ def test_release_refuses_a_dirty_tree_and_reports_gh_failures(
     gh = fake(monkeypatch, failure="HTTP 403: Resource not accessible by integration")
     assert cli.main(["pack", "release"]) == 1
     assert capsys.readouterr().err == (
-        "optilux pack release: `gh release view v0.00.06` failed: HTTP 403: Resource not "
+        "optilux pack release: `gh release view v0.00.06.0` failed: HTTP 403: Resource not "
         "accessible by integration; "
         "fix: `gh auth status` here; on a runner, GH_TOKEN from the workflow token\n"
     )
@@ -354,7 +356,7 @@ def test_release_refuses_off_mains_tip(
     git(pushed, "switch", "-q", "--detach", "m0")
     assert cli.main(["pack", "release"]) == 1
     assert capsys.readouterr().err.endswith(
-        "carries no 0.MM.PP prefix; fix: release from main's tip after a Rebase and merge, "
+        "carries no 0.MM.PP.N prefix; fix: release from main's tip after a Rebase and merge, "
         "which keeps the phase subject\n"
     )
 

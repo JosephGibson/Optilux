@@ -18,7 +18,7 @@ Plan milestone M{M} as phase {VERSION} on branch m{M} in C:\Projects\Optilux. Ta
 4. STOP for my approval of the plan. Apply what I ask, then record the approval in its section 10.
 5. Write docs/prompts/m{M}.md: one self-contained prompt per phase plus Resume, in the format and form of docs/prompts/m1.md Rules: the why and a Done-when (the phase's exit) first; what to read, not AGENTS.md, which loads with the session; the change as the plan states it; the tests; a reviewer-agent pass before the commit where a launch or a mod carries the risk; the commit, pushed with CI green; the stops and the unattended defaults in one sentence; a Report that backs each claim with output.
 6. Status lines of AGENTS.md, docs/roadmap.md and the plan; docs/handoff.md overwritten (what passed, the open questions, the time, the next command). Tests green, ruff clean, verify docs passes.
-7. Commit `{VERSION}: M{M} plan and prompts.`; push; CI green.
+7. Commit `{VERSION}.0: M{M} plan and prompts.`; push; CI green.
 8. Report: the phases with their estimates and sizes, the decisions waiting for me, the time since the first `date`, and that /optilux-next now prints the first phase prompt.
 ```
 

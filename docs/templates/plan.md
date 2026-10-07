@@ -43,7 +43,7 @@ Status: <draft | approved by the user, <date>>; <one sentence on where the miles
 
 ## 5. Phases
 ### 0.<MM>.<PP> <title>
-- Commit: `0.<MM>.<PP>: <summary>.`
+- Commit: `0.<MM>.<PP>.0: <summary>.`
 - Change: <files and behaviour>.
 - Tests: <what proves it; "by hand: <check>" where no test is cheap>.
 - Exit: <checkable>.

@@ -10,7 +10,7 @@ Status: M1 in progress: 0.01.12 (review and cleanup) is the last phase done, nex
 - Never compare runs with different identities. Never fabricate, estimate silently or pass a missing measurement.
 - Never change system settings. Never touch the user's played Minecraft instance. Graphics drivers are assumed good: no workarounds, never part of identity (records note the version).
 - Announce every game launch.
-- Git: one milestone branch; one commit per phase, `0.MM.PP: <summary>`, one line, at most 72 characters; push after each commit; one PR per milestone, rebase-merged by the user; no force push, no `--no-verify`.
+- Git: one milestone branch; one commit per phase, `0.MM.PP.0: <summary>`, a later fix to it `0.MM.PP.1`, `.2`, ...; one line, at most 72 characters; push after each commit; one PR per milestone, rebase-merged by the user; no force push, no `--no-verify`.
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout

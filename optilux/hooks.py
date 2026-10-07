@@ -16,9 +16,10 @@ from optilux import REPO_ROOT, docs_check, repo
 
 # main moves only by the user's rebase merge of a milestone PR (docs/workflow.md#git).
 MAIN = repo.MAIN
-# docs/workflow.md#git: one line, at most 72 characters, `0.MM.PP: <summary>`.
+# docs/workflow.md#git: one line, at most 72 characters, `0.MM.PP.N: <summary>`, N the patch
+# number. The phase alone (`0.MM.PP: `), the form before 0.01.12.1, is refused from then on.
 MAX_MESSAGE = 72
-MESSAGE = re.compile(r"0\.\d{2}\.\d{2}: \S.*")
+MESSAGE = re.compile(r"0\.\d{2}\.\d{2}\.(?:0|[1-9]\d*): \S.*")
 # Attribution tokens (roadmap.md#decisions D4), whole words in any case. "Claude Code" names the
 # tool whose hooks this repo configures (the 0.00.03 subject names it), so it passes unless "by",
 # "with" or "via" make it an author; every attribution line the tool writes carries
@@ -68,7 +69,10 @@ def commit_msg(text: str) -> list[str]:
     if len(first) > MAX_MESSAGE:
         problems.append(f"{len(first)} characters: cut it to {MAX_MESSAGE}")
     if not MESSAGE.fullmatch(first):
-        problems.append("not `0.MM.PP: <summary>`: start with the phase, e.g. `0.00.03: ...`")
+        problems.append(
+            "not `0.MM.PP.N: <summary>`: start with the phase and its patch number, "
+            "e.g. `0.01.13.0: ...`"
+        )
     if token := attribution(message):
         problems.append(f"attribution token {token!r}: remove it (AGENTS.md, Rules)")
     return problems
