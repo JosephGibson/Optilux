@@ -64,6 +64,7 @@ public final class Protocol {
         private final Object id;
         private final Commands.Command command;
         private final Map<String, Object> args;
+        private final Map<?, ?> given;
         private final Connection connection;
         private final AtomicBoolean answered = new AtomicBoolean();
         // The worker running the handler, guarded by the request's lock: an early answer
@@ -72,10 +73,12 @@ public final class Protocol {
         private volatile ScheduledFuture<?> timer;
         private volatile Runnable afterAnswer = () -> { };
 
-        Request(Object id, Commands.Command command, Map<String, Object> args, Connection connection) {
+        Request(Object id, Commands.Command command, Map<String, Object> args, Map<?, ?> given,
+            Connection connection) {
             this.id = id;
             this.command = command;
             this.args = args;
+            this.given = given;
             this.connection = connection;
         }
 
@@ -89,6 +92,11 @@ public final class Protocol {
 
         public Map<String, Object> args() {
             return args;
+        }
+
+        /** Whether an argument was written as an integer literal (`/tp` semantics read it). */
+        public boolean integerLiteral(String name) {
+            return given.get(name) instanceof Json.Num num && num.isInteger();
         }
 
         /**
@@ -292,8 +300,8 @@ public final class Protocol {
                 throw new Errors.Refused(Errors.UNKNOWN_COMMAND, "no command " + name
                     + " (docs/mod-protocol.md#commands)");
             }
-            Map<String, Object> args = commands.check(command,
-                request.containsKey("args") ? request.get("args") : Map.of());
+            Object written = request.containsKey("args") ? request.get("args") : Map.of();
+            Map<String, Object> args = commands.check(command, written);
             if (name.equals(HELLO)) {
                 byte[] given = ((String) args.get("token")).getBytes(StandardCharsets.UTF_8);
                 if (!MessageDigest.isEqual(given, token)) {
@@ -311,7 +319,7 @@ public final class Protocol {
                 throw new Errors.Refused(Errors.UNSUPPORTED, name + " (phase " + command.phase()
                     + ") is not built in this mod; hello lists the capabilities");
             }
-            dispatch(new Request(id, command, args, current), handler);
+            dispatch(new Request(id, command, args, (Map<?, ?>) written, current), handler);
         } catch (Errors.Refused refused) {
             send(current, line(error(id, refused.code(), refused.getMessage())), null);
         }

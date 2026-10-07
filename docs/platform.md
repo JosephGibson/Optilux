@@ -14,7 +14,7 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 - Renderer:
   - OpenGL is the default; the bench writes `preferredGraphicsBackend:"opengl"` (R3). The game creates a "3.3.0 Core Profile Context" (log line), with or without Iris.
   - Vulkan has been experimental since 26.2 (2026-06-16) as "Prefer Vulkan (Experimental)", with fallback to OpenGL [S3].
-- 26.3 Snapshot 5: vanilla core shaders are compiled by ShaderC on OpenGL too; `#include` replaces `#moj_import` [S4]. Iris packs are unaffected: Unbound loads, and Iris's own patcher (glsl-transformer 3.0.0-pre3, bundled in the jar) rewrites the pack's `#version 130` to `#version 330 core` (V4).
+- 26.3 Snapshot 5: vanilla core shaders are compiled by ShaderC on OpenGL too; `#include` replaces `#moj_import` [S4]. Iris packs are unaffected: Unbound loads, and Iris's own patcher rewrites the pack's `#version 130` to `#version 330 core` (V4).
 - Translucency: vanilla OIT is gated by the `improvedTransparency` option (GameRenderer.useImprovedTransparency); Iris sets it false whenever shaders are enabled (MixinDisableFabulousGraphics), so a pack never sees OIT. Translucent terrain and water go through Sodium's translucent pass to `gbuffers_water` (ShaderKey TERRAIN_TRANSLUCENT -> ProgramId.Water); IRIS_HAS_TRANSLUCENCY_SORTING is defined (R10).
 - Depth: 26.2 switched vanilla rendering to a reversed depth buffer [S9]. Iris 1.11.7 undoes it while a pack renders the level (five UndoReverseZ mixins: clip control reported absent, compare ops mirrored, near and far swapped, clear depth 1 - d), so depthtex0/1/2 and shadowtex0 hold forward depth with no copy or transform pass (R11); the GUI still renders reversed.
 - Save layout: dimensions/minecraft/<dim>/ (region, entities, poi), players/data/<uuid>.dat, data/minecraft/*.dat; no DIM-1 or DIM1, no Player tag in level.dat (S9, L1).
@@ -38,7 +38,7 @@ Data: config/platforms/mc-26.3.json (version, file, Modrinth version id, sha512;
 | bench | fabric-api, sodium, iris, optilux-helper; resource pack faithful-64x | every measurement |
 | played | cloth-config, entityculling, ferrite-core, immediatelyfast, lithium, modmenu, moreculling, scalablelux, placeholder-api | compatibility smoke, never shader perf evidence |
 | debug | gfx-debuggers | RenderDoc attribution only |
-| dev | viewfinder (MCP at http://127.0.0.1:7150/mcp, started with the game; 23 tools, no server-command tool; no auth; not read-only) | development and diagnostics with Claude Code; not evidence until measured (offline.md) |
+| dev | viewfinder (MCP at http://127.0.0.1:7150/mcp, started with the game; no auth; not read-only; tools in L2) | development and diagnostics with Claude Code; not evidence until measured (offline.md) |
 | lod | voxy (pending a 26.3 build) | Voxy compatibility |
 | jvm | chunky; lithium and c2me-fabric as axes | post-1.0 JVM track |
 
@@ -53,7 +53,7 @@ What optilux-helper's adapter must provide on each platform (mod.md#4-architectu
 | Capability | ALC hook (fragility) | mc-26.3 |
 |---|---|---|
 | frame begin/end, capture point | mixin on `GameRenderer.render` HEAD/RETURN + INVOKE `renderLevel` (high) | `GameRenderer.render` exists; Iris ticks its frame counter at its HEAD (MixinGameRenderer); re-read the capture point in M1 |
-| camera pose | `ServerPlayer.teleportTo` + client pose with previous-tick rotation (medium) | keep; add the `/tp` semantics flag |
+| camera pose | `ServerPlayer.teleportTo` + client pose with previous-tick rotation (medium) | kept; a dimension through `/execute in` first; `/tp`'s rules: mod.md#6-time-and-determinism |
 | server command | `Commands.performPrefixedCommand` at OWNER (low) | keep; level.dat allowCommands=1 gives the owner `LevelBasedPermissionSet.OWNER` (IntegratedServer.getProfilePermissions, PlayerList.isOp) |
 | reload + result | `Iris.reload`, `getStoredError` (consumed once), `isFallback`, pipeline (medium) | in a world a failed load never reaches storedError: handleException sends a chat message when a player exists, stores the error only before one exists, and opens DebugLoadFailedGridScreen in debug mode; read `isFallback()` and hook handleException |
 | frames since reload | ALC held the reload frame, never exposed it | `SystemTimeUniforms.COUNTER`: reset in `PipelineManager.preparePipeline` at every pipeline creation (reload, dimension change, join), wrap 720720 (R5) |
@@ -62,7 +62,7 @@ What optilux-helper's adapter must provide on each platform (mod.md#4-architectu
 | readiness | Sodium private fields by accessor (high) | `ChunkBuilder.queue` (ChunkJobQueue), `busyThreadCount`, `isBuildQueueEmpty()`, `getScheduledJobCount()`, `getBusyThreadCount()`; `RenderSectionManager.buildResults`, `taskLists`, `pendingTask`, `needsGraphUpdate`, `thisFrameBlockingTasks`, `nextFrameBlockingTasks`, `deferredTasks` (R7) |
 | effective options | none | `currentPack.getShaderPackOptions().getOptionValues()`; Viewfinder's list_shaderpacks returns the same map (V1) |
 | shader dumps | `enableDebugOptions` + file poll | game/patched_shaders/, one numbered file set per program plus a .json each, rewritten on every build (V4) |
-| input, HUD, focus | none | mixins on the mouse and keyboard handlers; `Hud.toggle()` for F1, the debug options for F3 |
+| input, HUD, focus | none | HEAD of MouseHandler.onMove (SDL3, relative and absolute), onButton, onScroll, KeyboardHandler.keyPress, textInput, textEditing, Minecraft.pauseGame; F1 `gui.hud.toggle()`; F3 `debugEntries.setOverlayVisible`, no option |
 | tick time, GC, heap | none | Fabric server tick event + JMX; `jcmd GC.heap_info` works on the bench JVM (L1) |
 
 ## Install and launch
@@ -147,8 +147,6 @@ The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform c
 5. Recalibrate every mode.
 6. Re-capture the reference baselines.
 7. Code changes stay in the mod adapter and the shader backend.
-
-Multi-version mod builds: one platform for now. Evaluate Stonecutter (multi-version Gradle) when two platforms are live.
 
 ## Sources
 Secondary sources are marked; the spike confirmed what the bench depends on (above).

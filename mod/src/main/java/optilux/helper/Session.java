@@ -12,7 +12,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.CustomValue;
@@ -32,9 +31,9 @@ import org.slf4j.LoggerFactory;
  * The active mod's wiring (docs/mod.md#4-architecture): the command table from this mod's own
  * commands.json, the state owner, the protocol core with the built commands, the worker pool and
  * the timer thread, and the pipe server on its I/O thread. Built from the entrypoint only with a
- * valid token. The game layer here is thin: hello's facts from Fabric Loader, `quit` through
- * Minecraft.stop on the render thread (what the window's close button does: Window.shouldClose,
- * then stop() in Minecraft.runTick of 26.3), and the world leave from Fabric's play disconnect.
+ * valid token. hello's facts come from Fabric Loader, `quit` goes through Minecraft.stop on the
+ * render thread (what the window's close button does: Window.shouldClose, then stop() in
+ * Minecraft.runTick of 26.3), and the game adapter answers the rest and owns the world leave.
  */
 final class Session {
     private static final Logger LOG = LoggerFactory.getLogger("optilux-helper");
@@ -62,7 +61,9 @@ final class Session {
             TimeUnit.SECONDS, new SynchronousQueue<>(), daemons("optilux-worker"));
         State state = new State(timers, State.INPUT_RELEASE);
         Map<String, Object> facts = facts(self);
-        Map<String, Protocol.Handler> handlers = new LinkedHashMap<>();
+        GameAdapter game = new GameAdapter(state,
+            () -> FrameClock.nanos(qpc.ticks(), qpc.frequency()));
+        Map<String, Protocol.Handler> handlers = new LinkedHashMap<>(game.handlers());
         handlers.put("frames.index", request -> Map.of());
         handlers.put("quit", request -> {
             request.afterAnswer(() -> {
@@ -90,7 +91,8 @@ final class Session {
         };
         Protocol protocol = new Protocol(commands, token, handlers, () -> facts, stamps, state,
             workers, timers);
-        ClientPlayConnectionEvents.DISCONNECT.register((listener, minecraft) -> protocol.worldLeft());
+        game.listen(protocol);
+        state.onInputReleased(() -> LOG.info("optilux-helper: input.block released by the state owner"));
         String name = PipeName.of(token);
         PipeServer server = new PipeServer(name, protocol, Qpc.kernel32());
         Thread thread = new Thread(server, "optilux-pipe");

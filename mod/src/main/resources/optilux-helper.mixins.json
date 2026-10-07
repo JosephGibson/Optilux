@@ -5,7 +5,10 @@
     "plugin": "optilux.helper.MixinGate",
     "compatibilityLevel": "JAVA_25",
     "client": [
-        "GameRendererMixin"
+        "GameRendererMixin",
+        "KeyboardHandlerMixin",
+        "MinecraftMixin",
+        "MouseHandlerMixin"
     ],
     "injectors": {
         "defaultRequire": 1
