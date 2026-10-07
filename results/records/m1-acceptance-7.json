@@ -1,0 +1,6122 @@
+{
+ "schema": 1,
+ "name": "m1-acceptance-7",
+ "kind": "acceptance",
+ "spec": {
+  "name": "m1-acceptance-7",
+  "kind": "acceptance",
+  "views": "provisional",
+  "world": "spike",
+  "variants": [
+   {
+    "pack": "ComplementaryUnbound_r5.9.3.zip",
+    "profile": null
+   }
+  ],
+  "tier": "bench",
+  "resourcePacks": "standard",
+  "items": [
+   "A4",
+   "A7",
+   "A9",
+   "A10"
+  ],
+  "reloads": 50,
+  "notes": "0.01.09: A4 on a broken copy of Unbound (D25); A7 control (the grab primed), blocked arm and after-control (D24); A9 on 120 frames inside one PresentMon run, both stamps (D26), the span anchored on the swap stamps (user, 2026-10-07, after m1-acceptance-5); A10; F4: 50 shaders.reload, heap after GC and private bytes every 10; every injection also needs the foreground window to be the game's (m1-acceptance-6: a T sent with focused true opened nothing while other processes ran beside the session)"
+ },
+ "status": "ok",
+ "reason": null,
+ "startedAt": "2026-10-07T04:35:32+00:00",
+ "endedAt": "2026-10-07T04:37:51+00:00",
+ "identity": {
+  "platform": {
+   "sha256": "f725b4d25694761798155fed0ae1dec49d3d09c73560e2823bd08841a8520f5a",
+   "tier": "bench",
+   "tiers": [
+    "bench"
+   ]
+  },
+  "launchSpec": {
+   "file": "mc-26.3.launch.json",
+   "sha256": "9bd33805f28ad63e53add6f0af88fb409f33ffd13a4542cbb7b161f71d0de2d3"
+  },
+  "mods": [
+   "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+   "eb840262d74e537377c4dfe57cdff1d3fba46187886c185b7a4d0a26c7978ff8048d1e0bafcd3c97860bf25e05787ea0f5abb75ff54167c3abf73d4ae376e9ab",
+   "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+   "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+  ],
+  "world": {
+   "snapshot": "snapshots/provisional",
+   "treeSha256": "bddb4929df9d721dfbc7c43a248f2e0706128614f2046284848e7cfa5b52cf2b",
+   "files": 68,
+   "live": "spike"
+  },
+  "views": {
+   "file": "provisional.json",
+   "sha256": "d1e5f861b6a3d3af97cd2db1db617250e5d621e3b20f428d3717b43d55e3133e"
+  },
+  "resourcePacks": {
+   "set": "standard",
+   "packs": [
+    {
+     "file": "Faithful 64x - Release 15.zip",
+     "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+    }
+   ]
+  },
+  "settings": {
+   "options": {
+    "version": "5023",
+    "fullscreen": "true",
+    "exclusiveFullscreen": "false",
+    "enableVsync": "false",
+    "maxFps": "260",
+    "renderDistance": "16",
+    "simulationDistance": "12",
+    "fov": "0.5",
+    "bobView": "false",
+    "guiScale": "3",
+    "mipmapLevels": "4",
+    "biomeBlendRadius": "2",
+    "graphicsPreset": "\"custom\"",
+    "preferredGraphicsBackend": "\"opengl\"",
+    "improvedTransparency": "false",
+    "pauseOnLostFocus": "false",
+    "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+    "onboardAccessibility": "false",
+    "skipMultiplayerWarning": "true",
+    "joinedFirstServer": "true",
+    "telemetryOptInExtra": "false",
+    "realmsNotifications": "false",
+    "narrator": "0"
+   },
+   "overrides": {},
+   "token": true,
+   "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+   "iris": {
+    "shaderPack": "ComplementaryUnbound_r5.9.3.zip",
+    "enableShaders": "true",
+    "enableDebugOptions": "false",
+    "disableUpdateMessage": "true",
+    "maxShadowRenderDistance": "32"
+   }
+  },
+  "suite": {
+   "sha256": "6fc75e2e7aa2e6b4d7c08a3b784793617980ad89a1291d7d7f7902c9c3b0a3bd",
+   "sections": [
+    "display",
+    "modes",
+    "capture",
+    "validity",
+    "statistics"
+   ]
+  },
+  "java": {
+   "runtime": "jdk-25.0.4.1+1",
+   "version": "25.0.4.1+1-LTS",
+   "heap": {
+    "xms": 6144,
+    "xmx": 6144,
+    "unit": "MiB"
+   },
+   "args": []
+  },
+  "system": {
+   "gpu": "AMD Radeon RX 7800 XT",
+   "hags": true,
+   "resolution": "3840x2160",
+   "windowMode": "borderless fullscreen",
+   "windowsBuild": 26200
+  }
+ },
+ "recorded": {
+  "platformFile": "b414c80c3c84593524550987abddf83ded7d1c8dc4f19bb3dfca53ff7b4abc4e",
+  "driver": "32.0.32015.2008",
+  "windowsRevision": 9457,
+  "display": {
+   "name": "\\\\.\\DISPLAY2",
+   "hz": 240,
+   "displays": 2
+  },
+  "hwSchMode": 2,
+  "harness": {
+   "commit": "413a71eea8d3a049006df63f9c2f12903a0a9c55",
+   "dirty": true
+  },
+  "amd": {
+   "presentMon": [
+    {
+     "pid": 10368,
+     "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+     "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+    }
+   ],
+   "rsxTraceSession": true
+  },
+  "optionsTxt": {
+   "sha256": "15b4f26e60be2c1554e418542f193d137dd9a97d5958ae14fb95dd9d15d27119"
+  }
+ },
+ "variants": [
+  {
+   "pack": "ComplementaryUnbound_r5.9.3.zip",
+   "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c",
+   "profile": null,
+   "options": {
+    "count": 398,
+    "values": {
+     "ACT_CORNER_LEAK_FIX": true,
+     "ACT_CORNER_LEAK_FIX_FOR_WSR": true,
+     "ACT_FIRE_COLOR_WARMNESS": "100",
+     "AMBIENT_MULT": "100",
+     "ANISOTROPIC_FILTER": "0",
+     "ANY_ERROR_MESSAGE": true,
+     "ATMOSPHERIC_FOG": true,
+     "ATM_COLOR_MULTS": false,
+     "ATM_END_B": "1.00",
+     "ATM_END_G": "1.00",
+     "ATM_END_I": "1.00",
+     "ATM_END_R": "1.00",
+     "ATM_FOG_ALTITUDE": "63",
+     "ATM_FOG_DISTANCE": "100",
+     "ATM_FOG_MULT": "0.95",
+     "ATM_MORNING_B": "1.00",
+     "ATM_MORNING_G": "1.00",
+     "ATM_MORNING_I": "1.00",
+     "ATM_MORNING_R": "1.00",
+     "ATM_NETHER_B": "1.00",
+     "ATM_NETHER_G": "1.00",
+     "ATM_NETHER_I": "1.00",
+     "ATM_NETHER_R": "1.00",
+     "ATM_NIGHT_B": "1.00",
+     "ATM_NIGHT_G": "1.00",
+     "ATM_NIGHT_I": "1.00",
+     "ATM_NIGHT_R": "1.00",
+     "ATM_NOON_B": "1.00",
+     "ATM_NOON_G": "1.00",
+     "ATM_NOON_I": "1.00",
+     "ATM_NOON_R": "1.00",
+     "ATM_RAIN_B": "1.00",
+     "ATM_RAIN_G": "1.00",
+     "ATM_RAIN_I": "1.00",
+     "ATM_RAIN_R": "1.00",
+     "AURORA_CONDITION": "3",
+     "AURORA_STYLE_DEFINE": "-1",
+     "BLOCKLIGHT_FLICKERING": "0",
+     "BLOCK_REFLECT_QUALITY": "3",
+     "BLOOM_ENABLED": "1",
+     "BLOOM_FOG": true,
+     "BLOOM_FOG_COMPOSITE1": true,
+     "BLOOM_FOG_COMPOSITE3": true,
+     "BLOOM_STRENGTH": "0.12",
+     "BORDER_FOG": true,
+     "BRIGHT_CAVE_WATER": true,
+     "CAVE_FOG": true,
+     "CAVE_LIGHTING": "100",
+     "CHROMA_ABERRATION": "0",
+     "CLOUDS_REIMAGINED": true,
+     "CLOUDS_UNBOUND": true,
+     "CLOUD_ALT1": "192",
+     "CLOUD_ALT2": "288",
+     "CLOUD_B": "100",
+     "CLOUD_CLOSED_AREA_CHECK": true,
+     "CLOUD_G": "100",
+     "CLOUD_QUALITY": "2",
+     "CLOUD_R": "100",
+     "CLOUD_SHADOWS": false,
+     "CLOUD_SPEED_MULT": "100",
+     "CLOUD_STYLE_DEFINE": "-1",
+     "CLOUD_UNBOUND_AMOUNT": "1.00",
+     "CLOUD_UNBOUND_RAIN_ADD": "0.40",
+     "CLOUD_UNBOUND_SIZE_MULT": "100",
+     "COATED_TEXTURES": false,
+     "COATED_TEXTURE_MULT": "100",
+     "COLORED_CANDLE_LIGHT": false,
+     "COLORED_LIGHTING": "0",
+     "COLORED_LIGHT_FOG": true,
+     "COLORED_LIGHT_FOG_I": "0.65",
+     "COLORED_LIGHT_SATURATION": "100",
+     "COLORGRADING": false,
+     "COLOR_CODED_PROGRAMS": false,
+     "COMPOSITE": true,
+     "COMPOSITE1": true,
+     "CONNECTED_GLASS_CORNER_FIX": true,
+     "CONNECTED_GLASS_EFFECT": true,
+     "COORDINATES_ACT_ERROR": true,
+     "CUSTOM_EMISSION_INTENSITY": "100",
+     "CUSTOM_PBR": true,
+     "DARK_OUTLINE": false,
+     "DARK_OUTLINE_THICKNESS": "1",
+     "DEFERRED1": true,
+     "DETAIL_QUALITY": "2",
+     "DH_BLENDING": true,
+     "DIRECTIONAL_BLOCKLIGHT": "0",
+     "DIRECTIONAL_SHADING": true,
+     "DISTANT_LIGHT_BOKEH": true,
+     "DOUBLE_REIM_CLOUDS": false,
+     "DO_IPBR_LIGHTS": true,
+     "DO_MORE_FOLIAGE_WAVING": true,
+     "DO_PIXELATION_EFFECTS": true,
+     "DURING_WORLDSPACE_REF": true,
+     "EMISSIVE_LAPIS_BLOCK": false,
+     "EMISSIVE_REDSTONE_BLOCK": false,
+     "END": true,
+     "END_BEAM_CENTER_ALT": "68",
+     "END_BEAM_HEIGHT": "1.00",
+     "END_BEAM_INTENSITY": "1.00",
+     "END_FLASHES": true,
+     "END_STAR_INTENSITY": "1.00",
+     "ENTITY_GN_AND_CT": true,
+     "ENTITY_SHADOW": "1",
+     "ENTITY_TAA_NOISY_CLOUD_FIX": true,
+     "FANCY_GLASS": true,
+     "FIX_AMD_REFLECTION_CRASH": true,
+     "FLICKERING_FIX": true,
+     "FOLIAGE_ALT_SUBSURFACE": false,
+     "FRAGMENT_SHADER": true,
+     "FXAA_DEFINE": "1",
+     "FXAA_STRENGTH": "75",
+     "FXAA_TAA_INTERACTION": "10",
+     "GBUFFERS_BLOCK": true,
+     "GBUFFERS_BLOCK_TRANSLUCENT": true,
+     "GBUFFERS_ENTITIES": true,
+     "GBUFFERS_ENTITIES_GLOWING": true,
+     "GBUFFERS_ENTITIES_TRANSLUCENT": true,
+     "GBUFFERS_HAND": true,
+     "GBUFFERS_LIGHTNING": true,
+     "GBUFFERS_LINE": true,
+     "GBUFFERS_TERRAIN": true,
+     "GBUFFERS_TEXTURED": true,
+     "GBUFFERS_WATER": true,
+     "GENERATED_NORMALS": false,
+     "GENERATED_NORMAL_MULT": "100",
+     "GENERATED_NORMAL_RES": "128",
+     "GLOWING_AMETHYST": "1",
+     "GLOWING_ARMOR_TRIM": false,
+     "GLOWING_COLORED_PARTICLES": false,
+     "GLOWING_ENTITY_FIX": true,
+     "GLOWING_LICHEN": "1",
+     "GLOWING_ORE_ANCIENTDEBRIS": true,
+     "GLOWING_ORE_COPPER": true,
+     "GLOWING_ORE_DIAMOND": true,
+     "GLOWING_ORE_EMERALD": true,
+     "GLOWING_ORE_GILDEDBLACKSTONE": true,
+     "GLOWING_ORE_GOLD": true,
+     "GLOWING_ORE_IRON": true,
+     "GLOWING_ORE_LAPIS": true,
+     "GLOWING_ORE_MASTER": "1",
+     "GLOWING_ORE_MODDED": true,
+     "GLOWING_ORE_MULT": "1.00",
+     "GLOWING_ORE_NETHERGOLD": true,
+     "GLOWING_ORE_NETHERQUARTZ": true,
+     "GLOWING_ORE_REDSTONE": true,
+     "GREEN_SCREEN_LIME": false,
+     "GR_BB": "100",
+     "GR_BC": "1.00",
+     "GR_BG": "0",
+     "GR_BR": "0",
+     "GR_GB": "0",
+     "GR_GC": "1.00",
+     "GR_GG": "100",
+     "GR_GR": "0",
+     "GR_RB": "0",
+     "GR_RC": "1.00",
+     "GR_RG": "0",
+     "GR_RR": "100",
+     "HAND_SWAYING": "0",
+     "HELD_LIGHTING_MODE": "2",
+     "HIDE_ARMOR": "0",
+     "HQ_NIGHT_NEBULA": true,
+     "IMAGE_SHARPENING": "5",
+     "IMPROVED_RAIN": true,
+     "IMPROVED_RAIN_DEFINE": "1",
+     "INCLUDE_CAVE_FACTOR": true,
+     "INCLUDE_CLOUD_COORD": true,
+     "INCLUDE_CLOUD_SHADOWS": true,
+     "INCLUDE_CUSTOM_EMISSION": true,
+     "INCLUDE_DFDX_DFDY": true,
+     "INCLUDE_DITHER": true,
+     "INCLUDE_ENDER_BEAMS": true,
+     "INCLUDE_LIGHT_AND_AMBIENT_COLORS": true,
+     "INCLUDE_LIGHT_AND_AMBIENT_MULTIPLIERS": true,
+     "INCLUDE_MOON_PHASE_INF": true,
+     "INCLUDE_SKY": true,
+     "INCLUDE_SKY_COLORS": true,
+     "INCLUDE_VOXELIZATION": true,
+     "INCLUDE_WATER_FOG": true,
+     "IPBR": true,
+     "IPBR_COMPAT_MODE": true,
+     "IPBR_COMPAT_MODE_DEFINE": false,
+     "IPBR_EMISSIVE_MODE": "1",
+     "IPBR_PARTICLE_FEATURES": true,
+     "LEAF_SHADOW_OPTIMISATION": true,
+     "LEAF_SHADOW_OPTIMISATION_DEFINE": "-1",
+     "LENSFLARE_I": "1.00",
+     "LENSFLARE_MODE": "0",
+     "LESS_LAVA_FOG": false,
+     "LIGHTSHAFTS_ACTIVE": true,
+     "LIGHTSHAFT_BEHAVIOUR": "1",
+     "LIGHTSHAFT_NIGHT_I": "100",
+     "LIGHTSHAFT_NOON_I": "100",
+     "LIGHTSHAFT_QUALI_DEFINE": "2",
+     "LIGHTSHAFT_RAIN_I": "100",
+     "LIGHTSHAFT_SMOKE": false,
+     "LIGHTSHAFT_SUNSET_I": "100",
+     "LIGHTSHAFT_SUNSET_SATURATION": "0.25",
+     "LIGHT_COLOR_MULTS": false,
+     "LIGHT_END_B": "1.00",
+     "LIGHT_END_G": "1.00",
+     "LIGHT_END_I": "1.00",
+     "LIGHT_END_R": "1.00",
+     "LIGHT_HIGHLIGHT": true,
+     "LIGHT_MORNING_B": "1.00",
+     "LIGHT_MORNING_G": "1.00",
+     "LIGHT_MORNING_I": "1.00",
+     "LIGHT_MORNING_R": "1.00",
+     "LIGHT_NETHER_B": "1.00",
+     "LIGHT_NETHER_G": "1.00",
+     "LIGHT_NETHER_I": "1.00",
+     "LIGHT_NETHER_R": "1.00",
+     "LIGHT_NIGHT_B": "1.00",
+     "LIGHT_NIGHT_G": "1.00",
+     "LIGHT_NIGHT_I": "1.00",
+     "LIGHT_NIGHT_R": "1.00",
+     "LIGHT_NOON_B": "1.00",
+     "LIGHT_NOON_G": "1.00",
+     "LIGHT_NOON_I": "1.00",
+     "LIGHT_NOON_R": "1.00",
+     "LIGHT_RAIN_B": "1.00",
+     "LIGHT_RAIN_G": "1.00",
+     "LIGHT_RAIN_I": "1.00",
+     "LIGHT_RAIN_R": "1.00",
+     "LOW_QUALITY_MOTION_BLUR": true,
+     "LOW_QUALITY_NETHER_STORM": true,
+     "MIRROR_TINTED_GLASS": "0",
+     "MOON_PHASE_DARK": "0.60",
+     "MOON_PHASE_FULL": "1.00",
+     "MOON_PHASE_INF_ATMOSPHERE": false,
+     "MOON_PHASE_INF_LIGHT": false,
+     "MOON_PHASE_INF_REFLECTION": true,
+     "MOON_PHASE_PARTIAL": "0.85",
+     "MORE_REFLECTIVE_DISTANT_GLASS": true,
+     "MOTION_BLURRING_STRENGTH": "1.00",
+     "MOTION_BLUR_BLOOM_FOG_FIX": true,
+     "MOTION_BLUR_EFFECT": "-1",
+     "MULTIPLE_LOD_MODS_ERROR": true,
+     "NETHER": true,
+     "NETHER_COLOR_MODE": "3",
+     "NETHER_STORM": true,
+     "NETHER_STORM_HEIGHT": "200",
+     "NETHER_STORM_I": "0.40",
+     "NETHER_STORM_LOWER_ALT": "28",
+     "NETHER_VIEW_LIMIT": "256.0",
+     "NIGHT_NEBULAE": "-1",
+     "NIGHT_NEBULA_I": "100",
+     "NIGHT_STAR_AMOUNT": "2",
+     "NORMAL_MAP_STRENGTH": "100",
+     "NO_WAVING_INDOORS": true,
+     "OPTIMIZATION_ACT_BEHIND_PLAYER": true,
+     "OPTIMIZATION_ACT_HALF_RATE_SPREADING": true,
+     "OPTIMIZATION_ACT_HALF_RATE_VOXELS": false,
+     "OPTIMIZATION_ACT_SHARED_MEMORY": false,
+     "OVERWORLD": true,
+     "PBR_REFLECTIONS": true,
+     "PERPENDICULAR_TWEAKS": true,
+     "PIXELATED_AO": false,
+     "PIXELATED_BLOCKLIGHT": false,
+     "PIXELATED_SHADOWS": false,
+     "PIXEL_SCALE": "1",
+     "PLAYER_SHADOW": "1",
+     "POM": true,
+     "POM_ALLOW_CUTOUT": false,
+     "POM_DEPTH": "0.80",
+     "POM_DISTANCE": "32",
+     "POM_LIGHTING_MODE": "2",
+     "POM_QUALITY": "128",
+     "PORTAL_EDGE_EFFECT": true,
+     "PORTAL_REDUCE_CLOSEUP": true,
+     "PUDDLE_VOXELIZATION": true,
+     "RAINBOWS": "1",
+     "RAINBOW_DIAMETER": "1.00",
+     "RAINBOW_STYLE_DEFINE": "-1",
+     "RAIN_PUDDLES": "0",
+     "RAIN_STYLE": "1",
+     "REDUCE_CLOSE_PARTICLES": false,
+     "REFLECTION_BLUR_DEPTH_CHECK": true,
+     "REFLECTION_RES": "0.5",
+     "RP_MODE": "1",
+     "SAFER_GENERATED_NORMALS": false,
+     "SELECT_OUTLINE": "1",
+     "SELECT_OUTLINE_AUTO_HIDE": false,
+     "SELECT_OUTLINE_B": "1.75",
+     "SELECT_OUTLINE_G": "0.35",
+     "SELECT_OUTLINE_I": "1.00",
+     "SELECT_OUTLINE_R": "1.35",
+     "SHADER_STYLE": "4",
+     "SHADOW": true,
+     "SHADOWCOMP": true,
+     "SHADOWDISTANCE_ACT_ERROR": true,
+     "SHADOW_FILTERING": true,
+     "SHADOW_QUALITY": "2",
+     "SHADOW_SMOOTHING": "4",
+     "SHOW_LIGHT_LEVEL": "0",
+     "SIDE_SHADOWING": true,
+     "SKY_EFFECT_REFLECTION_DEFINE": "-1",
+     "SKY_EFFECT_REFLECTION_OPAQUE": true,
+     "SKY_EFFECT_REFLECTION_TRANSLUCENT": true,
+     "SMOOTHNESS_AFFECTED_REF_BLUR": true,
+     "SNOWY_WORLD": false,
+     "SPECIAL_BIOME_WEATHER": true,
+     "SPECIAL_PALE_GARDEN_LIGHTSHAFTS": true,
+     "SPECIAL_PORTAL_EFFECTS": true,
+     "SSAO_I": "100",
+     "SSAO_QUALI_DEFINE": "2",
+     "SULFUR_CAVE_FOG": true,
+     "SUN_ANGLE": "-1",
+     "SUN_MOON_DURING_RAIN": true,
+     "SUN_MOON_HORIZON": true,
+     "SUN_MOON_STYLE_DEFINE": "-1",
+     "TAA": true,
+     "TAA_DEFINE": "-1",
+     "TAA_JITTER": "1",
+     "TAA_MOVEMENT_IMPROVEMENT_FILTER": "1",
+     "TAA_SMOOTHING": "3",
+     "TM_CONTRAST": "1.05",
+     "TM_DARK_DESATURATION": "0.25",
+     "TM_EXPOSURE": "1.00",
+     "TM_WHITE_PATH": "1.00",
+     "T_SATURATION": "1.00",
+     "T_VIBRANCE": "1.00",
+     "UNDERWATERCOLOR_B": "100",
+     "UNDERWATERCOLOR_CHANGED": true,
+     "UNDERWATERCOLOR_G": "100",
+     "UNDERWATERCOLOR_R": "100",
+     "UNDERWATER_DISTORTION": true,
+     "VANILLAAO_I": "100",
+     "VERTEX_SHADER": true,
+     "VIGNETTE_R": true,
+     "VL_CLOUDS_ACTIVE": true,
+     "WATERCOLOR_B": "100",
+     "WATERCOLOR_CHANGED": true,
+     "WATERCOLOR_G": "100",
+     "WATERCOLOR_MODE": "3",
+     "WATERCOLOR_R": "100",
+     "WATER_ALPHA_MULT": "100",
+     "WATER_BUMPINESS": "1.25",
+     "WATER_BUMP_BIG": "2.00",
+     "WATER_BUMP_MED": "1.70",
+     "WATER_BUMP_SMALL": "0.75",
+     "WATER_CAUSTIC_STYLE_DEFINE": "-1",
+     "WATER_FOAM_I": "100",
+     "WATER_FOG_MULT": "100",
+     "WATER_REFLECT_QUALITY": "2",
+     "WATER_REFRACTION": true,
+     "WATER_REFRACTION_INTENSITY": "2.0",
+     "WATER_SIZE_MULT": "100",
+     "WATER_SPEED_MULT": "1.10",
+     "WATER_STYLE_DEFINE": "-1",
+     "WAVING_ANYTHING_TERRAIN": true,
+     "WAVING_FOLIAGE": true,
+     "WAVING_I": "1.00",
+     "WAVING_I_RAIN_MULT": "100",
+     "WAVING_LAVA": true,
+     "WAVING_LEAVES": true,
+     "WAVING_LILY_PAD": false,
+     "WAVING_RAIN": true,
+     "WAVING_SPEED": "1.00",
+     "WAVING_WATER_VERTEX": true,
+     "WB_ANAMORPHIC": false,
+     "WB_CHROMATIC": false,
+     "WB_DB_DAY_I": "64.0",
+     "WB_DB_END_I": "64.0",
+     "WB_DB_NETHER_I": "64.0",
+     "WB_DB_NIGHT_I": "64.0",
+     "WB_DB_RAIN_I": "64.0",
+     "WB_DB_WATER_I": "64.0",
+     "WB_DOF_FOCUS": "0",
+     "WB_DOF_I": "64.0",
+     "WB_FOV_SCALED": false,
+     "WEATHER_TEX_OPACITY": "100",
+     "WORLD_BLUR": "0",
+     "WORLD_OUTLINE": false,
+     "WORLD_OUTLINE_I": "1.50",
+     "WORLD_OUTLINE_ON_ENTITIES": true,
+     "WORLD_OUTLINE_SCALED": false,
+     "WORLD_OUTLINE_THICKNESS": "1",
+     "WORLD_SPACE_PLAYER_REF": "-1",
+     "WORLD_SPACE_REFLECTIONS": "-1",
+     "WORLD_SPACE_REF_MODE": "2",
+     "XLIGHT_B": "1.00",
+     "XLIGHT_CURVE": "1.00",
+     "XLIGHT_G": "1.00",
+     "XLIGHT_I": "1.00",
+     "XLIGHT_R": "1.00",
+     "info0": "0",
+     "info1": "0",
+     "info10": "0",
+     "info2": "0",
+     "info3": "0",
+     "info4": "0",
+     "info5": "0",
+     "info6": "0",
+     "info7": "0",
+     "info8": "0",
+     "info9": "0",
+     "shadowDistance": "192.0"
+    }
+   }
+  }
+ ],
+ "acceptance": [
+  {
+   "item": "A4",
+   "pass": true,
+   "evidence": {
+    "view": "overworld_spawn",
+    "dimension": "minecraft:overworld",
+    "brokenPack": {
+     "file": "optilux-a4-broken-ComplementaryUnbound_r5.9.3.zip",
+     "program": "shaders/world0/final.fsh",
+     "originalSha256": "a31fb000ae6dd1f963f44ff2cd238af3583d46a696c998f8e33762c569d9738f",
+     "brokenSha256": "58cbcf355d471e13459c847403dfb217461d0859228fb589dec1e9502e5031b1",
+     "entries": 468,
+     "sha256": "dcb97f77bae99e0e13bacdfae9bb28197bab9d9f6a7dcc7362bc2af6f44bbfd8",
+     "bytes": 538726
+    },
+    "brokenReload": {
+     "code": "iris-compile-error",
+     "message": "ShaderCompileException: final.fsh: final.fsh: ERROR: 0:20: 'optiluxA4Undeclared' : undeclared identifier \nERROR: 0:20: '' : compilation terminated \nERROR: 2 compilation errors.  No code generated.\n\n",
+     "seconds": 0.234
+    },
+    "namesProgram": true,
+    "namesIdentifier": true,
+    "irisRestored": true,
+    "recovery": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3396793,
+     "framesAfter": 2,
+     "reloadFrame": 4129,
+     "frameIndex": 4132,
+     "sinceReload": 3,
+     "qpcNs": 109505020371600
+    },
+    "ready": {
+     "seconds": 1.3862458,
+     "limitedBy": "graph"
+    },
+    "frame": {
+     "folder": "results/raw/m1-acceptance-7/a4/attempt-001",
+     "complete": true,
+     "frames": [
+      {
+       "frameIndex": 4284,
+       "sinceReload": 155,
+       "sha256": "156ed526467a9eb08ef49f6991ae849bb3523f25d4c4e4acaf977c25b57b0131"
+      }
+     ]
+    },
+    "events": [
+     {
+      "step": "A4 broken reload",
+      "event": "reload.failed",
+      "data": {
+       "message": "ShaderCompileException: final.fsh: final.fsh: ERROR: 0:20: 'optiluxA4Undeclared' : undeclared identifier \nERROR: 0:20: '' : compilation terminated \nERROR: 2 compilation errors.  No code generated.\n\n"
+      },
+      "frameIndex": 4128,
+      "sinceReload": 0
+     },
+     {
+      "step": "A4 recovery shaders.reload",
+      "event": "reload.done",
+      "data": {
+       "pack": "ComplementaryUnbound_r5.9.3.zip",
+       "pipeline": "IrisRenderingPipeline",
+       "seconds": 0.3396793
+      },
+      "frameIndex": 4129,
+      "sinceReload": 0
+     }
+    ]
+   }
+  },
+  {
+   "item": "A7",
+   "pass": true,
+   "evidence": {
+    "view": "overworld_spawn",
+    "foregroundPid": 12972,
+    "start": {
+     "inWorld": true,
+     "dimension": "minecraft:overworld",
+     "gamemode": "spectator",
+     "screen": null,
+     "paused": false,
+     "focused": true,
+     "tick": 978,
+     "frameIndex": 4434,
+     "sinceReload": 305,
+     "qpcNs": 109507966685800
+    },
+    "control": {
+     "key": {
+      "what": "T",
+      "focused": true,
+      "foregroundPid": 12972,
+      "inserted": 2
+     },
+     "screen": "net.minecraft.client.gui.screens.ChatScreen",
+     "escape": {
+      "what": "Escape",
+      "focused": true,
+      "foregroundPid": 12972,
+      "inserted": 2
+     },
+     "closed": true,
+     "prime": {
+      "what": "mouse (200, 100)",
+      "focused": true,
+      "foregroundPid": 12972,
+      "inserted": 1
+     },
+     "primeTurned": null,
+     "mouse": {
+      "what": "mouse (200, 100)",
+      "focused": true,
+      "foregroundPid": 12972,
+      "inserted": 1
+     },
+     "poseBefore": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "poseAfter": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 165.0,
+      "pitch": 46.20000457763672
+     }
+    },
+    "blocked": {
+     "mouse": {
+      "what": "mouse (200, 100)",
+      "focused": true,
+      "foregroundPid": 12972,
+      "inserted": 1
+     },
+     "key": {
+      "what": "T",
+      "focused": true,
+      "foregroundPid": 12972,
+      "inserted": 2
+     },
+     "stateBefore": {
+      "inWorld": true,
+      "dimension": "minecraft:overworld",
+      "gamemode": "spectator",
+      "screen": null,
+      "paused": false,
+      "focused": true,
+      "tick": 1004,
+      "frameIndex": 4565,
+      "sinceReload": 436,
+      "qpcNs": 109509287940700
+     },
+     "stateAfter": {
+      "inWorld": true,
+      "dimension": "minecraft:overworld",
+      "gamemode": "spectator",
+      "screen": null,
+      "paused": false,
+      "focused": true,
+      "tick": 1036,
+      "frameIndex": 4723,
+      "sinceReload": 594,
+      "qpcNs": 109510855265600
+     },
+     "stateChanged": {},
+     "poseBefore": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 165.0,
+      "pitch": 46.20000457763672
+     },
+     "poseAfter": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 165.0,
+      "pitch": 46.20000457763672
+     },
+     "poseChanged": false,
+     "framesHeld": 156,
+     "secondsHeld": 1.546,
+     "screensOpened": []
+    },
+    "afterControl": {
+     "mouse": {
+      "what": "mouse (200, 100)",
+      "focused": true,
+      "foregroundPid": 12972,
+      "inserted": 1
+     },
+     "poseBefore": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 165.0,
+      "pitch": 46.20000457763672
+     },
+     "poseAfter": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 195.0,
+      "pitch": 61.20000457763672
+     }
+    },
+    "closedAtEnd": null,
+    "invalidatingEvents": [],
+    "controlPassed": true,
+    "blockedPassed": true,
+    "afterPassed": true
+   }
+  },
+  {
+   "item": "A9",
+   "pass": true,
+   "evidence": {
+    "view": "overworld_spawn",
+    "presentmon": {
+     "exe": "PresentMon-2.6.0-x64.exe",
+     "arguments": [
+      "--process_id",
+      "12972",
+      "--output_file",
+      "results/raw/m1-acceptance-7/a9/presentmon.csv",
+      "--qpc_time_ms",
+      "--v2_metrics",
+      "--session_name",
+      "optilux-m1-acceptance-7",
+      "--stop_existing_session",
+      "--no_console_stats"
+     ],
+     "session": "optilux-m1-acceptance-7"
+    },
+    "firstRows": {
+     "rows": -1,
+     "seconds": 1.09
+    },
+    "cover": -1,
+    "stop": {
+     "how": "CTRL_BREAK_EVENT",
+     "sent": true,
+     "exitCode": 0,
+     "seconds": 0.063,
+     "recordedSeconds": 48.547
+    },
+    "pngsDeleted": 120,
+    "sessionLeft": [],
+    "csv": {
+     "file": "results/raw/m1-acceptance-7/a9/presentmon.csv",
+     "columns": 23,
+     "rows": 1069,
+     "gameRows": 1069,
+     "sha256": "b082f9d73ab5c7efcc8c13413131a47df496957d995b1fc8248c63c5fea73d13"
+    },
+    "capture": {
+     "manifest": "results/raw/m1-acceptance-7/a9/frames/attempt-001/capture.json",
+     "complete": true,
+     "dropped": []
+    },
+    "match": {
+     "frames": 120,
+     "frameIndexes": [
+      4953,
+      5072
+     ],
+     "consecutive": true,
+     "rows": 1069,
+     "spanRows": 120,
+     "rowsAfter": 842,
+     "spanNs": [
+      109513147913500,
+      109551863250300
+     ],
+     "processes": [
+      "12972"
+     ],
+     "swapChains": [
+      "0x0"
+     ],
+     "headOffsetMs": {
+      "min": -0.0489,
+      "median": 12.6157,
+      "max": 36.2135,
+      "absMedian": 12.6157,
+      "absMax": 36.2135
+     },
+     "swapOffsetMs": {
+      "min": -0.396,
+      "median": -0.1732,
+      "max": -0.1124,
+      "absMedian": 0.1732,
+      "absMax": 0.396
+     },
+     "shortestFrameMs": 10.281,
+     "limitMs": 1.0,
+     "pairs": [
+      {
+       "frameIndex": 4953,
+       "cpuStartQpcMs": "109513153.2186",
+       "headMs": 0.0421,
+       "swapMs": -0.1646
+      },
+      {
+       "frameIndex": 4954,
+       "cpuStartQpcMs": "109513163.4946",
+       "headMs": -0.0393,
+       "swapMs": -0.1596
+      },
+      {
+       "frameIndex": 4955,
+       "cpuStartQpcMs": "109513174.7903",
+       "headMs": 26.4319,
+       "swapMs": -0.1463
+      },
+      {
+       "frameIndex": 4956,
+       "cpuStartQpcMs": "109513202.6136",
+       "headMs": 0.0356,
+       "swapMs": -0.1693
+      },
+      {
+       "frameIndex": 4957,
+       "cpuStartQpcMs": "109513217.0035",
+       "headMs": 12.5089,
+       "swapMs": -0.1806
+      },
+      {
+       "frameIndex": 4958,
+       "cpuStartQpcMs": "109513231.3675",
+       "headMs": 25.493,
+       "swapMs": -0.1827
+      },
+      {
+       "frameIndex": 4959,
+       "cpuStartQpcMs": "109513258.1381",
+       "headMs": 0.0652,
+       "swapMs": -0.1445
+      },
+      {
+       "frameIndex": 4960,
+       "cpuStartQpcMs": "109513272.6907",
+       "headMs": 12.867,
+       "swapMs": -0.1725
+      },
+      {
+       "frameIndex": 4961,
+       "cpuStartQpcMs": "109513286.9166",
+       "headMs": 25.9841,
+       "swapMs": -0.149
+      },
+      {
+       "frameIndex": 4962,
+       "cpuStartQpcMs": "109513314.1631",
+       "headMs": 0.0589,
+       "swapMs": -0.1548
+      },
+      {
+       "frameIndex": 4963,
+       "cpuStartQpcMs": "109513328.7945",
+       "headMs": 12.7313,
+       "swapMs": -0.1879
+      },
+      {
+       "frameIndex": 4964,
+       "cpuStartQpcMs": "109513342.9355",
+       "headMs": 26.1878,
+       "swapMs": -0.1718
+      },
+      {
+       "frameIndex": 4965,
+       "cpuStartQpcMs": "109513370.3525",
+       "headMs": 0.0112,
+       "swapMs": -0.197
+      },
+      {
+       "frameIndex": 4966,
+       "cpuStartQpcMs": "109513384.7276",
+       "headMs": 12.7436,
+       "swapMs": -0.1746
+      },
+      {
+       "frameIndex": 4967,
+       "cpuStartQpcMs": "109513399.3110",
+       "headMs": 25.7129,
+       "swapMs": -0.118
+      },
+      {
+       "frameIndex": 4968,
+       "cpuStartQpcMs": "109513426.5310",
+       "headMs": -0.0489,
+       "swapMs": -0.1527
+      },
+      {
+       "frameIndex": 4969,
+       "cpuStartQpcMs": "109513440.8262",
+       "headMs": 12.597,
+       "swapMs": -0.1277
+      },
+      {
+       "frameIndex": 4970,
+       "cpuStartQpcMs": "109514676.0012",
+       "headMs": 31.1918,
+       "swapMs": -0.1944
+      },
+      {
+       "frameIndex": 4971,
+       "cpuStartQpcMs": "109514709.5090",
+       "headMs": 0.1085,
+       "swapMs": -0.161
+      },
+      {
+       "frameIndex": 4972,
+       "cpuStartQpcMs": "109514724.3205",
+       "headMs": 12.9091,
+       "swapMs": -0.1861
+      },
+      {
+       "frameIndex": 4973,
+       "cpuStartQpcMs": "109514746.4098",
+       "headMs": 12.4332,
+       "swapMs": -0.1631
+      },
+      {
+       "frameIndex": 4974,
+       "cpuStartQpcMs": "109516158.8217",
+       "headMs": 28.8249,
+       "swapMs": -0.2768
+      },
+      {
+       "frameIndex": 4975,
+       "cpuStartQpcMs": "109516189.9287",
+       "headMs": -0.0087,
+       "swapMs": -0.1919
+      },
+      {
+       "frameIndex": 4976,
+       "cpuStartQpcMs": "109516204.7504",
+       "headMs": 13.8281,
+       "swapMs": -0.1903
+      },
+      {
+       "frameIndex": 4977,
+       "cpuStartQpcMs": "109516231.2547",
+       "headMs": 12.9453,
+       "swapMs": -0.132
+      },
+      {
+       "frameIndex": 4978,
+       "cpuStartQpcMs": "109517647.2150",
+       "headMs": 13.4218,
+       "swapMs": -0.2471
+      },
+      {
+       "frameIndex": 4979,
+       "cpuStartQpcMs": "109517663.4723",
+       "headMs": 12.3676,
+       "swapMs": -0.3189
+      },
+      {
+       "frameIndex": 4980,
+       "cpuStartQpcMs": "109517677.9443",
+       "headMs": 27.1271,
+       "swapMs": -0.1366
+      },
+      {
+       "frameIndex": 4981,
+       "cpuStartQpcMs": "109517706.7879",
+       "headMs": 0.0739,
+       "swapMs": -0.1261
+      },
+      {
+       "frameIndex": 4982,
+       "cpuStartQpcMs": "109519132.5910",
+       "headMs": 27.196,
+       "swapMs": -0.1719
+      },
+      {
+       "frameIndex": 4983,
+       "cpuStartQpcMs": "109519162.1334",
+       "headMs": 0.199,
+       "swapMs": -0.1745
+      },
+      {
+       "frameIndex": 4984,
+       "cpuStartQpcMs": "109519176.7127",
+       "headMs": 12.3191,
+       "swapMs": -0.1359
+      },
+      {
+       "frameIndex": 4985,
+       "cpuStartQpcMs": "109519191.8739",
+       "headMs": 25.1311,
+       "swapMs": -0.1124
+      },
+      {
+       "frameIndex": 4986,
+       "cpuStartQpcMs": "109520621.6506",
+       "headMs": 1.0178,
+       "swapMs": -0.2126
+      },
+      {
+       "frameIndex": 4987,
+       "cpuStartQpcMs": "109520636.5430",
+       "headMs": 13.4677,
+       "swapMs": -0.1468
+      },
+      {
+       "frameIndex": 4988,
+       "cpuStartQpcMs": "109520652.1974",
+       "headMs": 12.5603,
+       "swapMs": -0.2269
+      },
+      {
+       "frameIndex": 4989,
+       "cpuStartQpcMs": "109520666.8049",
+       "headMs": 25.6096,
+       "swapMs": -0.2287
+      },
+      {
+       "frameIndex": 4990,
+       "cpuStartQpcMs": "109522109.2476",
+       "headMs": 0.7362,
+       "swapMs": -0.1826
+      },
+      {
+       "frameIndex": 4991,
+       "cpuStartQpcMs": "109522124.1594",
+       "headMs": 12.6345,
+       "swapMs": -0.1691
+      },
+      {
+       "frameIndex": 4992,
+       "cpuStartQpcMs": "109522138.9864",
+       "headMs": 12.2642,
+       "swapMs": -0.1365
+      },
+      {
+       "frameIndex": 4993,
+       "cpuStartQpcMs": "109522153.0365",
+       "headMs": 25.4057,
+       "swapMs": -0.1353
+      },
+      {
+       "frameIndex": 4994,
+       "cpuStartQpcMs": "109523593.4893",
+       "headMs": 0.7239,
+       "swapMs": -0.1988
+      },
+      {
+       "frameIndex": 4995,
+       "cpuStartQpcMs": "109523608.0256",
+       "headMs": 12.2571,
+       "swapMs": -0.1254
+      },
+      {
+       "frameIndex": 4996,
+       "cpuStartQpcMs": "109523622.7628",
+       "headMs": 12.8521,
+       "swapMs": -0.1315
+      },
+      {
+       "frameIndex": 4997,
+       "cpuStartQpcMs": "109523648.0748",
+       "headMs": 12.4913,
+       "swapMs": -0.2148
+      },
+      {
+       "frameIndex": 4998,
+       "cpuStartQpcMs": "109525075.5015",
+       "headMs": 13.644,
+       "swapMs": -0.1746
+      },
+      {
+       "frameIndex": 4999,
+       "cpuStartQpcMs": "109525091.6318",
+       "headMs": 12.7633,
+       "swapMs": -0.1686
+      },
+      {
+       "frameIndex": 5000,
+       "cpuStartQpcMs": "109525106.7296",
+       "headMs": 13.7172,
+       "swapMs": -0.1289
+      },
+      {
+       "frameIndex": 5001,
+       "cpuStartQpcMs": "109525126.8546",
+       "headMs": 25.3011,
+       "swapMs": -0.1356
+      },
+      {
+       "frameIndex": 5002,
+       "cpuStartQpcMs": "109526563.2424",
+       "headMs": 0.6774,
+       "swapMs": -0.1903
+      },
+      {
+       "frameIndex": 5003,
+       "cpuStartQpcMs": "109526577.8989",
+       "headMs": 12.75,
+       "swapMs": -0.2016
+      },
+      {
+       "frameIndex": 5004,
+       "cpuStartQpcMs": "109526593.1144",
+       "headMs": 26.2609,
+       "swapMs": -0.2021
+      },
+      {
+       "frameIndex": 5005,
+       "cpuStartQpcMs": "109526621.3796",
+       "headMs": 0.2252,
+       "swapMs": -0.15
+      },
+      {
+       "frameIndex": 5006,
+       "cpuStartQpcMs": "109528058.6845",
+       "headMs": 27.7022,
+       "swapMs": -0.17
+      },
+      {
+       "frameIndex": 5007,
+       "cpuStartQpcMs": "109528088.8779",
+       "headMs": 0.0439,
+       "swapMs": -0.1814
+      },
+      {
+       "frameIndex": 5008,
+       "cpuStartQpcMs": "109528103.7907",
+       "headMs": 12.4758,
+       "swapMs": -0.1447
+      },
+      {
+       "frameIndex": 5009,
+       "cpuStartQpcMs": "109528118.6113",
+       "headMs": 25.6504,
+       "swapMs": -0.179
+      },
+      {
+       "frameIndex": 5010,
+       "cpuStartQpcMs": "109529537.0308",
+       "headMs": 0.672,
+       "swapMs": -0.1803
+      },
+      {
+       "frameIndex": 5011,
+       "cpuStartQpcMs": "109529551.6569",
+       "headMs": 12.5493,
+       "swapMs": -0.1336
+      },
+      {
+       "frameIndex": 5012,
+       "cpuStartQpcMs": "109529566.6893",
+       "headMs": 12.1178,
+       "swapMs": -0.1145
+      },
+      {
+       "frameIndex": 5013,
+       "cpuStartQpcMs": "109529580.9126",
+       "headMs": 25.137,
+       "swapMs": -0.3868
+      },
+      {
+       "frameIndex": 5014,
+       "cpuStartQpcMs": "109531017.5384",
+       "headMs": 0.6323,
+       "swapMs": -0.1952
+      },
+      {
+       "frameIndex": 5015,
+       "cpuStartQpcMs": "109531032.4284",
+       "headMs": 13.4492,
+       "swapMs": -0.1531
+      },
+      {
+       "frameIndex": 5016,
+       "cpuStartQpcMs": "109531047.9112",
+       "headMs": 12.6504,
+       "swapMs": -0.1558
+      },
+      {
+       "frameIndex": 5017,
+       "cpuStartQpcMs": "109531062.3760",
+       "headMs": 25.5861,
+       "swapMs": -0.1805
+      },
+      {
+       "frameIndex": 5018,
+       "cpuStartQpcMs": "109532501.3964",
+       "headMs": 0.6009,
+       "swapMs": -0.21
+      },
+      {
+       "frameIndex": 5019,
+       "cpuStartQpcMs": "109532516.1102",
+       "headMs": 13.0911,
+       "swapMs": -0.1621
+      },
+      {
+       "frameIndex": 5020,
+       "cpuStartQpcMs": "109532532.1300",
+       "headMs": 12.4474,
+       "swapMs": -0.3583
+      },
+      {
+       "frameIndex": 5021,
+       "cpuStartQpcMs": "109532546.5096",
+       "headMs": 25.0046,
+       "swapMs": -0.243
+      },
+      {
+       "frameIndex": 5022,
+       "cpuStartQpcMs": "109533991.5724",
+       "headMs": 0.6353,
+       "swapMs": -0.1725
+      },
+      {
+       "frameIndex": 5023,
+       "cpuStartQpcMs": "109534006.2708",
+       "headMs": 12.404,
+       "swapMs": -0.2241
+      },
+      {
+       "frameIndex": 5024,
+       "cpuStartQpcMs": "109534021.0628",
+       "headMs": 12.1873,
+       "swapMs": -0.1865
+      },
+      {
+       "frameIndex": 5025,
+       "cpuStartQpcMs": "109534035.0404",
+       "headMs": 25.7044,
+       "swapMs": -0.1777
+      },
+      {
+       "frameIndex": 5026,
+       "cpuStartQpcMs": "109535473.5390",
+       "headMs": 0.9072,
+       "swapMs": -0.2053
+      },
+      {
+       "frameIndex": 5027,
+       "cpuStartQpcMs": "109535488.2219",
+       "headMs": 13.0329,
+       "swapMs": -0.208
+      },
+      {
+       "frameIndex": 5028,
+       "cpuStartQpcMs": "109535503.6996",
+       "headMs": 12.0805,
+       "swapMs": -0.2004
+      },
+      {
+       "frameIndex": 5029,
+       "cpuStartQpcMs": "109535517.5854",
+       "headMs": 25.5621,
+       "swapMs": -0.1996
+      },
+      {
+       "frameIndex": 5030,
+       "cpuStartQpcMs": "109536966.8851",
+       "headMs": 0.6195,
+       "swapMs": -0.1923
+      },
+      {
+       "frameIndex": 5031,
+       "cpuStartQpcMs": "109536981.5043",
+       "headMs": 14.3727,
+       "swapMs": -0.1472
+      },
+      {
+       "frameIndex": 5032,
+       "cpuStartQpcMs": "109536997.7168",
+       "headMs": 29.4317,
+       "swapMs": -0.2997
+      },
+      {
+       "frameIndex": 5033,
+       "cpuStartQpcMs": "109537028.6345",
+       "headMs": 0.0834,
+       "swapMs": -0.1344
+      },
+      {
+       "frameIndex": 5034,
+       "cpuStartQpcMs": "109538454.3119",
+       "headMs": 28.9965,
+       "swapMs": -0.2192
+      },
+      {
+       "frameIndex": 5035,
+       "cpuStartQpcMs": "109538485.5574",
+       "headMs": -0.0113,
+       "swapMs": -0.1728
+      },
+      {
+       "frameIndex": 5036,
+       "cpuStartQpcMs": "109538500.4396",
+       "headMs": 14.5791,
+       "swapMs": -0.1325
+      },
+      {
+       "frameIndex": 5037,
+       "cpuStartQpcMs": "109538517.6444",
+       "headMs": 36.2135,
+       "swapMs": -0.117
+      },
+      {
+       "frameIndex": 5038,
+       "cpuStartQpcMs": "109539943.4487",
+       "headMs": 0.7194,
+       "swapMs": -0.2826
+      },
+      {
+       "frameIndex": 5039,
+       "cpuStartQpcMs": "109539958.0400",
+       "headMs": 12.4537,
+       "swapMs": -0.1705
+      },
+      {
+       "frameIndex": 5040,
+       "cpuStartQpcMs": "109539972.8284",
+       "headMs": 28.8527,
+       "swapMs": -0.133
+      },
+      {
+       "frameIndex": 5041,
+       "cpuStartQpcMs": "109540003.1394",
+       "headMs": 0.0791,
+       "swapMs": -0.1245
+      },
+      {
+       "frameIndex": 5042,
+       "cpuStartQpcMs": "109541432.1486",
+       "headMs": 27.944,
+       "swapMs": -0.1964
+      },
+      {
+       "frameIndex": 5043,
+       "cpuStartQpcMs": "109541462.4199",
+       "headMs": 0.0718,
+       "swapMs": -0.1944
+      },
+      {
+       "frameIndex": 5044,
+       "cpuStartQpcMs": "109541477.0986",
+       "headMs": 12.2584,
+       "swapMs": -0.2023
+      },
+      {
+       "frameIndex": 5045,
+       "cpuStartQpcMs": "109541492.2413",
+       "headMs": 26.1227,
+       "swapMs": -0.2815
+      },
+      {
+       "frameIndex": 5046,
+       "cpuStartQpcMs": "109542915.7245",
+       "headMs": 0.706,
+       "swapMs": -0.396
+      },
+      {
+       "frameIndex": 5047,
+       "cpuStartQpcMs": "109542930.4470",
+       "headMs": 13.5962,
+       "swapMs": -0.1567
+      },
+      {
+       "frameIndex": 5048,
+       "cpuStartQpcMs": "109542946.0704",
+       "headMs": 29.1253,
+       "swapMs": -0.1379
+      },
+      {
+       "frameIndex": 5049,
+       "cpuStartQpcMs": "109542976.8126",
+       "headMs": 0.0762,
+       "swapMs": -0.1588
+      },
+      {
+       "frameIndex": 5050,
+       "cpuStartQpcMs": "109544401.3204",
+       "headMs": 27.9182,
+       "swapMs": -0.183
+      },
+      {
+       "frameIndex": 5051,
+       "cpuStartQpcMs": "109544431.9525",
+       "headMs": -0.0131,
+       "swapMs": -0.3094
+      },
+      {
+       "frameIndex": 5052,
+       "cpuStartQpcMs": "109544446.4997",
+       "headMs": 12.3159,
+       "swapMs": -0.1938
+      },
+      {
+       "frameIndex": 5053,
+       "cpuStartQpcMs": "109544461.5979",
+       "headMs": 25.7708,
+       "swapMs": -0.1803
+      },
+      {
+       "frameIndex": 5054,
+       "cpuStartQpcMs": "109545893.5707",
+       "headMs": 0.6328,
+       "swapMs": -0.2049
+      },
+      {
+       "frameIndex": 5055,
+       "cpuStartQpcMs": "109545908.1460",
+       "headMs": 12.1209,
+       "swapMs": -0.1409
+      },
+      {
+       "frameIndex": 5056,
+       "cpuStartQpcMs": "109545923.0060",
+       "headMs": 29.4016,
+       "swapMs": -0.19
+      },
+      {
+       "frameIndex": 5057,
+       "cpuStartQpcMs": "109545954.0521",
+       "headMs": 0.023,
+       "swapMs": -0.1971
+      },
+      {
+       "frameIndex": 5058,
+       "cpuStartQpcMs": "109547374.9120",
+       "headMs": 28.7492,
+       "swapMs": -0.171
+      },
+      {
+       "frameIndex": 5059,
+       "cpuStartQpcMs": "109547405.9746",
+       "headMs": 0.1024,
+       "swapMs": -0.1571
+      },
+      {
+       "frameIndex": 5060,
+       "cpuStartQpcMs": "109547420.6051",
+       "headMs": 13.3677,
+       "swapMs": -0.133
+      },
+      {
+       "frameIndex": 5061,
+       "cpuStartQpcMs": "109547435.7908",
+       "headMs": 25.1539,
+       "swapMs": -0.1736
+      },
+      {
+       "frameIndex": 5062,
+       "cpuStartQpcMs": "109548850.6814",
+       "headMs": 0.6244,
+       "swapMs": -0.1726
+      },
+      {
+       "frameIndex": 5063,
+       "cpuStartQpcMs": "109548865.6288",
+       "headMs": 13.0766,
+       "swapMs": -0.1563
+      },
+      {
+       "frameIndex": 5064,
+       "cpuStartQpcMs": "109548880.6731",
+       "headMs": 11.9483,
+       "swapMs": -0.1373
+      },
+      {
+       "frameIndex": 5065,
+       "cpuStartQpcMs": "109548894.5056",
+       "headMs": 26.8285,
+       "swapMs": -0.1293
+      },
+      {
+       "frameIndex": 5066,
+       "cpuStartQpcMs": "109550343.3190",
+       "headMs": 0.8405,
+       "swapMs": -0.3588
+      },
+      {
+       "frameIndex": 5067,
+       "cpuStartQpcMs": "109550362.6674",
+       "headMs": 14.0044,
+       "swapMs": -0.1714
+      },
+      {
+       "frameIndex": 5068,
+       "cpuStartQpcMs": "109550379.3277",
+       "headMs": 12.1898,
+       "swapMs": -0.1963
+      },
+      {
+       "frameIndex": 5069,
+       "cpuStartQpcMs": "109550393.7612",
+       "headMs": 25.9114,
+       "swapMs": -0.1471
+      },
+      {
+       "frameIndex": 5070,
+       "cpuStartQpcMs": "109551828.6271",
+       "headMs": 0.6233,
+       "swapMs": -0.1802
+      },
+      {
+       "frameIndex": 5071,
+       "cpuStartQpcMs": "109551843.2351",
+       "headMs": 12.28,
+       "swapMs": -0.1477
+      },
+      {
+       "frameIndex": 5072,
+       "cpuStartQpcMs": "109551858.2977",
+       "headMs": 27.8216,
+       "swapMs": -0.1879
+      }
+     ],
+     "pass": true
+    }
+   }
+  },
+  {
+   "item": "A10",
+   "pass": true,
+   "evidence": {
+    "selftest": {
+     "pass": true,
+     "checks": {
+      "frameClock": {
+       "pass": true,
+       "first": {
+        "frameIndex": 139,
+        "qpcNs": 109462658654800,
+        "swapQpcNs": 109462657736400
+       },
+       "later": {
+        "frameIndex": 142,
+        "qpcNs": 109462911091300,
+        "swapQpcNs": 109462906124200
+       }
+      },
+      "renderer": {
+       "pass": true,
+       "reading": {
+        "inWorld": true,
+        "noScreen": true,
+        "sections": 22104,
+        "queuedJobs": 27,
+        "busyThreads": 10,
+        "buildResults": 6,
+        "runningJobs": 43,
+        "taskLists": 7693,
+        "submittedTasks": 0,
+        "graphClean": false,
+        "rendererCheck": false,
+        "failing": "buildQueue"
+       }
+      },
+      "reload": {
+       "pass": true,
+       "pack": "ComplementaryUnbound_r5.9.3.zip",
+       "pipeline": "IrisRenderingPipeline",
+       "seconds": 0.4812456,
+       "reloadFrame": 143,
+       "frameIndex": 147,
+       "sinceReload": 4
+      },
+      "capture": {
+       "pass": true,
+       "frameIndex": 148,
+       "size": "3840x2160",
+       "target": "3840x2160"
+      },
+      "input": {
+       "pass": true,
+       "mixins": [
+        "KeyboardHandlerMixin",
+        "MouseHandlerMixin",
+        "MinecraftMixin"
+       ],
+       "blocked": false
+      }
+     },
+     "frameIndex": 415,
+     "sinceReload": 272,
+     "qpcNs": 109465891740000
+    },
+    "after": {
+     "worldWait": {
+      "pose": {
+       "dimension": "minecraft:overworld",
+       "x": -525.5,
+       "y": 69.0,
+       "z": -360.5,
+       "yaw": 135.0,
+       "pitch": 31.200000762939453
+      },
+      "time": 6070,
+      "joinedQpcNs": 109462109013600,
+      "frameIndex": 134,
+      "sinceReload": 3,
+      "qpcNs": 109462613466000
+     }
+    }
+   }
+  }
+ ],
+ "reloadTable": {
+  "tier": "bench",
+  "pack": "ComplementaryUnbound_r5.9.3.zip",
+  "reloads": 50,
+  "every": 10,
+  "rows": [
+   {
+    "reloads": 0,
+    "heapUsedMiB": 597.3,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 13174.6,
+    "availableMiB": 13336,
+    "heapUsedKiB": 611615,
+    "privateBytes": 13814521856
+   },
+   {
+    "reloads": 10,
+    "heapUsedMiB": 947.5,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 13990.0,
+    "availableMiB": 13312,
+    "heapUsedKiB": 970208,
+    "privateBytes": 14669594624
+   },
+   {
+    "reloads": 20,
+    "heapUsedMiB": 1096.1,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 14684.0,
+    "availableMiB": 13184,
+    "heapUsedKiB": 1122401,
+    "privateBytes": 15397244928
+   },
+   {
+    "reloads": 30,
+    "heapUsedMiB": 1216.4,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 15396.9,
+    "availableMiB": 13083,
+    "heapUsedKiB": 1245571,
+    "privateBytes": 16144855040
+   },
+   {
+    "reloads": 40,
+    "heapUsedMiB": 1406.8,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 16077.8,
+    "availableMiB": 12912,
+    "heapUsedKiB": 1440612,
+    "privateBytes": 16858791936
+   },
+   {
+    "reloads": 50,
+    "heapUsedMiB": 1599.6,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 16809.7,
+    "availableMiB": 12724,
+    "heapUsedKiB": 1637961,
+    "privateBytes": 17626214400
+   }
+  ],
+  "perReload": {
+   "heapMiB": 20.05,
+   "privateMiB": 72.7
+  },
+  "reloadSeconds": {
+   "min": 0.3199,
+   "median": 0.3311,
+   "max": 0.3575
+  },
+  "each": [
+   {
+    "n": 1,
+    "seconds": 0.3442,
+    "requestSeconds": 0.375,
+    "reloadFrame": 5968
+   },
+   {
+    "n": 2,
+    "seconds": 0.3474,
+    "requestSeconds": 0.391,
+    "reloadFrame": 5971
+   },
+   {
+    "n": 3,
+    "seconds": 0.3435,
+    "requestSeconds": 0.375,
+    "reloadFrame": 5974
+   },
+   {
+    "n": 4,
+    "seconds": 0.3435,
+    "requestSeconds": 0.375,
+    "reloadFrame": 5977
+   },
+   {
+    "n": 5,
+    "seconds": 0.3497,
+    "requestSeconds": 0.39,
+    "reloadFrame": 5980
+   },
+   {
+    "n": 6,
+    "seconds": 0.3302,
+    "requestSeconds": 0.36,
+    "reloadFrame": 5983
+   },
+   {
+    "n": 7,
+    "seconds": 0.3284,
+    "requestSeconds": 0.375,
+    "reloadFrame": 5986
+   },
+   {
+    "n": 8,
+    "seconds": 0.3298,
+    "requestSeconds": 0.359,
+    "reloadFrame": 5989
+   },
+   {
+    "n": 9,
+    "seconds": 0.3332,
+    "requestSeconds": 0.36,
+    "reloadFrame": 5992
+   },
+   {
+    "n": 10,
+    "seconds": 0.3486,
+    "requestSeconds": 0.39,
+    "reloadFrame": 5995
+   },
+   {
+    "n": 11,
+    "seconds": 0.331,
+    "requestSeconds": 0.375,
+    "reloadFrame": 6033
+   },
+   {
+    "n": 12,
+    "seconds": 0.3346,
+    "requestSeconds": 0.375,
+    "reloadFrame": 6036
+   },
+   {
+    "n": 13,
+    "seconds": 0.3408,
+    "requestSeconds": 0.375,
+    "reloadFrame": 6039
+   },
+   {
+    "n": 14,
+    "seconds": 0.3352,
+    "requestSeconds": 0.375,
+    "reloadFrame": 6042
+   },
+   {
+    "n": 15,
+    "seconds": 0.3408,
+    "requestSeconds": 0.375,
+    "reloadFrame": 6045
+   },
+   {
+    "n": 16,
+    "seconds": 0.3322,
+    "requestSeconds": 0.36,
+    "reloadFrame": 6048
+   },
+   {
+    "n": 17,
+    "seconds": 0.3278,
+    "requestSeconds": 0.359,
+    "reloadFrame": 6051
+   },
+   {
+    "n": 18,
+    "seconds": 0.3233,
+    "requestSeconds": 0.36,
+    "reloadFrame": 6054
+   },
+   {
+    "n": 19,
+    "seconds": 0.3284,
+    "requestSeconds": 0.359,
+    "reloadFrame": 6057
+   },
+   {
+    "n": 20,
+    "seconds": 0.3575,
+    "requestSeconds": 0.391,
+    "reloadFrame": 6060
+   },
+   {
+    "n": 21,
+    "seconds": 0.3397,
+    "requestSeconds": 0.391,
+    "reloadFrame": 6097
+   },
+   {
+    "n": 22,
+    "seconds": 0.3275,
+    "requestSeconds": 0.359,
+    "reloadFrame": 6100
+   },
+   {
+    "n": 23,
+    "seconds": 0.3229,
+    "requestSeconds": 0.36,
+    "reloadFrame": 6103
+   },
+   {
+    "n": 24,
+    "seconds": 0.3265,
+    "requestSeconds": 0.375,
+    "reloadFrame": 6106
+   },
+   {
+    "n": 25,
+    "seconds": 0.3502,
+    "requestSeconds": 0.437,
+    "reloadFrame": 6109
+   },
+   {
+    "n": 26,
+    "seconds": 0.3295,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6112
+   },
+   {
+    "n": 27,
+    "seconds": 0.3309,
+    "requestSeconds": 0.407,
+    "reloadFrame": 6115
+   },
+   {
+    "n": 28,
+    "seconds": 0.3347,
+    "requestSeconds": 0.421,
+    "reloadFrame": 6118
+   },
+   {
+    "n": 29,
+    "seconds": 0.3309,
+    "requestSeconds": 0.407,
+    "reloadFrame": 6121
+   },
+   {
+    "n": 30,
+    "seconds": 0.3473,
+    "requestSeconds": 0.422,
+    "reloadFrame": 6124
+   },
+   {
+    "n": 31,
+    "seconds": 0.3269,
+    "requestSeconds": 0.391,
+    "reloadFrame": 6133
+   },
+   {
+    "n": 32,
+    "seconds": 0.3276,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6136
+   },
+   {
+    "n": 33,
+    "seconds": 0.3293,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6139
+   },
+   {
+    "n": 34,
+    "seconds": 0.3298,
+    "requestSeconds": 0.407,
+    "reloadFrame": 6142
+   },
+   {
+    "n": 35,
+    "seconds": 0.3429,
+    "requestSeconds": 0.422,
+    "reloadFrame": 6145
+   },
+   {
+    "n": 36,
+    "seconds": 0.3257,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6148
+   },
+   {
+    "n": 37,
+    "seconds": 0.3331,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6151
+   },
+   {
+    "n": 38,
+    "seconds": 0.329,
+    "requestSeconds": 0.422,
+    "reloadFrame": 6154
+   },
+   {
+    "n": 39,
+    "seconds": 0.3272,
+    "requestSeconds": 0.391,
+    "reloadFrame": 6157
+   },
+   {
+    "n": 40,
+    "seconds": 0.3468,
+    "requestSeconds": 0.437,
+    "reloadFrame": 6160
+   },
+   {
+    "n": 41,
+    "seconds": 0.3335,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6169
+   },
+   {
+    "n": 42,
+    "seconds": 0.3264,
+    "requestSeconds": 0.391,
+    "reloadFrame": 6172
+   },
+   {
+    "n": 43,
+    "seconds": 0.3245,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6175
+   },
+   {
+    "n": 44,
+    "seconds": 0.3313,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6178
+   },
+   {
+    "n": 45,
+    "seconds": 0.3396,
+    "requestSeconds": 0.422,
+    "reloadFrame": 6181
+   },
+   {
+    "n": 46,
+    "seconds": 0.3199,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6184
+   },
+   {
+    "n": 47,
+    "seconds": 0.3319,
+    "requestSeconds": 0.407,
+    "reloadFrame": 6187
+   },
+   {
+    "n": 48,
+    "seconds": 0.3299,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6190
+   },
+   {
+    "n": 49,
+    "seconds": 0.3271,
+    "requestSeconds": 0.406,
+    "reloadFrame": 6193
+   },
+   {
+    "n": 50,
+    "seconds": 0.3487,
+    "requestSeconds": 0.422,
+    "reloadFrame": 6196
+   }
+  ],
+  "raw": "results/raw/m1-acceptance-7/f4"
+ },
+ "session": {
+  "launch": {
+   "platform": "mc-26.3",
+   "tier": "bench",
+   "world": "spike",
+   "pid": 12972,
+   "log": "runtime/mc-26.3/game/logs/latest.log",
+   "stdout": "runtime/mc-26.3/game/logs/stdout.log",
+   "uuid": {
+    "value": "51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79",
+    "from": "players/data/51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79.dat"
+   },
+   "gate": {
+    "games": [],
+    "sessions": [],
+    "amd": {
+     "presentMon": [
+      {
+       "pid": 10368,
+       "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+       "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+      }
+     ],
+     "rsxTraceSession": true
+    }
+   },
+   "amdAfterJoin": {
+    "presentMon": [
+     {
+      "pid": 10368,
+      "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+      "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+     }
+    ],
+    "rsxTraceSession": true
+   },
+   "hashes": {
+    "classpathJars": 82,
+    "assetIndex": "34",
+    "versionJson": "702fe59163c6ee6578607daa85811d9bc9c7cc40",
+    "packs": [
+     {
+      "file": "Faithful 64x - Release 15.zip",
+      "kind": "resourcePack",
+      "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+     },
+     {
+      "file": "ComplementaryUnbound_r5.9.3.zip",
+      "kind": "referencePack",
+      "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c"
+     }
+    ]
+   },
+   "mods": {
+    "placed": [
+     {
+      "file": "fabric-api-0.161.0+26.3.jar",
+      "sha512": "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+      "state": "kept"
+     },
+     {
+      "file": "sodium-fabric-0.9.2+mc26.3.jar",
+      "sha512": "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93",
+      "state": "kept"
+     },
+     {
+      "file": "iris-fabric-1.11.7+mc26.3.jar",
+      "sha512": "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+      "state": "kept"
+     },
+     {
+      "file": "optilux-helper-0.1.0.jar",
+      "sha512": "eb840262d74e537377c4dfe57cdff1d3fba46187886c185b7a4d0a26c7978ff8048d1e0bafcd3c97860bf25e05787ea0f5abb75ff54167c3abf73d4ae376e9ab",
+      "state": "kept"
+     }
+    ],
+    "removed": [],
+    "helper": "optilux-helper-0.1.0.jar",
+    "sha512": [
+     "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+     "eb840262d74e537377c4dfe57cdff1d3fba46187886c185b7a4d0a26c7978ff8048d1e0bafcd3c97860bf25e05787ea0f5abb75ff54167c3abf73d4ae376e9ab",
+     "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+     "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+    ]
+   },
+   "logMods": [
+    "fabric-api",
+    "fabricloader",
+    "iris",
+    "java",
+    "minecraft",
+    "optilux-helper",
+    "sodium"
+   ],
+   "settings": {
+    "options": {
+     "version": "5023",
+     "fullscreen": "true",
+     "exclusiveFullscreen": "false",
+     "enableVsync": "false",
+     "maxFps": "260",
+     "renderDistance": "16",
+     "simulationDistance": "12",
+     "fov": "0.5",
+     "bobView": "false",
+     "guiScale": "3",
+     "mipmapLevels": "4",
+     "biomeBlendRadius": "2",
+     "graphicsPreset": "\"custom\"",
+     "preferredGraphicsBackend": "\"opengl\"",
+     "improvedTransparency": "false",
+     "pauseOnLostFocus": "false",
+     "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+     "onboardAccessibility": "false",
+     "skipMultiplayerWarning": "true",
+     "joinedFirstServer": "true",
+     "telemetryOptInExtra": "false",
+     "realmsNotifications": "false",
+     "narrator": "0"
+    },
+    "overrides": {},
+    "token": true,
+    "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+    "iris": {
+     "shaderPack": "ComplementaryUnbound_r5.9.3.zip",
+     "enableShaders": "true",
+     "enableDebugOptions": "false",
+     "disableUpdateMessage": "true",
+     "maxShadowRenderDistance": "32"
+    }
+   },
+   "join": {
+    "seconds": 13.19,
+    "line": "[01:35:46] [Server thread/INFO]: optilux[local:E:5ad44400] logged in with entity id 5 at (-525.5, 69.0, -360.5)"
+   },
+   "timings": {
+    "prepareSeconds": 0.28,
+    "joinSeconds": 13.19
+   },
+   "command": {
+    "check": "equal",
+    "arguments": 38
+   }
+  },
+  "mod": {
+   "pipe": {
+    "serverPid": 12972,
+    "dacl": "D:(A;;FA;;;S-1-5-21-3689793171-124209945-1107482691-1000)",
+    "secondInstanceError": 231
+   },
+   "hello": {
+    "protocol": 1,
+    "mod": {
+     "id": "optilux-helper",
+     "version": "0.1.0"
+    },
+    "platform": "mc-26.3",
+    "versions": {
+     "minecraft": "26.3",
+     "loader": "0.19.5",
+     "iris": "1.11.7+mc26.3",
+     "sodium": "0.9.2+mc26.3",
+     "java": "25.0.4.1+1-LTS"
+    },
+    "capabilities": [
+     "hello",
+     "selftest",
+     "state",
+     "world.wait",
+     "command",
+     "ticks.step",
+     "ready",
+     "camera.place",
+     "camera.get",
+     "shaders.reload",
+     "shaders.options",
+     "frames.index",
+     "frames.capture",
+     "input.block",
+     "hud.set",
+     "cancel",
+     "quit"
+    ],
+    "pid": 12972,
+    "resumed": false,
+    "cancelled": [],
+    "frameIndex": 131,
+    "sinceReload": 0,
+    "qpcNs": 109459444202800
+   },
+   "frames": {
+    "first": {
+     "frameIndex": 131,
+     "sinceReload": 0,
+     "qpcNs": 109459451654000
+    },
+    "advanced": {
+     "frameIndex": 132,
+     "sinceReload": 1,
+     "qpcNs": 109462466998300
+    },
+    "seconds": 3.02
+   },
+   "requestLog": "results/raw/m1-acceptance-7/requests.jsonl"
+  },
+  "pipeListed": true,
+  "threads": [
+   "optilux-pipe",
+   "optilux-worker-1"
+  ],
+  "reload": {
+   "pack": "ComplementaryUnbound_r5.9.3.zip",
+   "pipeline": "IrisRenderingPipeline",
+   "seconds": 0.3600085,
+   "framesAfter": 2,
+   "reloadFrame": 517,
+   "frameIndex": 520,
+   "sinceReload": 3,
+   "qpcNs": 109467321303200
+  },
+  "views": [
+   {
+    "view": "overworld_spawn",
+    "placed": {
+     "pose": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "arrivedSeconds": 0.0029702,
+     "frameIndex": 4023,
+     "sinceReload": 3506,
+     "qpcNs": 109503303015200
+    },
+    "settleSeconds": 1.0,
+    "ready": {
+     "seconds": 1.0044073,
+     "predicateSeconds": 0.1031097,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.1031097,
+      "gapFrames": 0
+     },
+     "frames": 97,
+     "frameIndex": 4121,
+     "sinceReload": 3604,
+     "qpcNs": 109504308699600
+    }
+   }
+  ],
+  "quit": {
+   "how": "quit",
+   "exitCode": 0,
+   "seconds": 1.4060000000026776
+  },
+  "steps": [
+   {
+    "step": "world.wait",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "time": 6070,
+     "joinedQpcNs": 109462109013600,
+     "frameIndex": 134,
+     "sinceReload": 3,
+     "qpcNs": 109462613466000
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "state",
+    "answer": {
+     "inWorld": true,
+     "dimension": "minecraft:overworld",
+     "gamemode": "spectator",
+     "screen": null,
+     "paused": false,
+     "focused": true,
+     "tick": 71,
+     "frameIndex": 135,
+     "sinceReload": 4,
+     "qpcNs": 109462633578100
+    },
+    "seconds": 0.047
+   },
+   {
+    "step": "selftest",
+    "answer": {
+     "pass": true,
+     "checks": {
+      "frameClock": {
+       "pass": true,
+       "first": {
+        "frameIndex": 139,
+        "qpcNs": 109462658654800,
+        "swapQpcNs": 109462657736400
+       },
+       "later": {
+        "frameIndex": 142,
+        "qpcNs": 109462911091300,
+        "swapQpcNs": 109462906124200
+       }
+      },
+      "renderer": {
+       "pass": true,
+       "reading": {
+        "inWorld": true,
+        "noScreen": true,
+        "sections": 22104,
+        "queuedJobs": 27,
+        "busyThreads": 10,
+        "buildResults": 6,
+        "runningJobs": 43,
+        "taskLists": 7693,
+        "submittedTasks": 0,
+        "graphClean": false,
+        "rendererCheck": false,
+        "failing": "buildQueue"
+       }
+      },
+      "reload": {
+       "pass": true,
+       "pack": "ComplementaryUnbound_r5.9.3.zip",
+       "pipeline": "IrisRenderingPipeline",
+       "seconds": 0.4812456,
+       "reloadFrame": 143,
+       "frameIndex": 147,
+       "sinceReload": 4
+      },
+      "capture": {
+       "pass": true,
+       "frameIndex": 148,
+       "size": "3840x2160",
+       "target": "3840x2160"
+      },
+      "input": {
+       "pass": true,
+       "mixins": [
+        "KeyboardHandlerMixin",
+        "MouseHandlerMixin",
+        "MinecraftMixin"
+       ],
+       "blocked": false
+      }
+     },
+     "frameIndex": 415,
+     "sinceReload": 272,
+     "qpcNs": 109465891740000
+    },
+    "seconds": 3.235
+   },
+   {
+    "step": "input.block on",
+    "answer": {
+     "on": true,
+     "frameIndex": 415,
+     "sinceReload": 272,
+     "qpcNs": 109465899271600
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "hud.set hideGui",
+    "answer": {
+     "hideGui": true,
+     "debugOverlay": false,
+     "frameIndex": 416,
+     "sinceReload": 273,
+     "qpcNs": 109465908832600
+    },
+    "seconds": 0.015
+   },
+   {
+    "step": "command /tick freeze",
+    "answer": {
+     "succeeded": true,
+     "messages": [
+      "The game is frozen"
+     ],
+     "failures": [],
+     "frameIndex": 418,
+     "sinceReload": 275,
+     "qpcNs": 109465920460200
+    },
+    "seconds": 0.016
+   },
+   {
+    "step": "ready",
+    "answer": {
+     "seconds": 0.992424,
+     "predicateSeconds": 0.992424,
+     "limitedBy": "graph",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.9622472,
+      "gapFrames": 5
+     },
+     "frames": 99,
+     "frameIndex": 517,
+     "sinceReload": 374,
+     "qpcNs": 109466914977000
+    },
+    "seconds": 0.984
+   },
+   {
+    "step": "shaders.reload",
+    "answer": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3600085,
+     "framesAfter": 2,
+     "reloadFrame": 517,
+     "frameIndex": 520,
+     "sinceReload": 3,
+     "qpcNs": 109467321303200
+    },
+    "seconds": 0.407
+   },
+   {
+    "step": "shaders.options",
+    "answer": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "values": {
+      "ACT_CORNER_LEAK_FIX": true,
+      "ACT_CORNER_LEAK_FIX_FOR_WSR": true,
+      "ACT_FIRE_COLOR_WARMNESS": "100",
+      "AMBIENT_MULT": "100",
+      "ANISOTROPIC_FILTER": "0",
+      "ANY_ERROR_MESSAGE": true,
+      "ATMOSPHERIC_FOG": true,
+      "ATM_COLOR_MULTS": false,
+      "ATM_END_B": "1.00",
+      "ATM_END_G": "1.00",
+      "ATM_END_I": "1.00",
+      "ATM_END_R": "1.00",
+      "ATM_FOG_ALTITUDE": "63",
+      "ATM_FOG_DISTANCE": "100",
+      "ATM_FOG_MULT": "0.95",
+      "ATM_MORNING_B": "1.00",
+      "ATM_MORNING_G": "1.00",
+      "ATM_MORNING_I": "1.00",
+      "ATM_MORNING_R": "1.00",
+      "ATM_NETHER_B": "1.00",
+      "ATM_NETHER_G": "1.00",
+      "ATM_NETHER_I": "1.00",
+      "ATM_NETHER_R": "1.00",
+      "ATM_NIGHT_B": "1.00",
+      "ATM_NIGHT_G": "1.00",
+      "ATM_NIGHT_I": "1.00",
+      "ATM_NIGHT_R": "1.00",
+      "ATM_NOON_B": "1.00",
+      "ATM_NOON_G": "1.00",
+      "ATM_NOON_I": "1.00",
+      "ATM_NOON_R": "1.00",
+      "ATM_RAIN_B": "1.00",
+      "ATM_RAIN_G": "1.00",
+      "ATM_RAIN_I": "1.00",
+      "ATM_RAIN_R": "1.00",
+      "AURORA_CONDITION": "3",
+      "AURORA_STYLE_DEFINE": "-1",
+      "BLOCKLIGHT_FLICKERING": "0",
+      "BLOCK_REFLECT_QUALITY": "3",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_FOG": true,
+      "BLOOM_FOG_COMPOSITE1": true,
+      "BLOOM_FOG_COMPOSITE3": true,
+      "BLOOM_STRENGTH": "0.12",
+      "BORDER_FOG": true,
+      "BRIGHT_CAVE_WATER": true,
+      "CAVE_FOG": true,
+      "CAVE_LIGHTING": "100",
+      "CHROMA_ABERRATION": "0",
+      "CLOUDS_REIMAGINED": true,
+      "CLOUDS_UNBOUND": true,
+      "CLOUD_ALT1": "192",
+      "CLOUD_ALT2": "288",
+      "CLOUD_B": "100",
+      "CLOUD_CLOSED_AREA_CHECK": true,
+      "CLOUD_G": "100",
+      "CLOUD_QUALITY": "2",
+      "CLOUD_R": "100",
+      "CLOUD_SHADOWS": false,
+      "CLOUD_SPEED_MULT": "100",
+      "CLOUD_STYLE_DEFINE": "-1",
+      "CLOUD_UNBOUND_AMOUNT": "1.00",
+      "CLOUD_UNBOUND_RAIN_ADD": "0.40",
+      "CLOUD_UNBOUND_SIZE_MULT": "100",
+      "COATED_TEXTURES": false,
+      "COATED_TEXTURE_MULT": "100",
+      "COLORED_CANDLE_LIGHT": false,
+      "COLORED_LIGHTING": "0",
+      "COLORED_LIGHT_FOG": true,
+      "COLORED_LIGHT_FOG_I": "0.65",
+      "COLORED_LIGHT_SATURATION": "100",
+      "COLORGRADING": false,
+      "COLOR_CODED_PROGRAMS": false,
+      "COMPOSITE": true,
+      "COMPOSITE1": true,
+      "CONNECTED_GLASS_CORNER_FIX": true,
+      "CONNECTED_GLASS_EFFECT": true,
+      "COORDINATES_ACT_ERROR": true,
+      "CUSTOM_EMISSION_INTENSITY": "100",
+      "CUSTOM_PBR": true,
+      "DARK_OUTLINE": false,
+      "DARK_OUTLINE_THICKNESS": "1",
+      "DEFERRED1": true,
+      "DETAIL_QUALITY": "2",
+      "DH_BLENDING": true,
+      "DIRECTIONAL_BLOCKLIGHT": "0",
+      "DIRECTIONAL_SHADING": true,
+      "DISTANT_LIGHT_BOKEH": true,
+      "DOUBLE_REIM_CLOUDS": false,
+      "DO_IPBR_LIGHTS": true,
+      "DO_MORE_FOLIAGE_WAVING": true,
+      "DO_PIXELATION_EFFECTS": true,
+      "DURING_WORLDSPACE_REF": true,
+      "EMISSIVE_LAPIS_BLOCK": false,
+      "EMISSIVE_REDSTONE_BLOCK": false,
+      "END": true,
+      "END_BEAM_CENTER_ALT": "68",
+      "END_BEAM_HEIGHT": "1.00",
+      "END_BEAM_INTENSITY": "1.00",
+      "END_FLASHES": true,
+      "END_STAR_INTENSITY": "1.00",
+      "ENTITY_GN_AND_CT": true,
+      "ENTITY_SHADOW": "1",
+      "ENTITY_TAA_NOISY_CLOUD_FIX": true,
+      "FANCY_GLASS": true,
+      "FIX_AMD_REFLECTION_CRASH": true,
+      "FLICKERING_FIX": true,
+      "FOLIAGE_ALT_SUBSURFACE": false,
+      "FRAGMENT_SHADER": true,
+      "FXAA_DEFINE": "1",
+      "FXAA_STRENGTH": "75",
+      "FXAA_TAA_INTERACTION": "10",
+      "GBUFFERS_BLOCK": true,
+      "GBUFFERS_BLOCK_TRANSLUCENT": true,
+      "GBUFFERS_ENTITIES": true,
+      "GBUFFERS_ENTITIES_GLOWING": true,
+      "GBUFFERS_ENTITIES_TRANSLUCENT": true,
+      "GBUFFERS_HAND": true,
+      "GBUFFERS_LIGHTNING": true,
+      "GBUFFERS_LINE": true,
+      "GBUFFERS_TERRAIN": true,
+      "GBUFFERS_TEXTURED": true,
+      "GBUFFERS_WATER": true,
+      "GENERATED_NORMALS": false,
+      "GENERATED_NORMAL_MULT": "100",
+      "GENERATED_NORMAL_RES": "128",
+      "GLOWING_AMETHYST": "1",
+      "GLOWING_ARMOR_TRIM": false,
+      "GLOWING_COLORED_PARTICLES": false,
+      "GLOWING_ENTITY_FIX": true,
+      "GLOWING_LICHEN": "1",
+      "GLOWING_ORE_ANCIENTDEBRIS": true,
+      "GLOWING_ORE_COPPER": true,
+      "GLOWING_ORE_DIAMOND": true,
+      "GLOWING_ORE_EMERALD": true,
+      "GLOWING_ORE_GILDEDBLACKSTONE": true,
+      "GLOWING_ORE_GOLD": true,
+      "GLOWING_ORE_IRON": true,
+      "GLOWING_ORE_LAPIS": true,
+      "GLOWING_ORE_MASTER": "1",
+      "GLOWING_ORE_MODDED": true,
+      "GLOWING_ORE_MULT": "1.00",
+      "GLOWING_ORE_NETHERGOLD": true,
+      "GLOWING_ORE_NETHERQUARTZ": true,
+      "GLOWING_ORE_REDSTONE": true,
+      "GREEN_SCREEN_LIME": false,
+      "GR_BB": "100",
+      "GR_BC": "1.00",
+      "GR_BG": "0",
+      "GR_BR": "0",
+      "GR_GB": "0",
+      "GR_GC": "1.00",
+      "GR_GG": "100",
+      "GR_GR": "0",
+      "GR_RB": "0",
+      "GR_RC": "1.00",
+      "GR_RG": "0",
+      "GR_RR": "100",
+      "HAND_SWAYING": "0",
+      "HELD_LIGHTING_MODE": "2",
+      "HIDE_ARMOR": "0",
+      "HQ_NIGHT_NEBULA": true,
+      "IMAGE_SHARPENING": "5",
+      "IMPROVED_RAIN": true,
+      "IMPROVED_RAIN_DEFINE": "1",
+      "INCLUDE_CAVE_FACTOR": true,
+      "INCLUDE_CLOUD_COORD": true,
+      "INCLUDE_CLOUD_SHADOWS": true,
+      "INCLUDE_CUSTOM_EMISSION": true,
+      "INCLUDE_DFDX_DFDY": true,
+      "INCLUDE_DITHER": true,
+      "INCLUDE_ENDER_BEAMS": true,
+      "INCLUDE_LIGHT_AND_AMBIENT_COLORS": true,
+      "INCLUDE_LIGHT_AND_AMBIENT_MULTIPLIERS": true,
+      "INCLUDE_MOON_PHASE_INF": true,
+      "INCLUDE_SKY": true,
+      "INCLUDE_SKY_COLORS": true,
+      "INCLUDE_VOXELIZATION": true,
+      "INCLUDE_WATER_FOG": true,
+      "IPBR": true,
+      "IPBR_COMPAT_MODE": true,
+      "IPBR_COMPAT_MODE_DEFINE": false,
+      "IPBR_EMISSIVE_MODE": "1",
+      "IPBR_PARTICLE_FEATURES": true,
+      "LEAF_SHADOW_OPTIMISATION": true,
+      "LEAF_SHADOW_OPTIMISATION_DEFINE": "-1",
+      "LENSFLARE_I": "1.00",
+      "LENSFLARE_MODE": "0",
+      "LESS_LAVA_FOG": false,
+      "LIGHTSHAFTS_ACTIVE": true,
+      "LIGHTSHAFT_BEHAVIOUR": "1",
+      "LIGHTSHAFT_NIGHT_I": "100",
+      "LIGHTSHAFT_NOON_I": "100",
+      "LIGHTSHAFT_QUALI_DEFINE": "2",
+      "LIGHTSHAFT_RAIN_I": "100",
+      "LIGHTSHAFT_SMOKE": false,
+      "LIGHTSHAFT_SUNSET_I": "100",
+      "LIGHTSHAFT_SUNSET_SATURATION": "0.25",
+      "LIGHT_COLOR_MULTS": false,
+      "LIGHT_END_B": "1.00",
+      "LIGHT_END_G": "1.00",
+      "LIGHT_END_I": "1.00",
+      "LIGHT_END_R": "1.00",
+      "LIGHT_HIGHLIGHT": true,
+      "LIGHT_MORNING_B": "1.00",
+      "LIGHT_MORNING_G": "1.00",
+      "LIGHT_MORNING_I": "1.00",
+      "LIGHT_MORNING_R": "1.00",
+      "LIGHT_NETHER_B": "1.00",
+      "LIGHT_NETHER_G": "1.00",
+      "LIGHT_NETHER_I": "1.00",
+      "LIGHT_NETHER_R": "1.00",
+      "LIGHT_NIGHT_B": "1.00",
+      "LIGHT_NIGHT_G": "1.00",
+      "LIGHT_NIGHT_I": "1.00",
+      "LIGHT_NIGHT_R": "1.00",
+      "LIGHT_NOON_B": "1.00",
+      "LIGHT_NOON_G": "1.00",
+      "LIGHT_NOON_I": "1.00",
+      "LIGHT_NOON_R": "1.00",
+      "LIGHT_RAIN_B": "1.00",
+      "LIGHT_RAIN_G": "1.00",
+      "LIGHT_RAIN_I": "1.00",
+      "LIGHT_RAIN_R": "1.00",
+      "LOW_QUALITY_MOTION_BLUR": true,
+      "LOW_QUALITY_NETHER_STORM": true,
+      "MIRROR_TINTED_GLASS": "0",
+      "MOON_PHASE_DARK": "0.60",
+      "MOON_PHASE_FULL": "1.00",
+      "MOON_PHASE_INF_ATMOSPHERE": false,
+      "MOON_PHASE_INF_LIGHT": false,
+      "MOON_PHASE_INF_REFLECTION": true,
+      "MOON_PHASE_PARTIAL": "0.85",
+      "MORE_REFLECTIVE_DISTANT_GLASS": true,
+      "MOTION_BLURRING_STRENGTH": "1.00",
+      "MOTION_BLUR_BLOOM_FOG_FIX": true,
+      "MOTION_BLUR_EFFECT": "-1",
+      "MULTIPLE_LOD_MODS_ERROR": true,
+      "NETHER": true,
+      "NETHER_COLOR_MODE": "3",
+      "NETHER_STORM": true,
+      "NETHER_STORM_HEIGHT": "200",
+      "NETHER_STORM_I": "0.40",
+      "NETHER_STORM_LOWER_ALT": "28",
+      "NETHER_VIEW_LIMIT": "256.0",
+      "NIGHT_NEBULAE": "-1",
+      "NIGHT_NEBULA_I": "100",
+      "NIGHT_STAR_AMOUNT": "2",
+      "NORMAL_MAP_STRENGTH": "100",
+      "NO_WAVING_INDOORS": true,
+      "OPTIMIZATION_ACT_BEHIND_PLAYER": true,
+      "OPTIMIZATION_ACT_HALF_RATE_SPREADING": true,
+      "OPTIMIZATION_ACT_HALF_RATE_VOXELS": false,
+      "OPTIMIZATION_ACT_SHARED_MEMORY": false,
+      "OVERWORLD": true,
+      "PBR_REFLECTIONS": true,
+      "PERPENDICULAR_TWEAKS": true,
+      "PIXELATED_AO": false,
+      "PIXELATED_BLOCKLIGHT": false,
+      "PIXELATED_SHADOWS": false,
+      "PIXEL_SCALE": "1",
+      "PLAYER_SHADOW": "1",
+      "POM": true,
+      "POM_ALLOW_CUTOUT": false,
+      "POM_DEPTH": "0.80",
+      "POM_DISTANCE": "32",
+      "POM_LIGHTING_MODE": "2",
+      "POM_QUALITY": "128",
+      "PORTAL_EDGE_EFFECT": true,
+      "PORTAL_REDUCE_CLOSEUP": true,
+      "PUDDLE_VOXELIZATION": true,
+      "RAINBOWS": "1",
+      "RAINBOW_DIAMETER": "1.00",
+      "RAINBOW_STYLE_DEFINE": "-1",
+      "RAIN_PUDDLES": "0",
+      "RAIN_STYLE": "1",
+      "REDUCE_CLOSE_PARTICLES": false,
+      "REFLECTION_BLUR_DEPTH_CHECK": true,
+      "REFLECTION_RES": "0.5",
+      "RP_MODE": "1",
+      "SAFER_GENERATED_NORMALS": false,
+      "SELECT_OUTLINE": "1",
+      "SELECT_OUTLINE_AUTO_HIDE": false,
+      "SELECT_OUTLINE_B": "1.75",
+      "SELECT_OUTLINE_G": "0.35",
+      "SELECT_OUTLINE_I": "1.00",
+      "SELECT_OUTLINE_R": "1.35",
+      "SHADER_STYLE": "4",
+      "SHADOW": true,
+      "SHADOWCOMP": true,
+      "SHADOWDISTANCE_ACT_ERROR": true,
+      "SHADOW_FILTERING": true,
+      "SHADOW_QUALITY": "2",
+      "SHADOW_SMOOTHING": "4",
+      "SHOW_LIGHT_LEVEL": "0",
+      "SIDE_SHADOWING": true,
+      "SKY_EFFECT_REFLECTION_DEFINE": "-1",
+      "SKY_EFFECT_REFLECTION_OPAQUE": true,
+      "SKY_EFFECT_REFLECTION_TRANSLUCENT": true,
+      "SMOOTHNESS_AFFECTED_REF_BLUR": true,
+      "SNOWY_WORLD": false,
+      "SPECIAL_BIOME_WEATHER": true,
+      "SPECIAL_PALE_GARDEN_LIGHTSHAFTS": true,
+      "SPECIAL_PORTAL_EFFECTS": true,
+      "SSAO_I": "100",
+      "SSAO_QUALI_DEFINE": "2",
+      "SULFUR_CAVE_FOG": true,
+      "SUN_ANGLE": "-1",
+      "SUN_MOON_DURING_RAIN": true,
+      "SUN_MOON_HORIZON": true,
+      "SUN_MOON_STYLE_DEFINE": "-1",
+      "TAA": true,
+      "TAA_DEFINE": "-1",
+      "TAA_JITTER": "1",
+      "TAA_MOVEMENT_IMPROVEMENT_FILTER": "1",
+      "TAA_SMOOTHING": "3",
+      "TM_CONTRAST": "1.05",
+      "TM_DARK_DESATURATION": "0.25",
+      "TM_EXPOSURE": "1.00",
+      "TM_WHITE_PATH": "1.00",
+      "T_SATURATION": "1.00",
+      "T_VIBRANCE": "1.00",
+      "UNDERWATERCOLOR_B": "100",
+      "UNDERWATERCOLOR_CHANGED": true,
+      "UNDERWATERCOLOR_G": "100",
+      "UNDERWATERCOLOR_R": "100",
+      "UNDERWATER_DISTORTION": true,
+      "VANILLAAO_I": "100",
+      "VERTEX_SHADER": true,
+      "VIGNETTE_R": true,
+      "VL_CLOUDS_ACTIVE": true,
+      "WATERCOLOR_B": "100",
+      "WATERCOLOR_CHANGED": true,
+      "WATERCOLOR_G": "100",
+      "WATERCOLOR_MODE": "3",
+      "WATERCOLOR_R": "100",
+      "WATER_ALPHA_MULT": "100",
+      "WATER_BUMPINESS": "1.25",
+      "WATER_BUMP_BIG": "2.00",
+      "WATER_BUMP_MED": "1.70",
+      "WATER_BUMP_SMALL": "0.75",
+      "WATER_CAUSTIC_STYLE_DEFINE": "-1",
+      "WATER_FOAM_I": "100",
+      "WATER_FOG_MULT": "100",
+      "WATER_REFLECT_QUALITY": "2",
+      "WATER_REFRACTION": true,
+      "WATER_REFRACTION_INTENSITY": "2.0",
+      "WATER_SIZE_MULT": "100",
+      "WATER_SPEED_MULT": "1.10",
+      "WATER_STYLE_DEFINE": "-1",
+      "WAVING_ANYTHING_TERRAIN": true,
+      "WAVING_FOLIAGE": true,
+      "WAVING_I": "1.00",
+      "WAVING_I_RAIN_MULT": "100",
+      "WAVING_LAVA": true,
+      "WAVING_LEAVES": true,
+      "WAVING_LILY_PAD": false,
+      "WAVING_RAIN": true,
+      "WAVING_SPEED": "1.00",
+      "WAVING_WATER_VERTEX": true,
+      "WB_ANAMORPHIC": false,
+      "WB_CHROMATIC": false,
+      "WB_DB_DAY_I": "64.0",
+      "WB_DB_END_I": "64.0",
+      "WB_DB_NETHER_I": "64.0",
+      "WB_DB_NIGHT_I": "64.0",
+      "WB_DB_RAIN_I": "64.0",
+      "WB_DB_WATER_I": "64.0",
+      "WB_DOF_FOCUS": "0",
+      "WB_DOF_I": "64.0",
+      "WB_FOV_SCALED": false,
+      "WEATHER_TEX_OPACITY": "100",
+      "WORLD_BLUR": "0",
+      "WORLD_OUTLINE": false,
+      "WORLD_OUTLINE_I": "1.50",
+      "WORLD_OUTLINE_ON_ENTITIES": true,
+      "WORLD_OUTLINE_SCALED": false,
+      "WORLD_OUTLINE_THICKNESS": "1",
+      "WORLD_SPACE_PLAYER_REF": "-1",
+      "WORLD_SPACE_REFLECTIONS": "-1",
+      "WORLD_SPACE_REF_MODE": "2",
+      "XLIGHT_B": "1.00",
+      "XLIGHT_CURVE": "1.00",
+      "XLIGHT_G": "1.00",
+      "XLIGHT_I": "1.00",
+      "XLIGHT_R": "1.00",
+      "info0": "0",
+      "info1": "0",
+      "info10": "0",
+      "info2": "0",
+      "info3": "0",
+      "info4": "0",
+      "info5": "0",
+      "info6": "0",
+      "info7": "0",
+      "info8": "0",
+      "info9": "0",
+      "shadowDistance": "192.0"
+     },
+     "frameIndex": 3450,
+     "sinceReload": 2933,
+     "qpcNs": 109497329850000
+    },
+    "seconds": 0.015
+   },
+   {
+    "step": "overworld_spawn: weather",
+    "answer": {
+     "succeeded": true,
+     "messages": [
+      "Set the weather to clear"
+     ],
+     "failures": [],
+     "frameIndex": 3451,
+     "sinceReload": 2934,
+     "qpcNs": 109497332450300
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "overworld_spawn: ticks.step 120",
+    "answer": {
+     "ticks": 120,
+     "frameIndex": 4023,
+     "sinceReload": 3506,
+     "qpcNs": 109503296502200
+    },
+    "seconds": 5.969
+   },
+   {
+    "step": "overworld_spawn: time",
+    "answer": {
+     "succeeded": true,
+     "messages": [
+      "Set minecraft:overworld to 6000 tick(s)"
+     ],
+     "failures": [],
+     "frameIndex": 4023,
+     "sinceReload": 3506,
+     "qpcNs": 109503298936900
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "overworld_spawn: camera.place",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "arrivedSeconds": 0.0029702,
+     "frameIndex": 4023,
+     "sinceReload": 3506,
+     "qpcNs": 109503303015200
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "overworld_spawn: ready",
+    "answer": {
+     "seconds": 1.0044073,
+     "predicateSeconds": 0.1031097,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.1031097,
+      "gapFrames": 0
+     },
+     "frames": 97,
+     "frameIndex": 4121,
+     "sinceReload": 3604,
+     "qpcNs": 109504308699600
+    },
+    "seconds": 1.016
+   },
+   {
+    "step": "A4 broken reload",
+    "code": "iris-compile-error",
+    "message": "ShaderCompileException: final.fsh: final.fsh: ERROR: 0:20: 'optiluxA4Undeclared' : undeclared identifier \nERROR: 0:20: '' : compilation terminated \nERROR: 2 compilation errors.  No code generated.\n\n",
+    "seconds": 0.234
+   },
+   {
+    "step": "A4 recovery shaders.reload",
+    "answer": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3396793,
+     "framesAfter": 2,
+     "reloadFrame": 4129,
+     "frameIndex": 4132,
+     "sinceReload": 3,
+     "qpcNs": 109505020371600
+    },
+    "seconds": 0.407
+   },
+   {
+    "step": "A4 ready",
+    "answer": {
+     "seconds": 1.3862458,
+     "predicateSeconds": 1.3862458,
+     "limitedBy": "graph",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 1.3661597,
+      "gapFrames": 2
+     },
+     "frames": 151,
+     "frameIndex": 4283,
+     "sinceReload": 154,
+     "qpcNs": 109506408382900
+    },
+    "seconds": 1.39
+   },
+   {
+    "step": "A4 one frame",
+    "answer": {
+     "frames": [
+      {
+       "name": "frame-00001.png",
+       "sha256": "156ed526467a9eb08ef49f6991ae849bb3523f25d4c4e4acaf977c25b57b0131",
+       "frameIndex": 4284,
+       "sinceReload": 155,
+       "qpcNs": 109506417889500,
+       "swapQpcNs": 109506417757500
+      }
+     ],
+     "dropped": [],
+     "manifest": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-7\\a4\\attempt-001\\capture.json",
+     "frameIndex": 4432,
+     "sinceReload": 303,
+     "qpcNs": 109507945911600,
+     "verified": {
+      "folder": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-7\\a4\\attempt-001",
+      "frames": 1,
+      "bytes": 17951987,
+      "complete": true
+     }
+    },
+    "seconds": 1.547
+   },
+   {
+    "step": "overworld_spawn: A7 camera.place back",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "arrivedSeconds": 0.0080939,
+     "frameIndex": 4742,
+     "sinceReload": 613,
+     "qpcNs": 109511027679800
+    },
+    "seconds": 0.015
+   },
+   {
+    "step": "overworld_spawn: A9 ready",
+    "answer": {
+     "seconds": 1.0079714,
+     "predicateSeconds": 0.09892,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.09892,
+      "gapFrames": 0
+     },
+     "frames": 100,
+     "frameIndex": 4843,
+     "sinceReload": 714,
+     "qpcNs": 109512036890000
+    },
+    "seconds": 1.0
+   },
+   {
+    "step": "A9 frames.capture",
+    "answer": {
+     "frames": [
+      {
+       "name": "frame-00001.png",
+       "sha256": "34ac9913940ae92a0847fba9b0a625655538747ac8015234e60fd54fcb212f80",
+       "frameIndex": 4953,
+       "sinceReload": 824,
+       "qpcNs": 109513153260700,
+       "swapQpcNs": 109513153054000
+      },
+      {
+       "name": "frame-00002.png",
+       "sha256": "d67961bfe8515d3be5b4473503e997d5c22557eb78177e59e25512dd012992bf",
+       "frameIndex": 4954,
+       "sinceReload": 825,
+       "qpcNs": 109513163455300,
+       "swapQpcNs": 109513163335000
+      },
+      {
+       "name": "frame-00003.png",
+       "sha256": "dbea3b1bf0eed3b6b1bcd22e737d68785c566d95820ea4079be100f9d727655f",
+       "frameIndex": 4955,
+       "sinceReload": 826,
+       "qpcNs": 109513201222200,
+       "swapQpcNs": 109513174644000
+      },
+      {
+       "name": "frame-00004.png",
+       "sha256": "cd5929e04f963065b9c814c683c63fdcea8464e84b81063f96235c2c87c29da6",
+       "frameIndex": 4956,
+       "sinceReload": 827,
+       "qpcNs": 109513202649200,
+       "swapQpcNs": 109513202444300
+      },
+      {
+       "name": "frame-00005.png",
+       "sha256": "6512320ebc5f7130008b244363a99d6823031afd758e1e711dfab81db8e7b168",
+       "frameIndex": 4957,
+       "sinceReload": 828,
+       "qpcNs": 109513229512400,
+       "swapQpcNs": 109513216822900
+      },
+      {
+       "name": "frame-00006.png",
+       "sha256": "e46fc03f8dac2777f9850c36d87b2ee2a9b415e1bc903a3ecd996fcd1550228e",
+       "frameIndex": 4958,
+       "sinceReload": 829,
+       "qpcNs": 109513256860500,
+       "swapQpcNs": 109513231184800
+      },
+      {
+       "name": "frame-00007.png",
+       "sha256": "03e39dbcf72d973545087860665845752eb1c23d6c853b69e74590bb4ad7ce85",
+       "frameIndex": 4959,
+       "sinceReload": 830,
+       "qpcNs": 109513258203300,
+       "swapQpcNs": 109513257993600
+      },
+      {
+       "name": "frame-00008.png",
+       "sha256": "d93691da3e17ea6d2504fa1d41b750985336eaf4834ffefd55bf726d51aa220e",
+       "frameIndex": 4960,
+       "sinceReload": 831,
+       "qpcNs": 109513285557700,
+       "swapQpcNs": 109513272518200
+      },
+      {
+       "name": "frame-00009.png",
+       "sha256": "c160b0ce4f556630f15fe432c991c90b4a64386cfa0f682571dfdf0793926659",
+       "frameIndex": 4961,
+       "sinceReload": 832,
+       "qpcNs": 109513312900700,
+       "swapQpcNs": 109513286767600
+      },
+      {
+       "name": "frame-00010.png",
+       "sha256": "d8b3ce620901b12c9c21869e5e9f3c83ffcde52ae7a5e8e5d65cc3017bf15689",
+       "frameIndex": 4962,
+       "sinceReload": 833,
+       "qpcNs": 109513314222000,
+       "swapQpcNs": 109513314008300
+      },
+      {
+       "name": "frame-00011.png",
+       "sha256": "9ab7d97fd60f27d5681e6c6d80a504446ed1fd57c96359a7ba015b085ffa4532",
+       "frameIndex": 4963,
+       "sinceReload": 834,
+       "qpcNs": 109513341525800,
+       "swapQpcNs": 109513328606600
+      },
+      {
+       "name": "frame-00012.png",
+       "sha256": "91a80a5f8ab2ac082ad59241155c24b677d764447cdbad1fd0a3063e3fe09855",
+       "frameIndex": 4964,
+       "sinceReload": 835,
+       "qpcNs": 109513369123300,
+       "swapQpcNs": 109513342763700
+      },
+      {
+       "name": "frame-00013.png",
+       "sha256": "dfdf9353183f0b76344b2583beea05e4cee7c2c26125b5754caac137b9b58391",
+       "frameIndex": 4965,
+       "sinceReload": 836,
+       "qpcNs": 109513370363700,
+       "swapQpcNs": 109513370155500
+      },
+      {
+       "name": "frame-00014.png",
+       "sha256": "fa24d337f080003449c3afa83f3454bce52fa4ef88a5c0e1698f56dd43687052",
+       "frameIndex": 4966,
+       "sinceReload": 837,
+       "qpcNs": 109513397471200,
+       "swapQpcNs": 109513384553000
+      },
+      {
+       "name": "frame-00015.png",
+       "sha256": "56b54f45dbf6f755b614b93b041dbe6de19bdb7e46209855e376632266be655a",
+       "frameIndex": 4967,
+       "sinceReload": 838,
+       "qpcNs": 109513425023900,
+       "swapQpcNs": 109513399193000
+      },
+      {
+       "name": "frame-00016.png",
+       "sha256": "8804d78ce3d664c3b23616343207504e1a427673541662c1da7634c412109848",
+       "frameIndex": 4968,
+       "sinceReload": 839,
+       "qpcNs": 109513426482100,
+       "swapQpcNs": 109513426378300
+      },
+      {
+       "name": "frame-00017.png",
+       "sha256": "c038b4f99ef8d0dac9c0dee35f55fd1eab2c3b68c551fe92184521726ac2f10d",
+       "frameIndex": 4969,
+       "sinceReload": 840,
+       "qpcNs": 109513453423200,
+       "swapQpcNs": 109513440698500
+      },
+      {
+       "name": "frame-00018.png",
+       "sha256": "132d1251388accad7973a0c0ee706371ed11f537016dd400a770b233b9636eb8",
+       "frameIndex": 4970,
+       "sinceReload": 841,
+       "qpcNs": 109514707193000,
+       "swapQpcNs": 109514675806800
+      },
+      {
+       "name": "frame-00019.png",
+       "sha256": "1fa2321d200e5795a039620d4f81873c8102d8db3a9d09bee15cd3bc22e7e267",
+       "frameIndex": 4971,
+       "sinceReload": 842,
+       "qpcNs": 109514709617500,
+       "swapQpcNs": 109514709348000
+      },
+      {
+       "name": "frame-00020.png",
+       "sha256": "e1a8527abddb97a43b3070dfc7c7b7779b0fe8fafb04ec0c28556a808d7f99f8",
+       "frameIndex": 4972,
+       "sinceReload": 843,
+       "qpcNs": 109514737229600,
+       "swapQpcNs": 109514724134400
+      },
+      {
+       "name": "frame-00021.png",
+       "sha256": "83ef39df940f2eaf9971020a491987102f184bd3aadcce148c47b3e5d7a7f5fc",
+       "frameIndex": 4973,
+       "sinceReload": 844,
+       "qpcNs": 109514758843000,
+       "swapQpcNs": 109514746246700
+      },
+      {
+       "name": "frame-00022.png",
+       "sha256": "dd7a211ec0382a3696e9d94352efa8a1edae291135cf5656b32af64087277fce",
+       "frameIndex": 4974,
+       "sinceReload": 845,
+       "qpcNs": 109516187646600,
+       "swapQpcNs": 109516158544900
+      },
+      {
+       "name": "frame-00023.png",
+       "sha256": "d28289403b3c6ae7b3576399f5e765de822e09f85f2e3294401fe977c61b4e75",
+       "frameIndex": 4975,
+       "sinceReload": 846,
+       "qpcNs": 109516189920000,
+       "swapQpcNs": 109516189736800
+      },
+      {
+       "name": "frame-00024.png",
+       "sha256": "81bfe66b463d26dc402c948db21c51b2ca6f324de6c764af0442ad781c707894",
+       "frameIndex": 4976,
+       "sinceReload": 847,
+       "qpcNs": 109516218578500,
+       "swapQpcNs": 109516204560100
+      },
+      {
+       "name": "frame-00025.png",
+       "sha256": "f76a245c8dff4cb487e26003898f841bd8376aefc29af3ae33232177d84ce498",
+       "frameIndex": 4977,
+       "sinceReload": 848,
+       "qpcNs": 109516244200000,
+       "swapQpcNs": 109516231122700
+      },
+      {
+       "name": "frame-00026.png",
+       "sha256": "ec5ecbb1f8d4ce4853441f120ce603e82a258326a0ec0e813fb3a4cebdca3bb6",
+       "frameIndex": 4978,
+       "sinceReload": 849,
+       "qpcNs": 109517660636800,
+       "swapQpcNs": 109517646967900
+      },
+      {
+       "name": "frame-00027.png",
+       "sha256": "18c4d3fb48a4f23790f7dd829a760293b70b39cc43f4047912f571539c9b53a9",
+       "frameIndex": 4979,
+       "sinceReload": 850,
+       "qpcNs": 109517675839900,
+       "swapQpcNs": 109517663153400
+      },
+      {
+       "name": "frame-00028.png",
+       "sha256": "d7003660828ed29cc4dce8a584607d1836a4b6adc91903a45dff6ed6096296dc",
+       "frameIndex": 4980,
+       "sinceReload": 851,
+       "qpcNs": 109517705071400,
+       "swapQpcNs": 109517677807700
+      },
+      {
+       "name": "frame-00029.png",
+       "sha256": "cb2316ea62a8885c480e7c117553c2dc30ace04b9a447208003353a5d09d847e",
+       "frameIndex": 4981,
+       "sinceReload": 852,
+       "qpcNs": 109517706861800,
+       "swapQpcNs": 109517706661800
+      },
+      {
+       "name": "frame-00030.png",
+       "sha256": "4583dcd192fece5e6b9183da7a5312e6af686282f34fb4cbdd394b02767ec349",
+       "frameIndex": 4982,
+       "sinceReload": 853,
+       "qpcNs": 109519159787000,
+       "swapQpcNs": 109519132419100
+      },
+      {
+       "name": "frame-00031.png",
+       "sha256": "efa25b660aca43a8d4674839a8ae5d6a3ce3f08b278d26db69d47d4445768eea",
+       "frameIndex": 4983,
+       "sinceReload": 854,
+       "qpcNs": 109519162332400,
+       "swapQpcNs": 109519161958900
+      },
+      {
+       "name": "frame-00032.png",
+       "sha256": "08c860d47cf8d13c5f974735e71b8ca1425743ca2247701b7b0f749243fe9300",
+       "frameIndex": 4984,
+       "sinceReload": 855,
+       "qpcNs": 109519189031800,
+       "swapQpcNs": 109519176576800
+      },
+      {
+       "name": "frame-00033.png",
+       "sha256": "dcdc9c1edfd87ff4ca1ea996abebf30bb0e08cd5f57e59a6bf1a51cde9708730",
+       "frameIndex": 4985,
+       "sinceReload": 856,
+       "qpcNs": 109519217005000,
+       "swapQpcNs": 109519191761500
+      },
+      {
+       "name": "frame-00034.png",
+       "sha256": "65406e86b9e0c1f2102f4ae0e13f61841667cb6c24245628ec40b37c10217663",
+       "frameIndex": 4986,
+       "sinceReload": 857,
+       "qpcNs": 109520622668400,
+       "swapQpcNs": 109520621438000
+      },
+      {
+       "name": "frame-00035.png",
+       "sha256": "96e0eb05b4ef7ad0e9faa88a5bc04063fcf62176793307767332411e7170c9d8",
+       "frameIndex": 4987,
+       "sinceReload": 858,
+       "qpcNs": 109520650010700,
+       "swapQpcNs": 109520636396200
+      },
+      {
+       "name": "frame-00036.png",
+       "sha256": "1344a3429bb16bb31ca255c89146df45e3e8faa3ab890de5b39fcb12d6eb8265",
+       "frameIndex": 4988,
+       "sinceReload": 859,
+       "qpcNs": 109520664757700,
+       "swapQpcNs": 109520651970500
+      },
+      {
+       "name": "frame-00037.png",
+       "sha256": "0e0b950e2982905ca3990ff2624cfbab2db1bec9e3c95900bcab1a2264a7dc6a",
+       "frameIndex": 4989,
+       "sinceReload": 860,
+       "qpcNs": 109520692414500,
+       "swapQpcNs": 109520666576200
+      },
+      {
+       "name": "frame-00038.png",
+       "sha256": "734a0852c2f3dc86a19f9e571f75e4b253c0a600b1ca9991c3bdfed1b331c577",
+       "frameIndex": 4990,
+       "sinceReload": 861,
+       "qpcNs": 109522109983800,
+       "swapQpcNs": 109522109065000
+      },
+      {
+       "name": "frame-00039.png",
+       "sha256": "a569913b040b22d5644cdb41b312bb4efee390f4e8c1b6ab0a8b6355842b507f",
+       "frameIndex": 4991,
+       "sinceReload": 862,
+       "qpcNs": 109522136793900,
+       "swapQpcNs": 109522123990300
+      },
+      {
+       "name": "frame-00040.png",
+       "sha256": "41ab33c6b20faf22f852ba6bc9a349e1e42a6373d4f7b571881f06a58810884f",
+       "frameIndex": 4992,
+       "sinceReload": 863,
+       "qpcNs": 109522151250600,
+       "swapQpcNs": 109522138849900
+      },
+      {
+       "name": "frame-00041.png",
+       "sha256": "5fd5cbd70da97a325ea2568ae8f5a87840ff3157bf90f4990176e7d84d843a5e",
+       "frameIndex": 4993,
+       "sinceReload": 864,
+       "qpcNs": 109522178442200,
+       "swapQpcNs": 109522152901200
+      },
+      {
+       "name": "frame-00042.png",
+       "sha256": "4e17c4f8ffab125290555bef85ffa2675d7ba1d37d5d3ec1a183774cde900e87",
+       "frameIndex": 4994,
+       "sinceReload": 865,
+       "qpcNs": 109523594213200,
+       "swapQpcNs": 109523593290500
+      },
+      {
+       "name": "frame-00043.png",
+       "sha256": "b26f30f50b607dbedea6446bc253b5367ebca4719e92ab04d863d9ea28c0d1ed",
+       "frameIndex": 4995,
+       "sinceReload": 866,
+       "qpcNs": 109523620282700,
+       "swapQpcNs": 109523607900200
+      },
+      {
+       "name": "frame-00044.png",
+       "sha256": "a051baded244063040285f9a3f4434a412019f99ca98bf3a077d1e8504d89baf",
+       "frameIndex": 4996,
+       "sinceReload": 867,
+       "qpcNs": 109523635614900,
+       "swapQpcNs": 109523622631300
+      },
+      {
+       "name": "frame-00045.png",
+       "sha256": "39359e839d42f51b4cfb18c9717c773f314c58008ec77fc81de58e1149f736d5",
+       "frameIndex": 4997,
+       "sinceReload": 868,
+       "qpcNs": 109523660566100,
+       "swapQpcNs": 109523647860000
+      },
+      {
+       "name": "frame-00046.png",
+       "sha256": "e6900f340ce9d24e9d8a0855af792524d8e520f388acc38fcb31d28dde721681",
+       "frameIndex": 4998,
+       "sinceReload": 869,
+       "qpcNs": 109525089145500,
+       "swapQpcNs": 109525075326900
+      },
+      {
+       "name": "frame-00047.png",
+       "sha256": "90fa127b9f6a7159a7ac5f29a86262e5a9e6d51705896dc1ad91738204477eec",
+       "frameIndex": 4999,
+       "sinceReload": 870,
+       "qpcNs": 109525104395100,
+       "swapQpcNs": 109525091463200
+      },
+      {
+       "name": "frame-00048.png",
+       "sha256": "d996df1b84c5ce6f82e2298abde98117dee60c3a7a55a50c16a2ec86a80f42cc",
+       "frameIndex": 5000,
+       "sinceReload": 871,
+       "qpcNs": 109525120446800,
+       "swapQpcNs": 109525106600700
+      },
+      {
+       "name": "frame-00049.png",
+       "sha256": "7fc588277c4f9c4a69245c26c21464a4a3f6237a9fd4b1fe980046539a4829bf",
+       "frameIndex": 5001,
+       "sinceReload": 872,
+       "qpcNs": 109525152155700,
+       "swapQpcNs": 109525126719000
+      },
+      {
+       "name": "frame-00050.png",
+       "sha256": "102a94103795812c35e088631e63cc26637465e4a34ad20ed97061cd950a2147",
+       "frameIndex": 5002,
+       "sinceReload": 873,
+       "qpcNs": 109526563919800,
+       "swapQpcNs": 109526563052100
+      },
+      {
+       "name": "frame-00051.png",
+       "sha256": "43b260e2b6b87fabb4d609ab358262c0ea643e793de4987050e8326252f579de",
+       "frameIndex": 5003,
+       "sinceReload": 874,
+       "qpcNs": 109526590648900,
+       "swapQpcNs": 109526577697300
+      },
+      {
+       "name": "frame-00052.png",
+       "sha256": "fec8e3acc969bedc570d9ed5c2f7433d9da73dddf91485abf78e43ffa7fd0d8d",
+       "frameIndex": 5004,
+       "sinceReload": 875,
+       "qpcNs": 109526619375300,
+       "swapQpcNs": 109526592912300
+      },
+      {
+       "name": "frame-00053.png",
+       "sha256": "52e2e5c62b5007e45498809431fc95fdee9b8eee4e98e2c79ab02637823e268c",
+       "frameIndex": 5005,
+       "sinceReload": 876,
+       "qpcNs": 109526621604800,
+       "swapQpcNs": 109526621229600
+      },
+      {
+       "name": "frame-00054.png",
+       "sha256": "f846c49c7f1e7b7454ad0828d551b54f32c9996e9a9ec221e2eb33a354f21e2e",
+       "frameIndex": 5006,
+       "sinceReload": 877,
+       "qpcNs": 109528086386700,
+       "swapQpcNs": 109528058514500
+      },
+      {
+       "name": "frame-00055.png",
+       "sha256": "79b581e42627c4d6456a39193603b9a487dccc621d9a144abe9947f8e1bd1755",
+       "frameIndex": 5007,
+       "sinceReload": 878,
+       "qpcNs": 109528088921800,
+       "swapQpcNs": 109528088696500
+      },
+      {
+       "name": "frame-00056.png",
+       "sha256": "816ceae2c8064bfda3c2e7ffd34f93a7bd1b5d5af6c047e0ccda9c2d46dbba44",
+       "frameIndex": 5008,
+       "sinceReload": 879,
+       "qpcNs": 109528116266500,
+       "swapQpcNs": 109528103646000
+      },
+      {
+       "name": "frame-00057.png",
+       "sha256": "4afc4ff52c3889392520985a84c8e24d0d21f8d5406d996cacd990700d101a45",
+       "frameIndex": 5009,
+       "sinceReload": 880,
+       "qpcNs": 109528144261700,
+       "swapQpcNs": 109528118432300
+      },
+      {
+       "name": "frame-00058.png",
+       "sha256": "fba3b715292979fb82126ddd938687c4a46d4a334de7dae2468891e73b660f66",
+       "frameIndex": 5010,
+       "sinceReload": 881,
+       "qpcNs": 109529537702800,
+       "swapQpcNs": 109529536850500
+      },
+      {
+       "name": "frame-00059.png",
+       "sha256": "9dd5e55698f1a36707f56fd5ca174d25e7547dca219a358ff461dc164b7c6001",
+       "frameIndex": 5011,
+       "sinceReload": 882,
+       "qpcNs": 109529564206200,
+       "swapQpcNs": 109529551523300
+      },
+      {
+       "name": "frame-00060.png",
+       "sha256": "d4e5f76009b1a4f2644542375337662f9fa3bf9a75f3af859bab0cb7bc213ce1",
+       "frameIndex": 5012,
+       "sinceReload": 883,
+       "qpcNs": 109529578807100,
+       "swapQpcNs": 109529566574800
+      },
+      {
+       "name": "frame-00061.png",
+       "sha256": "2ff07d9912db64c0c5bf337d3dac05702aa84f318a4832ad15855473e49291c6",
+       "frameIndex": 5013,
+       "sinceReload": 884,
+       "qpcNs": 109529606049600,
+       "swapQpcNs": 109529580525800
+      },
+      {
+       "name": "frame-00062.png",
+       "sha256": "3ee5f4371a70d727266fec9e7f20574ba3dba5ed2c864ed83fd951b8702b76b6",
+       "frameIndex": 5014,
+       "sinceReload": 885,
+       "qpcNs": 109531018170700,
+       "swapQpcNs": 109531017343200
+      },
+      {
+       "name": "frame-00063.png",
+       "sha256": "342649db51c520ffcf43819296cc5aa73e4660edec1f057d459088b59281a00e",
+       "frameIndex": 5015,
+       "sinceReload": 886,
+       "qpcNs": 109531045877600,
+       "swapQpcNs": 109531032275300
+      },
+      {
+       "name": "frame-00064.png",
+       "sha256": "149f5b13e78cfb90e10e84c424ed2e38f5293e997eef494d3101895736ce10cb",
+       "frameIndex": 5016,
+       "sinceReload": 887,
+       "qpcNs": 109531060561600,
+       "swapQpcNs": 109531047755400
+      },
+      {
+       "name": "frame-00065.png",
+       "sha256": "c392ec3604453e2c07cf170bdf3dc06e03f5bf4e91e58b43d6aa83e2da89abfb",
+       "frameIndex": 5017,
+       "sinceReload": 888,
+       "qpcNs": 109531087962100,
+       "swapQpcNs": 109531062195500
+      },
+      {
+       "name": "frame-00066.png",
+       "sha256": "c32d58c20c9b785b079baeccf36f89d94ea61261c76540194955cc65960da2b5",
+       "frameIndex": 5018,
+       "sinceReload": 889,
+       "qpcNs": 109532501997300,
+       "swapQpcNs": 109532501186400
+      },
+      {
+       "name": "frame-00067.png",
+       "sha256": "f722e98f13cae30aabf9fc839c0f80c9992f87fba1252771710c04ad151ca955",
+       "frameIndex": 5019,
+       "sinceReload": 890,
+       "qpcNs": 109532529201300,
+       "swapQpcNs": 109532515948100
+      },
+      {
+       "name": "frame-00068.png",
+       "sha256": "0bac704e486549ea77dbe933fa7499c13152ee9bf2bebb08a6a0c9d793f30436",
+       "frameIndex": 5020,
+       "sinceReload": 891,
+       "qpcNs": 109532544577400,
+       "swapQpcNs": 109532531771700
+      },
+      {
+       "name": "frame-00069.png",
+       "sha256": "0b1ca9972065880a0fa46b5053be9c040ff167c9783c2f468e2a0de6c541e6ce",
+       "frameIndex": 5021,
+       "sinceReload": 892,
+       "qpcNs": 109532571514200,
+       "swapQpcNs": 109532546266600
+      },
+      {
+       "name": "frame-00070.png",
+       "sha256": "ac7b5fb544bec95ecc74d2ed3766b45908f3825091784fcef750078825045d2f",
+       "frameIndex": 5022,
+       "sinceReload": 893,
+       "qpcNs": 109533992207700,
+       "swapQpcNs": 109533991399900
+      },
+      {
+       "name": "frame-00071.png",
+       "sha256": "e895b8d16df2405d80330c98d711959b8211b4a2da842cbfa58a3a5a910ff07a",
+       "frameIndex": 5023,
+       "sinceReload": 894,
+       "qpcNs": 109534018674800,
+       "swapQpcNs": 109534006046700
+      },
+      {
+       "name": "frame-00072.png",
+       "sha256": "b5b787af14c6d099372127715ff8e18734191f2ca30c977f199e3cccd492ee5c",
+       "frameIndex": 5024,
+       "sinceReload": 895,
+       "qpcNs": 109534033250100,
+       "swapQpcNs": 109534020876300
+      },
+      {
+       "name": "frame-00073.png",
+       "sha256": "65a25c35ed0540c68fb2b2564e018d1a555e84c148839d029a6b413bc81d0b5b",
+       "frameIndex": 5025,
+       "sinceReload": 896,
+       "qpcNs": 109534060744800,
+       "swapQpcNs": 109534034862700
+      },
+      {
+       "name": "frame-00074.png",
+       "sha256": "2f4b903358b4a001aebc780b2002605e033a80db37a38eeae84e47563531bfee",
+       "frameIndex": 5026,
+       "sinceReload": 897,
+       "qpcNs": 109535474446200,
+       "swapQpcNs": 109535473333700
+      },
+      {
+       "name": "frame-00075.png",
+       "sha256": "a3da60d1bf97417f9a46520df89aa20242996429ce8fd88d0792fa499fbee453",
+       "frameIndex": 5027,
+       "sinceReload": 898,
+       "qpcNs": 109535501254800,
+       "swapQpcNs": 109535488013900
+      },
+      {
+       "name": "frame-00076.png",
+       "sha256": "5901d4efbe79fdc74a7f26ff8c9825950fabc71fc2e0c7374a34b60867527ae7",
+       "frameIndex": 5028,
+       "sinceReload": 899,
+       "qpcNs": 109535515780100,
+       "swapQpcNs": 109535503499200
+      },
+      {
+       "name": "frame-00077.png",
+       "sha256": "aa41ac1f036861a455f0e45a66ce574ba6da11a18730bc998c78339bc5087bb6",
+       "frameIndex": 5029,
+       "sinceReload": 900,
+       "qpcNs": 109535543147500,
+       "swapQpcNs": 109535517385800
+      },
+      {
+       "name": "frame-00078.png",
+       "sha256": "c04ebcbb00a20b4208118bf6461b8b6a9cbd11f449cc731efe3c6abab609b474",
+       "frameIndex": 5030,
+       "sinceReload": 901,
+       "qpcNs": 109536967504600,
+       "swapQpcNs": 109536966692800
+      },
+      {
+       "name": "frame-00079.png",
+       "sha256": "3154143c93ef4a5fb7437672bd037f7efe3147cfdec973ded96f1da01e28ba0a",
+       "frameIndex": 5031,
+       "sinceReload": 902,
+       "qpcNs": 109536995877000,
+       "swapQpcNs": 109536981357100
+      },
+      {
+       "name": "frame-00080.png",
+       "sha256": "444fb3d13e0d33c387c462054c1ad6ad235e7c20c240244f3484433dfd4e5296",
+       "frameIndex": 5032,
+       "sinceReload": 903,
+       "qpcNs": 109537027148500,
+       "swapQpcNs": 109536997417100
+      },
+      {
+       "name": "frame-00081.png",
+       "sha256": "8ca3db9ade8687002c5221550c1ac48eadf63224454e1de65ed428208087f2af",
+       "frameIndex": 5033,
+       "sinceReload": 904,
+       "qpcNs": 109537028717900,
+       "swapQpcNs": 109537028500100
+      },
+      {
+       "name": "frame-00082.png",
+       "sha256": "da93532f8b9a09e3da1d20372868fa5d2feaa12a8815d3720f60fcfad7708399",
+       "frameIndex": 5034,
+       "sinceReload": 905,
+       "qpcNs": 109538483308400,
+       "swapQpcNs": 109538454092700
+      },
+      {
+       "name": "frame-00083.png",
+       "sha256": "bdeaca48d81af238a725f2015c0cb17cbb0ad20adfdbec116966477cae5d4b2b",
+       "frameIndex": 5035,
+       "sinceReload": 906,
+       "qpcNs": 109538485546100,
+       "swapQpcNs": 109538485384600
+      },
+      {
+       "name": "frame-00084.png",
+       "sha256": "9178a303297d642ea8f2478f55b824fdf045473c7a93ec033f7bbbb007a2f7f1",
+       "frameIndex": 5036,
+       "sinceReload": 907,
+       "qpcNs": 109538515018700,
+       "swapQpcNs": 109538500307100
+      },
+      {
+       "name": "frame-00085.png",
+       "sha256": "eb139b7ea252bc12a64645599183b4838aeaff27bad012f8fc6ed04fa69e2743",
+       "frameIndex": 5037,
+       "sinceReload": 908,
+       "qpcNs": 109538553857900,
+       "swapQpcNs": 109538517527400
+      },
+      {
+       "name": "frame-00086.png",
+       "sha256": "5a1921f173b953dc0157bd9bb68142c6fba84e342a815322774447d7281a5662",
+       "frameIndex": 5038,
+       "sinceReload": 909,
+       "qpcNs": 109539944168100,
+       "swapQpcNs": 109539943166100
+      },
+      {
+       "name": "frame-00087.png",
+       "sha256": "8a9e795e59a5d44255154066c848cc11dc37ceb93c0a6798663622bfb9bbc290",
+       "frameIndex": 5039,
+       "sinceReload": 910,
+       "qpcNs": 109539970493700,
+       "swapQpcNs": 109539957869500
+      },
+      {
+       "name": "frame-00088.png",
+       "sha256": "b4b4e224b4b7081f741486ec66ede36882a6bc2ebea89ef19a9efc22d20bd2fd",
+       "frameIndex": 5040,
+       "sinceReload": 911,
+       "qpcNs": 109540001681100,
+       "swapQpcNs": 109539972695400
+      },
+      {
+       "name": "frame-00089.png",
+       "sha256": "b23f89c307d14e3bd51f752fdf6682e1658d5dd15fa58dc86755944f0fd04fc0",
+       "frameIndex": 5041,
+       "sinceReload": 912,
+       "qpcNs": 109540003218500,
+       "swapQpcNs": 109540003014900
+      },
+      {
+       "name": "frame-00090.png",
+       "sha256": "b7af922f1525f6db7fcdf57b58928674a3a11210ddf6b7b54ccd5a841e3335e6",
+       "frameIndex": 5042,
+       "sinceReload": 913,
+       "qpcNs": 109541460092600,
+       "swapQpcNs": 109541431952200
+      },
+      {
+       "name": "frame-00091.png",
+       "sha256": "c44f13142962993efcef8ed2a109f62d95d9a2423b1eb1fe63dfaca21fa3a02c",
+       "frameIndex": 5043,
+       "sinceReload": 914,
+       "qpcNs": 109541462491700,
+       "swapQpcNs": 109541462225500
+      },
+      {
+       "name": "frame-00092.png",
+       "sha256": "a4054d72b44f23982b76f29744bf914bf29241e411f8e8daff74ce08f5e4378f",
+       "frameIndex": 5044,
+       "sinceReload": 915,
+       "qpcNs": 109541489357000,
+       "swapQpcNs": 109541476896300
+      },
+      {
+       "name": "frame-00093.png",
+       "sha256": "cb0a809c3262c5615f5557c3f568ca00e3627667296750ff5aaa6edf41457b14",
+       "frameIndex": 5045,
+       "sinceReload": 916,
+       "qpcNs": 109541518364000,
+       "swapQpcNs": 109541491959800
+      },
+      {
+       "name": "frame-00094.png",
+       "sha256": "49b902035314885cdc42e3f70a3bb1fcbf3072d761b717ef4925f1544018b60e",
+       "frameIndex": 5046,
+       "sinceReload": 917,
+       "qpcNs": 109542916430500,
+       "swapQpcNs": 109542915328500
+      },
+      {
+       "name": "frame-00095.png",
+       "sha256": "eb0706901a45d5d42475edf24e9b5a95ac79fd6d8eb9549b9dcf2da92f1379ac",
+       "frameIndex": 5047,
+       "sinceReload": 918,
+       "qpcNs": 109542944043200,
+       "swapQpcNs": 109542930290300
+      },
+      {
+       "name": "frame-00096.png",
+       "sha256": "034c2e917abec055a7894809445d167b4a0b42e4b7449d80d0e1d92258d7ad17",
+       "frameIndex": 5048,
+       "sinceReload": 919,
+       "qpcNs": 109542975195700,
+       "swapQpcNs": 109542945932500
+      },
+      {
+       "name": "frame-00097.png",
+       "sha256": "98182365d42ee3433f0ce1f45a3a7b5f723324d2567c6d281d653e13005e2efa",
+       "frameIndex": 5049,
+       "sinceReload": 920,
+       "qpcNs": 109542976888800,
+       "swapQpcNs": 109542976653800
+      },
+      {
+       "name": "frame-00098.png",
+       "sha256": "bf5d0c7d5ffea890c676dfc6a345c17ebc0969fbd046c3694e061614bd9be7a8",
+       "frameIndex": 5050,
+       "sinceReload": 921,
+       "qpcNs": 109544429238600,
+       "swapQpcNs": 109544401137400
+      },
+      {
+       "name": "frame-00099.png",
+       "sha256": "153bebe407960ac4207d5d74d36187f3e99ab1022b747d40307b8e435b0860cc",
+       "frameIndex": 5051,
+       "sinceReload": 922,
+       "qpcNs": 109544431939400,
+       "swapQpcNs": 109544431643100
+      },
+      {
+       "name": "frame-00100.png",
+       "sha256": "3c774a415203f7d9f47989fdacfec924c6dadb6aa72a69982ec82a75a3177696",
+       "frameIndex": 5052,
+       "sinceReload": 923,
+       "qpcNs": 109544458815600,
+       "swapQpcNs": 109544446305900
+      },
+      {
+       "name": "frame-00101.png",
+       "sha256": "9ffb8ad5ad4660adbe973a822e37450e1bc5c34584b4fed5feb9c2c0428808c2",
+       "frameIndex": 5053,
+       "sinceReload": 924,
+       "qpcNs": 109544487368700,
+       "swapQpcNs": 109544461417600
+      },
+      {
+       "name": "frame-00102.png",
+       "sha256": "eafa0e3d008df56836d3920f6963411a6d41b7f1260f957830f6265799260ecb",
+       "frameIndex": 5054,
+       "sinceReload": 925,
+       "qpcNs": 109545894203500,
+       "swapQpcNs": 109545893365800
+      },
+      {
+       "name": "frame-00103.png",
+       "sha256": "86a027d2db65066320f2aeec1338c658472cf14b543c45936b6d0bdbb7675d41",
+       "frameIndex": 5055,
+       "sinceReload": 926,
+       "qpcNs": 109545920266900,
+       "swapQpcNs": 109545908005100
+      },
+      {
+       "name": "frame-00104.png",
+       "sha256": "08608319d4f29a8b39d5253aef8c5ab6cb66fd067b8be3f5a9c8d78e7eafb400",
+       "frameIndex": 5056,
+       "sinceReload": 927,
+       "qpcNs": 109545952407600,
+       "swapQpcNs": 109545922816000
+      },
+      {
+       "name": "frame-00105.png",
+       "sha256": "1ee148657e0346a41e7fd1df7eb83e80c486fe92d8f505e9e619cab1a0ba5e65",
+       "frameIndex": 5057,
+       "sinceReload": 928,
+       "qpcNs": 109545954075100,
+       "swapQpcNs": 109545953855000
+      },
+      {
+       "name": "frame-00106.png",
+       "sha256": "7d813fccb723d07bb45c76d4accba89032eb4d30730efe80505b0268efacb9fa",
+       "frameIndex": 5058,
+       "sinceReload": 929,
+       "qpcNs": 109547403661200,
+       "swapQpcNs": 109547374741000
+      },
+      {
+       "name": "frame-00107.png",
+       "sha256": "b0c5006c27cacea8cab7fb13d95e5ccbe66062166871db7090651f8a939f81cc",
+       "frameIndex": 5059,
+       "sinceReload": 930,
+       "qpcNs": 109547406077000,
+       "swapQpcNs": 109547405817500
+      },
+      {
+       "name": "frame-00108.png",
+       "sha256": "0ce087b84460b78b6ae8af266e489059f16efe347da62383d97c81363aa3cfa2",
+       "frameIndex": 5060,
+       "sinceReload": 931,
+       "qpcNs": 109547433972800,
+       "swapQpcNs": 109547420472100
+      },
+      {
+       "name": "frame-00109.png",
+       "sha256": "5f99b42b8b0594df834823b1a55b05165293900114de05001c8ddb5dabe5eecd",
+       "frameIndex": 5061,
+       "sinceReload": 932,
+       "qpcNs": 109547460944700,
+       "swapQpcNs": 109547435617200
+      },
+      {
+       "name": "frame-00110.png",
+       "sha256": "03a528f30a52d6f3466ad7e6c1f6377413bf725e5c1f457e90141bb44325db8b",
+       "frameIndex": 5062,
+       "sinceReload": 933,
+       "qpcNs": 109548851305800,
+       "swapQpcNs": 109548850508800
+      },
+      {
+       "name": "frame-00111.png",
+       "sha256": "1517c98307b793b8ac1fce5efe16b8550bf477cc1177907239a7e1a9a89c87d8",
+       "frameIndex": 5063,
+       "sinceReload": 934,
+       "qpcNs": 109548878705400,
+       "swapQpcNs": 109548865472500
+      },
+      {
+       "name": "frame-00112.png",
+       "sha256": "49f2b46883ba0566118465901db9463e5d08a661e9060663a2b0f74165ce145d",
+       "frameIndex": 5064,
+       "sinceReload": 935,
+       "qpcNs": 109548892621400,
+       "swapQpcNs": 109548880535800
+      },
+      {
+       "name": "frame-00113.png",
+       "sha256": "90780d5b9740f96517cf6687137f1eae06fd96b595566e5cb4a783a10cfe25f4",
+       "frameIndex": 5065,
+       "sinceReload": 936,
+       "qpcNs": 109548921334100,
+       "swapQpcNs": 109548894376300
+      },
+      {
+       "name": "frame-00114.png",
+       "sha256": "864db2387f1f064abb00be132c00137604588227ef2d8cdd08cd089f9963aeff",
+       "frameIndex": 5066,
+       "sinceReload": 937,
+       "qpcNs": 109550344159500,
+       "swapQpcNs": 109550342960200
+      },
+      {
+       "name": "frame-00115.png",
+       "sha256": "64fa69247a6c8d0c7008d35a8f5a3bdc1a85b0242635fad1877ded810ded1c20",
+       "frameIndex": 5067,
+       "sinceReload": 938,
+       "qpcNs": 109550376671800,
+       "swapQpcNs": 109550362496000
+      },
+      {
+       "name": "frame-00116.png",
+       "sha256": "4bf2bf8f38a90b692704e998087142063b97fb8aa3fda5e18c14122ca32ebb79",
+       "frameIndex": 5068,
+       "sinceReload": 939,
+       "qpcNs": 109550391517500,
+       "swapQpcNs": 109550379131400
+      },
+      {
+       "name": "frame-00117.png",
+       "sha256": "39012fc631e38c3450b48a204875dca0f7f1f1bc82e5a627b5f1b04dc3a9125b",
+       "frameIndex": 5069,
+       "sinceReload": 940,
+       "qpcNs": 109550419672600,
+       "swapQpcNs": 109550393614100
+      },
+      {
+       "name": "frame-00118.png",
+       "sha256": "a552b8e3fe75eb7caa7719c197577aaf0ceb456c27d6f14ec995b8c49f8c5c4d",
+       "frameIndex": 5070,
+       "sinceReload": 941,
+       "qpcNs": 109551829250400,
+       "swapQpcNs": 109551828446900
+      },
+      {
+       "name": "frame-00119.png",
+       "sha256": "77f99e608bf7b3850c9d2e080e52b139864e0f9039b41dda53e4bcaccac00dae",
+       "frameIndex": 5071,
+       "sinceReload": 942,
+       "qpcNs": 109551855515100,
+       "swapQpcNs": 109551843087400
+      },
+      {
+       "name": "frame-00120.png",
+       "sha256": "19e980faced05334be67e137c4737dd9f9de043fff0fe1de37b547f0153395f3",
+       "frameIndex": 5072,
+       "sinceReload": 943,
+       "qpcNs": 109551886119300,
+       "swapQpcNs": 109551858109800
+      }
+     ],
+     "dropped": [],
+     "manifest": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-7\\a9\\frames\\attempt-001\\capture.json",
+     "frameIndex": 5661,
+     "sinceReload": 1532,
+     "qpcNs": 109557906516300,
+     "verified": {
+      "folder": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-7\\a9\\frames\\attempt-001",
+      "frames": 120,
+      "bytes": 2134784526,
+      "complete": true
+     }
+    },
+    "seconds": 46.187
+   },
+   {
+    "step": "camera.place home",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "arrivedSeconds": 0.0109085,
+     "frameIndex": 6205,
+     "sinceReload": 9,
+     "qpcNs": 109582681871700
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "input.block off",
+    "answer": {
+     "on": false,
+     "frameIndex": 6205,
+     "sinceReload": 9,
+     "qpcNs": 109582683305800
+    },
+    "seconds": 0.016
+   }
+  ],
+  "events": [
+   {
+    "step": "world.wait",
+    "event": "world.joined",
+    "data": {
+     "dimension": "minecraft:overworld"
+    },
+    "frameIndex": 131,
+    "sinceReload": 0
+   },
+   {
+    "step": "selftest",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.4812456
+    },
+    "frameIndex": 143,
+    "sinceReload": 0
+   },
+   {
+    "step": "selftest",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00001.png",
+     "sha256": "a4fcffbafb3f1e647efb745837d02c47f992b37913c0f0bc956a545be45a3061",
+     "frameIndex": 148
+    },
+    "frameIndex": 379,
+    "sinceReload": 236
+   },
+   {
+    "step": "shaders.reload",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3600085
+    },
+    "frameIndex": 517,
+    "sinceReload": 0
+   },
+   {
+    "step": "A4 broken reload",
+    "event": "reload.failed",
+    "data": {
+     "message": "ShaderCompileException: final.fsh: final.fsh: ERROR: 0:20: 'optiluxA4Undeclared' : undeclared identifier \nERROR: 0:20: '' : compilation terminated \nERROR: 2 compilation errors.  No code generated.\n\n"
+    },
+    "frameIndex": 4128,
+    "sinceReload": 0
+   },
+   {
+    "step": "A4 recovery shaders.reload",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3396793
+    },
+    "frameIndex": 4129,
+    "sinceReload": 0
+   },
+   {
+    "step": "A4 one frame",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00001.png",
+     "sha256": "156ed526467a9eb08ef49f6991ae849bb3523f25d4c4e4acaf977c25b57b0131",
+     "frameIndex": 4284
+    },
+    "frameIndex": 4432,
+    "sinceReload": 303
+   },
+   {
+    "step": "A4 one frame",
+    "event": "capture.done",
+    "data": {
+     "manifest": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-7\\a4\\attempt-001\\capture.json"
+    },
+    "frameIndex": 4432,
+    "sinceReload": 303
+   },
+   {
+    "step": "A7 blocked",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.ChatScreen"
+    },
+    "frameIndex": 4439,
+    "sinceReload": 310
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00001.png",
+     "sha256": "34ac9913940ae92a0847fba9b0a625655538747ac8015234e60fd54fcb212f80",
+     "frameIndex": 4953
+    },
+    "frameIndex": 4969,
+    "sinceReload": 840
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00002.png",
+     "sha256": "d67961bfe8515d3be5b4473503e997d5c22557eb78177e59e25512dd012992bf",
+     "frameIndex": 4954
+    },
+    "frameIndex": 4969,
+    "sinceReload": 840
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00003.png",
+     "sha256": "dbea3b1bf0eed3b6b1bcd22e737d68785c566d95820ea4079be100f9d727655f",
+     "frameIndex": 4955
+    },
+    "frameIndex": 4969,
+    "sinceReload": 840
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00004.png",
+     "sha256": "cd5929e04f963065b9c814c683c63fdcea8464e84b81063f96235c2c87c29da6",
+     "frameIndex": 4956
+    },
+    "frameIndex": 4972,
+    "sinceReload": 843
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00005.png",
+     "sha256": "6512320ebc5f7130008b244363a99d6823031afd758e1e711dfab81db8e7b168",
+     "frameIndex": 4957
+    },
+    "frameIndex": 4973,
+    "sinceReload": 844
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00006.png",
+     "sha256": "e46fc03f8dac2777f9850c36d87b2ee2a9b415e1bc903a3ecd996fcd1550228e",
+     "frameIndex": 4958
+    },
+    "frameIndex": 4973,
+    "sinceReload": 844
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00007.png",
+     "sha256": "03e39dbcf72d973545087860665845752eb1c23d6c853b69e74590bb4ad7ce85",
+     "frameIndex": 4959
+    },
+    "frameIndex": 4973,
+    "sinceReload": 844
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00008.png",
+     "sha256": "d93691da3e17ea6d2504fa1d41b750985336eaf4834ffefd55bf726d51aa220e",
+     "frameIndex": 4960
+    },
+    "frameIndex": 4976,
+    "sinceReload": 847
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00009.png",
+     "sha256": "c160b0ce4f556630f15fe432c991c90b4a64386cfa0f682571dfdf0793926659",
+     "frameIndex": 4961
+    },
+    "frameIndex": 4977,
+    "sinceReload": 848
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00010.png",
+     "sha256": "d8b3ce620901b12c9c21869e5e9f3c83ffcde52ae7a5e8e5d65cc3017bf15689",
+     "frameIndex": 4962
+    },
+    "frameIndex": 4977,
+    "sinceReload": 848
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00011.png",
+     "sha256": "9ab7d97fd60f27d5681e6c6d80a504446ed1fd57c96359a7ba015b085ffa4532",
+     "frameIndex": 4963
+    },
+    "frameIndex": 4978,
+    "sinceReload": 849
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00012.png",
+     "sha256": "91a80a5f8ab2ac082ad59241155c24b677d764447cdbad1fd0a3063e3fe09855",
+     "frameIndex": 4964
+    },
+    "frameIndex": 4979,
+    "sinceReload": 850
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00014.png",
+     "sha256": "fa24d337f080003449c3afa83f3454bce52fa4ef88a5c0e1698f56dd43687052",
+     "frameIndex": 4966
+    },
+    "frameIndex": 4981,
+    "sinceReload": 852
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00013.png",
+     "sha256": "dfdf9353183f0b76344b2583beea05e4cee7c2c26125b5754caac137b9b58391",
+     "frameIndex": 4965
+    },
+    "frameIndex": 4981,
+    "sinceReload": 852
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00015.png",
+     "sha256": "56b54f45dbf6f755b614b93b041dbe6de19bdb7e46209855e376632266be655a",
+     "frameIndex": 4967
+    },
+    "frameIndex": 4981,
+    "sinceReload": 852
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00016.png",
+     "sha256": "8804d78ce3d664c3b23616343207504e1a427673541662c1da7634c412109848",
+     "frameIndex": 4968
+    },
+    "frameIndex": 4983,
+    "sinceReload": 854
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00018.png",
+     "sha256": "132d1251388accad7973a0c0ee706371ed11f537016dd400a770b233b9636eb8",
+     "frameIndex": 4970
+    },
+    "frameIndex": 4985,
+    "sinceReload": 856
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00017.png",
+     "sha256": "c038b4f99ef8d0dac9c0dee35f55fd1eab2c3b68c551fe92184521726ac2f10d",
+     "frameIndex": 4969
+    },
+    "frameIndex": 4986,
+    "sinceReload": 857
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00019.png",
+     "sha256": "1fa2321d200e5795a039620d4f81873c8102d8db3a9d09bee15cd3bc22e7e267",
+     "frameIndex": 4971
+    },
+    "frameIndex": 4986,
+    "sinceReload": 857
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00020.png",
+     "sha256": "e1a8527abddb97a43b3070dfc7c7b7779b0fe8fafb04ec0c28556a808d7f99f8",
+     "frameIndex": 4972
+    },
+    "frameIndex": 4988,
+    "sinceReload": 859
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00021.png",
+     "sha256": "83ef39df940f2eaf9971020a491987102f184bd3aadcce148c47b3e5d7a7f5fc",
+     "frameIndex": 4973
+    },
+    "frameIndex": 4989,
+    "sinceReload": 860
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00022.png",
+     "sha256": "dd7a211ec0382a3696e9d94352efa8a1edae291135cf5656b32af64087277fce",
+     "frameIndex": 4974
+    },
+    "frameIndex": 4990,
+    "sinceReload": 861
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00023.png",
+     "sha256": "d28289403b3c6ae7b3576399f5e765de822e09f85f2e3294401fe977c61b4e75",
+     "frameIndex": 4975
+    },
+    "frameIndex": 4990,
+    "sinceReload": 861
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00024.png",
+     "sha256": "81bfe66b463d26dc402c948db21c51b2ca6f324de6c764af0442ad781c707894",
+     "frameIndex": 4976
+    },
+    "frameIndex": 4991,
+    "sinceReload": 862
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00025.png",
+     "sha256": "f76a245c8dff4cb487e26003898f841bd8376aefc29af3ae33232177d84ce498",
+     "frameIndex": 4977
+    },
+    "frameIndex": 4993,
+    "sinceReload": 864
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00026.png",
+     "sha256": "ec5ecbb1f8d4ce4853441f120ce603e82a258326a0ec0e813fb3a4cebdca3bb6",
+     "frameIndex": 4978
+    },
+    "frameIndex": 4994,
+    "sinceReload": 865
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00027.png",
+     "sha256": "18c4d3fb48a4f23790f7dd829a760293b70b39cc43f4047912f571539c9b53a9",
+     "frameIndex": 4979
+    },
+    "frameIndex": 4994,
+    "sinceReload": 865
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00028.png",
+     "sha256": "d7003660828ed29cc4dce8a584607d1836a4b6adc91903a45dff6ed6096296dc",
+     "frameIndex": 4980
+    },
+    "frameIndex": 4996,
+    "sinceReload": 867
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00031.png",
+     "sha256": "efa25b660aca43a8d4674839a8ae5d6a3ce3f08b278d26db69d47d4445768eea",
+     "frameIndex": 4983
+    },
+    "frameIndex": 4997,
+    "sinceReload": 868
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00029.png",
+     "sha256": "cb2316ea62a8885c480e7c117553c2dc30ace04b9a447208003353a5d09d847e",
+     "frameIndex": 4981
+    },
+    "frameIndex": 4997,
+    "sinceReload": 868
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00030.png",
+     "sha256": "4583dcd192fece5e6b9183da7a5312e6af686282f34fb4cbdd394b02767ec349",
+     "frameIndex": 4982
+    },
+    "frameIndex": 4997,
+    "sinceReload": 868
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00032.png",
+     "sha256": "08c860d47cf8d13c5f974735e71b8ca1425743ca2247701b7b0f749243fe9300",
+     "frameIndex": 4984
+    },
+    "frameIndex": 5000,
+    "sinceReload": 871
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00033.png",
+     "sha256": "dcdc9c1edfd87ff4ca1ea996abebf30bb0e08cd5f57e59a6bf1a51cde9708730",
+     "frameIndex": 4985
+    },
+    "frameIndex": 5001,
+    "sinceReload": 872
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00035.png",
+     "sha256": "96e0eb05b4ef7ad0e9faa88a5bc04063fcf62176793307767332411e7170c9d8",
+     "frameIndex": 4987
+    },
+    "frameIndex": 5002,
+    "sinceReload": 873
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00034.png",
+     "sha256": "65406e86b9e0c1f2102f4ae0e13f61841667cb6c24245628ec40b37c10217663",
+     "frameIndex": 4986
+    },
+    "frameIndex": 5002,
+    "sinceReload": 873
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00036.png",
+     "sha256": "1344a3429bb16bb31ca255c89146df45e3e8faa3ab890de5b39fcb12d6eb8265",
+     "frameIndex": 4988
+    },
+    "frameIndex": 5003,
+    "sinceReload": 874
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00037.png",
+     "sha256": "0e0b950e2982905ca3990ff2624cfbab2db1bec9e3c95900bcab1a2264a7dc6a",
+     "frameIndex": 4989
+    },
+    "frameIndex": 5005,
+    "sinceReload": 876
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00038.png",
+     "sha256": "734a0852c2f3dc86a19f9e571f75e4b253c0a600b1ca9991c3bdfed1b331c577",
+     "frameIndex": 4990
+    },
+    "frameIndex": 5005,
+    "sinceReload": 876
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00039.png",
+     "sha256": "a569913b040b22d5644cdb41b312bb4efee390f4e8c1b6ab0a8b6355842b507f",
+     "frameIndex": 4991
+    },
+    "frameIndex": 5005,
+    "sinceReload": 876
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00040.png",
+     "sha256": "41ab33c6b20faf22f852ba6bc9a349e1e42a6373d4f7b571881f06a58810884f",
+     "frameIndex": 4992
+    },
+    "frameIndex": 5007,
+    "sinceReload": 878
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00043.png",
+     "sha256": "b26f30f50b607dbedea6446bc253b5367ebca4719e92ab04d863d9ea28c0d1ed",
+     "frameIndex": 4995
+    },
+    "frameIndex": 5009,
+    "sinceReload": 880
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00041.png",
+     "sha256": "5fd5cbd70da97a325ea2568ae8f5a87840ff3157bf90f4990176e7d84d843a5e",
+     "frameIndex": 4993
+    },
+    "frameIndex": 5010,
+    "sinceReload": 881
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00042.png",
+     "sha256": "4e17c4f8ffab125290555bef85ffa2675d7ba1d37d5d3ec1a183774cde900e87",
+     "frameIndex": 4994
+    },
+    "frameIndex": 5010,
+    "sinceReload": 881
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00044.png",
+     "sha256": "a051baded244063040285f9a3f4434a412019f99ca98bf3a077d1e8504d89baf",
+     "frameIndex": 4996
+    },
+    "frameIndex": 5011,
+    "sinceReload": 882
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00046.png",
+     "sha256": "e6900f340ce9d24e9d8a0855af792524d8e520f388acc38fcb31d28dde721681",
+     "frameIndex": 4998
+    },
+    "frameIndex": 5013,
+    "sinceReload": 884
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00045.png",
+     "sha256": "39359e839d42f51b4cfb18c9717c773f314c58008ec77fc81de58e1149f736d5",
+     "frameIndex": 4997
+    },
+    "frameIndex": 5014,
+    "sinceReload": 885
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00048.png",
+     "sha256": "d996df1b84c5ce6f82e2298abde98117dee60c3a7a55a50c16a2ec86a80f42cc",
+     "frameIndex": 5000
+    },
+    "frameIndex": 5014,
+    "sinceReload": 885
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00047.png",
+     "sha256": "90fa127b9f6a7159a7ac5f29a86262e5a9e6d51705896dc1ad91738204477eec",
+     "frameIndex": 4999
+    },
+    "frameIndex": 5015,
+    "sinceReload": 886
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00049.png",
+     "sha256": "7fc588277c4f9c4a69245c26c21464a4a3f6237a9fd4b1fe980046539a4829bf",
+     "frameIndex": 5001
+    },
+    "frameIndex": 5017,
+    "sinceReload": 888
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00051.png",
+     "sha256": "43b260e2b6b87fabb4d609ab358262c0ea643e793de4987050e8326252f579de",
+     "frameIndex": 5003
+    },
+    "frameIndex": 5018,
+    "sinceReload": 889
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00052.png",
+     "sha256": "fec8e3acc969bedc570d9ed5c2f7433d9da73dddf91485abf78e43ffa7fd0d8d",
+     "frameIndex": 5004
+    },
+    "frameIndex": 5019,
+    "sinceReload": 890
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00050.png",
+     "sha256": "102a94103795812c35e088631e63cc26637465e4a34ad20ed97061cd950a2147",
+     "frameIndex": 5002
+    },
+    "frameIndex": 5019,
+    "sinceReload": 890
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00053.png",
+     "sha256": "52e2e5c62b5007e45498809431fc95fdee9b8eee4e98e2c79ab02637823e268c",
+     "frameIndex": 5005
+    },
+    "frameIndex": 5021,
+    "sinceReload": 892
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00054.png",
+     "sha256": "f846c49c7f1e7b7454ad0828d551b54f32c9996e9a9ec221e2eb33a354f21e2e",
+     "frameIndex": 5006
+    },
+    "frameIndex": 5022,
+    "sinceReload": 893
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00055.png",
+     "sha256": "79b581e42627c4d6456a39193603b9a487dccc621d9a144abe9947f8e1bd1755",
+     "frameIndex": 5007
+    },
+    "frameIndex": 5022,
+    "sinceReload": 893
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00056.png",
+     "sha256": "816ceae2c8064bfda3c2e7ffd34f93a7bd1b5d5af6c047e0ccda9c2d46dbba44",
+     "frameIndex": 5008
+    },
+    "frameIndex": 5022,
+    "sinceReload": 893
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00057.png",
+     "sha256": "4afc4ff52c3889392520985a84c8e24d0d21f8d5406d996cacd990700d101a45",
+     "frameIndex": 5009
+    },
+    "frameIndex": 5025,
+    "sinceReload": 896
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00058.png",
+     "sha256": "fba3b715292979fb82126ddd938687c4a46d4a334de7dae2468891e73b660f66",
+     "frameIndex": 5010
+    },
+    "frameIndex": 5026,
+    "sinceReload": 897
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00060.png",
+     "sha256": "d4e5f76009b1a4f2644542375337662f9fa3bf9a75f3af859bab0cb7bc213ce1",
+     "frameIndex": 5012
+    },
+    "frameIndex": 5026,
+    "sinceReload": 897
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00059.png",
+     "sha256": "9dd5e55698f1a36707f56fd5ca174d25e7547dca219a358ff461dc164b7c6001",
+     "frameIndex": 5011
+    },
+    "frameIndex": 5026,
+    "sinceReload": 897
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00061.png",
+     "sha256": "2ff07d9912db64c0c5bf337d3dac05702aa84f318a4832ad15855473e49291c6",
+     "frameIndex": 5013
+    },
+    "frameIndex": 5029,
+    "sinceReload": 900
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00062.png",
+     "sha256": "3ee5f4371a70d727266fec9e7f20574ba3dba5ed2c864ed83fd951b8702b76b6",
+     "frameIndex": 5014
+    },
+    "frameIndex": 5030,
+    "sinceReload": 901
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00063.png",
+     "sha256": "342649db51c520ffcf43819296cc5aa73e4660edec1f057d459088b59281a00e",
+     "frameIndex": 5015
+    },
+    "frameIndex": 5030,
+    "sinceReload": 901
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00064.png",
+     "sha256": "149f5b13e78cfb90e10e84c424ed2e38f5293e997eef494d3101895736ce10cb",
+     "frameIndex": 5016
+    },
+    "frameIndex": 5030,
+    "sinceReload": 901
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00065.png",
+     "sha256": "c392ec3604453e2c07cf170bdf3dc06e03f5bf4e91e58b43d6aa83e2da89abfb",
+     "frameIndex": 5017
+    },
+    "frameIndex": 5033,
+    "sinceReload": 904
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00067.png",
+     "sha256": "f722e98f13cae30aabf9fc839c0f80c9992f87fba1252771710c04ad151ca955",
+     "frameIndex": 5019
+    },
+    "frameIndex": 5033,
+    "sinceReload": 904
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00068.png",
+     "sha256": "0bac704e486549ea77dbe933fa7499c13152ee9bf2bebb08a6a0c9d793f30436",
+     "frameIndex": 5020
+    },
+    "frameIndex": 5033,
+    "sinceReload": 904
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00066.png",
+     "sha256": "c32d58c20c9b785b079baeccf36f89d94ea61261c76540194955cc65960da2b5",
+     "frameIndex": 5018
+    },
+    "frameIndex": 5035,
+    "sinceReload": 906
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00070.png",
+     "sha256": "ac7b5fb544bec95ecc74d2ed3766b45908f3825091784fcef750078825045d2f",
+     "frameIndex": 5022
+    },
+    "frameIndex": 5037,
+    "sinceReload": 908
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00069.png",
+     "sha256": "0b1ca9972065880a0fa46b5053be9c040ff167c9783c2f468e2a0de6c541e6ce",
+     "frameIndex": 5021
+    },
+    "frameIndex": 5038,
+    "sinceReload": 909
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00071.png",
+     "sha256": "e895b8d16df2405d80330c98d711959b8211b4a2da842cbfa58a3a5a910ff07a",
+     "frameIndex": 5023
+    },
+    "frameIndex": 5038,
+    "sinceReload": 909
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00072.png",
+     "sha256": "b5b787af14c6d099372127715ff8e18734191f2ca30c977f199e3cccd492ee5c",
+     "frameIndex": 5024
+    },
+    "frameIndex": 5038,
+    "sinceReload": 909
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00073.png",
+     "sha256": "65a25c35ed0540c68fb2b2564e018d1a555e84c148839d029a6b413bc81d0b5b",
+     "frameIndex": 5025
+    },
+    "frameIndex": 5041,
+    "sinceReload": 912
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00075.png",
+     "sha256": "a3da60d1bf97417f9a46520df89aa20242996429ce8fd88d0792fa499fbee453",
+     "frameIndex": 5027
+    },
+    "frameIndex": 5041,
+    "sinceReload": 912
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00074.png",
+     "sha256": "2f4b903358b4a001aebc780b2002605e033a80db37a38eeae84e47563531bfee",
+     "frameIndex": 5026
+    },
+    "frameIndex": 5041,
+    "sinceReload": 912
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00076.png",
+     "sha256": "5901d4efbe79fdc74a7f26ff8c9825950fabc71fc2e0c7374a34b60867527ae7",
+     "frameIndex": 5028
+    },
+    "frameIndex": 5041,
+    "sinceReload": 912
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00077.png",
+     "sha256": "aa41ac1f036861a455f0e45a66ce574ba6da11a18730bc998c78339bc5087bb6",
+     "frameIndex": 5029
+    },
+    "frameIndex": 5045,
+    "sinceReload": 916
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00078.png",
+     "sha256": "c04ebcbb00a20b4208118bf6461b8b6a9cbd11f449cc731efe3c6abab609b474",
+     "frameIndex": 5030
+    },
+    "frameIndex": 5046,
+    "sinceReload": 917
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00080.png",
+     "sha256": "444fb3d13e0d33c387c462054c1ad6ad235e7c20c240244f3484433dfd4e5296",
+     "frameIndex": 5032
+    },
+    "frameIndex": 5046,
+    "sinceReload": 917
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00079.png",
+     "sha256": "3154143c93ef4a5fb7437672bd037f7efe3147cfdec973ded96f1da01e28ba0a",
+     "frameIndex": 5031
+    },
+    "frameIndex": 5046,
+    "sinceReload": 917
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00081.png",
+     "sha256": "8ca3db9ade8687002c5221550c1ac48eadf63224454e1de65ed428208087f2af",
+     "frameIndex": 5033
+    },
+    "frameIndex": 5049,
+    "sinceReload": 920
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00083.png",
+     "sha256": "bdeaca48d81af238a725f2015c0cb17cbb0ad20adfdbec116966477cae5d4b2b",
+     "frameIndex": 5035
+    },
+    "frameIndex": 5049,
+    "sinceReload": 920
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00084.png",
+     "sha256": "9178a303297d642ea8f2478f55b824fdf045473c7a93ec033f7bbbb007a2f7f1",
+     "frameIndex": 5036
+    },
+    "frameIndex": 5049,
+    "sinceReload": 920
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00082.png",
+     "sha256": "da93532f8b9a09e3da1d20372868fa5d2feaa12a8815d3720f60fcfad7708399",
+     "frameIndex": 5034
+    },
+    "frameIndex": 5051,
+    "sinceReload": 922
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00085.png",
+     "sha256": "eb139b7ea252bc12a64645599183b4838aeaff27bad012f8fc6ed04fa69e2743",
+     "frameIndex": 5037
+    },
+    "frameIndex": 5053,
+    "sinceReload": 924
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00086.png",
+     "sha256": "5a1921f173b953dc0157bd9bb68142c6fba84e342a815322774447d7281a5662",
+     "frameIndex": 5038
+    },
+    "frameIndex": 5054,
+    "sinceReload": 925
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00087.png",
+     "sha256": "8a9e795e59a5d44255154066c848cc11dc37ceb93c0a6798663622bfb9bbc290",
+     "frameIndex": 5039
+    },
+    "frameIndex": 5054,
+    "sinceReload": 925
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00088.png",
+     "sha256": "b4b4e224b4b7081f741486ec66ede36882a6bc2ebea89ef19a9efc22d20bd2fd",
+     "frameIndex": 5040
+    },
+    "frameIndex": 5054,
+    "sinceReload": 925
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00090.png",
+     "sha256": "b7af922f1525f6db7fcdf57b58928674a3a11210ddf6b7b54ccd5a841e3335e6",
+     "frameIndex": 5042
+    },
+    "frameIndex": 5057,
+    "sinceReload": 928
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00089.png",
+     "sha256": "b23f89c307d14e3bd51f752fdf6682e1658d5dd15fa58dc86755944f0fd04fc0",
+     "frameIndex": 5041
+    },
+    "frameIndex": 5057,
+    "sinceReload": 928
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00091.png",
+     "sha256": "c44f13142962993efcef8ed2a109f62d95d9a2423b1eb1fe63dfaca21fa3a02c",
+     "frameIndex": 5043
+    },
+    "frameIndex": 5057,
+    "sinceReload": 928
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00092.png",
+     "sha256": "a4054d72b44f23982b76f29744bf914bf29241e411f8e8daff74ce08f5e4378f",
+     "frameIndex": 5044
+    },
+    "frameIndex": 5057,
+    "sinceReload": 928
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00094.png",
+     "sha256": "49b902035314885cdc42e3f70a3bb1fcbf3072d761b717ef4925f1544018b60e",
+     "frameIndex": 5046
+    },
+    "frameIndex": 5061,
+    "sinceReload": 932
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00093.png",
+     "sha256": "cb0a809c3262c5615f5557c3f568ca00e3627667296750ff5aaa6edf41457b14",
+     "frameIndex": 5045
+    },
+    "frameIndex": 5062,
+    "sinceReload": 933
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00095.png",
+     "sha256": "eb0706901a45d5d42475edf24e9b5a95ac79fd6d8eb9549b9dcf2da92f1379ac",
+     "frameIndex": 5047
+    },
+    "frameIndex": 5062,
+    "sinceReload": 933
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00096.png",
+     "sha256": "034c2e917abec055a7894809445d167b4a0b42e4b7449d80d0e1d92258d7ad17",
+     "frameIndex": 5048
+    },
+    "frameIndex": 5063,
+    "sinceReload": 934
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00098.png",
+     "sha256": "bf5d0c7d5ffea890c676dfc6a345c17ebc0969fbd046c3694e061614bd9be7a8",
+     "frameIndex": 5050
+    },
+    "frameIndex": 5065,
+    "sinceReload": 936
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00099.png",
+     "sha256": "153bebe407960ac4207d5d74d36187f3e99ab1022b747d40307b8e435b0860cc",
+     "frameIndex": 5051
+    },
+    "frameIndex": 5066,
+    "sinceReload": 937
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00100.png",
+     "sha256": "3c774a415203f7d9f47989fdacfec924c6dadb6aa72a69982ec82a75a3177696",
+     "frameIndex": 5052
+    },
+    "frameIndex": 5066,
+    "sinceReload": 937
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00097.png",
+     "sha256": "98182365d42ee3433f0ce1f45a3a7b5f723324d2567c6d281d653e13005e2efa",
+     "frameIndex": 5049
+    },
+    "frameIndex": 5067,
+    "sinceReload": 938
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00101.png",
+     "sha256": "9ffb8ad5ad4660adbe973a822e37450e1bc5c34584b4fed5feb9c2c0428808c2",
+     "frameIndex": 5053
+    },
+    "frameIndex": 5069,
+    "sinceReload": 940
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00102.png",
+     "sha256": "eafa0e3d008df56836d3920f6963411a6d41b7f1260f957830f6265799260ecb",
+     "frameIndex": 5054
+    },
+    "frameIndex": 5070,
+    "sinceReload": 941
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00104.png",
+     "sha256": "08608319d4f29a8b39d5253aef8c5ab6cb66fd067b8be3f5a9c8d78e7eafb400",
+     "frameIndex": 5056
+    },
+    "frameIndex": 5070,
+    "sinceReload": 941
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00103.png",
+     "sha256": "86a027d2db65066320f2aeec1338c658472cf14b543c45936b6d0bdbb7675d41",
+     "frameIndex": 5055
+    },
+    "frameIndex": 5071,
+    "sinceReload": 942
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00106.png",
+     "sha256": "7d813fccb723d07bb45c76d4accba89032eb4d30730efe80505b0268efacb9fa",
+     "frameIndex": 5058
+    },
+    "frameIndex": 5212,
+    "sinceReload": 1083
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00105.png",
+     "sha256": "1ee148657e0346a41e7fd1df7eb83e80c486fe92d8f505e9e619cab1a0ba5e65",
+     "frameIndex": 5057
+    },
+    "frameIndex": 5213,
+    "sinceReload": 1084
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00107.png",
+     "sha256": "b0c5006c27cacea8cab7fb13d95e5ccbe66062166871db7090651f8a939f81cc",
+     "frameIndex": 5059
+    },
+    "frameIndex": 5218,
+    "sinceReload": 1089
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00108.png",
+     "sha256": "0ce087b84460b78b6ae8af266e489059f16efe347da62383d97c81363aa3cfa2",
+     "frameIndex": 5060
+    },
+    "frameIndex": 5221,
+    "sinceReload": 1092
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00110.png",
+     "sha256": "03a528f30a52d6f3466ad7e6c1f6377413bf725e5c1f457e90141bb44325db8b",
+     "frameIndex": 5062
+    },
+    "frameIndex": 5360,
+    "sinceReload": 1231
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00109.png",
+     "sha256": "5f99b42b8b0594df834823b1a55b05165293900114de05001c8ddb5dabe5eecd",
+     "frameIndex": 5061
+    },
+    "frameIndex": 5363,
+    "sinceReload": 1234
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00111.png",
+     "sha256": "1517c98307b793b8ac1fce5efe16b8550bf477cc1177907239a7e1a9a89c87d8",
+     "frameIndex": 5063
+    },
+    "frameIndex": 5366,
+    "sinceReload": 1237
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00112.png",
+     "sha256": "49f2b46883ba0566118465901db9463e5d08a661e9060663a2b0f74165ce145d",
+     "frameIndex": 5064
+    },
+    "frameIndex": 5370,
+    "sinceReload": 1241
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00114.png",
+     "sha256": "864db2387f1f064abb00be132c00137604588227ef2d8cdd08cd089f9963aeff",
+     "frameIndex": 5066
+    },
+    "frameIndex": 5509,
+    "sinceReload": 1380
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00115.png",
+     "sha256": "64fa69247a6c8d0c7008d35a8f5a3bdc1a85b0242635fad1877ded810ded1c20",
+     "frameIndex": 5067
+    },
+    "frameIndex": 5511,
+    "sinceReload": 1382
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00113.png",
+     "sha256": "90780d5b9740f96517cf6687137f1eae06fd96b595566e5cb4a783a10cfe25f4",
+     "frameIndex": 5065
+    },
+    "frameIndex": 5512,
+    "sinceReload": 1383
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00116.png",
+     "sha256": "4bf2bf8f38a90b692704e998087142063b97fb8aa3fda5e18c14122ca32ebb79",
+     "frameIndex": 5068
+    },
+    "frameIndex": 5516,
+    "sinceReload": 1387
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00117.png",
+     "sha256": "39012fc631e38c3450b48a204875dca0f7f1f1bc82e5a627b5f1b04dc3a9125b",
+     "frameIndex": 5069
+    },
+    "frameIndex": 5655,
+    "sinceReload": 1526
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00119.png",
+     "sha256": "77f99e608bf7b3850c9d2e080e52b139864e0f9039b41dda53e4bcaccac00dae",
+     "frameIndex": 5071
+    },
+    "frameIndex": 5659,
+    "sinceReload": 1530
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00118.png",
+     "sha256": "a552b8e3fe75eb7caa7719c197577aaf0ceb456c27d6f14ec995b8c49f8c5c4d",
+     "frameIndex": 5070
+    },
+    "frameIndex": 5661,
+    "sinceReload": 1532
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00120.png",
+     "sha256": "19e980faced05334be67e137c4737dd9f9de043fff0fe1de37b547f0153395f3",
+     "frameIndex": 5072
+    },
+    "frameIndex": 5661,
+    "sinceReload": 1532
+   },
+   {
+    "step": "A9 frames.capture",
+    "event": "capture.done",
+    "data": {
+     "manifest": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-7\\a9\\frames\\attempt-001\\capture.json"
+    },
+    "frameIndex": 5661,
+    "sinceReload": 1532
+   },
+   {
+    "step": "F4 reload 1",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3442276
+    },
+    "frameIndex": 5968,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 2",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3474279
+    },
+    "frameIndex": 5971,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 3",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3434677
+    },
+    "frameIndex": 5974,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 4",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3435155
+    },
+    "frameIndex": 5977,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 5",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.349659
+    },
+    "frameIndex": 5980,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 6",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3301514
+    },
+    "frameIndex": 5983,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 7",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3283873
+    },
+    "frameIndex": 5986,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 8",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.329797
+    },
+    "frameIndex": 5989,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 9",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3331528
+    },
+    "frameIndex": 5992,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 10",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3485826
+    },
+    "frameIndex": 5995,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 11",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3309851
+    },
+    "frameIndex": 6033,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 12",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3346489
+    },
+    "frameIndex": 6036,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 13",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3408201
+    },
+    "frameIndex": 6039,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 14",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3352407
+    },
+    "frameIndex": 6042,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 15",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3407892
+    },
+    "frameIndex": 6045,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 16",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3321813
+    },
+    "frameIndex": 6048,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 17",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3277904
+    },
+    "frameIndex": 6051,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 18",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3232888
+    },
+    "frameIndex": 6054,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 19",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.328445
+    },
+    "frameIndex": 6057,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 20",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3574802
+    },
+    "frameIndex": 6060,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 21",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.339701
+    },
+    "frameIndex": 6097,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 22",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3275356
+    },
+    "frameIndex": 6100,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 23",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3228751
+    },
+    "frameIndex": 6103,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 24",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3264991
+    },
+    "frameIndex": 6106,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 25",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3501854
+    },
+    "frameIndex": 6109,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 26",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3294848
+    },
+    "frameIndex": 6112,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 27",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3308791
+    },
+    "frameIndex": 6115,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 28",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3347286
+    },
+    "frameIndex": 6118,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 29",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3309088
+    },
+    "frameIndex": 6121,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 30",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3473473
+    },
+    "frameIndex": 6124,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 31",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3268633
+    },
+    "frameIndex": 6133,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 32",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3275792
+    },
+    "frameIndex": 6136,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 33",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3292636
+    },
+    "frameIndex": 6139,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 34",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3298063
+    },
+    "frameIndex": 6142,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 35",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3428817
+    },
+    "frameIndex": 6145,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 36",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3257061
+    },
+    "frameIndex": 6148,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 37",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3330501
+    },
+    "frameIndex": 6151,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 38",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3290368
+    },
+    "frameIndex": 6154,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 39",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3272431
+    },
+    "frameIndex": 6157,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 40",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3467941
+    },
+    "frameIndex": 6160,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 41",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3335204
+    },
+    "frameIndex": 6169,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 42",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3264272
+    },
+    "frameIndex": 6172,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 43",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3245459
+    },
+    "frameIndex": 6175,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 44",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.331299
+    },
+    "frameIndex": 6178,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 45",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3396338
+    },
+    "frameIndex": 6181,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 46",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3199019
+    },
+    "frameIndex": 6184,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 47",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3318501
+    },
+    "frameIndex": 6187,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 48",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3299263
+    },
+    "frameIndex": 6190,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 49",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3270644
+    },
+    "frameIndex": 6193,
+    "sinceReload": 0
+   },
+   {
+    "step": "F4 reload 50",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.3486952
+    },
+    "frameIndex": 6196,
+    "sinceReload": 0
+   },
+   {
+    "step": "quit",
+    "event": "world.left",
+    "data": {},
+    "frameIndex": 6207,
+    "sinceReload": 11
+   },
+   {
+    "step": "quit",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.GenericMessageScreen"
+    },
+    "frameIndex": 6208,
+    "sinceReload": 12
+   },
+   {
+    "step": "quit",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.ProgressScreen"
+    },
+    "frameIndex": 6222,
+    "sinceReload": 26
+   }
+  ],
+  "a4Cleanup": {
+   "removed": [
+    "optilux-a4-broken-ComplementaryUnbound_r5.9.3.zip"
+   ],
+   "kept": []
+  },
+  "logCheck": {
+   "lines": 509,
+   "bytes": 144779,
+   "tokenAbsent": true
+  },
+  "readBack": {
+   "ok": true,
+   "options": {
+    "keys": 23,
+    "moved": {},
+    "excepted": {}
+   },
+   "iris": {
+    "keys": 5,
+    "moved": {}
+   },
+   "sodium": {
+    "flagsMoved": {},
+    "sameText": true
+   }
+  },
+  "helperLog": {
+   "applied": 9,
+   "active": 1
+  }
+ },
+ "raw": "results/raw/m1-acceptance-7"
+}

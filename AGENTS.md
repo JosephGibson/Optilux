@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M1 in progress: 0.01.08 (`run`, the provisional world, A1-A3 and A10) is the last phase done, next 0.01.09, A4, A7, A9 and the reload table (docs/plans/m1.md). Latest stop: docs/handoff.md.
+Status: M1 in progress: 0.01.09 (A4, A7, A9 and the reload table) is the last phase done, next 0.01.10, dev session 1 and optilux-plan (docs/plans/m1.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -14,8 +14,8 @@ Status: M1 in progress: 0.01.08 (`run`, the provisional world, A1-A3 and A10) is
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout
-- optilux/: Python harness, a uv project (one .venv); cli.py holds the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, modclient.py and winpipe.py the mod's pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper. Run `uv run optilux <verb>`.
-- tests/: pytest, run by `uv run optilux test`; fixtures/ the saved 26.3 JSON, log and logman output; `windows`-marked tests skip elsewhere.
+- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper, presentmon.py PresentMon and A9's match. Run `uv run optilux <verb>`.
+- tests/: pytest, run by `uv run optilux test`; fixtures/ saved 26.3 JSON, log, logman, jcmd and PresentMon output; `windows`-marked tests skip elsewhere.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`) and optilux-release (the PR checklist, the release watch, the switch block); agents/researcher.md and reviewer.md (read-only).
 - .github/: workflows/ci.yml (push and pull_request, windows-latest: ruff, tests, verify docs, `pack release --check`, `pack build`, the zip as an artifact) and release.yml (push to main: `pack release`).

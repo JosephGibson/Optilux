@@ -1,0 +1,605 @@
+{
+ "source": "results/records/m1-acceptance-4.json A9 (capture.json frames: frameIndex, qpcNs, swapQpcNs)",
+ "frames": [
+  {
+   "frameIndex": 5193,
+   "qpcNs": 107791918924900,
+   "swapQpcNs": 107791918808800
+  },
+  {
+   "frameIndex": 5194,
+   "qpcNs": 107791928978900,
+   "swapQpcNs": 107791928854100
+  },
+  {
+   "frameIndex": 5195,
+   "qpcNs": 107791969069200,
+   "swapQpcNs": 107791940386100
+  },
+  {
+   "frameIndex": 5196,
+   "qpcNs": 107791970330700,
+   "swapQpcNs": 107791970184900
+  },
+  {
+   "frameIndex": 5197,
+   "qpcNs": 107792016155100,
+   "swapQpcNs": 107791984613200
+  },
+  {
+   "frameIndex": 5198,
+   "qpcNs": 107792018333100,
+   "swapQpcNs": 107792018133500
+  },
+  {
+   "frameIndex": 5199,
+   "qpcNs": 107792064788900,
+   "swapQpcNs": 107792032623500
+  },
+  {
+   "frameIndex": 5200,
+   "qpcNs": 107792066680100,
+   "swapQpcNs": 107792066501300
+  },
+  {
+   "frameIndex": 5201,
+   "qpcNs": 107792110251600,
+   "swapQpcNs": 107792080801100
+  },
+  {
+   "frameIndex": 5202,
+   "qpcNs": 107792111469800,
+   "swapQpcNs": 107792111302500
+  },
+  {
+   "frameIndex": 5203,
+   "qpcNs": 107792139410800,
+   "swapQpcNs": 107792125867700
+  },
+  {
+   "frameIndex": 5204,
+   "qpcNs": 107792167405500,
+   "swapQpcNs": 107792140554000
+  },
+  {
+   "frameIndex": 5205,
+   "qpcNs": 107792168513600,
+   "swapQpcNs": 107792168371800
+  },
+  {
+   "frameIndex": 5206,
+   "qpcNs": 107792196494200,
+   "swapQpcNs": 107792182962800
+  },
+  {
+   "frameIndex": 5207,
+   "qpcNs": 107792224063000,
+   "swapQpcNs": 107792197541800
+  },
+  {
+   "frameIndex": 5208,
+   "qpcNs": 107792225234000,
+   "swapQpcNs": 107792225124900
+  },
+  {
+   "frameIndex": 5209,
+   "qpcNs": 107792253312000,
+   "swapQpcNs": 107792239700100
+  },
+  {
+   "frameIndex": 5210,
+   "qpcNs": 107793473335700,
+   "swapQpcNs": 107793442373400
+  },
+  {
+   "frameIndex": 5211,
+   "qpcNs": 107793475542700,
+   "swapQpcNs": 107793475340700
+  },
+  {
+   "frameIndex": 5212,
+   "qpcNs": 107793517685400,
+   "swapQpcNs": 107793504104300
+  },
+  {
+   "frameIndex": 5213,
+   "qpcNs": 107793532374900,
+   "swapQpcNs": 107793518991600
+  },
+  {
+   "frameIndex": 5214,
+   "qpcNs": 107794952952800,
+   "swapQpcNs": 107794923910700
+  },
+  {
+   "frameIndex": 5215,
+   "qpcNs": 107794966479600,
+   "swapQpcNs": 107794966166600
+  },
+  {
+   "frameIndex": 5216,
+   "qpcNs": 107794994417600,
+   "swapQpcNs": 107794980875500
+  },
+  {
+   "frameIndex": 5217,
+   "qpcNs": 107795022364400,
+   "swapQpcNs": 107794996403000
+  },
+  {
+   "frameIndex": 5218,
+   "qpcNs": 107796418665800,
+   "swapQpcNs": 107796417802200
+  },
+  {
+   "frameIndex": 5219,
+   "qpcNs": 107796462188200,
+   "swapQpcNs": 107796448968500
+  },
+  {
+   "frameIndex": 5220,
+   "qpcNs": 107796477526500,
+   "swapQpcNs": 107796464962500
+  },
+  {
+   "frameIndex": 5221,
+   "qpcNs": 107796506144300,
+   "swapQpcNs": 107796479746400
+  },
+  {
+   "frameIndex": 5222,
+   "qpcNs": 107797920977300,
+   "swapQpcNs": 107797919966500
+  },
+  {
+   "frameIndex": 5223,
+   "qpcNs": 107797948075000,
+   "swapQpcNs": 107797934821300
+  },
+  {
+   "frameIndex": 5224,
+   "qpcNs": 107797977733400,
+   "swapQpcNs": 107797949855500
+  },
+  {
+   "frameIndex": 5225,
+   "qpcNs": 107797979329600,
+   "swapQpcNs": 107797979171300
+  },
+  {
+   "frameIndex": 5226,
+   "qpcNs": 107799432999600,
+   "swapQpcNs": 107799404675000
+  },
+  {
+   "frameIndex": 5227,
+   "qpcNs": 107799435314600,
+   "swapQpcNs": 107799434976000
+  },
+  {
+   "frameIndex": 5228,
+   "qpcNs": 107799479589400,
+   "swapQpcNs": 107799449722000
+  },
+  {
+   "frameIndex": 5229,
+   "qpcNs": 107799480841900,
+   "swapQpcNs": 107799480634400
+  },
+  {
+   "frameIndex": 5230,
+   "qpcNs": 107800930657800,
+   "swapQpcNs": 107800901255000
+  },
+  {
+   "frameIndex": 5231,
+   "qpcNs": 107800932960700,
+   "swapQpcNs": 107800932621900
+  },
+  {
+   "frameIndex": 5232,
+   "qpcNs": 107800960651600,
+   "swapQpcNs": 107800947158400
+  },
+  {
+   "frameIndex": 5233,
+   "qpcNs": 107800989647500,
+   "swapQpcNs": 107800962277900
+  },
+  {
+   "frameIndex": 5234,
+   "qpcNs": 107802379338500,
+   "swapQpcNs": 107802378013600
+  },
+  {
+   "frameIndex": 5235,
+   "qpcNs": 107802408878400,
+   "swapQpcNs": 107802396184300
+  },
+  {
+   "frameIndex": 5236,
+   "qpcNs": 107802440707200,
+   "swapQpcNs": 107802412480600
+  },
+  {
+   "frameIndex": 5237,
+   "qpcNs": 107802442562800,
+   "swapQpcNs": 107802442294000
+  },
+  {
+   "frameIndex": 5238,
+   "qpcNs": 107803891563600,
+   "swapQpcNs": 107803862897100
+  },
+  {
+   "frameIndex": 5239,
+   "qpcNs": 107803893743400,
+   "swapQpcNs": 107803893505800
+  },
+  {
+   "frameIndex": 5240,
+   "qpcNs": 107803921665200,
+   "swapQpcNs": 107803908350700
+  },
+  {
+   "frameIndex": 5241,
+   "qpcNs": 107803951234700,
+   "swapQpcNs": 107803923458400
+  },
+  {
+   "frameIndex": 5242,
+   "qpcNs": 107805344070700,
+   "swapQpcNs": 107805343072500
+  },
+  {
+   "frameIndex": 5243,
+   "qpcNs": 107805380849000,
+   "swapQpcNs": 107805367317000
+  },
+  {
+   "frameIndex": 5244,
+   "qpcNs": 107805412996500,
+   "swapQpcNs": 107805383201300
+  },
+  {
+   "frameIndex": 5245,
+   "qpcNs": 107805415043700,
+   "swapQpcNs": 107805414868600
+  },
+  {
+   "frameIndex": 5246,
+   "qpcNs": 107806851325800,
+   "swapQpcNs": 107806819142000
+  },
+  {
+   "frameIndex": 5247,
+   "qpcNs": 107806853710000,
+   "swapQpcNs": 107806853376800
+  },
+  {
+   "frameIndex": 5248,
+   "qpcNs": 107806897125500,
+   "swapQpcNs": 107806884022700
+  },
+  {
+   "frameIndex": 5249,
+   "qpcNs": 107806912505000,
+   "swapQpcNs": 107806898767200
+  },
+  {
+   "frameIndex": 5250,
+   "qpcNs": 107808333969700,
+   "swapQpcNs": 107808300932500
+  },
+  {
+   "frameIndex": 5251,
+   "qpcNs": 107808364702200,
+   "swapQpcNs": 107808364368200
+  },
+  {
+   "frameIndex": 5252,
+   "qpcNs": 107808391849700,
+   "swapQpcNs": 107808378952600
+  },
+  {
+   "frameIndex": 5253,
+   "qpcNs": 107808423898800,
+   "swapQpcNs": 107808394047100
+  },
+  {
+   "frameIndex": 5254,
+   "qpcNs": 107809783148000,
+   "swapQpcNs": 107809782328300
+  },
+  {
+   "frameIndex": 5255,
+   "qpcNs": 107809860700500,
+   "swapQpcNs": 107809847614700
+  },
+  {
+   "frameIndex": 5256,
+   "qpcNs": 107809876801200,
+   "swapQpcNs": 107809863249700
+  },
+  {
+   "frameIndex": 5257,
+   "qpcNs": 107809898114400,
+   "swapQpcNs": 107809883941000
+  },
+  {
+   "frameIndex": 5258,
+   "qpcNs": 107811300273500,
+   "swapQpcNs": 107811265579200
+  },
+  {
+   "frameIndex": 5259,
+   "qpcNs": 107811332671800,
+   "swapQpcNs": 107811332128600
+  },
+  {
+   "frameIndex": 5260,
+   "qpcNs": 107811373099100,
+   "swapQpcNs": 107811359235900
+  },
+  {
+   "frameIndex": 5261,
+   "qpcNs": 107811402561500,
+   "swapQpcNs": 107811374777100
+  },
+  {
+   "frameIndex": 5262,
+   "qpcNs": 107812759595400,
+   "swapQpcNs": 107812758805800
+  },
+  {
+   "frameIndex": 5263,
+   "qpcNs": 107812847524300,
+   "swapQpcNs": 107812833232800
+  },
+  {
+   "frameIndex": 5264,
+   "qpcNs": 107812869119300,
+   "swapQpcNs": 107812854389800
+  },
+  {
+   "frameIndex": 5265,
+   "qpcNs": 107812884774200,
+   "swapQpcNs": 107812870561200
+  },
+  {
+   "frameIndex": 5266,
+   "qpcNs": 107814273790300,
+   "swapQpcNs": 107814244434400
+  },
+  {
+   "frameIndex": 5267,
+   "qpcNs": 107814314683000,
+   "swapQpcNs": 107814314378800
+  },
+  {
+   "frameIndex": 5268,
+   "qpcNs": 107814348046600,
+   "swapQpcNs": 107814333896900
+  },
+  {
+   "frameIndex": 5269,
+   "qpcNs": 107814380013900,
+   "swapQpcNs": 107814365743500
+  },
+  {
+   "frameIndex": 5270,
+   "qpcNs": 107815765784500,
+   "swapQpcNs": 107815735300800
+  },
+  {
+   "frameIndex": 5271,
+   "qpcNs": 107815816407700,
+   "swapQpcNs": 107815816049800
+  },
+  {
+   "frameIndex": 5272,
+   "qpcNs": 107815843599100,
+   "swapQpcNs": 107815830614600
+  },
+  {
+   "frameIndex": 5273,
+   "qpcNs": 107815873517900,
+   "swapQpcNs": 107815845636300
+  },
+  {
+   "frameIndex": 5274,
+   "qpcNs": 107817215664300,
+   "swapQpcNs": 107817214839500
+  },
+  {
+   "frameIndex": 5275,
+   "qpcNs": 107817307437800,
+   "swapQpcNs": 107817293343100
+  },
+  {
+   "frameIndex": 5276,
+   "qpcNs": 107817342780700,
+   "swapQpcNs": 107817311173200
+  },
+  {
+   "frameIndex": 5277,
+   "qpcNs": 107817344621900,
+   "swapQpcNs": 107817344363500
+  },
+  {
+   "frameIndex": 5278,
+   "qpcNs": 107818729603600,
+   "swapQpcNs": 107818700058300
+  },
+  {
+   "frameIndex": 5279,
+   "qpcNs": 107818776983500,
+   "swapQpcNs": 107818776686600
+  },
+  {
+   "frameIndex": 5280,
+   "qpcNs": 107818824093200,
+   "swapQpcNs": 107818809524600
+  },
+  {
+   "frameIndex": 5281,
+   "qpcNs": 107818858132200,
+   "swapQpcNs": 107818825476800
+  },
+  {
+   "frameIndex": 5282,
+   "qpcNs": 107820181259400,
+   "swapQpcNs": 107820180386300
+  },
+  {
+   "frameIndex": 5283,
+   "qpcNs": 107820288253800,
+   "swapQpcNs": 107820273273700
+  },
+  {
+   "frameIndex": 5284,
+   "qpcNs": 107820325787100,
+   "swapQpcNs": 107820296756400
+  },
+  {
+   "frameIndex": 5285,
+   "qpcNs": 107820327872000,
+   "swapQpcNs": 107820327681600
+  },
+  {
+   "frameIndex": 5286,
+   "qpcNs": 107821673489000,
+   "swapQpcNs": 107821659021700
+  },
+  {
+   "frameIndex": 5287,
+   "qpcNs": 107821777943500,
+   "swapQpcNs": 107821763558400
+  },
+  {
+   "frameIndex": 5288,
+   "qpcNs": 107821795910300,
+   "swapQpcNs": 107821781520400
+  },
+  {
+   "frameIndex": 5289,
+   "qpcNs": 107821811227900,
+   "swapQpcNs": 107821797636500
+  },
+  {
+   "frameIndex": 5290,
+   "qpcNs": 107823150267500,
+   "swapQpcNs": 107823135876800
+  },
+  {
+   "frameIndex": 5291,
+   "qpcNs": 107823261472900,
+   "swapQpcNs": 107823247089300
+  },
+  {
+   "frameIndex": 5292,
+   "qpcNs": 107823285531400,
+   "swapQpcNs": 107823271132700
+  },
+  {
+   "frameIndex": 5293,
+   "qpcNs": 107823312972800,
+   "swapQpcNs": 107823299072900
+  },
+  {
+   "frameIndex": 5294,
+   "qpcNs": 107824634663000,
+   "swapQpcNs": 107824620426900
+  },
+  {
+   "frameIndex": 5295,
+   "qpcNs": 107824781275100,
+   "swapQpcNs": 107824752045000
+  },
+  {
+   "frameIndex": 5296,
+   "qpcNs": 107824783609100,
+   "swapQpcNs": 107824783276200
+  },
+  {
+   "frameIndex": 5297,
+   "qpcNs": 107824811236800,
+   "swapQpcNs": 107824797833700
+  },
+  {
+   "frameIndex": 5298,
+   "qpcNs": 107826121218500,
+   "swapQpcNs": 107826093423200
+  },
+  {
+   "frameIndex": 5299,
+   "qpcNs": 107826230607800,
+   "swapQpcNs": 107826230002400
+  },
+  {
+   "frameIndex": 5300,
+   "qpcNs": 107826260332200,
+   "swapQpcNs": 107826246665000
+  },
+  {
+   "frameIndex": 5301,
+   "qpcNs": 107826289634500,
+   "swapQpcNs": 107826275405000
+  },
+  {
+   "frameIndex": 5302,
+   "qpcNs": 107827595928800,
+   "swapQpcNs": 107827567967500
+  },
+  {
+   "frameIndex": 5303,
+   "qpcNs": 107827726869100,
+   "swapQpcNs": 107827726407500
+  },
+  {
+   "frameIndex": 5304,
+   "qpcNs": 107827755076300,
+   "swapQpcNs": 107827741276200
+  },
+  {
+   "frameIndex": 5305,
+   "qpcNs": 107827775742800,
+   "swapQpcNs": 107827761099200
+  },
+  {
+   "frameIndex": 5306,
+   "qpcNs": 107829109632000,
+   "swapQpcNs": 107829095607800
+  },
+  {
+   "frameIndex": 5307,
+   "qpcNs": 107829230683200,
+   "swapQpcNs": 107829215957000
+  },
+  {
+   "frameIndex": 5308,
+   "qpcNs": 107829246870300,
+   "swapQpcNs": 107829232754300
+  },
+  {
+   "frameIndex": 5309,
+   "qpcNs": 107829277293600,
+   "swapQpcNs": 107829249861200
+  },
+  {
+   "frameIndex": 5310,
+   "qpcNs": 107830613196300,
+   "swapQpcNs": 107830612350900
+  },
+  {
+   "frameIndex": 5311,
+   "qpcNs": 107830711934100,
+   "swapQpcNs": 107830698389300
+  },
+  {
+   "frameIndex": 5312,
+   "qpcNs": 107830727809800,
+   "swapQpcNs": 107830714197100
+  }
+ ]
+}
