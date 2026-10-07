@@ -14,9 +14,10 @@ PYTEST_EXITS = {
     4: "usage error: check [tool.pytest.ini_options] in pyproject.toml",
     5: "no tests collected: add a test_*.py under tests/",
 }
-# pytest-xdist, one worker per logical CPU: 361 tests ran in 12.6 s against 39.8 s serially on
-# 2026-10-07 (0.01.12, docs/handoff.md); --serial keeps one process, for a test that
-# passes only alone and for the coverage report (docs/workflow.md#testing).
+# pytest-xdist's auto, one worker per physical core (psutil is installed): 361 tests ran in
+# 12.6 s against 39.8 s serially on 2026-10-07 (0.01.12's handoff, git history); --serial keeps
+# one process, for a test that passes only alone and for the coverage report
+# (docs/workflow.md#testing).
 PARALLEL = ["-n", "auto"]
 
 

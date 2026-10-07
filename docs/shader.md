@@ -33,7 +33,7 @@ Policy · Look and scope · Dropped features · Method · Pipeline spec · Deter
   - selection outline as vanilla draws it. This is Complementary's "Default" mode, which leaves the line color untouched and is what the played settings use.
 - Minimal material map: block reflections and puddles need to know which blocks are smooth. A small block-ID map (block.properties groups such as glass, ice, metal, polished stone) sets smoothness. No generated normals, coated textures or per-texture analysis.
 - Everything else is dropped (next section).
-- Settings: most features Off / Low / Medium / High; fewer look knobs than Unbound. Option profiles are JSON (config/profiles/), written to the Iris settings file by the harness from M2; until then a run takes the pack's defaults (run-record.md#run-spec).
+- Settings: most features Off / Low / Medium / High; fewer look knobs than Unbound. Option profiles are JSON (config/profiles/), written to the pack's settings file (shaderpacks/<pack>.txt) by the harness from M2; until then a run takes the pack's defaults (run-record.md#run-spec).
 - Textures: built and tested on Faithful 64x; no texture assets ship.
 
 ## Dropped features

@@ -5,7 +5,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
 - Python core (`optilux` package); Java only for the helper mod; PowerShell only where Windows forces it.
-- Configs are JSON under config/. Platform specifics live in config/platforms/, the mod adapter, the world snapshot and suite.json's display block, plus two 26.3 log matches (docs/design.md#4-architecture).
+- Configs are JSON under config/. Platform specifics live in config/platforms/, the mod adapter, the world snapshot and suite.json's display block, plus some 26.3 strings in code (docs/design.md#4-architecture).
 - Shader: full rewrite. Complementary source may be studied (reference/, gitignored, never committed). No 1-1 copies; `optilux verify similarity` (M3) must pass.
 - Never compare runs with different identities. Never fabricate, estimate silently or pass a missing measurement.
 - Never change system settings. Never touch the user's played Minecraft instance. Graphics drivers are assumed good: no workarounds, never part of identity (records note the version).

@@ -41,7 +41,7 @@ user / Claude Code --skills--> optilux CLI (Python)
 - harness: Python package `optilux`, CLI `optilux <verb>`; one `.venv`, pinned requirements.
 - helper mod `optilux-helper`: full redesign and rewrite (user, 2026-10-05). Pure-Java core plus one adapter set per platform. Spec in mod.md, wire contract in mod-protocol.md; written from these docs alone, no ALC code (user, 2026-10-06).
 - shader pack `optilux`: backend iris-gl; a backend-neutral pipeline spec (shader.md#pipeline-spec) so an Aperture backend can follow.
-- platform layer: config/platforms/<id>.json, the mod adapter and the world snapshot (platform.md). At M1 three 26.3 specifics sit outside it: suite.json's display block (options.txt's version and keys, Sodium's file format), launch.py's join line in latest.log and session.py's reading of the time-set answer.
+- platform layer: config/platforms/<id>.json, the mod adapter and the world snapshot (platform.md). At M1 some 26.3 specifics sit outside it, each with its reason at its definition: suite.json's display block (options.txt's version and keys, Sodium's file format) and strings read from the 26.3 jar and log in the harness (launch.py's join line and dropped arguments, session.py's time-set answer, acceptance.py's chat screen and mouse grab).
 - data:
   - config/: tracked inputs (platforms with their launch specs, suite, profiles, java, tools, views; pipeline.json from M3) and calibrations/ (committed, from M2).
   - results/records/: run records, committed (the ledger; per-capture summaries, ~200 KB budget); results/raw/: frame samples and heavy artifacts, ignored and disposable.

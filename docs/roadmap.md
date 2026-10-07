@@ -1,5 +1,5 @@
 # Roadmap
-Status: milestones M0-M6, M1 in detail with the findings assigned and the decisions; M0 shipped as v0.00.06 and M1 ships as 0.2.0.
+Status: milestones M0-M6, the current one in detail, the findings assigned and the decisions.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -8,7 +8,7 @@ Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 
 - Commits and versions (D33): Conventional Commits, each one logical, test-green change (`optilux test` and `optilux verify docs` pass before it), a phase one or more of them (workflow.md#git); the version in VERSION, a milestone a minor release, one PR and one release per milestone plus patches (workflow.md#release). Phases are M<N>.P<PP>; M0's and M1's are 0.MM.PP.
 - Sizing rule (design.md#6-milestones): a milestone whose plan would pass the 40,960-byte plan cap is split before it starts. Unattended machine time (calibration, the overhead experiment) does not count: agent time is the constraint (design.md#3-core-rule).
 - Tripwire (design.md#6-milestones): if M0-M3 together run past twice their summed estimates, stop and re-plan before building more infrastructure. Estimates holds the sums; every handoff adds the actuals.
-- This file holds the current milestone in detail and the others one line each (workflow.md#docs-rules). When a milestone closes, its section shrinks to one line and the next one expands from its approved plan; Findings assigned keeps a row until the finding has landed.
+- This file holds the current milestone in detail and the others one line each (workflow.md#doc-ownership). When a milestone closes, its section shrinks to one line and the next one expands from its approved plan; Findings assigned keeps a row until the finding has landed.
 - Running a milestone: plan from docs/templates/plan.md, optional /critique, the user's approval, the prompt set, the unattended run, the handoff (workflow.md#running-a-milestone). An unattended run asks nothing mid-run: it takes the recommendation in Decisions or the plan, or logs the question in the handoff.
 - No milestone closes on dummies (design.md#3-core-rule). M0 ships a placeholder pack because its exit is the release path, not a pack; M1-M3 exit on real packs.
 
@@ -152,7 +152,7 @@ The Phase -1 spike's handoff findings (2026-10-06) and later ones, each with the
 | F12 | The flush frame is the one where the hideGUI uniform reads 0 (shader.md#determinism-and-taa), but the entities view shows the GUI (measurement.md#session), where it reads 0 on every frame (the 2026-10-07 doc audit) | M5 (E4) | the history flush gets a signal that holds with the GUI shown, or the entities view keeps its hand another way; no design change before M5 |
 
 ## Decisions
-Owner: who decides. Recommendation: what an unattended run takes. Closed decisions live in design.md#7-decisions-taken-user-2026-10-05; evidence decisions E1-E5 in design.md#8-open-decisions.
+Owner: who decides. Recommendation: what an unattended run takes. The user's decisions of 2026-10-05 live in design.md#7-decisions-taken-user-2026-10-05, later closed ones in this table; evidence decisions E1-E5 in design.md#8-open-decisions.
 
 | Id | Decision | Owner | Recommendation | When |
 |---|---|---|---|---|
