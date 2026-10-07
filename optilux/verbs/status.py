@@ -43,7 +43,7 @@ LAST_PHASE = re.compile(r"^Last phase: (\S+)")
 PLANNING, IMPLEMENTATION, RELEASE = "planning", "implementation", "release"
 KINDS = {
     PLANNING: "planning step (writes the plan and the prompt set; no code)",
-    IMPLEMENTATION: "implementation (code, tests, one commit)",
+    IMPLEMENTATION: "implementation (code, tests, its commits)",
     RELEASE: "release (the PR checklist; no code)",
 }
 # The model and effort suggested for a prompt, with the reason (user, 2026-10-06). Sources: the
