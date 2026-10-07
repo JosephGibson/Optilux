@@ -9,7 +9,8 @@ release: checks the release rules on HEAD, builds the zip, then creates the GitH
 v<version> at HEAD when it is absent, its body the version's CHANGELOG entry;
 .github/workflows/release.yml runs it on every push to main. `release --check` applies the same
 rules before the merge, here and on the PR in CI. The version is the root file VERSION at the
-commit (docs/workflow.md#release), never a commit subject.
+commit (docs/workflow.md#release), never a commit subject; only origin/main from before VERSION
+existed is read through its legacy subject, to order versions.
 """
 
 import argparse
