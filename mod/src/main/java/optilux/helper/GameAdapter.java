@@ -8,8 +8,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
 import java.util.function.LongSupplier;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLevelEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -99,7 +97,7 @@ final class GameAdapter {
         return found;
     }
 
-    /** Start listening: Fabric's events and the frame hook's poll; events go to `protocol`. */
+    /** Start listening to Fabric's events; events go to `protocol`. The session polls {@link #frame}. */
     void listen(Protocol protocol) {
         this.protocol = protocol;
         ClientPlayConnectionEvents.JOIN.register((listener, sender, client) -> joined());
@@ -107,8 +105,6 @@ final class GameAdapter {
         ClientLevelEvents.AFTER_CLIENT_LEVEL_CHANGE.register((client, level) -> levelChanged(level));
         ServerTickEvents.END_SERVER_TICK.register(server -> ticks.tick(
             server.tickRateManager().runsNormally(), server.getTickCount()));
-        Hooks.attach(this::frame, state::inputBlocked,
-            message -> event("hook.error", Map.of("message", message)));
     }
 
     // Events and the frame poll (render thread).
@@ -156,7 +152,7 @@ final class GameAdapter {
     }
 
     /** At every frame head: focus and screen changes, and the frames rendered in the world. */
-    private void frame() {
+    void frame() {
         boolean active = minecraft().isWindowActive();
         if (focused != null && focused != active) {
             event(active ? "focus.gained" : "focus.lost", Map.of());
@@ -419,7 +415,8 @@ final class GameAdapter {
 
     // Helpers.
 
-    private boolean inWorldNow() {
+    /** In a world with a level and a player (any thread; the render thread reads it exactly). */
+    boolean inWorldNow() {
         return joined && minecraft().level != null && minecraft().player != null;
     }
 
@@ -512,52 +509,22 @@ final class GameAdapter {
     }
 
     private static boolean skippedLate(Protocol.Request request) {
-        if (request.live()) {
-            return false;
-        }
-        LOG.info("optilux-helper: {} {} skipped-late: answered before its game work ran",
-            request.command(), request.id());
-        return true;
+        return Tasks.skippedLate(request);
     }
 
     private <T> T onRender(Callable<T> task) throws Exception {
-        return on(minecraft(), task);
+        return Tasks.onRender(task);
     }
 
-    /** Resolved at use: the adapter is built in the entrypoint, during Minecraft's constructor. */
     private static Minecraft minecraft() {
-        return Minecraft.getInstance();
+        return Tasks.minecraft();
     }
 
     private static <T> T onServer(MinecraftServer server, Callable<T> task) throws Exception {
-        return on(server, task);
+        return Tasks.on(server, task);
     }
 
-    private static <T> T on(Executor thread, Callable<T> task) throws Exception {
-        CompletableFuture<T> done = new CompletableFuture<>();
-        thread.execute(() -> {
-            try {
-                done.complete(task.call());
-            } catch (Throwable thrown) {
-                done.completeExceptionally(thrown);
-            }
-        });
-        return unwrap(done);
-    }
-
-    /** The future's value; its failure rethrown as itself (a coded refusal stays coded). */
     private static <T> T unwrap(CompletableFuture<T> future) throws Exception {
-        try {
-            return future.get();
-        } catch (ExecutionException failed) {
-            Throwable cause = failed.getCause();
-            if (cause instanceof Exception exception) {
-                throw exception;
-            }
-            if (cause instanceof Error error) {
-                throw error;
-            }
-            throw failed;
-        }
+        return Tasks.unwrap(future);
     }
 }

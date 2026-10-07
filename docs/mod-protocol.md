@@ -1,5 +1,5 @@
 # Mod protocol (draft v1)
-Status: rough draft, 2026-10-05; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block and the world, dimension, focus and screen events; the rest is still spec.
+Status: rough draft, 2026-10-05; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block and the world, dimension, focus and screen events; 0.01.07: ready, shaders.reload, shaders.options, frames.capture, selftest, sinceReload and the reload and capture events; the rest is still spec.
 
 ## Contents
 Transport · Envelope · Errors · Events · Commands · Choreography · Client rules
@@ -16,7 +16,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 ## Envelope
 - Request: `{"id": int|string(1..64), "cmd": "<namespace.verb>", "args": {...}}`. Unknown top-level fields are refused; `args` may be left out for `{}`; the id of a running request is refused. Lines are judged in order, so a request right behind `hello` is authenticated.
 - Response: `{"id", "ok": true, "result": {...}}` or `{"id", "ok": false, "error": {"code", "message"}}`.
-  - Every result carries `frameIndex`, `sinceReload` and `qpcNs` at answer time (`sinceReload` null until the Iris adapter, 0.01.07). `qpcNs` is raw QueryPerformanceCounter time in ns; PresentMon's CPUStartQPCTime x 1e6 is on the same clock (mod.md#6-time-and-determinism).
+  - Every result carries `frameIndex`, `sinceReload` and `qpcNs` at answer time (`sinceReload`: Iris's frame counter, the frames since the last pipeline creation). `qpcNs` is raw QueryPerformanceCounter time in ns; PresentMon's CPUStartQPCTime x 1e6 is on the same clock (mod.md#6-time-and-determinism).
 - Concurrency:
   - requests run concurrently, at most 32 at once (more answer `busy`, `cancel` excepted);
   - responses may arrive out of order, matched by `id`;
@@ -44,7 +44,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 - `reload.done` (pack, pipeline, seconds), `reload.failed` (message)
 - `window.start`, `window.end` (see window.measure)
 - `path.started`, `path.done`
-- `capture.frame` (name, sha256, frameIndex), `capture.done`
+- `capture.frame` (name, sha256, frameIndex), `capture.done` (manifest)
 - `timers.dropped` (count), `hook.error` (message: an exception inside a frame hook, once per run of failures; the session marks the run invalid)
 
 ## Commands
@@ -53,21 +53,21 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
 | Command | Args | Result | Phase |
 |---|---|---|---|
 | hello | token | protocol, mod (id, version), platform, versions (minecraft, loader, iris, sodium, java), capabilities, pid; `resumed` and the ids cancelled by the last disconnect (false and empty at the first hello) | M1 |
-| selftest | - | per-capability pass/fail (frame clock, renderer probe, reload, capture to temp, input); needs a world and answers `not-ready` before `world.wait` | M1 |
+| selftest | timeoutSeconds | pass, and per check (frameClock, renderer, reload, capture, input) its pass and what it saw; needs a world and answers `not-ready` before `world.wait`; holds the capture resource and is mutating (its reload) | M1 |
 | state | - | inWorld, dimension, gamemode, screen, paused, focused, frameIndex, tick | M1 |
 | world.wait | timeoutSeconds | pose (dimension, x, y, z, yaw, pitch), time (the overworld clock), joinedQpcNs; answered once a frame rendered in the world; replaces latest.log polling | M1 |
 | command | text, timeoutSeconds | succeeded, messages, failures (OWNER level) | M1 |
 | ticks.step | n, timeoutSeconds | ticks; answers after n server ticks ran while frozen (`failed` unfrozen) | M1 |
-| ready | stableFrames, minSeconds, timeoutSeconds | seconds, predicateSeconds, limitedBy, renderer's own check | M1 |
+| ready | stableFrames, minSeconds, timeoutSeconds | seconds, predicateSeconds, limitedBy, rendererCheck (name, holds, seconds, gapFrames), frames judged | M1 |
 | camera.place | dimension, x, y, z, yaw, pitch, tpSemantics, timeoutSeconds | the pose the client holds, arrivedSeconds | M1 |
 | camera.get | - | pose, eye | M1 |
 | camera.path | kind (yawSweep, keyframes), params, clock (frame, wall), flush, align (cycle, phase), capture (directory, every), frames or seconds | path id; events started and done with frameIndex, sinceReload and qpcNs; capture manifest. One request: no ordering gap between path and capture | M5 |
 | camera.stop | - | stops a path | M5 |
-| shaders.reload | framesAfter (2), timeoutSeconds | pack, pipeline, seconds, framesAfter, reloadFrame (frameIndex at the reload; sinceReload restarts there, as at every pipeline creation) | M1 |
-| shaders.options | - | effective option values of the active pack (run records need them from M1) | M1 |
+| shaders.reload | framesAfter (2), timeoutSeconds | pack, pipeline, seconds (Iris.reload's), framesAfter, reloadFrame (the old pipeline's last frame: frame reloadFrame + k sees sinceReload k); answered after framesAfter frames of the new pipeline; `not-ready` outside a world, `busy` while another reload runs | M1 |
+| shaders.options | - | pack, values: every option of the active pack at its effective value, the set one or the default (run records need them from M1) | M1 |
 | shaders.dump | on | dump folder and file list after the next reload | M3 |
 | frames.index | - | frameIndex, sinceReload (= Iris frameCounter), qpcNs | M1 |
-| frames.capture | directory, count, every (frames) or intervalMs, align (cycle, phase on sinceReload), flush + after (frames after the flush), timeoutSeconds | manifest: frames (name, sha256, frameIndex, sinceReload, qpcNs), dropped. The mod aligns, flushes and captures itself | M1 (align M3, flush M5) |
+| frames.capture | directory, count, every (frames) or intervalMs, align (cycle, phase on sinceReload), flush + after (frames after the flush), timeoutSeconds | frames (name, sha256, frameIndex, sinceReload, qpcNs, swapQpcNs), dropped, manifest (capture.json's path). The mod aligns, flushes and captures itself | M1 (align M3, flush M5) |
 | window.measure | after (reload, path, now), skipSeconds, seconds (or skipFrames, frames) | start and end frameIndex, sinceReload and qpcNs; seconds are timed on the QPC clock | M2 |
 | input.block | on | state | M1 |
 | hud.set | hideGui, debugOverlay | state (session start needs it from M1) | M1 |
@@ -78,6 +78,8 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
 | quit | - | closes the game cleanly | M1 |
 
 - Pack switch: the harness writes `shaderPack=<folder or zip in shaderpacks/>` in iris.properties and the pack's settings .txt, then calls `shaders.reload`; the result's `pack` must equal the requested one, else the variant is failed. Spike R4 checks that `Iris.reload()` re-reads both files (V1 exercises it); if it does not, the switch needs another mechanism.
+
+- Capture layout (0.01.07): `directory` is absolute; each attempt gets the first free `attempt-NNN` under it, holding `frame-NNNNN.png` and capture.json: schema, complete (false after a stop or a dropped frame), stopped, count, every or intervalMs, frames, dropped (name, frameIndex, reason). align, flush and after answer `unsupported` until M3 and M5.
 
 ## Choreography
 - Session start:

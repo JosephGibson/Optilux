@@ -5,13 +5,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.CustomValue;
@@ -33,7 +38,8 @@ import org.slf4j.LoggerFactory;
  * the timer thread, and the pipe server on its I/O thread. Built from the entrypoint only with a
  * valid token. hello's facts come from Fabric Loader, `quit` goes through Minecraft.stop on the
  * render thread (what the window's close button does: Window.shouldClose, then stop() in
- * Minecraft.runTick of 26.3), and the game adapter answers the rest and owns the world leave.
+ * Minecraft.runTick of 26.3); the game, renderer, shader-loader and capture adapters and selftest
+ * answer the rest, the game adapter owns the world leave, and one poll runs them at each frame.
  */
 final class Session {
     private static final Logger LOG = LoggerFactory.getLogger("optilux-helper");
@@ -44,6 +50,8 @@ final class Session {
     // Workers beyond MAX_RUNNING serve `cancel`, which a full registry must still accept.
     private static final int WORKERS = Protocol.MAX_RUNNING + 8;
     private static final long WORKER_IDLE_SECONDS = 30;
+    // PNG writers for captures (docs/mod.md#4-architecture: the writer pool).
+    private static final int WRITERS = 4;
 
     private final Protocol protocol;
 
@@ -63,7 +71,26 @@ final class Session {
         Map<String, Object> facts = facts(self);
         GameAdapter game = new GameAdapter(state,
             () -> FrameClock.nanos(qpc.ticks(), qpc.frequency()));
+        // The adapters' events go to the protocol, built after them from their handlers.
+        AtomicReference<Protocol> wired = new AtomicReference<>();
+        BiConsumer<String, Map<String, Object>> events = (name, data) -> {
+            Protocol to = wired.get();
+            if (to != null) {
+                to.event(name, data);
+            }
+        };
+        RendererAdapter renderer = new RendererAdapter(game::inWorldNow);
+        IrisAdapter iris = new IrisAdapter(clock, game::inWorldNow, events);
+        ExecutorService writers = Executors.newFixedThreadPool(WRITERS, daemons("optilux-writer"));
+        CaptureAdapter capture = new CaptureAdapter(clock, iris::sinceReload, game::inWorldNow,
+            writers, events);
+        Selftest selftest = new Selftest(clock, game::inWorldNow, state::inputBlocked, renderer,
+            iris, capture);
         Map<String, Protocol.Handler> handlers = new LinkedHashMap<>(game.handlers());
+        handlers.putAll(renderer.handlers());
+        handlers.putAll(iris.handlers());
+        handlers.putAll(capture.handlers());
+        handlers.putAll(selftest.handlers());
         handlers.put("frames.index", request -> Map.of());
         handlers.put("quit", request -> {
             request.afterAnswer(() -> {
@@ -81,7 +108,7 @@ final class Session {
 
             @Override
             public Long sinceReload() {
-                return null; // the Iris adapter's SystemTimeUniforms.COUNTER, 0.01.07
+                return iris.sinceReload();
             }
 
             @Override
@@ -91,7 +118,17 @@ final class Session {
         };
         Protocol protocol = new Protocol(commands, token, handlers, () -> facts, stamps, state,
             workers, timers);
+        wired.set(protocol);
         game.listen(protocol);
+        Hooks.attach(List.of(new Hooks.Poll("game", game::frame),
+            new Hooks.Poll("renderer", renderer::frame), new Hooks.Poll("iris", iris::frame)), () -> {
+            try {
+                capture.capturePoint();
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }, iris::failed, state::inputBlocked,
+            message -> protocol.event("hook.error", Map.of("message", message)));
         state.onInputReleased(() -> LOG.info("optilux-helper: input.block released by the state owner"));
         String name = PipeName.of(token);
         PipeServer server = new PipeServer(name, protocol, Qpc.kernel32());

@@ -48,18 +48,18 @@ Data: config/platforms/mc-26.3.json (version, file, Modrinth version id, sha512;
 - ScalableLux and C2ME are alpha builds; re-pin when stable builds land.
 
 ## Mod adapter surface
-What optilux-helper's adapter must provide on each platform (mod.md#4-architecture). Fragility is ALC's experience across versions; the mc-26.3 column holds the spike's reading of Iris 1.11.7 and Sodium 0.9.2.
+What optilux-helper's adapter must provide on each platform (mod.md#4-architecture). Fragility is ALC's experience across versions; the mc-26.3 column holds what the spike and M1 read in the pinned jars.
 
 | Capability | ALC hook (fragility) | mc-26.3 |
 |---|---|---|
-| frame begin/end, capture point | mixin on `GameRenderer.render` HEAD/RETURN + INVOKE `renderLevel` (high) | `GameRenderer.render` exists; Iris ticks its frame counter at its HEAD (MixinGameRenderer); re-read the capture point in M1 |
+| frame begin/end, capture point | mixin on `GameRenderer.render` HEAD/RETURN + INVOKE `renderLevel` (high) | HEAD of `GameRenderer.render` (Iris ticks its frame counter there); capture after `applyPostEffects`; swap: `GpuSurface.present` in `Minecraft.renderFrame` |
 | camera pose | `ServerPlayer.teleportTo` + client pose with previous-tick rotation (medium) | kept; a dimension through `/execute in` first; `/tp`'s rules: mod.md#6-time-and-determinism |
 | server command | `Commands.performPrefixedCommand` at OWNER (low) | keep; level.dat allowCommands=1 gives the owner `LevelBasedPermissionSet.OWNER` (IntegratedServer.getProfilePermissions, PlayerList.isOp) |
 | reload + result | `Iris.reload`, `getStoredError` (consumed once), `isFallback`, pipeline (medium) | in a world a failed load never reaches storedError: handleException sends a chat message when a player exists, stores the error only before one exists, and opens DebugLoadFailedGridScreen in debug mode; read `isFallback()` and hook handleException |
 | frames since reload | ALC held the reload frame, never exposed it | `SystemTimeUniforms.COUNTER`: reset in `PipelineManager.preparePipeline` at every pipeline creation (reload, dimension change, join), wrap 720720 (R5) |
 | history flush | none | one-frame `Hud.toggle()` on the render thread before `beginLevelRendering`: hideGUI is a PER_FRAME uniform from `Hud.isHidden()`, updated by `updateNotifier.onNewFrame()` there (R6); Options.hideGui is gone |
 | per-pass timers | Iris `GLDebug.pushGroup/popGroup` (high) | Viewfinder's `profile_frames` first (V5); the static GLDebug methods are no-ops unless enableDebugOptions is on (KHRDebugState), and Sodium's terrain shows only as "Terrain solid" (no cutout or translucent group) |
-| readiness | Sodium private fields by accessor (high) | `ChunkBuilder.queue` (ChunkJobQueue), `busyThreadCount`, `isBuildQueueEmpty()`, `getScheduledJobCount()`, `getBusyThreadCount()`; `RenderSectionManager.buildResults`, `taskLists`, `pendingTask`, `needsGraphUpdate`, `thisFrameBlockingTasks`, `nextFrameBlockingTasks`, `deferredTasks` (R7) |
+| readiness | Sodium private fields by accessor (high) | `ChunkBuilder.isBuildQueueEmpty()`, `getScheduledJobCount()`, `getBusyThreadCount()`; `RenderSectionManager.buildResults`, `taskLists`, `pendingTask`, `needsGraphUpdate`, `thisFrameBlockingTasks`, `nextFrameBlockingTasks`, `deferredTasks` (R7); `RenderSection.runningJobs` via `regions` |
 | effective options | none | `currentPack.getShaderPackOptions().getOptionValues()`; Viewfinder's list_shaderpacks returns the same map (V1) |
 | shader dumps | `enableDebugOptions` + file poll | game/patched_shaders/, one numbered file set per program plus a .json each, rewritten on every build (V4) |
 | input, HUD, focus | none | HEAD of MouseHandler.onMove (SDL3, relative and absolute), onButton, onScroll, KeyboardHandler.keyPress, textInput, textEditing, Minecraft.pauseGame; F1 `gui.hud.toggle()`; F3 `debugEntries.setOverlayVisible`, no option |

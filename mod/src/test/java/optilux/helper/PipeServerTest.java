@@ -57,7 +57,7 @@ class PipeServerTest {
 
                 @Override
                 public Long sinceReload() {
-                    return null;
+                    return 0L;
                 }
 
                 @Override

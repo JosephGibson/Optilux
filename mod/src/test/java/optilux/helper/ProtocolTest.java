@@ -103,7 +103,7 @@ class ProtocolTest {
 
             @Override
             public Long sinceReload() {
-                return null;
+                return 7L;
             }
 
             @Override
@@ -199,7 +199,7 @@ class ProtocolTest {
             "shaders.options",
             "frames.index", "frames.capture", "timers.start", "timers.stop", "cancel", "quit"),
             hello.get("capabilities"));
-        assertNull(hello.get("sinceReload"));
+        assertEquals("7", hello.get("sinceReload").toString());
         assertEquals("100", hello.get("frameIndex").toString());
         assertEquals("123456789", hello.get("qpcNs").toString());
         // A request right behind hello is judged after it, in line order.
@@ -359,7 +359,7 @@ class ProtocolTest {
     @Test
     void anErrorInAHandlerIsACodedAnswer() throws InterruptedException {
         hello();
-        send(1, "selftest", "{}");
+        send(1, "selftest", "{\"timeoutSeconds\": 5}");
         Map<String, Object> answer = next();
         assertEquals(Errors.FAILED, code(answer));
         send(2, "frames.index", "{}");

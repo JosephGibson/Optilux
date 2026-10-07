@@ -1,5 +1,5 @@
 # Helper mod (optilux-helper)
-Status: rough spec, 2026-10-05, built through M1; full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the MC 26.3 game adapter, ticks, poses, input and HUD (4, 6, 9), 0.01.06; the rest is still spec.
+Status: rough spec, 2026-10-05, built through M1; full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the MC 26.3 game adapter, ticks, poses, input and HUD (4, 6, 9), 0.01.06; the Sodium and Iris adapters, readiness, capture and selftest (6-8, 11), 0.01.07; the rest is still spec.
 
 ## Contents
 1 Stance · 2 Consumers · 3 Non-goals · 4 Architecture · 5 Safety · 6 Time and determinism · 7 Readiness · 8 Capture · 9 Input and HUD · 10 Adapter surface · 11 Build and test · 12 Acceptance · 13 Lessons · 14 Open questions
@@ -76,6 +76,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
   - `sinceReload` = frames since the last pipeline creation (reload, dimension change, join). This equals Iris's own frameCounter, which resets then and wraps at 720720 (gpu-iris.md#frame-counters-and-reload), so mod and shader agree on phase; cycles must divide 720720 so phase survives the wrap. ALC's mod held the reload frame but never exposed it.
   - `qpcNs` = QueryPerformanceCounter ticks x 1e9 / QueryPerformanceFrequency, read through the JNA the game ships (the pipe already uses it). Not `System.nanoTime()` (origin unspecified).
   - This is PresentMon's clock: run with `--qpc_time_ms`, PresentMon writes CPUStartQPCTime as absolute QPC milliseconds, so qpcNs = CPUStartQPCTime x 1e6 (measurement.md#tools).
+  - As built (0.01.07): a frame stamp also carries swapQpcNs, the previous frame's swap return (after `GpuSurface.present` in Minecraft.renderFrame; 26.3 has no Window.updateDisplay), for D26 (plans/m1.md); sinceReload is SystemTimeUniforms.COUNTER.
   - The harness cuts PresentMon rows by the mod's window stamps instead of sleeping around an assumed 150 ms PresentMon start. A9 checks the mapping on real frames.
 - Measurement windows: `window.measure` waits a settle after a trigger (reload done, path started), then marks start and end in frameIndex + qpcNs. Settle and window are in seconds on the QPC clock (frames optional).
 - Determinism support:
@@ -103,6 +104,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
   - The calibrated settle stays the floor until A5 shows predicate-ready -> frame-final (the predicate-ready frame equals a later settled reference) over at least 30 waits.
 - Report: seconds, predicateSeconds, limitedBy, and the renderer's own check side by side (it found ALC's gap).
 - Re-read every Sodium 0.9.2 field and method by disassembly before relying on it.
+- As built (0.01.07), read on the render thread at each frame head while a wait runs: getTotalSections; the builder's queue and busy count; buildResults; each loaded section's runningJobs (a worker dequeues a job before it counts busy); taskLists (absent before the first cull); the tasks the last updateChunks submitted; needsGraphUpdate and the cull task. importantTasks is left out: it keeps sections the render tree does not show. limitedBy: minSeconds, the term that failed last, or stableFrames; the renderer's check reports its own seconds and gapFrames, the frames it held while the predicate did not.
 
 ## 8. Capture
 - Point: after the world render returns and before the GUI (ALC: after `renderLevel` in `GameRenderer.render`). Iris's final pass is done by then.
@@ -112,6 +114,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 - Manifest: capture.json per capture, with every frame's name, sha256, frameIndex, sinceReload and qpcNs, and the dropped frames. The response carries the same data, so the harness need not re-read it to proceed.
 - Retry-safe: each attempt writes to a new subfolder. ALC's refused non-empty folders and a late frame could land in a cleared one.
 - Live pass: a low-stall mode (readback queued, written later). Measure its frame-time cost before relying on it.
+- As built (0.01.07): the point is right after GameRenderer.render's applyPostEffects call (frames that render the level); Screenshot.takeScreenshot's readback arrives on the render thread frames later and 4 writers write it with NativeImage.writeToFile, F2's writer; at the cap the render thread waits only while a writer holds a frame, as a readback in flight needs the render thread. Layout: mod-protocol.md#commands.
 - Limits: at most 4096 frames per capture (ALC), one capture at a time (`busy`). F2 itself takes at most 64 frames per capture. Pending readbacks: at most `maxPendingFrames` (suite constant; start at 16, ~530 MB at 4K). At the cap a deterministic capture stalls the render thread until a writer frees a slot (time, not correctness); the live pass drops the frame and lists it under `dropped`. On cancel or disconnect, pending frames are still written and the manifest marked incomplete.
 
 ## 9. Input and HUD
@@ -145,10 +148,10 @@ What each platform's adapter must provide, and where ALC hooked it: platform.md#
 - Tests (`mod test` runs JUnit, counts its reports and compares the tested jar's sha512 with the store's):
   - core unit tests (no game): the token rule, the mixin config plugin with and without a token, the frame clock, strict JSON, the framing, the protocol core (envelope, codes, out-of-order answers, cancel, timeout, busy, the state reset, a reconnect), every answer against commands.json; a real-pipe test (the DACL read back, a second instance refused);
   - metadata test: reads the built jar; `depends` is derived on its own from the platform file and the pinned jars;
-  - mixin-target test: ASM reads every target class, injected method (name and descriptor) and INVOKE from the hash-checked pinned jars; a mixin annotation it does not read fails it;
+  - mixin-target test: ASM reads every target class, injected method (name and descriptor), INVOKE and accessor field (name and type) from the hash-checked pinned jars, and each call the adapters make into Sodium and Iris; a mixin annotation it does not read fails it;
   - capture byte-exact against Python fixtures;
   - commands.json, the command table in machine-readable form (args, results, phase). The mod's argument checks, the Python client and the protocol fake are generated or checked against it, and a test keeps mod-protocol.md's table in step;
-  - in-game `selftest`;
+  - in-game `selftest` (0.01.07: the clock and swap stamps, a renderer reading, a real reload, one frame to a temp folder, the input mixins);
   - acceptance launches (12).
 - Tests write only under mod/build/ (working folder build/test-work/, java.io.tmpdir inside it; ALC's test JVM wrote logs/ into mod/). `.npy` fixtures are marked binary in .gitattributes.
 

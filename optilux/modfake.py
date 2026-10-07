@@ -11,7 +11,10 @@ and state read back, a dimension change pushes dimension.changed, input.block an
 their flags, `/tick freeze` freezes (ticks.step fails without it; an unknown dimension and,
 without tpSemantics, a pitch outside -90..90 are refused, as the mod does); the fake applies no
 `/tp` semantics (the mod alone does, docs/lessons.md#game-control), so tpSemantics places the
-pose as given. Like the mod
+pose as given. `ready` answers at once; shaders.reload restarts sinceReload at the current frame,
+answers framesAfter + 1 frames later and pushes reload.done; shaders.options reads the model's
+options; frames.capture writes `count` small PNGs and capture.json into a new attempt folder under
+an absolute directory, as the mod does; selftest passes. Like the mod
 it answers busy for the exclusive resources and the running cap, a request's own timeoutSeconds
 with `timeout`, an unbuilt command with unsupported, and keeps one resume per connection. Tests
 steer it: `delays` holds a command's answer back (answers out of order, timeouts), `refusals`
@@ -20,11 +23,14 @@ a real named pipe with the mod's flags and DACL (Windows only).
 """
 
 import contextlib
+import hashlib
 import itertools
 import json
 import os
+import struct
 import threading
 import time
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -61,8 +67,11 @@ class Refusal(Exception):
 
 
 def initial_game() -> dict:
-    """The fake's game: a spectator at spawn, ticks running, focused, no screen."""
+    """The fake's game: a spectator at spawn, ticks running, focused, no screen, a pack loaded."""
     return {
+        "pack": "fake-pack.zip",
+        "options": {"FAKE_BOOL": True, "FAKE_VALUE": "2"},
+        "reloadFrame": 0,
         "pose": {"dimension": OVERWORLD, "x": 0.5, "y": 70.0, "z": 0.5, "yaw": 0.0, "pitch": 0.0},
         "gamemode": "spectator",
         "time": 6000,
@@ -86,6 +95,41 @@ GAME_COMMANDS = (
     "input.block",
     "hud.set",
 )
+# The renderer and shader-loader commands, capture and selftest, answered from the model.
+RENDER_COMMANDS = ("ready", "shaders.reload", "shaders.options", "frames.capture", "selftest")
+SELFTEST_CHECKS = ("frameClock", "renderer", "reload", "capture", "input")
+# The fake's captured frames: tiny RGBA PNGs.
+FRAME_SIZE = 2
+
+
+def png(width: int, height: int, rgba: bytes) -> bytes:
+    """A PNG of 8-bit RGBA rows, no filter."""
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        )
+
+    stride = width * 4
+    raw = b"".join(b"\x00" + rgba[y * stride : (y + 1) * stride] for y in range(height))
+    header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
+    return (
+        modclient.PNG_SIGNATURE
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(raw))
+        + chunk(b"IEND", b"")
+    )
+
+
+def attempt_folder(directory: Path) -> Path:
+    """The first free attempt-NNN under `directory`, created (the mod's Capture.attemptFolder)."""
+    directory.mkdir(parents=True, exist_ok=True)
+    for n in itertools.count(1):
+        folder = directory / f"attempt-{n:03d}"
+        with contextlib.suppress(FileExistsError):
+            folder.mkdir()
+            return folder
+    raise AssertionError("unreachable")
 
 
 def sample(kind: str) -> Any:
@@ -198,7 +242,11 @@ class Fake:
         )
 
     def _stamps(self) -> dict:
-        return {"frameIndex": self._frame, "sinceReload": None, "qpcNs": time.perf_counter_ns()}
+        return {
+            "frameIndex": self._frame,
+            "sinceReload": self._frame - self.game["reloadFrame"],
+            "qpcNs": time.perf_counter_ns(),
+        }
 
     def _error(self, request_id: Any, code: str, message: str) -> dict:
         return {"id": request_id, "ok": False, "error": {"code": code, "message": message}}
@@ -354,12 +402,86 @@ class Fake:
             self._frame = next(self._frames)
         elif name == "quit":
             self.quit.set()
-        elif name in GAME_COMMANDS:
+        elif name in GAME_COMMANDS or name in RENDER_COMMANDS:
             try:
-                fields = self._game(name, args)
+                fields = (
+                    self._game(name, args) if name in GAME_COMMANDS else self._render(name, args)
+                )
             except Refusal as refusal:
                 return self._error(request_id, refusal.code, str(refusal))
         return self._ok(request_id, fields)
+
+    def _render(self, name: str, args: dict) -> dict:
+        """The renderer and shader-loader answers, capture and selftest, from the model."""
+        game = self.game
+        if name == "ready":
+            check = {"name": "fake", "holds": True, "seconds": 0.0, "gapFrames": 0}
+            return {
+                "seconds": args["minSeconds"],
+                "predicateSeconds": 0.0,
+                "limitedBy": "stableFrames",
+                "rendererCheck": check,
+                "frames": args["stableFrames"],
+            }
+        if name == "shaders.reload":
+            # Answered once the new pipeline rendered framesAfter frames, as the mod does.
+            game["reloadFrame"] = self._frame
+            self._frame += args["framesAfter"] + 1
+            self._frames = itertools.count(self._frame + FRAMES_PER_CALL, FRAMES_PER_CALL)
+            self.emit("reload.done", {"pack": game["pack"], "pipeline": "Fake", "seconds": 0.0})
+            return {
+                "pack": game["pack"],
+                "pipeline": "Fake",
+                "seconds": 0.0,
+                "framesAfter": args["framesAfter"],
+                "reloadFrame": game["reloadFrame"],
+            }
+        if name == "shaders.options":
+            return {"pack": game["pack"], "values": dict(game["options"])}
+        if name == "selftest":
+            return {"pass": True, "checks": {check: {"pass": True} for check in SELFTEST_CHECKS}}
+        return self._capture(args)
+
+    def _capture(self, args: dict) -> dict:
+        """frames.capture as the mod writes it: PNGs and capture.json in a new attempt folder."""
+        directory = Path(args["directory"])
+        if not directory.is_absolute():
+            raise Refusal("bad-request", f"frames.capture.directory {directory} is not absolute")
+        if "every" in args and "intervalMs" in args:
+            raise Refusal("bad-request", "frames.capture takes every or intervalMs, not both")
+        folder = attempt_folder(directory)
+        frames = []
+        for n in range(1, args["count"] + 1):
+            name = f"frame-{n:05d}.png"
+            data = png(FRAME_SIZE, FRAME_SIZE, bytes([n % 256, 0, 0, 255]) * FRAME_SIZE**2)
+            (folder / name).write_bytes(data)
+            index = self._frame + (n - 1) * args.get("every", 1)
+            frames.append(
+                {
+                    "name": name,
+                    "sha256": hashlib.sha256(data).hexdigest(),
+                    "frameIndex": index,
+                    "sinceReload": index - self.game["reloadFrame"],
+                    "qpcNs": index * 7_000_000,
+                    "swapQpcNs": index * 7_000_000 - 1_000_000,
+                }
+            )
+        manifest = {
+            "schema": 1,
+            "complete": True,
+            "stopped": None,
+            "count": args["count"],
+            **(
+                {"intervalMs": args["intervalMs"]}
+                if "intervalMs" in args
+                else {"every": args.get("every", 1)}
+            ),
+            "frames": frames,
+            "dropped": [],
+        }
+        path = folder / modclient.MANIFEST
+        path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+        return {"frames": frames, "dropped": [], "manifest": str(path)}
 
     def _game(self, name: str, args: dict) -> dict:
         """The game adapter's answers from the model."""

@@ -6,10 +6,10 @@
   "resultTypes": "string, integer, number, boolean, object, array, id; `|null` admits null",
   "common": {
     "frameIndex": "integer",
-    "sinceReload": "integer|null",
+    "sinceReload": "integer",
     "qpcNs": "integer"
   },
-  "commonNote": "every result and event carries these at answer time (docs/mod-protocol.md#envelope); sinceReload is null until the Iris adapter reads SystemTimeUniforms.COUNTER (0.01.07)",
+  "commonNote": "every result and event carries these at answer time (docs/mod-protocol.md#envelope); sinceReload is Iris's SystemTimeUniforms.COUNTER, the frames since the last pipeline creation",
   "errors": [
     "bad-json",
     "bad-encoding",
@@ -47,7 +47,11 @@
     {
       "name": "selftest",
       "phase": "M1",
-      "args": {},
+      "mutating": true,
+      "exclusive": "capture",
+      "args": {
+        "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
+      },
       "result": {"pass": "boolean", "checks": "object"}
     },
     {
@@ -104,7 +108,8 @@
         "seconds": "number",
         "predicateSeconds": "number",
         "limitedBy": "string",
-        "rendererCheck": "object"
+        "rendererCheck": "object",
+        "frames": "integer"
       }
     },
     {

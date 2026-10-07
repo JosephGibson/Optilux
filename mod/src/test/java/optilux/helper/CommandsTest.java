@@ -39,7 +39,7 @@ class CommandsTest {
                 assertTrue(!commands.common().containsKey(key), command.name() + " repeats " + key);
             }
         }
-        assertEquals(Map.of("frameIndex", "integer", "sinceReload", "integer|null", "qpcNs", "integer"),
+        assertEquals(Map.of("frameIndex", "integer", "sinceReload", "integer", "qpcNs", "integer"),
             commands.common());
     }
 
