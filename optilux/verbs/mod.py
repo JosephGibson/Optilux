@@ -9,8 +9,8 @@ jars and the jars the mixin-target test reads; Gradle reads nothing else under c
 runtime/. `build` runs `jar` and copies mod/build/libs/optilux-helper-<version>.jar into the store
 runtime/<platform>/files/, where `launch` takes it, replacing any older helper jar; `test` runs
 the JUnit tests, counts their results and compares the tested jar with the store's. Both refuse
-while the launch gate is closed, so Gradle never starts beside a session (`launch` itself does not
-look for Gradle).
+while the launch gate is closed (a game, a trace session or another Gradle build), so Gradle never
+starts beside a session or a second build.
 """
 
 import argparse
@@ -271,6 +271,7 @@ def mod(
     if not found.ok:
         blocking = [f"pid {g['pid']} {g['name']} ({', '.join(g['via'])})" for g in found.games]
         blocking += [f"ETW session {name}" for name in found.sessions]
+        blocking += [f"pid {b['pid']} {b['name']}: a Gradle build" for b in found.builds]
         raise ModError(
             f"the launch gate is closed, a session may be running: {'; '.join(blocking)}; fix: "
             f"quit that game or stop that session, or leave {shown(base, root)}/ in that shell"

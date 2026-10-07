@@ -291,6 +291,13 @@ def test_a_running_game_or_a_missing_jdk_runs_no_gradle(tmp_path: Path) -> None:
         mod_verb.ModError, match=r"a session may be running: pid 77 java.exe \(exe\); fix"
     ):
         mod_verb.mod(root, "build", quiet, runner=gradle, host=FakeHost([game]))
+    # Another Gradle build alone closes the gate too, and the refusal names it.
+    cmdline = ["java", "org.gradle.wrapper.GradleWrapperMain"]
+    wrapper = launch.ProcessInfo(78, "java.exe", r"C:\jdk\bin\java.exe", None, cmdline)
+    with pytest.raises(
+        mod_verb.ModError, match=r"a session may be running: pid 78 java.exe: a Gradle build; fix"
+    ):
+        mod_verb.mod(root, "test", quiet, runner=gradle, host=FakeHost([wrapper]))
     (root / "runtime" / "java" / BENCH["runtime"]["build"] / "bin" / "java.exe").unlink()
     with pytest.raises(mod_verb.ModError, match=r"bin/java.exe; fix: run `optilux install`"):
         mod_verb.mod(root, "build", quiet, runner=gradle, host=FakeHost())
