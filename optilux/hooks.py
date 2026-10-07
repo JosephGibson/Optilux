@@ -14,12 +14,17 @@ from pathlib import Path, PurePosixPath
 
 from optilux import REPO_ROOT, docs_check, repo
 
-# main moves only by the user's rebase merge of a milestone PR (docs/workflow.md#git).
+# main moves only by the user's rebase merge of a PR (docs/workflow.md#git).
 MAIN = repo.MAIN
-# docs/workflow.md#git: one line, at most 72 characters, `0.MM.PP.N: <summary>`, N the patch
-# number. The phase alone (`0.MM.PP: `), the form before 0.01.12.1, is refused from then on.
+# docs/workflow.md#git (roadmap.md D33): one line, at most 72 characters, a Conventional Commits
+# subject `type(scope)!: summary`, the scope optional and lowercase.
 MAX_MESSAGE = 72
-MESSAGE = re.compile(r"0\.\d{2}\.\d{2}\.(?:0|[1-9]\d*): \S.*")
+TYPES = ("feat", "fix", "perf", "refactor", "test", "docs", "build", "ci", "chore", "revert")
+MESSAGE = re.compile(rf"(?:{'|'.join(TYPES)})(?:\([a-z0-9][a-z0-9-]*\))?!?: \S.*")
+# What a subject never names: a milestone (M2) or phase (M2.P01), a release tag (v0.2.0) or a
+# date; the version in VERSION is refused as well. A dependency's version passes (uv 0.12.23), so
+# M0's and M1's phase IDs, shaped like it, are left to the format rule.
+NAMES = re.compile(r"\bM\d+\b|\bv\d+\.\d+\.\d+\b|\b\d{4}-\d{2}-\d{2}\b")
 # Attribution tokens (roadmap.md#decisions D4), whole words in any case. "Claude Code" names the
 # tool whose hooks this repo configures (the 0.00.03 subject names it), so it passes unless "by",
 # "with" or "via" make it an author; every attribution line the tool writes carries
@@ -59,8 +64,9 @@ def attribution(text: str) -> str | None:
     return match.group(0) if match else None
 
 
-def commit_msg(text: str) -> list[str]:
-    """Why git must refuse a commit message, each reason with its fix; empty when it passes."""
+def commit_msg(text: str, version: str | None = None) -> list[str]:
+    """Why git must refuse a commit message, each reason with its fix; empty when it passes.
+    `version` is the release version in VERSION, which the subject must not name either."""
     message = "\n".join(line for line in text.splitlines() if not line.startswith("#")).strip()
     first = message.split("\n")[0]
     problems = []
@@ -70,8 +76,16 @@ def commit_msg(text: str) -> list[str]:
         problems.append(f"{len(first)} characters: cut it to {MAX_MESSAGE}")
     if not MESSAGE.fullmatch(first):
         problems.append(
-            "not `0.MM.PP.N: <summary>`: start with the phase and its patch number, "
-            "e.g. `0.01.13.0: ...`"
+            f"not `type(scope)!: summary`: start with one of {', '.join(TYPES)}, the scope "
+            "optional and lowercase, e.g. `fix(status): read the handoff's last phase`"
+        )
+    named = [match.group(0) for match in NAMES.finditer(first)]
+    if version and re.search(rf"(?<![\w.]){re.escape(version)}(?![\w.])", first):
+        named.append(version)
+    if named:
+        problems.append(
+            f"names {', '.join(repr(name) for name in named)}: a subject never names a "
+            "milestone, phase, version or date; say what changed"
         )
     if token := attribution(message):
         problems.append(f"attribution token {token!r}: remove it (AGENTS.md, Rules)")
@@ -360,7 +374,10 @@ def run_post_edit(args: list[str]) -> int:
 
 def run_commit_msg(args: list[str]) -> int:
     text = Path(args[0]).read_text(encoding="utf-8", errors="replace")
-    problems = commit_msg(text)
+    # The shim runs this from the repository's root, where VERSION is the one being committed.
+    version_file = Path(repo.VERSION_FILE)
+    version = version_file.read_text(encoding="utf-8").strip() if version_file.is_file() else None
+    problems = commit_msg(text, version)
     for problem in problems:
         print(f"commit-msg: refused: {problem}", file=sys.stderr)
     return 1 if problems else 0

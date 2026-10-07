@@ -16,42 +16,60 @@ from optilux import REPO_ROOT, hooks
 @pytest.mark.parametrize(
     "message",
     [
-        "0.00.03.0: Git and Claude Code hooks.\n",
-        "0.00.01.0: Python project and optilux test.",
-        "0.12.34.0: x",
-        "0.01.12.1: A patch after the phase.",
-        "0.01.12.10: The tenth patch.",
-        "# Please enter the commit message.\n0.00.02.0: Doc check.\n"
-        "# Lines with '#' are ignored.\n",
-        "0.00.05.0: Regenerated lockfile.",
-        "0.00.05.0: " + "x" * 61,  # 72 characters exactly
+        "feat: git and Claude Code hooks\n",
+        "fix(status): read the handoff's last phase",
+        "feat(pack)!: read the version from VERSION",
+        "perf: x",
+        "refactor(launch-gate): split the gate",
+        "revert: drop the second reload",
+        "# Please enter the commit message.\ndocs: doc check\n# Lines with '#' are ignored.\n",
+        "build(deps): bump uv to 0.12.24",  # a dependency's version, though shaped like 0.MM.PP
+        "docs: " + "x" * 66,  # 72 characters exactly
     ],
 )
 def test_commit_msg_accepts(message: str) -> None:
-    assert hooks.commit_msg(message) == []
+    assert hooks.commit_msg(message, "0.2.0") == []
+
+
+FORMAT = "not `type(scope)!: summary`"
+NAMES = "a subject never names a milestone, phase, version or date"
 
 
 @pytest.mark.parametrize(
     ("message", "reason"),
     [
-        ("bad", "not `0.MM.PP.N: <summary>`"),
-        ("0.00.03: The phase alone.", "not `0.MM.PP.N: <summary>`"),
-        ("0.0.3.0: Short version.", "not `0.MM.PP.N: <summary>`"),
-        ("0.01.12.01: Padded patch.", "not `0.MM.PP.N: <summary>`"),
-        ("0.01.12.: No patch.", "not `0.MM.PP.N: <summary>`"),
-        ("0.00.03.0:No space.", "not `0.MM.PP.N: <summary>`"),
-        ("0.00.03.0: ", "not `0.MM.PP.N: <summary>`"),
-        ("0.00.05.0: " + "x" * 62, "73 characters"),
-        ("0.00.03.0: Hooks.\n\nA body.", "more than one line"),
-        ("0.00.03.0: Hooks.\n\nCo-Authored-By: Claude <noreply@anthropic.com>", "attribution"),
-        ("0.00.03.0: Generated hooks.", "attribution token 'Generated'"),
-        ("0.00.03.0: Hooks written by Claude Code.", "attribution token 'by Claude'"),
-        ("0.00.03.0: Claude's hooks.", "attribution token 'Claude'"),
-        ("0.00.03.0: Hooks, see anthropic.com.", "attribution token 'anthropic'"),
+        ("bad", FORMAT),
+        ("0.01.13.0: x", FORMAT),  # the form before D33, refused from then on
+        ("feature: x", FORMAT),
+        ("Fix: capitalised type", FORMAT),
+        ("fix(Status): capitalised scope", FORMAT),
+        ("fix(): empty scope", FORMAT),
+        ("fix:no space", FORMAT),
+        ("fix: ", FORMAT),
+        ("fix!(status): bang first", FORMAT),
+        ("docs: " + "x" * 67, "73 characters"),
+        ("docs: plan M2 and its prompts", "names 'M2'"),
+        ("feat: finish M2.P03", "names 'M2'"),
+        ("chore: release v0.2.0", "names 'v0.2.0'"),
+        ("chore: release 0.2.0", "names '0.2.0'"),  # the version in VERSION
+        ("docs: the stop of 2026-10-07", "names '2026-10-07'"),
+        ("fix: hooks\n\nA body.", "more than one line"),
+        ("fix: hooks\n\nPhase: M2.P03", "more than one line"),
+        ("fix: hooks\n\nCo-Authored-By: Claude <noreply@anthropic.com>", "attribution"),
+        ("feat: generated hooks", "attribution token 'generated'"),
+        ("feat: hooks written by Claude Code", "attribution token 'by Claude'"),
+        ("feat: Claude's hooks", "attribution token 'Claude'"),
+        ("docs: hooks, see anthropic.com", "attribution token 'anthropic'"),
     ],
 )
 def test_commit_msg_refuses(message: str, reason: str) -> None:
-    assert any(reason in problem for problem in hooks.commit_msg(message))
+    assert any(reason in problem for problem in hooks.commit_msg(message, "0.2.0"))
+
+
+def test_commit_msg_without_a_version_file() -> None:
+    # Before VERSION existed, and in a repo without one, only the general rules apply.
+    assert hooks.commit_msg("chore: release 0.2.0") == []
+    assert hooks.commit_msg("chore: release 0.2.0", "0.2.1") == []  # another version passes
 
 
 HEREDOC = "git commit -m \"$(cat <<'EOF'\n0.00.03: X.\n\nGenerated with Claude Code\nEOF\n)\""
@@ -209,10 +227,21 @@ def commit(repo: Path, message: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_commit_msg_hook_end_to_end(repo: Path) -> None:
-    refused = commit(repo, "bad")
-    assert refused.returncode != 0 and "commit-msg: refused: not `0.MM.PP.N" in refused.stderr
-    assert commit(repo, "0.00.01.0: Good.").returncode == 0
-    assert git(repo, "log", "--format=%s").stdout.splitlines() == ["0.00.01.0: Good."]
+    for message, reason in (
+        ("bad", "commit-msg: refused: not `type(scope)!: summary`"),
+        ("0.01.13.0: x", "commit-msg: refused: not `type(scope)!: summary`"),
+        ("docs: " + "x" * 67, "commit-msg: refused: 73 characters: cut it to 72"),
+        ("fix: x\n\nCo-Authored-By: Claude", "commit-msg: refused: more than one line"),
+        ("fix: x\n\nCo-Authored-By: Claude", "attribution token 'Co-Authored-By'"),
+    ):
+        refused = commit(repo, message)
+        assert refused.returncode != 0 and reason in refused.stderr, message
+    # The hook reads VERSION from the root of the repository it runs in.
+    (repo / "VERSION").write_bytes(b"0.2.0\n")
+    refused = commit(repo, "chore: release 0.2.0")
+    assert refused.returncode != 0 and "names '0.2.0'" in refused.stderr
+    assert commit(repo, "test: good").returncode == 0
+    assert git(repo, "log", "--format=%s").stdout.splitlines() == ["test: good"]
 
 
 def test_pre_commit_hook_end_to_end(repo: Path) -> None:
@@ -222,11 +251,11 @@ def test_pre_commit_hook_end_to_end(repo: Path) -> None:
     ):
         (repo / name).write_bytes(bad)
         git(repo, "add", name)
-        refused = commit(repo, f"0.00.01.0: Add {name}.")
+        refused = commit(repo, f"test: add {name}")
         assert refused.returncode != 0 and finding in refused.stderr
         (repo / name).write_bytes(good)
         git(repo, "add", name)
-        accepted = commit(repo, f"0.00.01.0: Add {name}.")
+        accepted = commit(repo, f"test: add {name}")
         assert accepted.returncode == 0, accepted.stderr
 
 
