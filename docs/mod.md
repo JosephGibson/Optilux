@@ -6,7 +6,7 @@ Status: rough spec, 2026-10-05, built through M1; full redesign and rewrite (use
 
 ## 1. Stance
 - Rewrite from scratch, from this spec and lessons.md alone. No ALC code is read (user, 2026-10-06).
-- Keep ALC's proven design: a pure-Java core (transport, protocol, camera math, capture, readiness, timing) with game access in one thin layer; a strict protocol (bounded lines, strict JSON, coded errors); a layered inert gate (no token -> no pipe, no thread, no mixin); mixin-target tests against the pinned jars; byte-exact capture tests against Python fixtures.
+- Keep ALC's proven design: a pure-Java core (transport, protocol, camera math, capture, readiness, timing) with game access in one thin layer; a strict protocol (bounded lines, strict JSON, coded errors); a layered inert gate (no token -> no pipe, no thread, no mixin); mixin-target tests against the pinned jars; capture tests through an independent PNG decoder.
 - Fix ALC's gaps: no push events, head-of-line blocking without cancel, no clock shared with PresentMon, `/tp` semantics re-implemented in PowerShell, keystrokes still needed, static state never reset, a world-readable pipe without client authentication, patch-exact coupling to private Iris/Sodium fields, no test of game-facing code.
 - What ALC proved in game: lessons.md#mod; what it never ran: lessons.md#open-at-alc-close. Treat those parts (timers, the compile-error path, the sway) and perf through the mod as unproven.
 
@@ -30,7 +30,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
      - running requests are cancelled;
      - a capture stops, its manifest marked incomplete;
      - a path and timers stop;
-     - input blocking is released if no client reconnects within 10 s. That is long enough for a client restart, and a crashed harness must not leave the game locked.
+     - input blocking is released if no client says `hello` within 10 s. That is long enough for a client restart, and a crashed harness must not leave the game locked.
      - A reconnecting `hello` reports `resumed` and the cancelled request ids.
      - As built (0.01.05): the state owner holds the exclusive resources and their holders, the input-block flag with its release timer and the resume facts; a world leave (Fabric's play disconnect) answers the requests holding a resource `failed` and frees everything.
   4. services: camera, capture, readiness, reload, input, hud, timers, metrics; pure Java, unit-testable;
@@ -72,7 +72,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 - The game never starts from Gradle: a task graph holding one of Loom's run tasks (`runClient`) fails before any task runs. The mod is never installed outside runtime/<platform>.
 
 ## 6. Time and determinism
-- Clocks: every response, event and frame stamp carries `frameIndex` (frames since mod start), `sinceReload` and `qpcNs`. Frame stamps are taken at the HEAD of the frame hook; `window.measure` and the capture manifest carry that stamp.
+- Clocks: every result, event and frame stamp carries `frameIndex` (frames since mod start), `sinceReload` and `qpcNs`. Frame stamps are taken at the HEAD of the frame hook; `window.measure` and the capture manifest carry that stamp.
   - `sinceReload` = frames since the last pipeline creation (reload, dimension change, join). This equals Iris's own frameCounter, which resets then and wraps at 720720 (gpu-iris.md#frame-counters-and-reload), so mod and shader agree on phase; cycles must divide 720720 so phase survives the wrap. ALC's mod held the reload frame but never exposed it.
   - `qpcNs` = QueryPerformanceCounter ticks x 1e9 / QueryPerformanceFrequency, read through the JNA the game ships (the pipe already uses it). Not `System.nanoTime()` (origin unspecified).
   - This is PresentMon's clock: run with `--qpc_time_ms`, PresentMon writes CPUStartQPCTime as absolute QPC milliseconds, so qpcNs = CPUStartQPCTime x 1e6 (measurement.md#tools).
@@ -115,12 +115,12 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 - Retry-safe: each attempt writes to a new subfolder. ALC's refused non-empty folders and a late frame could land in a cleared one.
 - Live pass: a low-stall mode (readback queued, written later). Measure its frame-time cost before relying on it.
 - As built (0.01.07): the point is right after GameRenderer.render's applyPostEffects call (frames that render the level); Screenshot.takeScreenshot's readback arrives on the render thread frames later and 4 writers write it with NativeImage.writeToFile, F2's writer; at the cap the render thread waits only while a writer holds a frame, as a readback in flight needs the render thread. Layout: mod-protocol.md#commands.
-- Limits: at most 4096 frames per capture (ALC), one capture at a time (`busy`). F2 itself takes at most 64 frames per capture. Pending readbacks: at most `maxPendingFrames` (suite constant; start at 16, ~530 MB at 4K). At the cap a deterministic capture stalls the render thread until a writer frees a slot (time, not correctness); the live pass drops the frame and lists it under `dropped`. On cancel or disconnect, pending frames are still written and the manifest marked incomplete.
+- Limits: at most 4096 frames per capture (ALC), one capture at a time (`busy`). F2 itself takes at most 64 frames per capture. Pending readbacks: at most 16 (CaptureAdapter.MAX_PENDING, in the jar; ~530 MB at 4K). At the cap a deterministic capture stalls the render thread until a writer frees a slot (time, not correctness); the live pass drops the frame and lists it under `dropped`. On cancel or disconnect, pending frames are still written and the manifest marked incomplete.
 
 ## 9. Input and HUD
 - `input.block`: cancel mouse movement and button and key handling in the game while on. Include raw mouse input: ALC's OS lock missed raw input.
   - pauseOnLostFocus is written false by the harness; the mod also refuses the pause screen while blocked.
-- `hud.set`: hide GUI (F1) through Hud.toggle() and isHidden() (26.3 has no hideGui option) and the debug overlay (F3) through its options, not keystrokes. 26.x's debug screen is configurable; check it.
+- `hud.set`: hide GUI (F1) through Hud.toggle() and isHidden() (26.3 has no hideGui option) and the debug overlay (F3), not keystrokes.
 - Events for focus lost and screen opened, so a session can mark captures invalid instead of guessing.
 - As built (0.01.06): SDL3 hands every mouse event to MouseHandler.onMove (the grabbed relative motion and the absolute cursor alike), onButton and onScroll, and every key to KeyboardHandler.keyPress, textInput and textEditing; `input.block` cancels all six at HEAD and Minecraft.pauseGame, the pause screen's one door, and releases held keys (KeyMapping.releaseAll) when it turns on; it changes the flag only while its request is live, under the state owner's lock, so a disconnect cannot leave a block without its 10 s release. The game turns the camera from mouse motion only while the mouse is grabbed (MouseHandler.handleAccumulatedMovement); grabMouse does nothing while the window is inactive, and only a click (onButton) or a closing screen calls it. In the 0.01.06 launch the first SendInput nudge, `focused` true, moved nothing; after one click the same 300 counts turned the yaw 45.0 degrees, so the grab was missing (inferred: `state` does not report it). `hud.set` toggles Gui.hud when its flag differs; F3 is no option on 26.3 but DebugScreenEntryList's overlay flag (`debugEntries.setOverlayVisible`).
 
@@ -149,7 +149,7 @@ What each platform's adapter must provide, and where ALC hooked it: platform.md#
   - core unit tests (no game): the token rule, the mixin config plugin with and without a token, the frame clock, strict JSON, the framing, the protocol core (envelope, codes, out-of-order answers, cancel, timeout, busy, the state reset, a reconnect), every answer against commands.json; a real-pipe test (the DACL read back, a second instance refused);
   - metadata test: reads the built jar; `depends` is derived on its own from the platform file and the pinned jars;
   - mixin-target test: ASM reads every target class, injected method (name and descriptor), INVOKE and accessor field (name and type) from the hash-checked pinned jars, and each call the adapters make into Sodium and Iris; a mixin annotation it does not read fails it;
-  - capture byte-exact against Python fixtures;
+  - capture: the decoded PNG equals the read-back pixels;
   - commands.json, the command table in machine-readable form (args, results, phase). The mod's argument checks, the Python client and the protocol fake are generated or checked against it, and a test keeps mod-protocol.md's table in step;
   - in-game `selftest` (0.01.07: the clock and swap stamps, a renderer reading, a real reload, one frame to a temp folder, the input mixins);
   - acceptance launches (12).

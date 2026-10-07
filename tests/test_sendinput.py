@@ -13,7 +13,7 @@ class FakeUser32:
         self.calls: list[list[tuple]] = []
         self.take = take
 
-    def SendInput(self, count: int, array, size: int) -> int:  # noqa: N802 (user32's name)
+    def SendInput(self, count: int, array, size: int) -> int:
         assert size == ctypes.sizeof(sendinput.INPUT)
         events = []
         for event in array[:count]:

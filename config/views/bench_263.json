@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "id": "bench_263",
- "use": "the baseline suite's ten views (measurement.md#baseline-suite), one per suite.json view role in its order: each pose flown by the user in spectator, read with camera.get, rounded to 0.1 (yaw in -180..180), placed and captured at 4K with the role's time and weather, then kept by the user (0.01.11)",
+ "use": "the baseline suite's eleven views (measurement.md#baseline-suite), one per suite.json view role in its order: each pose flown by the user in spectator, read with camera.get, rounded to 0.1 (yaw in -180..180), placed and captured at 4K with the role's time and weather, then kept by the user (0.01.11; end_city scouted then and made the eleventh role, D29)",
  "world": "snapshots/bench_263/: a copy of runtime/mc-26.3/game/saves/bench_263 (seed 263), retaken after the flights",
  "views": [
   {
@@ -123,6 +123,18 @@
    "time": 6000,
    "weather": "clear",
    "why": "seven NoAI mobs tagged optilux_bench (chicken, sheep, cow, pig, villager, horse, llama) 7-13 m away in noon sun on plains, a village to the left; creative, torch in hand"
+  },
+  {
+   "id": "end_city",
+   "dim": "minecraft:the_end",
+   "x": 317.1,
+   "y": 75.1,
+   "z": 1054.8,
+   "yaw": -120.3,
+   "pitch": -9.0,
+   "time": 6000,
+   "weather": "clear",
+   "why": "the End city nearest the main island, (368, ~, 992), 1,058 blocks out on an outer island: purpur towers and end rods against the End sky, chorus around; two closed shulkers at 56 and 62 m (they survive Peaceful); frame a2727557 kept in 0.01.11"
   }
  ]
 }

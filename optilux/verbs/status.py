@@ -343,7 +343,11 @@ def collect(root: Path) -> dict:
                 f"{doc} Status says next {claimed}, the repo says {step.phase}; "
                 "fix: update its Status line"
             )
-    changes = repo.changes(root)
+    try:
+        changes = repo.changes(root)
+    except repo.GitError as error:
+        changes = [str(error)]
+        problems.append(f"{error}; fix: run inside the Optilux checkout")
     facts.update(clean=not changes, changes=changes)
     hooks = repo.hooks_path(root)
     facts.update(hooks_path=hooks, hooks_set=hooks == HOOKS_PATH)

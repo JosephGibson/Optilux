@@ -14,7 +14,12 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # Windows, as CI: the released zip is built where CI builds and checks it (zlib's DEFLATE
+    # output may differ between builds; roadmap.md#qa-pass-open-questions, 0.01.12).
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash # as in ci.yml: the same commands on both runners
     steps:
       # Actions pinned to release tags (docs/plans/m0.md D13).
       - uses: actions/checkout@v7.0.1

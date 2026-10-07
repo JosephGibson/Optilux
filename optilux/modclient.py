@@ -42,6 +42,8 @@ DEFAULT_WAIT = 10.0
 # The client waits this much longer than the mod's own timeoutSeconds, so the mod's `timeout`
 # answer arrives before the client gives up (docs/mod-protocol.md#client-rules).
 MARGIN = 5.0
+# input_block_when_free asks again this often while a stopped request still holds its resource.
+BUSY_POLL = 0.1
 # One read takes at most this many bytes from the pipe.
 READ_BYTES = 64 * 1024
 # The mod refuses a longer line with id null (docs/mod-protocol.md#transport); the client refuses
@@ -169,7 +171,7 @@ def check_value(where: str, spec: dict, value: Any) -> Any:
         if "values" in spec and value not in spec["values"]:
             raise ValueError(f"{where} must be one of {', '.join(spec['values'])}")
     elif kind in ("integer", "number"):
-        ok = isinstance(value, int) or kind == "number" and isinstance(value, float)
+        ok = isinstance(value, int) or (kind == "number" and isinstance(value, float))
         if isinstance(value, bool) or not ok:
             raise ValueError(f"{where} must be {'an integer' if kind == 'integer' else 'a number'}")
         if kind == "integer" and not ID_RANGE[0] <= value <= ID_RANGE[1]:
@@ -211,9 +213,9 @@ def redacted(value: Any, token: str | None) -> Any:
     """`value` with every string equal to the token, and hello's token argument, replaced."""
     if isinstance(value, dict):
         found = {key: redacted(item, token) for key, item in value.items()}
-        if found.get("cmd") == "hello" and isinstance(found.get("args"), dict):
-            if "token" in found["args"]:
-                found["args"] = {**found["args"], "token": REDACTED}
+        args = found.get("args")
+        if found.get("cmd") == "hello" and isinstance(args, dict) and "token" in args:
+            found["args"] = {**args, "token": REDACTED}
         return found
     if isinstance(value, list):
         return [redacted(item, token) for item in value]
@@ -230,7 +232,6 @@ class RequestLog:
         self.path = path
         self._token = token
         self._lock = threading.Lock()
-        self.lines = 0
         if path is not None:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"")
@@ -244,11 +245,10 @@ class RequestLog:
             "message": redacted(message, self._token),
         }
         text = json.dumps(record, separators=(",", ":"), ensure_ascii=False)
-        if self._token and self._token in text:  # never reached: redacted() replaced it
+        if self._token and self._token in text:  # a key or a text redacted() does not see
             text = text.replace(self._token, REDACTED)
         with self._lock, self.path.open("a", encoding="utf-8", newline="\n") as out:
             out.write(text + "\n")
-            self.lines += 1
 
 
 class _Waiter:
@@ -347,8 +347,10 @@ class Client:
             raise ModGone(f"{command} {request_id}: the request was not sent ({error})") from None
         if not waiter.done.wait(wait):
             with self._lock:
-                late = self._pending.pop(request_id, None) is None and waiter.done.is_set()
-            if not late:
+                late = self._pending.pop(request_id, None) is None
+            if late:  # the reader took it as the wait ended: it sets the answer next
+                waiter.done.wait(MARGIN)
+            else:
                 cancel = {"id": next(self._ids), "cmd": "cancel", "args": {"id": request_id}}
                 with contextlib.suppress(OSError):
                     self._send(cancel, encode(cancel))
@@ -420,6 +422,19 @@ class Client:
         if debug_overlay is not None:
             args["debugOverlay"] = debug_overlay
         return self.answer("hud.set", args)
+
+    def input_block_when_free(self, on: bool, within: float) -> dict:
+        """input.block once the exclusive resource a stopped request still holds is free: the mod
+        answers `timeout` or `cancelled` first and frees the resource when the stopped handler
+        returns (Protocol.stop), so input.block can answer `busy` in between."""
+        deadline = time.monotonic() + within
+        while True:
+            try:
+                return self.input_block(on)
+            except ModRefused as error:
+                if error.code != "busy" or time.monotonic() >= deadline:
+                    raise
+            time.sleep(BUSY_POLL)
 
     def input_block(self, on: bool) -> dict:
         """Block or release the game's mouse and keyboard; ModError when the answer differs."""
@@ -500,6 +515,8 @@ class Client:
                     self._dispatch(line)
         except OSError as error:
             reason = f"read failed: {error}"
+        except Exception as error:  # noqa: BLE001 the reader ends: its waiters must hear why
+            reason = f"the reader failed: {type(error).__name__}: {error}"
         if self._closing:
             reason = "the client closed the pipe"
         with self._lock:
@@ -524,8 +541,12 @@ class Client:
         if "event" in message and "id" not in message:
             self.events.put(message)
             return
+        request_id = message.get("id")
+        if isinstance(request_id, bool) or not isinstance(request_id, int):
+            self.stray.append(message)  # our ids are integers: none has a list, a string or null
+            return
         with self._lock:
-            waiter = self._pending.pop(message.get("id"), None)
+            waiter = self._pending.pop(request_id, None)
         if waiter is None:
             self.stray.append(message)
             return

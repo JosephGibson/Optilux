@@ -113,7 +113,9 @@ def test_git_guard_passes(command: str, branch: str) -> None:
 
 def run_hook(name: str, event: dict) -> subprocess.CompletedProcess[str]:
     command = [sys.executable, "-m", "optilux.hooks", name]
-    return subprocess.run(command, input=json.dumps(event), capture_output=True, text=True)
+    return subprocess.run(  # noqa: S603 this interpreter and a hook name
+        command, input=json.dumps(event), capture_output=True, text=True
+    )
 
 
 def bash_event(command: str, cwd: Path) -> dict:
@@ -172,7 +174,9 @@ def git(repo: Path, *args: str, check: bool = True) -> subprocess.CompletedProce
     # No GIT_* variable leaks in: inside a hook, GIT_INDEX_FILE would point at this repo's index.
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     command = ["git", *args]
-    return subprocess.run(command, cwd=repo, env=env, capture_output=True, text=True, check=check)
+    return subprocess.run(  # noqa: S603 git and its arguments, no shell
+        command, cwd=repo, env=env, capture_output=True, text=True, check=check
+    )
 
 
 @pytest.fixture
@@ -230,3 +234,36 @@ def test_claude_settings_wire_the_hooks() -> None:
     allow = settings["permissions"]["allow"]
     for command in ("uv *", "git commit *", "git push *", "git switch *", "gh run watch *"):
         assert f"Bash({command})" in allow and f"PowerShell({command})" in allow
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        'git commit --no-verif -m "0.01.12: x"',
+        "git push --no-veri origin m1",
+        "git push --forc origin m1",
+        "git push --force-w origin m1",
+        "git push --mirr origin",
+        "git push --al origin",
+        "cmd /c git push --force origin m1",
+        'cmd.exe /C git commit --no-verify -m "0.01.12: x"',
+    ],
+)
+def test_git_guard_refuses_abbreviations_and_cmd(command: str) -> None:
+    """git takes any unambiguous prefix of a long option, and cmd /c runs git too."""
+    assert hooks.git_guard(command, lambda: "m1") is not None
+
+
+def test_git_guard_reads_commits_untracked_mode_as_no_skip() -> None:
+    """-uno is --untracked-files=no: its n is the mode's value, not -n."""
+    assert hooks.git_guard('git commit -uno -m "0.01.12: x"', lambda: "m1") is None
+    assert hooks.git_guard("git push --follow-tags origin m1", lambda: "m1") is None
+
+
+def test_git_guard_blocks_when_it_cannot_read_the_event() -> None:
+    """A guard that cannot read its input fails closed: an unread command could be a force push."""
+    command = [sys.executable, "-m", "optilux.hooks", "git_guard"]
+    found = subprocess.run(  # noqa: S603 this interpreter and a hook name
+        command, input="{not json", capture_output=True, text=True, cwd=REPO_ROOT
+    )
+    assert found.returncode == 2 and "cannot read" in found.stderr

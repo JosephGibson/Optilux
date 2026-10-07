@@ -28,7 +28,7 @@ PRESENTMON = "PresentMon-fixture.exe"
 
 
 def sha1(data: bytes) -> str:
-    return hashlib.sha1(data).hexdigest()
+    return hashlib.sha1(data, usedforsecurity=False).hexdigest()  # Mojang's file sums
 
 
 def sha256(data: bytes) -> str:
@@ -425,7 +425,8 @@ def test_a_tier_adds_its_files_and_reports_pending_mods(tmp_path: Path, world: W
     assert [f["file"] for f in outcome.files] == ["mod-a.jar", "Pack 1.zip", "Ref.zip"]
     assert outcome.pending == ["voxy: pending"]
     with pytest.raises(
-        install.InstallError, match="no tier 'nope' in mc-fixture.json; fix: one of bench, dev, lod"
+        install.InstallError,
+        match=r"no tier 'nope' in mc-fixture.json; fix: one of bench, dev, lod",
     ):
         install.install(tmp_path, "nope", False, quiet)
 
@@ -494,13 +495,13 @@ def test_a_hash_that_differs_from_its_pin_is_refused(tmp_path: Path, world: Worl
     world.listed_sha512["AAAAAAAA"] = sha512(b"other")
     with pytest.raises(
         install.InstallError,
-        match="Modrinth lists mod-a.jar with sha512 .* and the platform file pins",
+        match=r"Modrinth lists mod-a.jar with sha512 .* and the platform file pins",
     ):
         install.install(tmp_path, "bench", False, quiet)
     # Modrinth listing the pin but serving other bytes: refused, nothing left in the store.
     world.listed_sha512["AAAAAAAA"] = sha512(b"mod a jar")
     world.modrinth["AAAAAAAA"] = ("mod-a.jar", b"served wrong")
-    with pytest.raises(install.InstallError, match="mod runtime/.*/files/mod-a.jar: sha512"):
+    with pytest.raises(install.InstallError, match=r"mod runtime/.*/files/mod-a.jar: sha512"):
         install.install(tmp_path, "bench", False, quiet)
     assert not (base / "files" / "mod-a.jar").exists()
     world.listed_sha512.clear()
@@ -510,7 +511,9 @@ def test_a_hash_that_differs_from_its_pin_is_refused(tmp_path: Path, world: Worl
     install.install_minecraft_version = lambda version, directory, callback: None
     asset = base / "assets" / "objects" / sha1(b"asset one")[:2] / sha1(b"asset one")
     asset.unlink()
-    with pytest.raises(install.InstallError, match="asset runtime/.*/assets/objects/.* is missing"):
+    with pytest.raises(
+        install.InstallError, match=r"asset runtime/.*/assets/objects/.* is missing"
+    ):
         install.install(tmp_path, "bench", False, quiet)
     install.install_minecraft_version = world.install_minecraft_version
     assert install.install(tmp_path, "bench", False, quiet).ok and asset.is_file()
@@ -528,7 +531,7 @@ def test_java_and_tool_pins_are_checked(tmp_path: Path, world: World) -> None:
     world.jdk = zipped("other-folder")  # Adoptium now lists a checksum the pin does not match
     with pytest.raises(
         install.InstallError,
-        match="Adoptium lists jdk-fixture.zip with sha256 .* and bench.json pins",
+        match=r"Adoptium lists jdk-fixture.zip with sha256 .* and bench.json pins",
     ):
         install.install(tmp_path, "bench", False, quiet)
     world.jdk = zipped(JDK_BUILD)
@@ -540,7 +543,7 @@ def test_java_and_tool_pins_are_checked(tmp_path: Path, world: World) -> None:
         install.install(tmp_path, "bench", False, quiet)
     tool.unlink()
     world.presentmon = b"served wrong"
-    with pytest.raises(install.InstallError, match="tool presentmon runtime/tools/.*: sha256"):
+    with pytest.raises(install.InstallError, match=r"tool presentmon runtime/tools/.*: sha256"):
         install.install(tmp_path, "bench", False, quiet)
     assert not tool.exists()
 
@@ -559,7 +562,7 @@ def test_an_archive_with_another_top_folder_is_refused(tmp_path: Path, world: Wo
         )
     )
     with pytest.raises(
-        install.InstallError, match="jdk-fixture.zip unpacks to elsewhere, not jdk-fixture; fix"
+        install.InstallError, match=r"jdk-fixture.zip unpacks to elsewhere, not jdk-fixture; fix"
     ):
         install.install(tmp_path, "bench", False, quiet)
 
@@ -634,3 +637,21 @@ def test_shown_and_the_lib_version_pin() -> None:
     import minecraft_launcher_lib.utils
 
     assert minecraft_launcher_lib.utils.get_library_version() == "8.0"  # docs/plans/m1.md P20
+
+
+def test_a_name_from_the_network_or_a_config_stays_under_runtime(
+    tmp_path: Path, world: World
+) -> None:
+    """Fabric's profile id and a tools.json file name are joined under runtime/: a separator or
+    `..` in either is refused before anything is written there."""
+    world.profile_bytes = json.dumps({**world.profile, "id": "../escaped"}).encode()
+    with pytest.raises(install.InstallError, match=r"names id '../escaped'"):
+        install.install(tmp_path, "bench", False, quiet)
+    assert not (tmp_path / "runtime" / "mc-fixture" / "escaped").exists()
+    world.profile_bytes = json.dumps(world.profile).encode()
+    tools = tmp_path / "config" / "tools.json"
+    pins = json.loads(tools.read_text(encoding="utf-8"))
+    pins["presentmon"]["file"] = "../PresentMon.exe"
+    tools.write_text(json.dumps(pins), encoding="utf-8")
+    with pytest.raises(install.InstallError, match="no plain file name"):
+        install.install(tmp_path, "bench", False, quiet)

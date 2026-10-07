@@ -38,13 +38,10 @@ def parse_sets(items: list[str]) -> dict[str, str]:
 def held(quit_facts: dict, back: dict) -> list[str]:
     """The report's lines after the quit."""
     options = back["options"]
-    excepted = ", ".join(
-        f"{k} {d['written']} -> {d['read']}" for k, d in options["excepted"].items()
-    )
     moved = "; ".join(f"{k}: {d['written']} -> {d['read']}" for k, d in options["moved"].items())
     iris = back["iris"]
     sodium = back["sodium"]
-    kept = options["keys"] - len(options["moved"]) - len(options["excepted"])
+    kept = options["keys"] - len(options["moved"])
     how = (
         "the mod's quit"
         if quit_facts["how"] == "quit"
@@ -53,8 +50,7 @@ def held(quit_facts: dict, back: dict) -> list[str]:
     return [
         f"quit: {how}, exit code {quit_facts['exitCode']} in {quit_facts['seconds']:.1f} s",
         f"read back: options.txt {kept} of {options['keys']} keys as written"
-        + (f"; moved: {moved}" if moved else "")
-        + f"; F3 excepted: {excepted or 'none moved'}",
+        + (f"; moved: {moved}" if moved else ""),
         f"read back: iris.properties {iris['keys'] - len(iris['moved'])} of {iris['keys']} keys as "
         f"written; sodium-options.json flags "
         + ("held" if not sodium["flagsMoved"] else f"moved {sodium['flagsMoved']}")
@@ -138,7 +134,7 @@ def run(args: argparse.Namespace) -> int:
                 raise
             if client is not None:
                 log = root / result["mod"]["requestLog"]
-                result["mod"]["logCheck"] = launch.check_log(log, launched.token)
+                result["mod"]["logCheck"] = launch.check_log(log, launched.mod_token())
             try:
                 result["readBack"] = launch.read_back(launched.game, launched.prelaunch)
             except (OSError, ValueError) as error:

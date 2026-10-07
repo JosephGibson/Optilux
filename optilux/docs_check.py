@@ -122,9 +122,13 @@ def unfenced(lines: list[str]) -> list[tuple[int, str]]:
                 fence = match.group(1)
             else:
                 kept.append((number, line))
-        elif match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence):
-            if line.strip() == match.group(1):
-                fence = ""
+        elif (
+            match
+            and match.group(1)[0] == fence[0]
+            and len(match.group(1)) >= len(fence)
+            and line.strip() == match.group(1)
+        ):
+            fence = ""
     return kept
 
 

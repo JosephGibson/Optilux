@@ -34,7 +34,6 @@ TOKEN_USER_CLASS = 1
 ERROR_FILE_NOT_FOUND = 2
 ERROR_ACCESS_DENIED = 5
 ERROR_BROKEN_PIPE = 109
-ERROR_INSUFFICIENT_BUFFER = 122
 ERROR_PIPE_BUSY = 231
 ERROR_NO_DATA = 232
 ERROR_PIPE_NOT_CONNECTED = 233
@@ -72,7 +71,7 @@ def api() -> SimpleNamespace:
             ("hEvent", wintypes.HANDLE),
         ]
 
-    class SECURITY_ATTRIBUTES(ctypes.Structure):  # noqa: N801 (the Windows name)
+    class SECURITY_ATTRIBUTES(ctypes.Structure):
         _fields_ = [
             ("nLength", wintypes.DWORD),
             ("lpSecurityDescriptor", ctypes.c_void_p),
@@ -105,7 +104,6 @@ def api() -> SimpleNamespace:
         (k32.CreateEventW, [ctypes.c_void_p, boolean, boolean, wintypes.LPCWSTR], handle),
         (k32.CloseHandle, [handle], boolean),
         (k32.GetNamedPipeServerProcessId, [handle, pulong], boolean),
-        (k32.GetNamedPipeClientProcessId, [handle, pulong], boolean),
         (k32.GetCurrentProcess, [], handle),
         (k32.LocalFree, [ctypes.c_void_p], ctypes.c_void_p),
         (adv.OpenProcessToken, [handle, dword, ctypes.POINTER(handle)], boolean),
@@ -263,14 +261,6 @@ def server_pid(pipe: Pipe) -> int:
     pid = w.wintypes.ULONG()
     if not w.k32.GetNamedPipeServerProcessId(pipe.handle, ctypes.byref(pid)):
         raise fail("GetNamedPipeServerProcessId")
-    return pid.value
-
-
-def client_pid(pipe: Pipe) -> int:
-    w = api()
-    pid = w.wintypes.ULONG()
-    if not w.k32.GetNamedPipeClientProcessId(pipe.handle, ctypes.byref(pid)):
-        raise fail("GetNamedPipeClientProcessId")
     return pid.value
 
 

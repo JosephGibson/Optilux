@@ -103,14 +103,14 @@ Applies to every AI-facing doc. README and release notes are human-facing.
 - Script multi-step git operations and test them. ALC: a hand-made branch skipped its version commit and the hook then refused it.
 
 ## Release
-- .github/workflows/release.yml, on push to main (the user's rebase merge), runs `optilux pack release` with `permissions: contents: write` and GH_TOKEN from the workflow token:
+- .github/workflows/release.yml, on push to main (the user's rebase merge) on windows-latest, where CI builds the zip (0.01.12), runs `optilux pack release` with `permissions: contents: write` and GH_TOKEN from the workflow token:
   - HEAD must be origin/main's tip: a release cut from m<MM> would tag a commit the rebase merge replaces;
   - version = the newest commit's prefix; `pack build` first (shader/ + LICENSE + README with the credit; one tree, one sha256), so the release needs no other workflow's files; the tree must be clean;
   - `gh release view v<version>`; a tag v<version> already on origin must be at HEAD, else exit 1 (a tag is never moved);
   - when absent, `gh release create v<version> build/optilux-<version>.zip --title "Optilux <version>: <Name>" --notes-file <entry> --target <HEAD sha>`; `--target` because gh would otherwise tag the default branch's head at run time. Private repo, private releases.
 - Release notes: each milestone's first phase adds its user-facing entry under `## 0.MM <Name>` to CHANGELOG.md, and later phases extend it; CI's release check needs it on every push. The release body is that entry, the name its title's.
 - Every release rule must be checkable before the merge: `optilux pack release --check [--no-remote] [--ref R]` checks the subject of R (default HEAD) by the commit-msg rule, the CHANGELOG entry, no release and no tag for the version on GitHub (skipped with `--no-remote`), a clean tree, and R as a branch tip on origin. ALC's gate judged the merge method and message after the fact and refused 3 merges.
-- CI, .github/workflows/ci.yml on push and pull_request (windows-latest from 0.01.03, plans/m1.md D19, steps in bash; `windows`-marked tests skip elsewhere; actions pinned to release tags): `uv sync --frozen`, ruff check and format, `optilux test`, `optilux verify docs`, `pack release --check --no-remote`, `pack build`, the zip as an artifact. On pull_request the checkout is GitHub's synthetic merge commit, whose subject carries no version, so the check and the build read it through `--ref HEAD^2`, the PR head; push events use HEAD. The in-game compile check runs locally through the mod.
+- CI, .github/workflows/ci.yml on push and pull_request (windows-latest from 0.01.03, plans/m1.md D19, steps in bash; `windows`-marked tests skip elsewhere; actions pinned to release tags): `uv sync --frozen`, ruff check and format, pyright, `optilux test`, `optilux verify docs`, `pack release --check --no-remote`, `pack build`, the zip as an artifact. On pull_request the checkout is GitHub's synthetic merge commit, whose subject carries no version, so the check and the build read it through `--ref HEAD^2`, the PR head; push events use HEAD. The in-game compile check runs locally through the mod.
 
 ## Hooks and guards
 Bodies in optilux/hooks.py, run by the venv's python as `python -m optilux.hooks <name>`; .githooks/ holds the sh shims (`git config --local core.hooksPath .githooks`), .claude/settings.json the Claude Code hooks and allow rules. Inert outside this repository.
@@ -126,15 +126,20 @@ Bodies in optilux/hooks.py, run by the venv's python as `python -m optilux.hooks
   - A guard that refuses `gh` through a variable or `git push -u` is pure friction; drop it.
 
 ## Testing
-- Unit tests only for:
-  - statistics (bracketing, thresholds, geo-mean verdicts);
-  - run-record schema and identity comparison;
-  - platform pin verification (sha512);
-  - similarity fingerprints;
-  - doc limits;
-  - the mod protocol: the round trip (JUnit on the mod side), and commands.json checked against mod-protocol.md's table.
+- `optilux test` runs pytest in parallel (pytest-xdist, a worker per logical CPU: 391 tests in about 12 s against 40 s serially, 0.01.12); `--serial` runs one process. The suite passes both ways.
+- Unit tests for (reconciled with M1's tests in 0.01.12):
+  - the run record: identity, the run spec, the views file, the run's status and the acceptance items' verdicts on fakes;
+  - platform pins (sha512, sha1, sha256), install and the launch spec;
+  - the launch: the gate, the pre-launch files and their read-back, the command and its check, the join, quit and end;
+  - the mod protocol: commands.json against mod-protocol.md's table, the client against the protocol fake (a socket pair and a real named pipe), the mod's JUnit tests (mod.md#11-build-and-test);
+  - PresentMon's start, stop and CSV, and A9's match;
+  - the workflow verbs and hooks; doc limits;
+  - from M2 and M3: statistics (bracketing, thresholds, geo-mean verdicts) and similarity fingerprints.
+- Not unit-tested: the glue that drives the game or Windows (RunHost's calls, the items' request sequences); the acceptance runs cover it.
 - Runtime validity checks in every session (measurement.md#validity) are the main safety net.
 - A test that needs git builds a throwaway repo in a temp dir and checks it is not this repo before writing (ALC rule).
+- Static checks: ruff with pyproject.toml's rules and pyright basic over optilux/, both in CI; javac -Xlint:all,-classfile -Werror on the mod (classfile: Minecraft's Guava jar names annotations absent from the classpath). A hit is fixed, or suppressed on its line with the reason; tests/ may assert (S101 off there).
+- Coverage, when a QA pass asks: `uv run coverage run -m pytest tests`, then `uv run coverage report` (branch, optilux/); code run in a subprocess (the hooks' entry points) shows as missed.
 
 ## Code conventions
 - uv, installed by pip into the user's Python 3.12 (roadmap.md#decisions D1): .python-version pins Python 3.12, pyproject.toml pins the dev tools exactly, uv.lock locks every dependency with hashes; one `.venv`; ruff format and lint; type hints on public functions.

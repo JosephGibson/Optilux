@@ -61,6 +61,12 @@ OWN_SESSION = "optilux-"
 # PresentMon): recorded, never stopped or waited on.
 AMD_PROCESS = "presentmon-x64.exe"
 AMD_SESSION = "RSXTraceSession"
+# JVMs beside the game: a Gradle build's client (the wrapper, or the gradle command) blocks the
+# gate; a daemon idles between builds (VS Code's Gradle extension keeps one) and is recorded with
+# every other java process (VS Code's language server), as AMD's PresentMon is.
+JAVA_NAMES = ("java.exe", "javaw.exe")
+GRADLE_BUILD = ("org.gradle.wrapper.GradleWrapperMain", "org.gradle.launcher.GradleMain")
+GRADLE_DAEMON = "org.gradle.launcher.daemon.bootstrap.GradleDaemon"
 LOGMAN = ("logman", "query", "-ets")
 # logman answered in under a second in the spike; a hung one must not hang the launch.
 LOGMAN_TIMEOUT = 30
@@ -78,13 +84,13 @@ BUILTIN_MODS = ("fabricloader", "java", "minecraft")
 HELPER_GLOB = "optilux-helper*.jar"
 
 # The command (docs/platform.md#install-and-launch).
-TOKEN_PROPERTY = "-Doptilux.token="
+TOKEN_PROPERTY = "-Doptilux.token="  # noqa: S105 the property name, not a secret
 # 32 random bytes as URL-safe base64: 43 characters of [A-Za-z0-9_-], inside the mod's token rule
 # (32-128 characters of that alphabet, docs/plans/m1.md 0.01.04).
 TOKEN_BYTES = 32
 # The offline session (platform.md#mc-263-verified R9): --accessToken is required and any value
 # passes; --offlineDeveloperMode takes no value.
-ACCESS_TOKEN = "0"
+ACCESS_TOKEN = "0"  # noqa: S105 a placeholder the offline session ignores
 OFFLINE = "--offlineDeveloperMode"
 # --clientId and --xuid name a Microsoft account. Main declares both with an optional argument and
 # an empty default (the 26.3 client jar, read with javap), so the offline launch drops each pair
@@ -136,10 +142,6 @@ FRAMES_TIMEOUT = 30.0
 # An SDDL ACE: type;flags;rights;object guid;inherited guid;sid (and resource attributes).
 SDDL_ACE = re.compile(r"\(([^)]*)\)")
 
-# The keys F3 saw the game change on the spike's first launch, excepted from the read-back:
-# Sodium set exclusiveFullscreen true on a fresh sodium-options.json, the fancy preset set
-# simulationDistance 12 (platform.md#mc-263-verified L1 options).
-F3_EXCEPTED = ("exclusiveFullscreen", "simulationDistance")
 # The two Sodium flags F3 writes (docs/roadmap.md#findings-assigned F3).
 SODIUM_FLAGS = (
     ("notifications", "has_edited_fullscreen_option", True),
@@ -196,7 +198,7 @@ def processes() -> list[ProcessInfo]:
 def logman() -> str:
     """`logman query -ets`: the running ETW sessions; unelevated is enough (spike S6)."""
     try:
-        done = subprocess.run(LOGMAN, capture_output=True, text=True, timeout=LOGMAN_TIMEOUT)
+        done = subprocess.run(LOGMAN, capture_output=True, text=True, timeout=LOGMAN_TIMEOUT)  # noqa: S603 constant argv
     except (OSError, subprocess.TimeoutExpired) as error:
         raise LaunchError(f"`{' '.join(LOGMAN)}` failed: {error}; fix: run it by hand") from None
     if done.returncode != 0:
@@ -254,7 +256,7 @@ class Host:
     def start(self, command: list[str], cwd: Path, stdout: Path, env: dict[str, str]) -> Process:
         stdout.parent.mkdir(parents=True, exist_ok=True)
         with stdout.open("wb") as out:  # the child holds its own handle
-            return subprocess.Popen(
+            return subprocess.Popen(  # noqa: S603 argv list from the committed spec, no shell
                 command,
                 cwd=cwd,
                 stdin=subprocess.DEVNULL,
@@ -340,15 +342,18 @@ def etw_sessions(text: str) -> list[str]:
 
 @dataclass
 class Gate:
-    """What the gate found: blocking games and sessions, and AMD's PresentMon (recorded only)."""
+    """What the gate found: blocking games, sessions and Gradle builds; AMD's PresentMon and
+    the other JVMs (recorded only)."""
 
     games: list[dict]
     sessions: list[str]
     amd: dict
+    builds: list[dict] = field(default_factory=list)
+    java: list[dict] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
-        return not self.games and not self.sessions
+        return not self.games and not self.sessions and not self.builds
 
 
 def amd_facts(procs: Iterable[ProcessInfo], sessions: list[str]) -> dict:
@@ -379,7 +384,23 @@ def gate(base: Path, procs: list[ProcessInfo], logman_text: str, own_pid: int) -
             games.append({"pid": proc.pid, "name": proc.name, "via": hits})
     sessions = etw_sessions(logman_text)
     own = [name for name in sessions if name.lower().startswith(OWN_SESSION)]
-    return Gate(games, own, amd_facts(procs, sessions))
+    blocking = {game["pid"] for game in games}
+    java = [
+        {"pid": proc.pid, "name": proc.name, "exe": proc.exe, "role": java_role(proc.cmdline)}
+        for proc in procs
+        if proc.name.lower() in JAVA_NAMES and proc.pid not in blocking and proc.pid != own_pid
+    ]
+    builds = [{"pid": j["pid"], "name": j["name"]} for j in java if j["role"] == "gradle build"]
+    return Gate(games, own, amd_facts(procs, sessions), builds, java)
+
+
+def java_role(cmdline: list[str]) -> str:
+    """A JVM's role as the gate reads it from its main class."""
+    if any(arg in GRADLE_BUILD for arg in cmdline):
+        return "gradle build"
+    if GRADLE_DAEMON in cmdline:
+        return "gradle daemon"
+    return "other"
 
 
 # Hashes against the spec and the platform file.
@@ -636,21 +657,25 @@ def prelaunch(display: dict, tier: str, pack: str, overrides: dict[str, str]) ->
     )
 
 
-def write_prelaunch(game: Path, pre: Prelaunch) -> None:
+def write_prelaunch(game: Path, pre: Prelaunch) -> dict:
     """options.txt (over the game's own lines), sodium-options.json and config/iris.properties
-    written before the launch."""
+    written before the launch; the options file as the game will read it: its sha256 and every
+    key the harness does not write, with its value (run-record.md#identity, `recorded`)."""
     path = game / OPTIONS
     existing = path.read_text(encoding="utf-8") if path.is_file() else None
     (game / SODIUM).parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(options_text(existing, pre.options).encode("utf-8"))
+    text = options_text(existing, pre.options)
+    path.write_bytes(text.encode("utf-8"))
     (game / SODIUM).write_bytes(pre.sodium.encode("utf-8"))
     (game / IRIS).write_bytes(iris_text(pre.iris).encode("utf-8"))
+    unwritten = {k: v for k, v in options_values(text).items() if k not in pre.options}
+    return {"sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(), "unwritten": unwritten}
 
 
 def read_back(game: Path, pre: Prelaunch) -> dict:
-    """The files after the quit against what was written: every options.txt key (F3's two
-    excepted, reported apart), the iris.properties keys, the two Sodium flags; and whether
-    Sodium's file is still the written text."""
+    """The files after the quit against what was written: every options.txt key (each one is
+    identity, F3's two included), the iris.properties keys, the two Sodium flags, and Sodium's
+    file still the written text (its hash is identity)."""
     read = options_values((game / OPTIONS).read_text(encoding="utf-8"))
     moved = {
         key: {"written": value, "read": read.get(key)}
@@ -670,16 +695,12 @@ def read_back(game: Path, pre: Prelaunch) -> dict:
         for section, key, value in SODIUM_FLAGS
         if sodium.get(section, {}).get(key) is not value
     }
-    failed = {key: d for key, d in moved.items() if key not in F3_EXCEPTED}
+    same = sodium_bytes == pre.sodium.encode("utf-8")
     return {
-        "ok": not failed and not iris_moved and not flags,
-        "options": {
-            "keys": len(pre.options),
-            "moved": failed,
-            "excepted": {key: d for key, d in moved.items() if key in F3_EXCEPTED},
-        },
+        "ok": not moved and not iris_moved and not flags and same,
+        "options": {"keys": len(pre.options), "moved": moved},
         "iris": {"keys": len(pre.iris), "moved": iris_moved},
-        "sodium": {"flagsMoved": flags, "sameText": sodium_bytes == pre.sodium.encode("utf-8")},
+        "sodium": {"flagsMoved": flags, "sameText": same},
     }
 
 
@@ -791,9 +812,11 @@ def command_facts(
     found = []
     if not started or norm(started[0]) != norm(str(java)):
         found.append(f"java is {started[0] if started else None!r}, not {str(java)!r}")
-    for argument in heap_arguments(java_profile):
-        if started.count(argument) != 1:
-            found.append(f"{argument} appears {started.count(argument)} times, not once")
+    found += [
+        f"{argument} appears {started.count(argument)} times, not once"
+        for argument in heap_arguments(java_profile)
+        if started.count(argument) != 1
+    ]
     heap = [a for a in started if a.startswith(("-Xms", "-Xmx"))]
     if len(heap) != 2:
         found.append(f"heap arguments {heap}, not bench.json's two")
@@ -846,14 +869,14 @@ def session_text(path: Path, mark: LogMark | None) -> str | None:
     launch never opens then, so log4j's rename at startup cannot meet an open handle."""
     try:
         stat = path.stat()
-        same = mark is not None and (stat.st_dev, stat.st_ino) == mark.identity
-        if same and stat.st_size == mark.size:
+        same = mark if mark is not None and (stat.st_dev, stat.st_ino) == mark.identity else None
+        if same and stat.st_size == same.size:
             return None
         data = path.read_bytes()
     except FileNotFoundError:
         return None
-    if same and len(data) >= mark.size and data[: len(mark.head)] == mark.head:
-        data = data[mark.size :]
+    if same and len(data) >= same.size and data[: len(same.head)] == same.head:
+        data = data[same.size :]
     return data.decode("utf-8", errors="replace")
 
 
@@ -927,7 +950,10 @@ def end(process: Process, host: Host) -> str:
         except subprocess.TimeoutExpired:
             pass
     process.kill()
-    process.wait(QUIT_TIMEOUT)
+    try:
+        process.wait(QUIT_TIMEOUT)
+    except subprocess.TimeoutExpired:  # said, never raised over the error that called end()
+        return f"killed, still running after {QUIT_TIMEOUT:g} s"
     return "killed"
 
 
@@ -996,7 +1022,7 @@ def open_mod(
     folder. The open client and the facts; LaunchError (the client closed) when a check fails."""
     log = log or request_log(root, datetime.now(UTC))
     try:
-        client = host.connect(launched.token, launched.pid, log)
+        client = host.connect(launched.mod_token(), launched.pid, log)
     except modclient.ModError as error:
         raise LaunchError(str(error)) from None
     try:
@@ -1005,7 +1031,7 @@ def open_mod(
         found = [(a["type"], host.canonical_sid(a["sid"])) for a in aces]
         if found != [("A", user)]:
             raise LaunchError(f"the pipe's DACL is {client.dacl}, not one allow ACE for {user}")
-        refused = host.second_instance(modclient.pipe_name(launched.token))
+        refused = host.second_instance(modclient.pipe_name(launched.mod_token()))
         if refused == 0:
             raise LaunchError("a second server instance of the mod's pipe was created")
         say(
@@ -1122,6 +1148,13 @@ class Launched:
     prelaunch: Prelaunch
     facts: dict
 
+    def mod_token(self) -> str:
+        """The token the mod's pipe is named from; LaunchError for a --no-token launch, whose
+        mod is inert."""
+        if self.token is None:
+            raise LaunchError("this launch ran with --no-token: the mod is inert, no pipe to open")
+        return self.token
+
 
 def launch(
     root: Path,
@@ -1173,9 +1206,10 @@ def launch(
     if not found.ok:
         blocking = [f"pid {g['pid']} {g['name']} ({', '.join(g['via'])})" for g in found.games]
         blocking += [f"ETW session {name}" for name in found.sessions]
+        blocking += [f"pid {b['pid']} {b['name']}: a Gradle build" for b in found.builds]
         raise LaunchError(
-            f"the gate is closed: {'; '.join(blocking)} (F2); fix: quit that game or stop that "
-            "session, never AMD's"
+            f"the gate is closed: {'; '.join(blocking)} (F2); fix: quit that game, stop that "
+            "session (never AMD's) or let the build finish"
         )
     say(gate_line(found, shown(base, root)))
     version_type = check_spec_files(root, base, plat, spec)
@@ -1186,7 +1220,7 @@ def launch(
     )
     mods = place_mods(root, base, plat, tier)
     say(mods_line(mods, tier))
-    write_prelaunch(game, pre)
+    options_file = write_prelaunch(game, pre)
     say(
         f"pre-launch: options.txt ({len(pre.options)} keys"
         + (f", --set {', '.join(f'{k}={v}' for k, v in overrides.items())}" if overrides else "")
@@ -1247,7 +1281,12 @@ def launch(
         "log": shown(log, root),
         "stdout": shown(game / STDOUT, root),
         "uuid": {"value": uuid, "from": uuid_from},
-        "gate": {"games": found.games, "sessions": found.sessions, "amd": found.amd},
+        "gate": {
+            "games": found.games,
+            "sessions": found.sessions,
+            "amd": found.amd,
+            "java": found.java,
+        },
         "amdAfterJoin": amd_after,
         "hashes": {
             "classpathJars": len(spec["classpath"]),
@@ -1269,6 +1308,7 @@ def launch(
             "sodiumOptions": pre.sodium_sha256,
             "iris": pre.iris,
         },
+        "optionsFile": options_file,
         "command": {"arguments": redact(command), "check": "equal"},
         "join": {"seconds": round(seconds, 2), "line": line.strip()},
         "timings": {"prepareSeconds": round(prepared, 2), "joinSeconds": round(seconds, 2)},

@@ -102,7 +102,7 @@ GAME_OPTIONS = (
 
 
 def sha1(data: bytes) -> str:
-    return hashlib.sha1(data).hexdigest()
+    return hashlib.sha1(data, usedforsecurity=False).hexdigest()  # Mojang's file sums
 
 
 def sha512(data: bytes) -> str:
@@ -164,8 +164,10 @@ def test_options_txt_keeps_the_games_lines_and_writes_the_suites_keys() -> None:
 
 def test_the_written_options_are_the_suites_with_the_overrides() -> None:
     written = launch.written_options(DISPLAY, {})
-    assert written == DISPLAY["optionsTxt"] and len(written) == 23
+    assert written == DISPLAY["optionsTxt"] and len(written) == 24
     assert (written["version"], written["graphicsPreset"]) == ("5023", '"custom"')
+    # The game's default afk caps a session without input at 30 fps (0.01.11); minimized does not.
+    assert written["inactivityFpsLimit"] == '"minimized"'
     assert "rawMouseInput" not in written  # 26.3 removed it (lessons.md#windows)
     over = launch.written_options(DISPLAY, {"maxFps": "120"})
     assert over["maxFps"] == "120" and list(over) == list(written)
@@ -184,11 +186,11 @@ def test_sodium_options_are_sodiums_own_format_with_the_suites_hash() -> None:
     assert "\r" not in text and json.loads(text)["performance"]["use_no_error_g_l_context"] is False
     flipped = json.loads(json.dumps(DISPLAY))
     flipped["sodiumOptionsFile"]["notifications"]["has_edited_fullscreen_option"] = False
-    with pytest.raises(launch.LaunchError, match="has_edited_fullscreen_option is not true .F3."):
+    with pytest.raises(launch.LaunchError, match=r"has_edited_fullscreen_option is not true .F3."):
         launch.sodium_file(flipped)
     moved = json.loads(json.dumps(DISPLAY))
     moved["sodiumOptionsFile"]["quality"]["hidden_fluid_culling"] = False
-    with pytest.raises(launch.LaunchError, match="hashes [0-9a-f]{64}, suite.json display.sodium"):
+    with pytest.raises(launch.LaunchError, match=r"hashes [0-9a-f]{64}, suite.json display.sodium"):
         launch.sodium_file(moved)
 
 
@@ -230,17 +232,19 @@ def test_the_pre_launch_files_and_their_read_back(tmp_path: Path) -> None:
     back = launch.read_back(game, pre)
     assert back == {
         "ok": True,
-        "options": {"keys": 23, "moved": {}, "excepted": {}},
+        "options": {"keys": 24, "moved": {}},
         "iris": {"keys": 5, "moved": {}},
         "sodium": {"flagsMoved": {}, "sameText": True},
     }
-    # F3's two keys are excepted; any other key, an Iris key or a Sodium flag fails the read-back.
+    # Any written key, F3's two included (both are identity), an Iris key or a Sodium flag that
+    # moved fails the read-back.
     text = options.decode().replace("exclusiveFullscreen:false", "exclusiveFullscreen:true")
     write(game / "options.txt", text.encode())
     back = launch.read_back(game, pre)
-    assert back["ok"] and back["options"]["excepted"] == {
+    assert not back["ok"] and back["options"]["moved"] == {
         "exclusiveFullscreen": {"written": "false", "read": "true"}
     }
+    text = options.decode()
     write(game / "options.txt", text.replace("maxFps:120", "maxFps:60").encode())
     back = launch.read_back(game, pre)
     assert not back["ok"] and back["options"]["moved"] == {
@@ -421,7 +425,7 @@ def test_a_started_command_line_reads_back_equal_on_windows() -> None:
         "C:\\trailing\\",
         "--offlineDeveloperMode",
     ]
-    child = subprocess.Popen(args, creationflags=launch.CREATION_FLAGS)
+    child = subprocess.Popen(args, creationflags=launch.CREATION_FLAGS)  # noqa: S603 fixed argv
     try:
         assert launch.Host().cmdline(child.pid) == args
     finally:
@@ -463,7 +467,9 @@ def test_wm_close_quits_a_real_window_through_user32() -> None:
     the test process itself owns no window."""
     assert launch.windows_of(os.getpid()) == []
     python = getattr(sys, "_base_executable", sys.executable)
-    child = subprocess.Popen([python, "-c", WINDOW_CHILD], creationflags=launch.CREATION_FLAGS)
+    child = subprocess.Popen(  # noqa: S603 this interpreter and a constant script
+        [python, "-c", WINDOW_CHILD], creationflags=launch.CREATION_FLAGS
+    )
     try:
         facts = launch.quit_game(child, launch.Host())
         assert facts["how"] == "WM_CLOSE" and facts["windows"] == 1 and facts["exitCode"] == 0
@@ -770,7 +776,7 @@ def test_game_mods_is_made_to_hold_exactly_the_tier(tmp_path: Path) -> None:
     (mods / "mod-a.jar").unlink()
     write(base / "files" / "mod-a.jar", b"tampered")
     with pytest.raises(
-        launch.LaunchError, match="store jar runtime/mc-fixture/files/mod-a.jar: sha"
+        launch.LaunchError, match=r"store jar runtime/mc-fixture/files/mod-a.jar: sha"
     ):
         launch.place_mods(root, base, plat, "bench")
     assert not (mods / "mod-a.jar").exists()
@@ -834,7 +840,7 @@ def test_a_launch_end_to_end_through_a_fake_game(
     quit_facts = launch.quit_game(launched.process, host)
     assert quit_facts == {"how": "WM_CLOSE", "windows": 1, "exitCode": 0, "seconds": 0.0}
     back = launch.read_back(launched.game, launched.prelaunch)
-    assert back["ok"] and back["options"] == {"keys": 23, "moved": {}, "excepted": {}}
+    assert back["ok"] and back["options"] == {"keys": 24, "moved": {}}
 
 
 def test_a_closed_gate_or_a_bad_input_writes_nothing(tmp_path: Path) -> None:
@@ -852,7 +858,7 @@ def test_a_closed_gate_or_a_bad_input_writes_nothing(tmp_path: Path) -> None:
     host.logman_text = LOGMAN
     with pytest.raises(launch.LaunchError, match="no world 'nowhere' under runtime/mc-fixture/"):
         launch.launch(root, "nowhere", host=host)
-    with pytest.raises(launch.LaunchError, match="no world '../spike'"):
+    with pytest.raises(launch.LaunchError, match=r"no world '../spike'"):
         launch.launch(root, "../spike", host=host)
     with pytest.raises(launch.LaunchError, match="tier lod lacks voxy: pending; fix"):
         launch.launch(root, "spike", "lod", host=host)
@@ -916,7 +922,7 @@ def test_the_cli_holds_quits_and_reads_back(
         "hashes: 2 classpath jars, asset index 34 and the version JSON sha1-equal to the spec; "
         "2 packs sha512-equal"
     )
-    assert lines[3].startswith("pre-launch: options.txt (23 keys), sodium-options.json (sha256 ")
+    assert lines[3].startswith("pre-launch: options.txt (24 keys), sodium-options.json (sha256 ")
     assert lines[4].startswith("started pid 4242: 38 arguments, KnotClient, 2 jars, ")
     assert lines[5].startswith("joined in 1.0 s: [03:28:01] [Server thread/INFO]: optilux[")
     assert lines[7] == (
@@ -926,7 +932,7 @@ def test_the_cli_holds_quits_and_reads_back(
         "mod: no optilux-helper jar in the store, no mod session (fix: `optilux mod build`)",
         "held 2 s in the world",
         "quit: WM_CLOSE to 1 window, exit code 0 in 0.0 s",
-        "read back: options.txt 23 of 23 keys as written; F3 excepted: none moved",
+        "read back: options.txt 24 of 24 keys as written",
         "read back: iris.properties 5 of 5 keys as written; sodium-options.json flags held, "
         "text unchanged",
         "optilux launch: ok; pid 4242, joined in 1.0 s, log "
@@ -942,12 +948,11 @@ def test_the_cli_holds_quits_and_reads_back(
     }
     assert not any(a.startswith("-Doptilux.") for a in hosts[-1].started["command"])
     assert b"maxFps:120\n" in (game / "options.txt").read_bytes()
-    # An F3 key the game moved is excepted, and the report does not count it as written.
+    # An F3 key the game moved fails the launch like any written key: it is identity.
     flips.append({"exclusiveFullscreen": "true"})
-    assert cli.main(["launch", "spike", "--quit-after", "0"]) == 0
+    assert cli.main(["launch", "spike", "--quit-after", "0"]) == 1
     assert (
-        "read back: options.txt 22 of 23 keys as written; F3 excepted: exclusiveFullscreen "
-        "false -> true"
+        "read back: options.txt 23 of 24 keys as written; moved: exclusiveFullscreen: false -> true"
     ) in capsys.readouterr().out.splitlines()
     flips.append({})
     # A quit that does not exit 0 fails the run.
@@ -1111,7 +1116,7 @@ def test_the_cli_ends_the_game_when_the_mod_session_fails(
     monkeypatch.setattr(launch_verb, "REPO_ROOT", root)
     monkeypatch.setattr(launch, "Host", fake_host)
     assert cli.main(["launch", "spike", "--quit-after", "1"]) == 1
-    out, err = capsys.readouterr()
+    err = capsys.readouterr().err
     assert err.startswith(
         "optilux launch: the mod session: hello answered pid 999, not the launched 4242; the "
         "game was ended (WM_CLOSE, exit code 0)"
@@ -1150,3 +1155,99 @@ def test_a_dacl_written_with_an_alias_passes(tmp_path: Path) -> None:
     client, facts = launch.open_mod(launched, root, host, lambda text: None)
     client.close()
     assert facts["pipe"]["dacl"] == "D:P(A;;FA;;;LA)"
+
+
+def test_the_options_file_the_game_reads_is_recorded_before_the_launch(tmp_path: Path) -> None:
+    """The game reads every options.txt key, the harness writes 24: the rest are recorded with
+    their values and the file's hash as the launch leaves it (inactivityFpsLimit moved frame
+    time unwritten in 0.01.11)."""
+    game = tmp_path / "game"
+    write(game / "options.txt", GAME_OPTIONS.encode())
+    pre = launch.prelaunch(DISPLAY, "bench", "Ref.zip", {})
+    found = launch.write_prelaunch(game, pre)
+    written = (game / "options.txt").read_bytes()
+    assert found["sha256"] == hashlib.sha256(written).hexdigest()
+    read = launch.options_values(written.decode())
+    assert found["unwritten"] == {k: v for k, v in read.items() if k not in pre.options}
+    assert found["unwritten"]["ao"] == "true" and "renderDistance" not in found["unwritten"]
+
+
+def test_end_reports_a_game_that_outlasts_its_kill() -> None:
+    """A killed game still running after QUIT_TIMEOUT is said, not raised over the error that
+    made the harness end it."""
+
+    class Stuck(FakeProcess):
+        def kill(self) -> None:
+            self.killed = True  # the process stays
+
+    process = Stuck()
+    host = FakeGame(Path("."), None)
+    host.windows = lambda pid: []  # type: ignore[method-assign]
+    how = launch.end(process, host)
+    assert process.killed and "still running" in how
+
+
+def test_the_gate_refuses_a_gradle_build_and_records_other_java(tmp_path: Path) -> None:
+    """A Gradle build competes with the game for the CPU and the store's jars: it blocks. An
+    idle daemon (VS Code's Gradle extension) and other JVMs (its language server) are recorded,
+    as AMD's PresentMon is (roadmap.md#qa-pass-open-questions)."""
+    base, _ = paths(tmp_path)
+    jdk = "C:\\jdk\bin\\java.exe"
+    wrapper = proc(8, "java.exe", jdk, r"C:\work\mod", ["java", "-classpath", "gradle-wrapper.jar"])
+    wrapper.cmdline.append("org.gradle.wrapper.GradleWrapperMain")
+    daemon = proc(
+        9, "java.exe", jdk, None, ["java", "org.gradle.launcher.daemon.bootstrap.GradleDaemon"]
+    )
+    server = proc(10, "javaw.exe", jdk, None, ["javaw", "-jar", "equinox.launcher.jar"])
+    found = launch.gate(base, [wrapper, daemon, server], LOGMAN, own_pid=0)
+    assert found.builds == [{"pid": 8, "name": "java.exe"}] and not found.ok
+    assert [(j["pid"], j["role"]) for j in found.java] == [
+        (8, "gradle build"),
+        (9, "gradle daemon"),
+        (10, "other"),
+    ]
+    found = launch.gate(base, [daemon, server], LOGMAN, own_pid=0)
+    assert found.builds == [] and found.ok
+
+
+def test_the_quits_kill_a_game_that_will_not_go(tmp_path: Path) -> None:
+    """WM_CLOSE without a window, WM_CLOSE outlasted, the mod's quit outlasted and an exit while
+    held: each kills the game and raises, so no run goes on with it."""
+    host = FakeGame(tmp_path, None)
+    host.windows = lambda pid: []  # type: ignore[method-assign]
+    process = FakeProcess()
+    with pytest.raises(launch.LaunchError, match="no window"):
+        launch.quit_game(process, host)
+    assert process.killed
+
+    class Deaf(FakeGame):
+        def windows(self, pid: int) -> list[int]:
+            return [77]
+
+        def close(self, hwnd: int) -> bool:
+            return True
+
+    process = FakeProcess()
+    with pytest.raises(launch.LaunchError, match="outlasted WM_CLOSE"):
+        launch.quit_game(process, Deaf(tmp_path, None))
+    assert process.killed
+    process = FakeProcess()
+    process.returncode = -1
+    with pytest.raises(launch.LaunchError, match="exited with code -1 before the quit"):
+        launch.quit_game(process, FakeGame(tmp_path, None))
+    with pytest.raises(launch.LaunchError, match="while held"):
+        launch.hold(process, FakeGame(tmp_path, None), 5.0)
+
+    class Client:
+        closed = False
+
+        def request(self, command: str) -> dict:
+            return {}
+
+        def close(self) -> None:
+            self.closed = True
+
+    client, process = Client(), FakeProcess()
+    with pytest.raises(launch.LaunchError, match="outlasted quit"):
+        launch.quit_mod(client, process, FakeGame(tmp_path, None))  # type: ignore[arg-type]
+    assert process.killed and client.closed

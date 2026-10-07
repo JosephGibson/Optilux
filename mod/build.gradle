@@ -57,6 +57,10 @@ java {
 tasks.withType(JavaCompile).configureEach {
     options.release = 25
     options.encoding = 'UTF-8'
+    // Every javac warning fails the build (docs/roadmap.md#decisions D28); one that must stay is
+    // suppressed where it occurs, with the reason. -classfile: Minecraft's Guava jar names
+    // errorprone annotations that are not on the classpath, a warning about a jar, not our source.
+    options.compilerArgs += ['-Xlint:all,-classfile', '-Werror']
 }
 
 // fabric.mod.json: one client entrypoint, the mixin config, `depends` from the inputs, the

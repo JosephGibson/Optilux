@@ -9,3 +9,4 @@ __pycache__/
 mod/.gradle/
 build/
 .claude/settings.local.json
+.coverage

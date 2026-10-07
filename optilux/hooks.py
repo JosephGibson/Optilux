@@ -12,10 +12,10 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path, PurePosixPath
 
-from optilux import REPO_ROOT, docs_check
+from optilux import REPO_ROOT, docs_check, repo
 
 # main moves only by the user's rebase merge of a milestone PR (docs/workflow.md#git).
-MAIN = "main"
+MAIN = repo.MAIN
 # docs/workflow.md#git: one line, at most 72 characters, `0.MM.PP: <summary>`.
 MAX_MESSAGE = 72
 MESSAGE = re.compile(r"0\.\d{2}\.\d{2}: \S.*")
@@ -36,11 +36,20 @@ ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=")
 WRAPPERS = {"builtin", "command", "env", "exec", "nohup", "time"}
 POSIX_SHELLS = {"bash", "dash", "sh", "zsh"}
 POWERSHELLS = {"powershell", "pwsh"}
+CMD = {"cmd"}
+# git takes any unambiguous prefix of a long option (`--no-verif` is --no-verify): each guarded
+# option with its shortest prefix the guard refuses. Shorter prefixes are ambiguous, which git
+# refuses itself (`--fo`: --force or --follow-tags; `--no-ve`: --no-verify or --no-verbose).
+SKIP_HOOKS = {"--no-verify": "--no-v"}
+PUSH_FORCED = {"--force": "--for", "--force-with-lease": "--for", "--mirror": "--mi"}
+PUSH_EVERY = {"--all": "--al", "--branches": "--br"}
 # git's global options that take the next word as their value.
 GIT_VALUE_OPTIONS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env"}
 PUSH_VALUE_OPTIONS = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
-# commit's short options whose value follows in the same word or the next one.
+# commit's short options whose value follows in the same word or the next one, and those
+# whose optional value can only follow in the same word (-u<mode>, -S<keyid>).
 COMMIT_VALUE_LETTERS = set("mFCct")
+COMMIT_ATTACHED_LETTERS = set("uS")
 COMMIT_TEXT_OPTIONS = {"--message", "--trailer", "--author"}
 
 
@@ -115,7 +124,21 @@ def git_calls(command: str) -> list[list[str]]:
                 if arg.lower() in ("-c", "-command"):
                     calls += git_calls(" ".join(args[index + 1 :]))
                     break
+        elif name in CMD:
+            for index, arg in enumerate(args):
+                if arg.lower() in ("/c", "/k"):
+                    calls += git_calls(" ".join(args[index + 1 :]))
+                    break
     return calls
+
+
+def abbreviates(arg: str, options: dict[str, str]) -> str | None:
+    """The guarded long option `arg` spells or abbreviates, None for any other."""
+    name = arg.split("=", 1)[0]
+    for option, shortest in options.items():
+        if name.startswith(shortest) and option.startswith(name):
+            return option
+    return None
 
 
 def split_git(args: list[str]) -> tuple[list[str], str | None, list[str]]:
@@ -143,6 +166,8 @@ def commit_parts(args: list[str]) -> tuple[bool, list[str]]:
                 texts.append(value)
         elif arg.startswith("-"):
             for position, letter in enumerate(arg[1:], 1):
+                if letter in COMMIT_ATTACHED_LETTERS:
+                    break  # the rest of the word is its value
                 if letter == "n":
                     skips = True
                 if letter in COMMIT_VALUE_LETTERS:
@@ -168,9 +193,9 @@ def push_refusal(args: list[str], branch: Callable[[], str | None]) -> str | Non
         if arg in PUSH_VALUE_OPTIONS:
             index += 2
             continue
-        if arg in ("--force", "--mirror") or arg.startswith("--force-with-lease"):
+        if abbreviates(arg, PUSH_FORCED):
             return f"`git push {arg}` rewrites remote history; push without force"
-        if arg in ("--all", "--branches"):
+        if abbreviates(arg, PUSH_EVERY):
             return f"`git push {arg}` pushes every branch, main too; name the milestone branch"
         if arg.startswith("-") and not arg.startswith("--"):
             letters = arg[1:].split("o")[0]  # -o takes a value: what follows it is no flag
@@ -200,7 +225,7 @@ def git_guard(command: str, branch: Callable[[], str | None]) -> str | None:
     """
     for args in git_calls(command):
         options, subcommand, rest = split_git(args)
-        if "--no-verify" in rest:
+        if any(abbreviates(arg, SKIP_HOOKS) for arg in rest):
             return "`--no-verify` skips the git hooks; fix what they refuse instead"
         for index, option in enumerate(options[:-1]):
             if option == "-c" and options[index + 1].lower().startswith("core.hookspath"):
@@ -227,7 +252,8 @@ def ruff(paths: Sequence[Path], root: Path) -> list[str]:
         (["format", "--check"], "uv run ruff format"),
     ):
         command = [sys.executable, "-m", "ruff", *check, *names]
-        result = subprocess.run(command, cwd=root, capture_output=True, text=True)
+        # S603: an argv list, no shell; the names are git's staged paths.
+        result = subprocess.run(command, cwd=root, capture_output=True, text=True)  # noqa: S603
         if result.returncode:
             output = (result.stdout + result.stderr).strip()
             findings.append(f"ruff {check[0]}:\n{output}\n  fix: `{fix} {' '.join(names)}`")
@@ -240,7 +266,7 @@ def doc_findings(root: Path) -> list[str]:
 
 def staged(root: Path) -> list[str]:
     command = ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"]
-    result = subprocess.run(command, cwd=root, capture_output=True, text=True, check=True)
+    result = subprocess.run(command, cwd=root, capture_output=True, text=True, check=True)  # noqa: S603 constant argv
     return [name for name in result.stdout.split("\0") if name]
 
 
@@ -283,20 +309,26 @@ def names_repo(command: str, root: Path) -> bool:
 
 def current_branch(cwd: str) -> str | None:
     command = ["git", "symbolic-ref", "--short", "-q", "HEAD"]
-    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True)
+    result = subprocess.run(command, cwd=cwd, capture_output=True, text=True)  # noqa: S603 constant argv
     return result.stdout.strip() or None
 
 
-def read_event() -> dict:
+def read_event() -> dict | None:
+    """The hook's JSON event from stdin; None when it cannot be read."""
     try:
         event = json.load(sys.stdin)
     except json.JSONDecodeError:
-        return {}
-    return event if isinstance(event, dict) else {}
+        return None
+    return event if isinstance(event, dict) else None
 
 
 def run_git_guard(args: list[str]) -> int:
     event = read_event()
+    if event is None:  # fails closed: the unread command could be a force push
+        print(
+            "optilux git guard: cannot read the hook's event (not a JSON object)", file=sys.stderr
+        )
+        return 2
     command = str((event.get("tool_input") or {}).get("command") or "")
     cwd = str(event.get("cwd") or ".")
     # Inert outside this repository, unless the command names it (a `cd` back into it).
@@ -310,7 +342,7 @@ def run_git_guard(args: list[str]) -> int:
 
 
 def run_post_edit(args: list[str]) -> int:
-    event = read_event()
+    event = read_event() or {}  # post_edit only adds context: an unread event edits nothing
     path = str((event.get("tool_input") or {}).get("file_path") or "")
     if not path or not inside(path, REPO_ROOT):
         return 0

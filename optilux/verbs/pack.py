@@ -24,6 +24,7 @@ from pathlib import Path
 
 from optilux import REPO_ROOT, hooks, repo
 from optilux.verbs import Verb
+from optilux.verbs.install import shown
 
 PREFIX = "optilux pack build"
 RELEASE = "optilux pack release"
@@ -143,11 +144,6 @@ def build(root: Path, out_dir: Path, version: str) -> Built:
     return Built(path, version, digest, tuple(name for name, _ in entries))
 
 
-def shown(path: Path, root: Path) -> str:
-    """A path as printed and passed to gh: relative to the repo when inside it."""
-    return path.relative_to(root).as_posix() if path.is_relative_to(root) else path.as_posix()
-
-
 def report(prefix: str, built: Built, root: Path) -> None:
     entries = len(built.entries)
     print(f"{prefix}: wrote {shown(built.path, root)} ({entries} entries, version {built.version})")
@@ -208,7 +204,7 @@ def run_gh(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     env = {**os.environ, **GH_ENV}
     command = [GH, *args]
     try:
-        return subprocess.run(
+        return subprocess.run(  # noqa: S603 argv list, no shell
             command,
             cwd=root,
             env=env,
@@ -259,7 +255,10 @@ def live[T](read: Callable[[], T]) -> T:
 
 def dirty(root: Path) -> str | None:
     """What makes the tree unclean, None when it is clean."""
-    changes = repo.changes(root)
+    try:
+        changes = repo.changes(root)
+    except repo.GitError as error:
+        return str(error)
     if not changes:
         return None
     listed = "; ".join(change.strip() for change in changes[:5])

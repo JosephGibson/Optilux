@@ -14,7 +14,11 @@ optilux = "optilux.cli:main"
 
 [dependency-groups]
 dev = [
+    # coverage, pyright and pytest-xdist: the QA pass's tools (docs/roadmap.md#decisions D28).
+    "coverage==7.16.2",
+    "pyright[nodejs]==1.1.414",
     "pytest==9.1.1",
+    "pytest-xdist==3.8.0",
     "ruff==0.16.10",
 ]
 
@@ -35,8 +39,33 @@ line-length = 100
 extend-exclude = ["docs/sources"]
 
 [tool.ruff.lint]
-# pycodestyle, pyflakes, isort, bugbear, pyupgrade.
-select = ["E", "W", "F", "I", "B", "UP"]
+# pycodestyle, pyflakes, isort, bugbear, pyupgrade; blind except, bandit, simplify, ruff's own and
+# perflint (the QA pass, docs/roadmap.md#decisions D28). A hit is fixed, or suppressed on its line
+# with the reason after the code.
+select = ["E", "W", "F", "I", "B", "UP", "BLE", "S", "SIM", "RUF", "PERF"]
+
+[tool.ruff.lint.per-file-ignores]
+# pytest's assert is how a test states its check, not a runtime guard that -O would strip.
+"tests/**" = ["S101"]
+
+[tool.pyright]
+# Basic mode over the harness, a CI step (docs/roadmap.md#decisions D28); tests are checked by
+# running them.
+include = ["optilux"]
+typeCheckingMode = "basic"
+pythonVersion = "3.12"
+venvPath = "."
+venv = ".venv"
+
+[tool.coverage.run]
+# The QA pass's one serial branch report (docs/workflow.md#testing): `uv run coverage run -m
+# pytest tests`, then `uv run coverage report`.
+branch = true
+source = ["optilux"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

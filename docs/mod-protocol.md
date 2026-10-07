@@ -6,7 +6,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 
 ## Transport
 - Windows named pipe, `\\.\pipe\optilux-` + the first 32 hex digits of SHA-256("optilux-pipe:" + token).
-- One client at a time. A client may reconnect. On disconnect, state survives and work does not: running requests are cancelled, and input blocking is released after 10 s without a reconnect (mod.md#4-architecture).
+- One client at a time. A client may reconnect. On disconnect, state survives and work does not: running requests are cancelled, and input blocking is released after 10 s without a client's `hello` (mod.md#4-architecture).
 - UTF-8, one JSON value per line (`\n`; a trailing `\r` is dropped).
 - Lines are at most 1 MiB before the `
 `. An overlong or malformed line is answered at once with a coded error and `id: null`, never by a timeout: an overlong one the moment it passes 1 MiB, its rest skipped up to its `
@@ -22,7 +22,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
   - responses may arrive out of order, matched by `id`;
   - exclusive resources (window, capture, path, timers) answer `busy`; while one is active, `camera.place`, `camera.path`, `command`, `ticks.step`, `shaders.reload`, `hud.set` and `input.block` also answer `busy`, so no mutation lands inside a measurement.
 - Long requests can be cancelled with `cancel {"id"}`. The cancelled request answers `cancelled`; `cancel` answers `cancelled: true`, or false when that id was not running. Game-thread work already queued for a request answered `timeout` or `cancelled` skips its mutation when it runs (mod.md#4-architecture).
-- Event: `{"event": "<name>", "data": {...}, "frameIndex", "sinceReload", "qpcNs"}`. Events have no `id`; the mod pushes them after `hello`.
+- Event: `{"event": "<name>", "data": {...}, "frameIndex", "sinceReload", "qpcNs"}`. Events have no `id`; the mod pushes them once it has read `hello`'s line, so one may precede hello's answer.
 - Versioning: `hello` returns `protocol` (integer) and `capabilities` (the commands this build answers). The client adapts to capabilities, never to version strings. A missing capability answers `unsupported`.
 
 ## Errors
@@ -31,11 +31,11 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 | bad-json, bad-encoding, line-too-long, bad-request | the line or its arguments are invalid; answered at once |
 | unknown-command, unsupported | no such command; capability absent on this platform |
 | unauthenticated | anything before a valid `hello` |
-| not-ready | no world, no player, or a screen open when one is required |
-| busy | exclusive resource in use, or 32 requests running |
+| not-ready | no world, no player, a screen open when one is required, or camera.place without spectator or flight |
+| busy | exclusive resource in use, a tick step or a reload running, 32 requests running, or no worker free |
 | timeout | the request's own `timeoutSeconds` expired (game work may still finish: see mod.md#4-architecture) |
 | cancelled | stopped by `cancel` |
-| iris-compile-error | reload failed; message holds Iris's error (cut at 16 KiB) |
+| iris-compile-error | reload failed with Iris's error in the message (cut at 16 KiB); a fallback without one, or a throwing Iris.reload, answers `failed` |
 | failed | anything else, message required |
 
 ## Events
@@ -48,7 +48,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 - `timers.dropped` (count), `hook.error` (message: an exception inside a frame hook, once per run of failures; the session marks the run invalid)
 
 ## Commands
-Phase: the milestone that first needs the command (design.md#6-milestones): M1 game control, M2 perf loop, M3 visual loop, M5 temporal; post = after 1.0. mod/src/main/resources/commands.json is this table in machine form: argument types, ranges and defaults, result fields, `mutating` and `exclusive` for `busy`; the mod's checks, the client and the fake read it, and a test keeps it equal to this table.
+Phase: the milestone that first needs the command (design.md#6-milestones): M1 game control, M2 perf loop, M3 visual loop, M5 temporal; post = after 1.0. mod/src/main/resources/commands.json is this table in machine form: argument types, ranges and defaults, result fields, `mutating` and `exclusive` for `busy`; the mod's checks, the client and the fake read it, and a test keeps its names, phases and arguments equal to this table (the Result column is prose).
 
 | Command | Args | Result | Phase |
 |---|---|---|---|

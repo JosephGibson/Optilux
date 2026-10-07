@@ -93,33 +93,35 @@ def test_two_builds_are_byte_identical(tree: Path, tmp_path: Path) -> None:
 
 def test_refuses_a_missing_source(tree: Path, tmp_path: Path) -> None:
     (tree / "LICENSE").unlink()
-    with pytest.raises(pack.PackError, match="LICENSE is missing under .*; fix: restore it"):
+    with pytest.raises(pack.PackError, match=r"LICENSE is missing under .*; fix: restore it"):
         pack.build(tree, tmp_path / "out", "0.00.05")
     assert not (tmp_path / "out").exists()
-    with pytest.raises(pack.PackError, match="no shader/ under .*; fix: run inside the Optilux"):
+    with pytest.raises(pack.PackError, match=r"no shader/ under .*; fix: run inside the Optilux"):
         pack.build(tmp_path / "nowhere", tmp_path / "out", "0.00.05")
 
 
 def test_refuses_a_pack_file_named_like_a_root_file(tree: Path, tmp_path: Path) -> None:
     (tree / "shader/README.md").write_bytes(b"# clash\n")
-    with pytest.raises(pack.PackError, match="named like a root file: README.md; fix: rename"):
+    with pytest.raises(pack.PackError, match=r"named like a root file: README.md; fix: rename"):
         pack.build(tree, tmp_path / "out", "0.00.05")
 
 
 def test_version_from_the_newest_commit(packed_repo: Path) -> None:
     assert pack.version_from_git(packed_repo) == "0.00.05"
     commit_file(packed_repo, "note.txt", b"x\n", "Merge without a prefix")
-    with pytest.raises(pack.PackError, match="'Merge without a prefix' carries no 0.MM.PP prefix"):
+    with pytest.raises(pack.PackError, match=r"'Merge without a prefix' carries no 0.MM.PP prefix"):
         pack.version_from_git(packed_repo)
     empty = fresh_repo(packed_repo.parent / "empty", "main")
-    with pytest.raises(pack.PackError, match="finds no commit in .*; fix: commit, or give"):
+    with pytest.raises(pack.PackError, match=r"finds no commit in .*; fix: commit, or give"):
         pack.version_from_git(empty)
 
 
 def test_check_version() -> None:
     assert pack.check_version("0.01.12") == "0.01.12"
     for bad in ("dev", "0.1.2", "1.00.00", "0.00.05: x", "v0.00.05"):
-        with pytest.raises(pack.PackError, match="is not of the form 0.MM.PP; fix: give --version"):
+        with pytest.raises(
+            pack.PackError, match=r"is not of the form 0.MM.PP; fix: give --version"
+        ):
             pack.check_version(bad)
 
 

@@ -35,6 +35,9 @@ jobs:
       - run: uv sync --frozen
       - run: uv run ruff check .
       - run: uv run ruff format --check .
+      # Basic mode over optilux/ (docs/roadmap.md#decisions D28); the Node it runs on comes
+      # locked with it (pyright[nodejs], uv.lock).
+      - run: uv run pyright
       - run: uv run optilux test
       - run: uv run optilux verify docs
       # --no-remote: gh has no login here, and on a push to main the release workflow may

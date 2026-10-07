@@ -103,11 +103,13 @@ def shown(path: Path, root: Path) -> str:
     return path.relative_to(root).as_posix() if path.is_relative_to(root) else path.as_posix()
 
 
+# S310 in fetch and download: every URL comes from the committed platform file or the pinned
+# version JSON, never from input.
 def fetch(url: str) -> bytes:
     """The body of a GET; InstallError names the URL and the reason. The tests replace it."""
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response:  # noqa: S310
             return response.read()
     except (urllib.error.URLError, OSError) as error:
         raise InstallError(f"GET {url} failed: {error}; fix: check the network") from None
@@ -118,10 +120,10 @@ def download(url: str, dest: Path) -> int:
     Nothing partial is left behind. The tests replace it."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     part = dest.with_name(dest.name + ".part")
-    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})  # noqa: S310
     size = 0
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT) as response, part.open("wb") as out:
+        with urllib.request.urlopen(request, timeout=TIMEOUT) as response, part.open("wb") as out:  # noqa: S310
             while chunk := response.read(platform.CHUNK):
                 out.write(chunk)
                 size += len(chunk)
@@ -178,6 +180,8 @@ def minecraft(
     profile_url = FABRIC_PROFILE.format(game=plat.minecraft, loader=loader_version)
     profile_bytes = fetch(profile_url)
     profile = json.loads(profile_bytes)
+    if not platform.plain_name(str(profile.get("id", ""))):
+        raise InstallError(f"{profile_url} names id {profile.get('id')!r}; fix: check Fabric meta")
     profile_path = mcdir / "versions" / profile["id"] / f"{profile['id']}.json"
     if not profile_path.is_file() or profile_path.read_bytes() != profile_bytes:
         profile_path.parent.mkdir(parents=True, exist_ok=True)
@@ -340,6 +344,8 @@ def tools(root: Path, outcome: Outcome, say: Say) -> None:
     for name, tool in pins.items():
         if not isinstance(tool, dict) or "sha256" not in tool:
             continue
+        if not platform.plain_name(tool["file"]):
+            raise InstallError(f"config/tools.json {name}: {tool['file']!r} is no plain file name")
         target = root / TOOLS_DIR / tool["file"]
         state = EQUAL
         if not target.is_file():
@@ -416,15 +422,13 @@ def report(outcome: Outcome) -> list[str]:
     copies = [f"{e['copy']} ({e['copyState']})" for e in outcome.files if e["copy"]]
     if copies:
         lines.append(f"copies: {'; '.join(copies)}")
-    for pending in outcome.pending:
-        lines.append(f"pending: {pending}")
+    lines += [f"pending: {pending}" for pending in outcome.pending]
     java_facts = outcome.java
     lines.append(
         f"java: {java_facts['build']}: {java_facts['archive']} sha256-equal, "
         f"{java_facts['unpacked']} at {java_facts['home']}"
     )
-    for tool in outcome.tools:
-        lines.append(f"tools: {tool['file']} sha256-equal ({tool['state']})")
+    lines += [f"tools: {tool['file']} sha256-equal ({tool['state']})" for tool in outcome.tools]
     spec = outcome.spec
     count = len(spec["diff"])
     facts = f"{count} fact{'s' if count != 1 else ''}"
