@@ -17,6 +17,7 @@ import itertools
 import json
 import math
 import queue
+import struct
 import threading
 import time
 from collections.abc import Iterator
@@ -48,6 +49,10 @@ READ_BYTES = 64 * 1024
 MAX_LINE = 1 << 20
 # An id is an integer the mod reads as a Java long, or a string of 1 to 64 characters.
 ID_RANGE = (-(2**63), 2**63 - 1)
+# A command answers once the server thread has run it; 10 s covers a slow tick.
+COMMAND_TIMEOUT = 10.0
+# A pose's fields besides its dimension; the game holds x, y, z as doubles, yaw and pitch as floats.
+POSE_KEYS = ("x", "y", "z", "yaw", "pitch")
 
 
 class ModError(RuntimeError):
@@ -363,6 +368,62 @@ class Client:
             )
         return result
 
+    # The game adapter's commands (docs/mod-protocol.md#commands): each answer's fields checked
+    # against commands.json before use.
+
+    def answer(self, command: str, args: dict | None = None, wait: float | None = None) -> dict:
+        """A request whose result must hold every field commands.json lists; ModError if not."""
+        result = self.request(command, args, wait)
+        missing = [key for key in self.commands["byName"][command]["result"] if key not in result]
+        if missing:
+            raise ModError(f"{command}: the answer lacks {', '.join(missing)}")
+        return result
+
+    def state(self) -> dict:
+        return self.answer("state")
+
+    def world_wait(self, timeout: float) -> dict:
+        """The joined pose, the overworld clock's time and the join's qpcNs, once the world has
+        rendered a frame."""
+        return self.answer("world.wait", {"timeoutSeconds": timeout})
+
+    def command(self, text: str, timeout: float = COMMAND_TIMEOUT, check: bool = True) -> dict:
+        """One command at OWNER level; ModError when it did not succeed and `check` holds."""
+        result = self.answer("command", {"text": text, "timeoutSeconds": timeout})
+        if check and result["succeeded"] is not True:
+            failures = "; ".join(result["failures"]) or "no result reported"
+            raise ModError(f"command {text}: did not succeed: {failures}")
+        return result
+
+    def ticks_step(self, n: int, timeout: float) -> dict:
+        return self.answer("ticks.step", {"n": n, "timeoutSeconds": timeout})
+
+    def camera_place(self, pose: dict, timeout: float, tp_semantics: bool = False) -> dict:
+        """Place the camera at `pose` (x, y, z, yaw, pitch, and dimension if given)."""
+        args = {key: pose[key] for key in POSE_KEYS}
+        if pose.get("dimension") is not None:
+            args["dimension"] = pose["dimension"]
+        args.update(tpSemantics=tp_semantics, timeoutSeconds=timeout)
+        return self.answer("camera.place", args)
+
+    def camera_get(self) -> dict:
+        return self.answer("camera.get")
+
+    def hud_set(self, hide_gui: bool | None = None, debug_overlay: bool | None = None) -> dict:
+        args = {}
+        if hide_gui is not None:
+            args["hideGui"] = hide_gui
+        if debug_overlay is not None:
+            args["debugOverlay"] = debug_overlay
+        return self.answer("hud.set", args)
+
+    def input_block(self, on: bool) -> dict:
+        """Block or release the game's mouse and keyboard; ModError when the answer differs."""
+        result = self.answer("input.block", {"on": on})
+        if result["on"] is not on:
+            raise ModError(f"input.block {on}: the mod answered on {result['on']}")
+        return result
+
     def next_event(self, timeout: float) -> dict | None:
         try:
             return self.events.get(timeout=timeout)
@@ -421,6 +482,28 @@ class Client:
             return
         waiter.answer = message
         waiter.done.set()
+
+
+def float32(value: float) -> float:
+    """`value` rounded to the nearest float, as the game stores an angle."""
+    return struct.unpack("<f", struct.pack("<f", value))[0]
+
+
+def pose_differences(wanted: dict, got: dict) -> list[str]:
+    """Where `got` differs from `wanted` beyond the game's own rounding: the dimension (when
+    wanted names one) and x, y, z exactly, yaw and pitch at float precision; empty when equal."""
+    found = []
+    if wanted.get("dimension") is not None and got.get("dimension") != wanted["dimension"]:
+        found.append(f"dimension {got.get('dimension')} != {wanted['dimension']}")
+    for key in POSE_KEYS:
+        want, have = wanted[key], got.get(key)
+        if not isinstance(have, int | float):
+            found.append(f"{key} {have!r} is no number")
+        elif key in ("yaw", "pitch") and float32(have) != float32(want):
+            found.append(f"{key} {have!r} != {want!r} as a float")
+        elif key not in ("yaw", "pitch") and have != want:
+            found.append(f"{key} {have!r} != {want!r}")
+    return found
 
 
 def encode(message: dict) -> bytes:

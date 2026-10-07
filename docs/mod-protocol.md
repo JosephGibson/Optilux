@@ -1,5 +1,5 @@
 # Mod protocol (draft v1)
-Status: rough draft, 2026-10-05; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; the rest is still spec.
+Status: rough draft, 2026-10-05; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block and the world, dimension, focus and screen events; the rest is still spec.
 
 ## Contents
 Transport · Envelope · Errors · Events · Commands · Choreography · Client rules
@@ -39,13 +39,13 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 | failed | anything else, message required |
 
 ## Events
-- `world.joined`, `world.left`, `dimension.changed`
-- `focus.lost`, `focus.gained`, `screen.opened` (any screen or overlay while a session runs)
+- `world.joined` (dimension), `world.left`, `dimension.changed` (from, to); a join before `hello` is not pushed: `world.wait` reports it
+- `focus.lost`, `focus.gained`, `screen.opened` (screen: the class name of any screen or overlay that opens)
 - `reload.done` (pack, pipeline, seconds), `reload.failed` (message)
 - `window.start`, `window.end` (see window.measure)
 - `path.started`, `path.done`
 - `capture.frame` (name, sha256, frameIndex), `capture.done`
-- `timers.dropped` (count), `hook.error` (an exception inside a frame hook; the session marks the run invalid)
+- `timers.dropped` (count), `hook.error` (message: an exception inside a frame hook, once per run of failures; the session marks the run invalid)
 
 ## Commands
 Phase: the milestone that first needs the command (design.md#6-milestones): M1 game control, M2 perf loop, M3 visual loop, M5 temporal; post = after 1.0. mod/src/main/resources/commands.json is this table in machine form: argument types, ranges and defaults, result fields, `mutating` and `exclusive` for `busy`; the mod's checks, the client and the fake read it, and a test keeps it equal to this table.
@@ -55,11 +55,11 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
 | hello | token | protocol, mod (id, version), platform, versions (minecraft, loader, iris, sodium, java), capabilities, pid; `resumed` and the ids cancelled by the last disconnect (false and empty at the first hello) | M1 |
 | selftest | - | per-capability pass/fail (frame clock, renderer probe, reload, capture to temp, input); needs a world and answers `not-ready` before `world.wait` | M1 |
 | state | - | inWorld, dimension, gamemode, screen, paused, focused, frameIndex, tick | M1 |
-| world.wait | timeoutSeconds | joined pose and time; replaces latest.log polling | M1 |
+| world.wait | timeoutSeconds | pose (dimension, x, y, z, yaw, pitch), time (the overworld clock), joinedQpcNs; answered once a frame rendered in the world; replaces latest.log polling | M1 |
 | command | text, timeoutSeconds | succeeded, messages, failures (OWNER level) | M1 |
-| ticks.step | n | answers after n server ticks ran (while frozen) | M1 |
+| ticks.step | n, timeoutSeconds | ticks; answers after n server ticks ran while frozen (`failed` unfrozen) | M1 |
 | ready | stableFrames, minSeconds, timeoutSeconds | seconds, predicateSeconds, limitedBy, renderer's own check | M1 |
-| camera.place | dimension, x, y, z, yaw, pitch, tpSemantics | actual pose, arrivedSeconds | M1 |
+| camera.place | dimension, x, y, z, yaw, pitch, tpSemantics, timeoutSeconds | the pose the client holds, arrivedSeconds | M1 |
 | camera.get | - | pose, eye | M1 |
 | camera.path | kind (yawSweep, keyframes), params, clock (frame, wall), flush, align (cycle, phase), capture (directory, every), frames or seconds | path id; events started and done with frameIndex, sinceReload and qpcNs; capture manifest. One request: no ordering gap between path and capture | M5 |
 | camera.stop | - | stops a path | M5 |

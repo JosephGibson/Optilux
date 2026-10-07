@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
 /**
  * The state owner (docs/mod.md#4-architecture): the one holder of the mod's session state, no
@@ -79,6 +80,19 @@ public final class State {
     public synchronized void blockInput(boolean on) {
         inputBlocked = on;
         cancelRelease();
+    }
+
+    /**
+     * Set the block only while {@code live} holds, checked under this lock: a disconnect answers
+     * its requests before it reaches {@link #disconnected}, so either the block is set first and
+     * the release is scheduled, or the request is no longer live and nothing changes.
+     */
+    public synchronized boolean blockInput(boolean on, BooleanSupplier live) {
+        if (!live.getAsBoolean()) {
+            return false;
+        }
+        blockInput(on);
+        return true;
     }
 
     /** A client said hello: the resume facts, and no release pending any more. */

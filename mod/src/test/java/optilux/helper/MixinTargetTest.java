@@ -103,8 +103,21 @@ class MixinTargetTest {
             }
         }
         assertEquals(List.of(), problems);
-        assertEquals(List.of("GameRendererMixin.optilux$frameHead: "
-            + "net/minecraft/client/renderer/GameRenderer.render()V HEAD"), checked);
+        assertEquals(List.of(
+            "GameRendererMixin.optilux$frameHead: "
+                + "net/minecraft/client/renderer/GameRenderer.render()V HEAD",
+            "KeyboardHandlerMixin.optilux$blockKey: net/minecraft/client/KeyboardHandler."
+                + "keyPress(JILnet/minecraft/client/input/KeyEvent;)V HEAD",
+            "KeyboardHandlerMixin.optilux$blockText: net/minecraft/client/KeyboardHandler."
+                + "textInput(JLjava/lang/String;)V HEAD",
+            "KeyboardHandlerMixin.optilux$blockEditing: net/minecraft/client/KeyboardHandler."
+                + "textEditing(JLnet/minecraft/client/input/PreeditEvent;)V HEAD",
+            "MinecraftMixin.optilux$refusePause: net/minecraft/client/Minecraft.pauseGame(Z)V HEAD",
+            "MouseHandlerMixin.optilux$blockMove: net/minecraft/client/MouseHandler.onMove(JDDDD)V HEAD",
+            "MouseHandlerMixin.optilux$blockButton: net/minecraft/client/MouseHandler."
+                + "onButton(JLnet/minecraft/client/input/MouseButtonInfo;I)V HEAD",
+            "MouseHandlerMixin.optilux$blockScroll: net/minecraft/client/MouseHandler.onScroll(JDD)V HEAD"),
+            checked);
     }
 
     private static void checkInject(String where, AnnotationNode inject, ClassNode target,

@@ -70,7 +70,7 @@
       "args": {
         "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
       },
-      "result": {"pose": "object", "time": "integer"}
+      "result": {"pose": "object", "time": "integer", "joinedQpcNs": "integer"}
     },
     {
       "name": "command",
@@ -87,7 +87,8 @@
       "phase": "M1",
       "mutating": true,
       "args": {
-        "n": {"type": "integer", "required": true, "min": 1, "max": 72000}
+        "n": {"type": "integer", "required": true, "min": 1, "max": 72000},
+        "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
       },
       "result": {"ticks": "integer"}
     },
@@ -117,7 +118,8 @@
         "z": {"type": "number", "required": true},
         "yaw": {"type": "number", "required": true},
         "pitch": {"type": "number", "required": true},
-        "tpSemantics": {"type": "boolean", "default": false}
+        "tpSemantics": {"type": "boolean", "default": false},
+        "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
       },
       "result": {"pose": "object", "arrivedSeconds": "number"}
     },

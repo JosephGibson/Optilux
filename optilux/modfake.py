@@ -5,7 +5,13 @@ Fake.serve answers one connection on any byte stream as the mod's protocol core 
 JSON lines, the envelope, `hello` with the token first, every command's arguments checked
 against commands.json, coded errors, `cancel`, events only after hello, and for every command a
 result typed from its commands.json fields plus frameIndex, sinceReload and qpcNs. hello answers
-this process's pid, frames.index advances, quit answers then ends the connection. Like the mod
+this process's pid, frames.index advances, quit answers then ends the connection. The game
+adapter's commands answer from a small game model (`game`): camera.place sets the pose camera.get
+and state read back, a dimension change pushes dimension.changed, input.block and hud.set keep
+their flags, `/tick freeze` freezes (ticks.step fails without it; an unknown dimension and,
+without tpSemantics, a pitch outside -90..90 are refused, as the mod does); the fake applies no
+`/tp` semantics (the mod alone does, docs/lessons.md#game-control), so tpSemantics places the
+pose as given. Like the mod
 it answers busy for the exclusive resources and the running cap, a request's own timeoutSeconds
 with `timeout`, an unbuilt command with unsupported, and keeps one resume per connection. Tests
 steer it: `delays` holds a command's answer back (answers out of order, timeouts), `refusals`
@@ -39,6 +45,47 @@ SAMPLES = {
 FRAMES_PER_CALL = 3
 # Requests running at once, as the mod's Protocol.MAX_RUNNING.
 MAX_RUNNING = 32
+# The fake player's eye height above its feet (the game's standing player).
+EYE_HEIGHT = 1.62
+OVERWORLD = "minecraft:overworld"
+# The spike world's dimensions; camera.place refuses others, as the mod does.
+DIMENSIONS = (OVERWORLD, "minecraft:the_nether", "minecraft:the_end")
+
+
+class Refusal(Exception):
+    """A game-model answer the mod gives as an error: its code and message."""
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+def initial_game() -> dict:
+    """The fake's game: a spectator at spawn, ticks running, focused, no screen."""
+    return {
+        "pose": {"dimension": OVERWORLD, "x": 0.5, "y": 70.0, "z": 0.5, "yaw": 0.0, "pitch": 0.0},
+        "gamemode": "spectator",
+        "time": 6000,
+        "tick": 0,
+        "frozen": False,
+        "focused": True,
+        "inputBlocked": False,
+        "hideGui": False,
+        "debugOverlay": False,
+    }
+
+
+# The game adapter's commands, answered from the fake's game model.
+GAME_COMMANDS = (
+    "state",
+    "world.wait",
+    "command",
+    "ticks.step",
+    "camera.place",
+    "camera.get",
+    "input.block",
+    "hud.set",
+)
 
 
 def sample(kind: str) -> Any:
@@ -85,6 +132,7 @@ class Fake:
         self._running: dict[Any, threading.Event] = {}
         self._held: dict[str, Any] = {}
         self.quit = threading.Event()
+        self.game = initial_game()
 
     # The wire.
 
@@ -306,7 +354,59 @@ class Fake:
             self._frame = next(self._frames)
         elif name == "quit":
             self.quit.set()
+        elif name in GAME_COMMANDS:
+            try:
+                fields = self._game(name, args)
+            except Refusal as refusal:
+                return self._error(request_id, refusal.code, str(refusal))
         return self._ok(request_id, fields)
+
+    def _game(self, name: str, args: dict) -> dict:
+        """The game adapter's answers from the model."""
+        game = self.game
+        pose = game["pose"]
+        if name == "state":
+            return {
+                "inWorld": True,
+                "dimension": pose["dimension"],
+                "gamemode": game["gamemode"],
+                "screen": None,
+                "paused": False,
+                "focused": game["focused"],
+                "tick": game["tick"],
+            }
+        if name == "world.wait":
+            return {"pose": dict(pose), "time": game["time"], "joinedQpcNs": 0}
+        if name == "command":
+            text = args["text"].removeprefix("/")
+            if text == "tick freeze":
+                game["frozen"] = True
+            return {"succeeded": True, "messages": [f"fake: {text}"], "failures": []}
+        if name == "ticks.step":
+            if not game["frozen"]:
+                raise Refusal("failed", "ticks are not frozen; fix: command /tick freeze first")
+            game["tick"] += args["n"]
+            return {"ticks": args["n"]}
+        if name == "camera.place":
+            target = args.get("dimension", pose["dimension"])
+            if target not in DIMENSIONS:
+                raise Refusal("bad-request", f"camera.place.dimension {target} is no dimension")
+            if not args["tpSemantics"] and not -90 <= args["pitch"] <= 90:
+                raise Refusal("bad-request", f"camera.place.pitch {args['pitch']} lies outside")
+            if target != pose["dimension"]:
+                self.emit("dimension.changed", {"from": pose["dimension"], "to": target})
+            game["pose"] = {"dimension": target, **{k: args[k] for k in modclient.POSE_KEYS}}
+            return {"pose": dict(game["pose"]), "arrivedSeconds": 0.0}
+        if name == "camera.get":
+            eye = {"x": pose["x"], "y": pose["y"] + EYE_HEIGHT, "z": pose["z"]}
+            return {"pose": dict(pose), "eye": eye}
+        if name == "input.block":
+            game["inputBlocked"] = args["on"]
+            return {"on": args["on"]}
+        for key in ("hideGui", "debugOverlay"):  # hud.set
+            if key in args:
+                game[key] = args[key]
+        return {"hideGui": game["hideGui"], "debugOverlay": game["debugOverlay"]}
 
 
 def socket_streams() -> tuple[modclient.Stream, modclient.Stream]:

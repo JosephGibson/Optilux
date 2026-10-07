@@ -75,12 +75,15 @@ class ProtocolTest {
                 waitLiveAfter.set(request.live());
                 waitEnded.countDown();
             }
-            return Map.of("pose", Map.of(), "time", 0);
+            return Map.of("pose", Map.of(), "time", 0, "joinedQpcNs", 0);
         });
         handlers.put("frames.capture", request -> {
             release.await();
             return Map.of("frames", List.of(), "dropped", List.of(), "manifest", "capture.json");
         });
+        handlers.put("camera.place", request -> Map.of("pose", Map.of(
+            "xInteger", request.integerLiteral("x"), "zInteger", request.integerLiteral("z"),
+            "yInteger", request.integerLiteral("y")), "arrivedSeconds", 0.0));
         handlers.put("command", request -> Map.of("succeeded", true, "messages", List.of(),
             "failures", List.of()));
         handlers.put("timers.start", request -> Map.of("on", true));
@@ -192,7 +195,8 @@ class ProtocolTest {
         assertEquals("4242", hello.get("pid").toString());
         assertEquals(false, hello.get("resumed"));
         assertEquals(List.of(), hello.get("cancelled"));
-        assertEquals(List.of("hello", "selftest", "world.wait", "command", "shaders.options",
+        assertEquals(List.of("hello", "selftest", "world.wait", "command", "camera.place",
+            "shaders.options",
             "frames.index", "frames.capture", "timers.start", "timers.stop", "cancel", "quit"),
             hello.get("capabilities"));
         assertNull(hello.get("sinceReload"));
@@ -328,6 +332,28 @@ class ProtocolTest {
         assertEquals(true, next().get("ok"));
         send(9, "command", "{\"text\":\"/tick freeze\",\"timeoutSeconds\":5}");
         assertEquals(true, next().get("ok"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void aHandlerTellsAnIntegerLiteralFromADecimal() throws InterruptedException {
+        hello();
+        send(1, "camera.place", "{\"x\":10,\"y\":64,\"z\":10.0,\"yaw\":0,\"pitch\":0,"
+            + "\"timeoutSeconds\":5}");
+        Map<String, Object> pose = (Map<String, Object>) result(next()).get("pose");
+        assertEquals(Map.of("xInteger", true, "yInteger", true, "zInteger", false), pose);
+        send(2, "camera.place", "{\"x\":1e1,\"y\":-0.5,\"z\":-3,\"yaw\":0,\"pitch\":0,"
+            + "\"timeoutSeconds\":5}");
+        pose = (Map<String, Object>) result(next()).get("pose");
+        assertEquals(Map.of("xInteger", false, "yInteger", false, "zInteger", true), pose);
+    }
+
+    @Test
+    void theInputBlockChangesOnlyWhileItsRequestIsLive() {
+        assertFalse(state.blockInput(true, () -> false));
+        assertFalse(state.inputBlocked());
+        assertTrue(state.blockInput(true, () -> true));
+        assertTrue(state.inputBlocked());
     }
 
     @Test

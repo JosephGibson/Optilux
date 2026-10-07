@@ -133,8 +133,9 @@ def session(
 
 
 def test_the_fake_answers_every_command_typed_from_commands_json(tmp_path: Path) -> None:
-    client, _fake = session(tmp_path)
+    client, fake = session(tmp_path)
     client.hello()
+    fake.game["frozen"] = True  # ticks.step needs it, as in the mod
     common = set(COMMANDS["common"])
     for command in COMMANDS["commands"]:
         if command["name"] == "quit":
@@ -198,7 +199,7 @@ def test_answers_out_of_order_are_matched_by_id(tmp_path: Path) -> None:
     index = client.request("frames.index")
     assert not waited, "frames.index waited behind world.wait"
     worker.join(5)
-    assert set(waited[0]) == {"pose", "time", "frameIndex", "sinceReload", "qpcNs"}
+    assert set(waited[0]) == {"pose", "time", "joinedQpcNs", "frameIndex", "sinceReload", "qpcNs"}
     received = [r["message"] for r in modfake.log_lines(client.log.path) if r["dir"] == "received"]
     order = [m.get("id") for m in received]
     assert order.index(3) < order.index(2)  # frames.index (3) answered before world.wait (2)
@@ -256,11 +257,97 @@ def test_the_fake_answers_busy_and_unsupported_as_the_mod(tmp_path: Path) -> Non
     with pytest.raises(modclient.ModRefused, match="command: busy: capture active"):
         client.request("command", {"text": "/tick freeze", "timeoutSeconds": 5})
     worker.join(5)
-    assert (
-        client.request("command", {"text": "/tick freeze", "timeoutSeconds": 5})["succeeded"]
-        is False
-    )
+    assert client.request("command", {"text": "/tick freeze", "timeoutSeconds": 5})["succeeded"]
     client.close()
+
+
+def test_the_game_helpers_against_the_fake(tmp_path: Path) -> None:
+    client, fake = session(tmp_path)
+    client.hello()
+    joined = client.world_wait(30)
+    assert joined["pose"]["dimension"] == "minecraft:overworld" and joined["time"] == 6000
+    state = client.state()
+    assert state["inWorld"] and state["gamemode"] == "spectator" and state["focused"]
+    assert client.command("/tick freeze")["messages"] == ["fake: tick freeze"]
+    assert fake.game["frozen"]
+    assert client.ticks_step(20, 5)["ticks"] == 20
+    pose = {"x": -533.3, "y": 75.0, "z": -368.25, "yaw": 12.3, "pitch": -4.5}
+    placed = client.camera_place(pose, 30)
+    assert modclient.pose_differences(pose, placed["pose"]) == []
+    got = client.camera_get()
+    assert modclient.pose_differences(placed["pose"], got["pose"]) == []
+    assert got["eye"]["y"] == pytest.approx(75.0 + modfake.EYE_HEIGHT)
+    nether = {**pose, "dimension": "minecraft:the_nether"}
+    assert client.camera_place(nether, 30)["pose"]["dimension"] == "minecraft:the_nether"
+    event = client.next_event(5)
+    assert event["event"] == "dimension.changed"
+    assert event["data"] == {"from": "minecraft:overworld", "to": "minecraft:the_nether"}
+    sent = [r["message"] for r in modfake.log_lines(client.log.path) if r["dir"] == "sent"]
+    assert sent[-1]["args"] == {
+        **pose,
+        "dimension": "minecraft:the_nether",
+        "tpSemantics": False,
+        "timeoutSeconds": 30,
+    }
+    assert client.hud_set(hide_gui=True)["hideGui"] is True
+    assert client.hud_set()["hideGui"] is True, "an empty hud.set reads the flags"
+    assert client.hud_set(debug_overlay=False)["debugOverlay"] is False
+    assert client.input_block(True)["on"] is True and fake.game["inputBlocked"]
+    assert client.input_block(False)["on"] is False
+    client.close()
+
+
+def test_the_game_helpers_refuse_what_they_cannot_use(tmp_path: Path) -> None:
+    client, fake = session(tmp_path)
+    client.hello()
+    fake.refusals["camera.get"] = ("not-ready", "not in a world")
+    with pytest.raises(modclient.ModRefused, match="camera.get: not-ready"):
+        client.camera_get()
+    with pytest.raises(ValueError, match="camera.place: missing argument timeoutSeconds"):
+        client.request("camera.place", {"x": 0, "y": 0, "z": 0, "yaw": 0, "pitch": 0})
+    with pytest.raises(modclient.ModRefused, match="ticks.step: failed: ticks are not frozen"):
+        client.ticks_step(1, 5)
+    pose = {"x": 0, "y": 0, "z": 0, "yaw": 0, "pitch": 95}
+    with pytest.raises(modclient.ModRefused, match="camera.place: bad-request: .*pitch 95"):
+        client.camera_place(pose, 5)
+    assert client.camera_place(pose, 5, tp_semantics=True)["pose"]["pitch"] == 95  # no /tp here
+    with pytest.raises(modclient.ModRefused, match="camera.place: bad-request: .*the_moon"):
+        client.camera_place({**pose, "pitch": 0, "dimension": "minecraft:the_moon"}, 5)
+    # A command the game ran without success, and an answer that lacks a field.
+    real = fake._game
+
+    def failing(name: str, args: dict) -> dict:
+        if name == "command":
+            return {"succeeded": False, "messages": [], "failures": ["Unknown command"]}
+        if name == "state":
+            return {"inWorld": True}
+        return real(name, args)
+
+    fake._game = failing
+    with pytest.raises(modclient.ModError, match="did not succeed: Unknown command"):
+        client.command("/nothing")
+    assert client.command("/nothing", check=False)["succeeded"] is False
+    with pytest.raises(modclient.ModError, match="state: the answer lacks dimension"):
+        client.state()
+    client.close()
+
+
+def test_poses_compare_at_the_games_precision() -> None:
+    want = {"dimension": "minecraft:overworld", "x": 1.5, "y": 64, "z": -2.25, "yaw": 12.3}
+    want["pitch"] = -4.5
+    # The game holds 12.3 as the float 12.300000190734863 and answers that.
+    got = {**want, "yaw": 12.300000190734863, "y": 64.0}
+    assert modclient.pose_differences(want, got) == []
+    assert modclient.pose_differences(want, {**got, "yaw": 12.31}) == [
+        "yaw 12.31 != 12.3 as a float"
+    ]
+    assert modclient.pose_differences(want, {**got, "x": 1.5000000001}) == ["x 1.5000000001 != 1.5"]
+    assert modclient.pose_differences(want, {**got, "dimension": "minecraft:the_end"}) == [
+        "dimension minecraft:the_end != minecraft:overworld"
+    ]
+    assert modclient.pose_differences({**want, "dimension": None}, {**got, "z": None}) == [
+        "z None is no number"
+    ]
 
 
 def test_the_bounds_the_mod_refuses_are_refused_here() -> None:

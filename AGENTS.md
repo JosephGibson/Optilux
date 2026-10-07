@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M1 in progress: 0.01.05 (the pipe, the protocol core and the client) is the last phase done, next 0.01.06, the game adapter (docs/plans/m1.md). Latest stop: docs/handoff.md.
+Status: M1 in progress: 0.01.06 (the game adapter) is the last phase done, next 0.01.07, the renderer and Iris adapters (docs/plans/m1.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
@@ -14,7 +14,7 @@ Status: M1 in progress: 0.01.05 (the pipe, the protocol core and the client) is 
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout
-- optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec, launch.py the pre-launch files, the gate and the launch, modclient.py and winpipe.py the mod's pipe client, modfake.py the protocol fake. Run `uv run optilux <verb>`.
+- optilux/: Python harness, a uv project (pyproject.toml, uv.lock, .python-version, one .venv); cli.py holds the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec, launch.py the pre-launch files, the gate and the launch, modclient.py and winpipe.py the mod's pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper. Run `uv run optilux <verb>`.
 - tests/: pytest, run by `uv run optilux test`; fixtures/ holds Mojang's and Fabric's 26.3 JSON and launch's log and logman output; `windows`-marked tests skip elsewhere.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`: the briefing and the next prompt) and optilux-release (the PR checklist, the release watch, the switch block); agents/researcher.md and reviewer.md (read-only).
