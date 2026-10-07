@@ -95,10 +95,17 @@ Announced, bench tier, world spike (13:47:40, pid 8988, joined in 15.8 s, the mo
 - D30: deleting runtime/mc-26.3/game/saves/bench_7800 and bench_20261005 was refused by this session's permission classifier ("Irreversible Local Destruction"); nothing names them. The user deletes them, or allows the command for the next session.
 
 ## Open questions
-Each in roadmap.md#qa-pass-open-questions with its phase: PresentMode (0.01.13; M2); `/function` without `/return` (0.01.13); the review's rows for 0.01.13 and M2 (above); the live world against its snapshot, A9's 46 s capture, Gradle's downloads (M2); D30's two worlds (the user).
+Each in roadmap.md#qa-pass-open-questions with its phase or milestone:
+- PresentMode "Composed: Copy with GPU GDI" against the spike's flip (0.01.13; M2).
+- Whether `/function` reports success without `/return` (0.01.13).
+- CI's test step: 82 s in parallel (4 vCPU runner) against 63 s serially before; the local suite runs 3.4x faster in parallel (0.01.13: CI once with `--serial`, the faster kept).
+- The review's rows for 0.01.13 (sec1, fail13, the stray `id: null` answers, the items' glue live) and for M2 (Findings above).
+- The live world against its snapshot, A9's 46 s capture, Gradle's other downloads (M2).
+- D30's two candidate worlds (the user).
 
 ## Time
-- 0.01.12: 13:05 ADT to the commit at about 14:10: about 1.1 h against 3 h, the launch included. M1 so far about 14.6 h of 28; tripwire 55.8 h, trip at 111.6 h; actuals about 17.9 h (M0 3.3, M1 14.6).
+- 0.01.12: 13:05 ADT to the commit at 14:03, CI green at 14:05: 1.0 h against 3 h, the launch included; the close-out after. M1 so far about 14.5 h of 28; tripwire 55.8 h, trip at 111.6 h; actuals about 17.8 h (M0 3.3, M1 14.5).
+- CI: 1m27s before (run 37648615599, test step 63 s); 2m17s on the phase commit (run 37656044338: pyright 7 s, uv sync 4 s, test step 82 s).
 - Earlier: 0.01.11 2.2 h against 2; 0.01.10 1.1 h against 1.5; the rest in git history.
 
 ## Next
