@@ -309,6 +309,25 @@ def newer_than_main(root: Path, ref: str, sha: str, version: str) -> tuple[str, 
     return PROBLEM, f"{detail}; fix: {bump_fix(current)}"
 
 
+def pushed(root: Path, ref: str, sha: str) -> tuple[str, str]:
+    """The rule that ref is on origin: a branch's tip, or behind one when a later push has
+    superseded it while CI checked it (the tip's commit fetched)."""
+    try:
+        heads = live(lambda: repo.remote_refs(root, "--heads"))
+    except PackError as error:
+        return PROBLEM, str(error)
+    names = {ref.removeprefix("refs/heads/"): tip for ref, tip in heads.items()}
+    tips = sorted(name for name, tip in names.items() if tip == sha)
+    if tips:
+        return OK, f"{ref} ({sha[:7]}) is the tip of {', '.join(f'origin/{n}' for n in tips)}"
+    behind = sorted(name for name, tip in names.items() if repo.is_ancestor(root, sha, tip))
+    if behind:
+        return OK, f"{ref} ({sha[:7]}) is on origin/{behind[0]}, behind its tip (a later push)"
+    branch = repo.current_branch(root) or "<branch>"
+    fix = f"push it (`git push origin {branch}`), or check a branch tip instead"
+    return PROBLEM, f"{ref} ({sha[:7]}) is no branch tip on origin; fix: {fix}"
+
+
 def examine(root: Path, ref: str, remote: bool) -> Examined:
     """Every release rule on ref (docs/workflow.md#release). `remote` False skips the GitHub
     release lookup, which needs gh's login; origin's tags and branches are read with git."""
@@ -375,18 +394,7 @@ def examine(root: Path, ref: str, remote: bool) -> Examined:
     else:
         found.append((OK, "tree clean"))
     if sha is not None:
-        try:
-            branches = live(lambda: repo.remote_branches_at(root, sha))
-        except PackError as error:
-            found.append((PROBLEM, str(error)))
-        else:
-            if branches:
-                tips = ", ".join(f"origin/{branch}" for branch in branches)
-                found.append((OK, f"{ref} ({sha[:7]}) is the tip of {tips}"))
-            else:
-                branch = repo.current_branch(root) or "<branch>"
-                fix = f"push it (`git push origin {branch}`), or check a branch tip instead"
-                found.append((PROBLEM, f"{ref} ({sha[:7]}) is no branch tip on origin; fix: {fix}"))
+        found.append(pushed(root, ref, sha))
     result.found = list(dict.fromkeys(found))  # an unreadable origin fails three reads alike
     return result
 

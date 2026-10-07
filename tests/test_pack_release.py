@@ -264,10 +264,10 @@ def test_check_refuses_a_bad_subject_a_missing_entry_and_an_unpushed_ref(
     found = problems(pack.check(pushed, "HEAD", remote=True))
     assert len(found) == 1
     assert found[0].startswith("subject of HEAD 'WIP': not `type(scope)!: summary`: start with")
-    assert problems(pack.check(pushed, "HEAD~1", remote=True)) == [
-        f"HEAD~1 ({head(pushed, 'HEAD~1')[:7]}) is no branch tip on origin; "
-        "fix: push it (`git push origin m1`), or check a branch tip instead"
-    ]
+    # A pushed commit that a later push superseded (CI still checking it) is on origin.
+    behind = dict((text, outcome) for outcome, text in pack.check(pushed, "HEAD~1", remote=True))
+    sha = head(pushed, "HEAD~1")[:7]
+    assert behind[f"HEAD~1 ({sha}) is on origin/m1, behind its tip (a later push)"] == pack.OK
     commit_file(pushed, "VERSION", b"0.3.0\n", "chore: set the next minor version")
     found = problems(pack.check(pushed, "HEAD", remote=True))
     assert len(found) == 2
