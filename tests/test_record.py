@@ -211,6 +211,19 @@ def test_the_committed_views_file_holds_one_view_per_dimension() -> None:
     assert [view["dim"] for view in data["views"]] == list(record.DIMENSIONS)
 
 
+def test_the_bench_views_file_holds_the_suite_roles_in_order() -> None:
+    # 0.01.11: one view per suite.json view role, in its order, with the role's dimension, time
+    # and weather; the world's seed is set beside it.
+    dims = dict(zip(("overworld", "nether", "end"), record.DIMENSIONS, strict=True))
+    data, _ = record.load_views(REPO_ROOT, "bench_263")
+    roles = SUITE["viewRoles"]
+    assert [view["id"] for view in data["views"]] == [role["id"] for role in roles]
+    for view, role in zip(data["views"], roles, strict=True):
+        assert view["dim"] == dims[role["dim"]], view["id"]
+        assert (view["time"], view["weather"]) == (role["time"], role["weather"]), view["id"]
+    assert SUITE["world"]["seed"] == 263
+
+
 def views_with(change) -> dict:
     data = json.loads(VIEWS.read_text(encoding="utf-8"))
     change(data["views"])

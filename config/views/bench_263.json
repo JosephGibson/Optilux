@@ -1,0 +1,128 @@
+{
+ "schema": 1,
+ "id": "bench_263",
+ "use": "the baseline suite's ten views (measurement.md#baseline-suite), one per suite.json view role in its order: each pose flown by the user in spectator, read with camera.get, rounded to 0.1 (yaw in -180..180), placed and captured at 4K with the role's time and weather, then kept by the user (0.01.11)",
+ "world": "snapshots/bench_263/: a copy of runtime/mc-26.3/game/saves/bench_263 (seed 263), retaken after the flights",
+ "views": [
+  {
+   "id": "forest_noon",
+   "dim": "minecraft:overworld",
+   "x": 22.6,
+   "y": 102.8,
+   "z": 533.0,
+   "yaw": -136.0,
+   "pitch": 37.2,
+   "time": 6000,
+   "weather": "clear",
+   "why": "high over a dense oak and birch forest, looking down into the canopy, hills in fog beyond; the canopy cost more GPU time than the role's 15 degree pitch (0.01.11)"
+  },
+  {
+   "id": "ocean_sunset",
+   "dim": "minecraft:overworld",
+   "x": -218.4,
+   "y": 81.0,
+   "z": 779.9,
+   "yaw": 77.4,
+   "pitch": 34.1,
+   "time": 12000,
+   "weather": "clear",
+   "why": "east shore of the one open ocean within 2.4 km of spawn, facing the setting sun across open water: sun glint, reflections, seagrass through the shallows"
+  },
+  {
+   "id": "cave",
+   "dim": "minecraft:overworld",
+   "x": 28.3,
+   "y": -52.5,
+   "z": 426.9,
+   "yaw": 14.4,
+   "pitch": -13.8,
+   "time": 6000,
+   "weather": "clear",
+   "why": "a deepslate cave at y -52 under the forest, lit by a wide lava lake; no sky"
+  },
+  {
+   "id": "rain",
+   "dim": "minecraft:overworld",
+   "x": -20.5,
+   "y": 76.8,
+   "z": 491.2,
+   "yaw": -89.5,
+   "pitch": 30.3,
+   "time": 6000,
+   "weather": "thunder",
+   "why": "at canopy height on the forest's edge: the storm sky and fog over wet foliage, water to the right"
+  },
+  {
+   "id": "nether_crimson",
+   "dim": "minecraft:the_nether",
+   "x": 230.2,
+   "y": 86.6,
+   "z": 15.7,
+   "yaw": 175.7,
+   "pitch": 27.0,
+   "time": 6000,
+   "weather": "clear",
+   "why": "crimson forest on both banks of the lava sea under red fog, shroomlights in view"
+  },
+  {
+   "id": "end_dragon",
+   "dim": "minecraft:the_end",
+   "x": 56.9,
+   "y": 101.6,
+   "z": -19.9,
+   "yaw": 66.0,
+   "pitch": 38.7,
+   "time": 6000,
+   "weather": "clear",
+   "why": "above the main island with all ten pillars and their crystals, End sky and beams; no dragon: ticks were frozen before the End first loaded"
+  },
+  {
+   "id": "night",
+   "dim": "minecraft:overworld",
+   "x": -301.9,
+   "y": 72.5,
+   "z": 637.6,
+   "yaw": -11.1,
+   "pitch": -9.4,
+   "time": 18000,
+   "weather": "clear",
+   "why": "the ocean's north shore under the moon and stars, open water to the right"
+  },
+  {
+   "id": "underwater",
+   "dim": "minecraft:overworld",
+   "x": -333.1,
+   "y": 54.5,
+   "z": 908.5,
+   "yaw": -145.6,
+   "pitch": 34.9,
+   "time": 6000,
+   "weather": "clear",
+   "why": "in the same ocean, a kelp-covered floor 15 blocks down, light shafts in the blue fog"
+  },
+  {
+   "id": "nether_soul",
+   "dim": "minecraft:the_nether",
+   "x": -9.0,
+   "y": 91.4,
+   "z": -321.3,
+   "yaw": -54.0,
+   "pitch": 27.3,
+   "time": 6000,
+   "weather": "clear",
+   "why": "soul sand valley: basalt pillars, soul fire on soul soil, bone-block fossils, the lava sea behind"
+  },
+  {
+   "id": "entities",
+   "dim": "minecraft:overworld",
+   "x": -366.8,
+   "y": 80.0,
+   "z": 244.4,
+   "yaw": -5.8,
+   "pitch": 19.0,
+   "time": 6000,
+   "weather": "clear",
+   "why": "seven NoAI mobs tagged optilux_bench (chicken, sheep, cow, pig, villager, horse, llama) 7-13 m away in noon sun on plains, a village to the left; creative, torch in hand"
+  }
+ ]
+}

@@ -135,7 +135,7 @@ def test_m1_prompts_follow_the_audited_form() -> None:
     # its claims; 0.01.02 predates it and ran as written. The Plan prompt asks the same of M2+.
     texts = {p.version: p.text for p in prompts.load(REPO_ROOT, 1).phases if p.version > "0.01.02"}
     texts["Plan"] = prompts.load_standing(REPO_ROOT)[prompts.PLAN].text
-    assert len(texts) == 11  # 0.01.03 to 0.01.12 (0.01.11 and 0.01.12: the amendment) and Plan
+    assert len(texts) == 12  # 0.01.03 to 0.01.13 (0.01.11 to 0.01.13: the amendments) and Plan
     for name, text in texts.items():
         first = text.split("\n", 1)[0]
         assert "Take `date` first" in first and " Why: " in first, name

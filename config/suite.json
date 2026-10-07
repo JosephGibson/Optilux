@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "id": "suite-1",
- "status": "draft: roles and constants carried from ALC (AlaCarteShaders 0.5, MC 1.21.11); positions are chosen in the new 26.3 world (M2); every [verify] item is re-measured on the platform",
+ "status": "draft: roles and constants carried from ALC (AlaCarteShaders 0.5, MC 1.21.11); positions chosen in the new 26.3 world bench_263 (0.01.11); every [verify] item is re-measured on the platform",
  "platform": "mc-26.3",
  "display": {
   "resolution": "3840x2160",
@@ -90,8 +90,8 @@
  },
  "java": "config/java/bench.json",
  "world": {
-  "source": "new 26.3 world (user, 2026-10-05); seed chosen in M2 so every view role fits inside the pre-generated area",
-  "seed": null,
+  "source": "new 26.3 world (user, 2026-10-05): bench_263, created in game (Default, Peaceful, structures on, no bonus chest); seed 263 picked by the user in 0.01.11 (2026-10-07) from 263, 7800 and 20261005, its view roles' nearest sites the most compact (handoff.md); views in config/views/bench_263.json, snapshot snapshots/bench_263/",
+  "seed": 263,
   "pregen": {
    "overworld": "radius covering every view and motion path plus render distance (16 chunks = 256 blocks)",
    "nether": "same rule",
