@@ -335,10 +335,9 @@ def test_the_client_and_the_fake_over_a_real_named_pipe(tmp_path: Path) -> None:
         assert time.monotonic() - began >= 0.25  # it waited for the pipe
         assert client.server_pid == os.getpid()
         sid = winpipe.current_user_sid()
-        aces = re.findall(r"\(([^)]*)\)", client.dacl)
-        assert len(aces) == 1 and aces[0].startswith("A;") and aces[0].endswith(f";{sid}"), (
-            client.dacl
-        )
+        aces = [ace.split(";") for ace in re.findall(r"\(([^)]*)\)", client.dacl)]
+        assert len(aces) == 1 and aces[0][0] == "A", client.dacl
+        assert winpipe.canonical_sid(aces[0][5]) == sid, client.dacl
         assert winpipe.second_instance(name) in (
             winpipe.ERROR_ACCESS_DENIED,
             winpipe.ERROR_PIPE_BUSY,
@@ -368,3 +367,13 @@ def test_the_client_and_the_fake_over_a_real_named_pipe(tmp_path: Path) -> None:
 def test_connect_names_a_pipe_that_never_appears() -> None:
     with pytest.raises(modclient.ModError, match=r"does not exist after 0.2 s"):
         modclient.connect("N" * 43, None, None, timeout=0.2)
+
+
+@pytest.mark.windows
+def test_sids_compare_in_full_form() -> None:
+    from optilux import winpipe
+
+    # SDDL writes well-known SIDs as aliases: CI's user, the built-in Administrator, is LA.
+    assert winpipe.canonical_sid("SY") == "S-1-5-18"
+    sid = winpipe.current_user_sid()
+    assert winpipe.canonical_sid(sid) == sid

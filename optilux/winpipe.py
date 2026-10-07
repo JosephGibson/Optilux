@@ -111,6 +111,7 @@ def api() -> SimpleNamespace:
         (adv.OpenProcessToken, [handle, dword, ctypes.POINTER(handle)], boolean),
         (adv.GetTokenInformation, [handle, ctypes.c_int, ctypes.c_void_p, dword, pdword], boolean),
         (adv.ConvertSidToStringSidW, [ctypes.c_void_p, ctypes.POINTER(wintypes.LPWSTR)], boolean),
+        (adv.ConvertStringSidToSidW, [wintypes.LPCWSTR, ctypes.POINTER(ctypes.c_void_p)], boolean),
         (
             adv.ConvertStringSecurityDescriptorToSecurityDescriptorW,
             [wintypes.LPCWSTR, dword, ctypes.POINTER(ctypes.c_void_p), pulong],
@@ -297,6 +298,25 @@ def current_user_sid() -> str:
             w.k32.LocalFree(text)
     finally:
         w.k32.CloseHandle(token)
+
+
+def canonical_sid(text: str) -> str:
+    """A SID in its full S-1-... form: SDDL writes well-known ones as aliases (LA for the
+    built-in Administrator, CI's user), so SIDs are compared in this form."""
+    w = api()
+    sid = ctypes.c_void_p()
+    if not w.adv.ConvertStringSidToSidW(text, ctypes.byref(sid)):
+        raise fail(f"ConvertStringSidToSidW {text}")
+    try:
+        full = w.wintypes.LPWSTR()
+        if not w.adv.ConvertSidToStringSidW(sid, ctypes.byref(full)):
+            raise fail("ConvertSidToStringSidW")
+        try:
+            return full.value
+        finally:
+            w.k32.LocalFree(full)
+    finally:
+        w.k32.LocalFree(sid)
 
 
 def dacl_sddl(pipe: Pipe) -> str:
