@@ -1,0 +1,3677 @@
+{
+ "schema": 1,
+ "name": "m1-acceptance-3",
+ "kind": "acceptance",
+ "spec": {
+  "name": "m1-acceptance-3",
+  "kind": "acceptance",
+  "views": "provisional",
+  "world": "spike",
+  "variants": [
+   {
+    "pack": "ComplementaryUnbound_r5.9.3.zip",
+    "profile": null
+   }
+  ],
+  "tier": "bench",
+  "resourcePacks": "standard",
+  "items": [
+   "A1",
+   "A2",
+   "A3",
+   "A10"
+  ],
+  "notes": "0.01.08: the first acceptance record; the session launch first (the world equal to its snapshot), A1's inert launch after"
+ },
+ "status": "ok",
+ "reason": null,
+ "startedAt": "2026-10-07T03:17:43+00:00",
+ "endedAt": "2026-10-07T03:19:43+00:00",
+ "identity": {
+  "platform": {
+   "sha256": "f725b4d25694761798155fed0ae1dec49d3d09c73560e2823bd08841a8520f5a",
+   "tier": "bench",
+   "tiers": [
+    "bench"
+   ]
+  },
+  "launchSpec": {
+   "file": "mc-26.3.launch.json",
+   "sha256": "9bd33805f28ad63e53add6f0af88fb409f33ffd13a4542cbb7b161f71d0de2d3"
+  },
+  "mods": [
+   "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+   "eb840262d74e537377c4dfe57cdff1d3fba46187886c185b7a4d0a26c7978ff8048d1e0bafcd3c97860bf25e05787ea0f5abb75ff54167c3abf73d4ae376e9ab",
+   "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+   "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+  ],
+  "world": {
+   "snapshot": "snapshots/provisional",
+   "treeSha256": "04ee12c02052988db852474989849e6a57dcccee3ea211f4f3966590ba7b1ba3",
+   "files": 68,
+   "live": "spike"
+  },
+  "views": {
+   "file": "provisional.json",
+   "sha256": "d1e5f861b6a3d3af97cd2db1db617250e5d621e3b20f428d3717b43d55e3133e"
+  },
+  "resourcePacks": {
+   "set": "standard",
+   "packs": [
+    {
+     "file": "Faithful 64x - Release 15.zip",
+     "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+    }
+   ]
+  },
+  "settings": {
+   "options": {
+    "version": "5023",
+    "fullscreen": "true",
+    "exclusiveFullscreen": "false",
+    "enableVsync": "false",
+    "maxFps": "260",
+    "renderDistance": "16",
+    "simulationDistance": "12",
+    "fov": "0.5",
+    "bobView": "false",
+    "guiScale": "3",
+    "mipmapLevels": "4",
+    "biomeBlendRadius": "2",
+    "graphicsPreset": "\"custom\"",
+    "preferredGraphicsBackend": "\"opengl\"",
+    "improvedTransparency": "false",
+    "pauseOnLostFocus": "false",
+    "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+    "onboardAccessibility": "false",
+    "skipMultiplayerWarning": "true",
+    "joinedFirstServer": "true",
+    "telemetryOptInExtra": "false",
+    "realmsNotifications": "false",
+    "narrator": "0"
+   },
+   "overrides": {},
+   "token": true,
+   "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+   "iris": {
+    "shaderPack": "ComplementaryUnbound_r5.9.3.zip",
+    "enableShaders": "true",
+    "enableDebugOptions": "false",
+    "disableUpdateMessage": "true",
+    "maxShadowRenderDistance": "32"
+   }
+  },
+  "suite": {
+   "sha256": "6fc75e2e7aa2e6b4d7c08a3b784793617980ad89a1291d7d7f7902c9c3b0a3bd",
+   "sections": [
+    "display",
+    "modes",
+    "capture",
+    "validity",
+    "statistics"
+   ]
+  },
+  "java": {
+   "runtime": "jdk-25.0.4.1+1",
+   "version": "25.0.4.1+1-LTS",
+   "heap": {
+    "xms": 6144,
+    "xmx": 6144,
+    "unit": "MiB"
+   },
+   "args": []
+  },
+  "system": {
+   "gpu": "AMD Radeon RX 7800 XT",
+   "hags": true,
+   "resolution": "3840x2160",
+   "windowMode": "borderless fullscreen",
+   "windowsBuild": 26200
+  }
+ },
+ "recorded": {
+  "platformFile": "b414c80c3c84593524550987abddf83ded7d1c8dc4f19bb3dfca53ff7b4abc4e",
+  "driver": "32.0.32015.2008",
+  "windowsRevision": 9457,
+  "display": {
+   "name": "\\\\.\\DISPLAY2",
+   "hz": 240,
+   "displays": 2
+  },
+  "hwSchMode": 2,
+  "harness": {
+   "commit": "9b85d50b539a949063fc858703b7388595538732",
+   "dirty": true
+  },
+  "amd": {
+   "presentMon": [
+    {
+     "pid": 10368,
+     "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+     "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+    }
+   ],
+   "rsxTraceSession": true
+  },
+  "optionsTxt": {
+   "sha256": "15b4f26e60be2c1554e418542f193d137dd9a97d5958ae14fb95dd9d15d27119"
+  }
+ },
+ "variants": [
+  {
+   "pack": "ComplementaryUnbound_r5.9.3.zip",
+   "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c",
+   "profile": null,
+   "options": {
+    "count": 398,
+    "values": {
+     "ACT_CORNER_LEAK_FIX": true,
+     "ACT_CORNER_LEAK_FIX_FOR_WSR": true,
+     "ACT_FIRE_COLOR_WARMNESS": "100",
+     "AMBIENT_MULT": "100",
+     "ANISOTROPIC_FILTER": "0",
+     "ANY_ERROR_MESSAGE": true,
+     "ATMOSPHERIC_FOG": true,
+     "ATM_COLOR_MULTS": false,
+     "ATM_END_B": "1.00",
+     "ATM_END_G": "1.00",
+     "ATM_END_I": "1.00",
+     "ATM_END_R": "1.00",
+     "ATM_FOG_ALTITUDE": "63",
+     "ATM_FOG_DISTANCE": "100",
+     "ATM_FOG_MULT": "0.95",
+     "ATM_MORNING_B": "1.00",
+     "ATM_MORNING_G": "1.00",
+     "ATM_MORNING_I": "1.00",
+     "ATM_MORNING_R": "1.00",
+     "ATM_NETHER_B": "1.00",
+     "ATM_NETHER_G": "1.00",
+     "ATM_NETHER_I": "1.00",
+     "ATM_NETHER_R": "1.00",
+     "ATM_NIGHT_B": "1.00",
+     "ATM_NIGHT_G": "1.00",
+     "ATM_NIGHT_I": "1.00",
+     "ATM_NIGHT_R": "1.00",
+     "ATM_NOON_B": "1.00",
+     "ATM_NOON_G": "1.00",
+     "ATM_NOON_I": "1.00",
+     "ATM_NOON_R": "1.00",
+     "ATM_RAIN_B": "1.00",
+     "ATM_RAIN_G": "1.00",
+     "ATM_RAIN_I": "1.00",
+     "ATM_RAIN_R": "1.00",
+     "AURORA_CONDITION": "3",
+     "AURORA_STYLE_DEFINE": "-1",
+     "BLOCKLIGHT_FLICKERING": "0",
+     "BLOCK_REFLECT_QUALITY": "3",
+     "BLOOM_ENABLED": "1",
+     "BLOOM_FOG": true,
+     "BLOOM_FOG_COMPOSITE1": true,
+     "BLOOM_FOG_COMPOSITE3": true,
+     "BLOOM_STRENGTH": "0.12",
+     "BORDER_FOG": true,
+     "BRIGHT_CAVE_WATER": true,
+     "CAVE_FOG": true,
+     "CAVE_LIGHTING": "100",
+     "CHROMA_ABERRATION": "0",
+     "CLOUDS_REIMAGINED": true,
+     "CLOUDS_UNBOUND": true,
+     "CLOUD_ALT1": "192",
+     "CLOUD_ALT2": "288",
+     "CLOUD_B": "100",
+     "CLOUD_CLOSED_AREA_CHECK": true,
+     "CLOUD_G": "100",
+     "CLOUD_QUALITY": "2",
+     "CLOUD_R": "100",
+     "CLOUD_SHADOWS": false,
+     "CLOUD_SPEED_MULT": "100",
+     "CLOUD_STYLE_DEFINE": "-1",
+     "CLOUD_UNBOUND_AMOUNT": "1.00",
+     "CLOUD_UNBOUND_RAIN_ADD": "0.40",
+     "CLOUD_UNBOUND_SIZE_MULT": "100",
+     "COATED_TEXTURES": false,
+     "COATED_TEXTURE_MULT": "100",
+     "COLORED_CANDLE_LIGHT": false,
+     "COLORED_LIGHTING": "0",
+     "COLORED_LIGHT_FOG": true,
+     "COLORED_LIGHT_FOG_I": "0.65",
+     "COLORED_LIGHT_SATURATION": "100",
+     "COLORGRADING": false,
+     "COLOR_CODED_PROGRAMS": false,
+     "COMPOSITE": true,
+     "COMPOSITE1": true,
+     "CONNECTED_GLASS_CORNER_FIX": true,
+     "CONNECTED_GLASS_EFFECT": true,
+     "COORDINATES_ACT_ERROR": true,
+     "CUSTOM_EMISSION_INTENSITY": "100",
+     "CUSTOM_PBR": true,
+     "DARK_OUTLINE": false,
+     "DARK_OUTLINE_THICKNESS": "1",
+     "DEFERRED1": true,
+     "DETAIL_QUALITY": "2",
+     "DH_BLENDING": true,
+     "DIRECTIONAL_BLOCKLIGHT": "0",
+     "DIRECTIONAL_SHADING": true,
+     "DISTANT_LIGHT_BOKEH": true,
+     "DOUBLE_REIM_CLOUDS": false,
+     "DO_IPBR_LIGHTS": true,
+     "DO_MORE_FOLIAGE_WAVING": true,
+     "DO_PIXELATION_EFFECTS": true,
+     "DURING_WORLDSPACE_REF": true,
+     "EMISSIVE_LAPIS_BLOCK": false,
+     "EMISSIVE_REDSTONE_BLOCK": false,
+     "END": true,
+     "END_BEAM_CENTER_ALT": "68",
+     "END_BEAM_HEIGHT": "1.00",
+     "END_BEAM_INTENSITY": "1.00",
+     "END_FLASHES": true,
+     "END_STAR_INTENSITY": "1.00",
+     "ENTITY_GN_AND_CT": true,
+     "ENTITY_SHADOW": "1",
+     "ENTITY_TAA_NOISY_CLOUD_FIX": true,
+     "FANCY_GLASS": true,
+     "FIX_AMD_REFLECTION_CRASH": true,
+     "FLICKERING_FIX": true,
+     "FOLIAGE_ALT_SUBSURFACE": false,
+     "FRAGMENT_SHADER": true,
+     "FXAA_DEFINE": "1",
+     "FXAA_STRENGTH": "75",
+     "FXAA_TAA_INTERACTION": "10",
+     "GBUFFERS_BLOCK": true,
+     "GBUFFERS_BLOCK_TRANSLUCENT": true,
+     "GBUFFERS_ENTITIES": true,
+     "GBUFFERS_ENTITIES_GLOWING": true,
+     "GBUFFERS_ENTITIES_TRANSLUCENT": true,
+     "GBUFFERS_HAND": true,
+     "GBUFFERS_LIGHTNING": true,
+     "GBUFFERS_LINE": true,
+     "GBUFFERS_TERRAIN": true,
+     "GBUFFERS_TEXTURED": true,
+     "GBUFFERS_WATER": true,
+     "GENERATED_NORMALS": false,
+     "GENERATED_NORMAL_MULT": "100",
+     "GENERATED_NORMAL_RES": "128",
+     "GLOWING_AMETHYST": "1",
+     "GLOWING_ARMOR_TRIM": false,
+     "GLOWING_COLORED_PARTICLES": false,
+     "GLOWING_ENTITY_FIX": true,
+     "GLOWING_LICHEN": "1",
+     "GLOWING_ORE_ANCIENTDEBRIS": true,
+     "GLOWING_ORE_COPPER": true,
+     "GLOWING_ORE_DIAMOND": true,
+     "GLOWING_ORE_EMERALD": true,
+     "GLOWING_ORE_GILDEDBLACKSTONE": true,
+     "GLOWING_ORE_GOLD": true,
+     "GLOWING_ORE_IRON": true,
+     "GLOWING_ORE_LAPIS": true,
+     "GLOWING_ORE_MASTER": "1",
+     "GLOWING_ORE_MODDED": true,
+     "GLOWING_ORE_MULT": "1.00",
+     "GLOWING_ORE_NETHERGOLD": true,
+     "GLOWING_ORE_NETHERQUARTZ": true,
+     "GLOWING_ORE_REDSTONE": true,
+     "GREEN_SCREEN_LIME": false,
+     "GR_BB": "100",
+     "GR_BC": "1.00",
+     "GR_BG": "0",
+     "GR_BR": "0",
+     "GR_GB": "0",
+     "GR_GC": "1.00",
+     "GR_GG": "100",
+     "GR_GR": "0",
+     "GR_RB": "0",
+     "GR_RC": "1.00",
+     "GR_RG": "0",
+     "GR_RR": "100",
+     "HAND_SWAYING": "0",
+     "HELD_LIGHTING_MODE": "2",
+     "HIDE_ARMOR": "0",
+     "HQ_NIGHT_NEBULA": true,
+     "IMAGE_SHARPENING": "5",
+     "IMPROVED_RAIN": true,
+     "IMPROVED_RAIN_DEFINE": "1",
+     "INCLUDE_CAVE_FACTOR": true,
+     "INCLUDE_CLOUD_COORD": true,
+     "INCLUDE_CLOUD_SHADOWS": true,
+     "INCLUDE_CUSTOM_EMISSION": true,
+     "INCLUDE_DFDX_DFDY": true,
+     "INCLUDE_DITHER": true,
+     "INCLUDE_ENDER_BEAMS": true,
+     "INCLUDE_LIGHT_AND_AMBIENT_COLORS": true,
+     "INCLUDE_LIGHT_AND_AMBIENT_MULTIPLIERS": true,
+     "INCLUDE_MOON_PHASE_INF": true,
+     "INCLUDE_SKY": true,
+     "INCLUDE_SKY_COLORS": true,
+     "INCLUDE_VOXELIZATION": true,
+     "INCLUDE_WATER_FOG": true,
+     "IPBR": true,
+     "IPBR_COMPAT_MODE": true,
+     "IPBR_COMPAT_MODE_DEFINE": false,
+     "IPBR_EMISSIVE_MODE": "1",
+     "IPBR_PARTICLE_FEATURES": true,
+     "LEAF_SHADOW_OPTIMISATION": true,
+     "LEAF_SHADOW_OPTIMISATION_DEFINE": "-1",
+     "LENSFLARE_I": "1.00",
+     "LENSFLARE_MODE": "0",
+     "LESS_LAVA_FOG": false,
+     "LIGHTSHAFTS_ACTIVE": true,
+     "LIGHTSHAFT_BEHAVIOUR": "1",
+     "LIGHTSHAFT_NIGHT_I": "100",
+     "LIGHTSHAFT_NOON_I": "100",
+     "LIGHTSHAFT_QUALI_DEFINE": "2",
+     "LIGHTSHAFT_RAIN_I": "100",
+     "LIGHTSHAFT_SMOKE": false,
+     "LIGHTSHAFT_SUNSET_I": "100",
+     "LIGHTSHAFT_SUNSET_SATURATION": "0.25",
+     "LIGHT_COLOR_MULTS": false,
+     "LIGHT_END_B": "1.00",
+     "LIGHT_END_G": "1.00",
+     "LIGHT_END_I": "1.00",
+     "LIGHT_END_R": "1.00",
+     "LIGHT_HIGHLIGHT": true,
+     "LIGHT_MORNING_B": "1.00",
+     "LIGHT_MORNING_G": "1.00",
+     "LIGHT_MORNING_I": "1.00",
+     "LIGHT_MORNING_R": "1.00",
+     "LIGHT_NETHER_B": "1.00",
+     "LIGHT_NETHER_G": "1.00",
+     "LIGHT_NETHER_I": "1.00",
+     "LIGHT_NETHER_R": "1.00",
+     "LIGHT_NIGHT_B": "1.00",
+     "LIGHT_NIGHT_G": "1.00",
+     "LIGHT_NIGHT_I": "1.00",
+     "LIGHT_NIGHT_R": "1.00",
+     "LIGHT_NOON_B": "1.00",
+     "LIGHT_NOON_G": "1.00",
+     "LIGHT_NOON_I": "1.00",
+     "LIGHT_NOON_R": "1.00",
+     "LIGHT_RAIN_B": "1.00",
+     "LIGHT_RAIN_G": "1.00",
+     "LIGHT_RAIN_I": "1.00",
+     "LIGHT_RAIN_R": "1.00",
+     "LOW_QUALITY_MOTION_BLUR": true,
+     "LOW_QUALITY_NETHER_STORM": true,
+     "MIRROR_TINTED_GLASS": "0",
+     "MOON_PHASE_DARK": "0.60",
+     "MOON_PHASE_FULL": "1.00",
+     "MOON_PHASE_INF_ATMOSPHERE": false,
+     "MOON_PHASE_INF_LIGHT": false,
+     "MOON_PHASE_INF_REFLECTION": true,
+     "MOON_PHASE_PARTIAL": "0.85",
+     "MORE_REFLECTIVE_DISTANT_GLASS": true,
+     "MOTION_BLURRING_STRENGTH": "1.00",
+     "MOTION_BLUR_BLOOM_FOG_FIX": true,
+     "MOTION_BLUR_EFFECT": "-1",
+     "MULTIPLE_LOD_MODS_ERROR": true,
+     "NETHER": true,
+     "NETHER_COLOR_MODE": "3",
+     "NETHER_STORM": true,
+     "NETHER_STORM_HEIGHT": "200",
+     "NETHER_STORM_I": "0.40",
+     "NETHER_STORM_LOWER_ALT": "28",
+     "NETHER_VIEW_LIMIT": "256.0",
+     "NIGHT_NEBULAE": "-1",
+     "NIGHT_NEBULA_I": "100",
+     "NIGHT_STAR_AMOUNT": "2",
+     "NORMAL_MAP_STRENGTH": "100",
+     "NO_WAVING_INDOORS": true,
+     "OPTIMIZATION_ACT_BEHIND_PLAYER": true,
+     "OPTIMIZATION_ACT_HALF_RATE_SPREADING": true,
+     "OPTIMIZATION_ACT_HALF_RATE_VOXELS": false,
+     "OPTIMIZATION_ACT_SHARED_MEMORY": false,
+     "OVERWORLD": true,
+     "PBR_REFLECTIONS": true,
+     "PERPENDICULAR_TWEAKS": true,
+     "PIXELATED_AO": false,
+     "PIXELATED_BLOCKLIGHT": false,
+     "PIXELATED_SHADOWS": false,
+     "PIXEL_SCALE": "1",
+     "PLAYER_SHADOW": "1",
+     "POM": true,
+     "POM_ALLOW_CUTOUT": false,
+     "POM_DEPTH": "0.80",
+     "POM_DISTANCE": "32",
+     "POM_LIGHTING_MODE": "2",
+     "POM_QUALITY": "128",
+     "PORTAL_EDGE_EFFECT": true,
+     "PORTAL_REDUCE_CLOSEUP": true,
+     "PUDDLE_VOXELIZATION": true,
+     "RAINBOWS": "1",
+     "RAINBOW_DIAMETER": "1.00",
+     "RAINBOW_STYLE_DEFINE": "-1",
+     "RAIN_PUDDLES": "0",
+     "RAIN_STYLE": "1",
+     "REDUCE_CLOSE_PARTICLES": false,
+     "REFLECTION_BLUR_DEPTH_CHECK": true,
+     "REFLECTION_RES": "0.5",
+     "RP_MODE": "1",
+     "SAFER_GENERATED_NORMALS": false,
+     "SELECT_OUTLINE": "1",
+     "SELECT_OUTLINE_AUTO_HIDE": false,
+     "SELECT_OUTLINE_B": "1.75",
+     "SELECT_OUTLINE_G": "0.35",
+     "SELECT_OUTLINE_I": "1.00",
+     "SELECT_OUTLINE_R": "1.35",
+     "SHADER_STYLE": "4",
+     "SHADOW": true,
+     "SHADOWCOMP": true,
+     "SHADOWDISTANCE_ACT_ERROR": true,
+     "SHADOW_FILTERING": true,
+     "SHADOW_QUALITY": "2",
+     "SHADOW_SMOOTHING": "4",
+     "SHOW_LIGHT_LEVEL": "0",
+     "SIDE_SHADOWING": true,
+     "SKY_EFFECT_REFLECTION_DEFINE": "-1",
+     "SKY_EFFECT_REFLECTION_OPAQUE": true,
+     "SKY_EFFECT_REFLECTION_TRANSLUCENT": true,
+     "SMOOTHNESS_AFFECTED_REF_BLUR": true,
+     "SNOWY_WORLD": false,
+     "SPECIAL_BIOME_WEATHER": true,
+     "SPECIAL_PALE_GARDEN_LIGHTSHAFTS": true,
+     "SPECIAL_PORTAL_EFFECTS": true,
+     "SSAO_I": "100",
+     "SSAO_QUALI_DEFINE": "2",
+     "SULFUR_CAVE_FOG": true,
+     "SUN_ANGLE": "-1",
+     "SUN_MOON_DURING_RAIN": true,
+     "SUN_MOON_HORIZON": true,
+     "SUN_MOON_STYLE_DEFINE": "-1",
+     "TAA": true,
+     "TAA_DEFINE": "-1",
+     "TAA_JITTER": "1",
+     "TAA_MOVEMENT_IMPROVEMENT_FILTER": "1",
+     "TAA_SMOOTHING": "3",
+     "TM_CONTRAST": "1.05",
+     "TM_DARK_DESATURATION": "0.25",
+     "TM_EXPOSURE": "1.00",
+     "TM_WHITE_PATH": "1.00",
+     "T_SATURATION": "1.00",
+     "T_VIBRANCE": "1.00",
+     "UNDERWATERCOLOR_B": "100",
+     "UNDERWATERCOLOR_CHANGED": true,
+     "UNDERWATERCOLOR_G": "100",
+     "UNDERWATERCOLOR_R": "100",
+     "UNDERWATER_DISTORTION": true,
+     "VANILLAAO_I": "100",
+     "VERTEX_SHADER": true,
+     "VIGNETTE_R": true,
+     "VL_CLOUDS_ACTIVE": true,
+     "WATERCOLOR_B": "100",
+     "WATERCOLOR_CHANGED": true,
+     "WATERCOLOR_G": "100",
+     "WATERCOLOR_MODE": "3",
+     "WATERCOLOR_R": "100",
+     "WATER_ALPHA_MULT": "100",
+     "WATER_BUMPINESS": "1.25",
+     "WATER_BUMP_BIG": "2.00",
+     "WATER_BUMP_MED": "1.70",
+     "WATER_BUMP_SMALL": "0.75",
+     "WATER_CAUSTIC_STYLE_DEFINE": "-1",
+     "WATER_FOAM_I": "100",
+     "WATER_FOG_MULT": "100",
+     "WATER_REFLECT_QUALITY": "2",
+     "WATER_REFRACTION": true,
+     "WATER_REFRACTION_INTENSITY": "2.0",
+     "WATER_SIZE_MULT": "100",
+     "WATER_SPEED_MULT": "1.10",
+     "WATER_STYLE_DEFINE": "-1",
+     "WAVING_ANYTHING_TERRAIN": true,
+     "WAVING_FOLIAGE": true,
+     "WAVING_I": "1.00",
+     "WAVING_I_RAIN_MULT": "100",
+     "WAVING_LAVA": true,
+     "WAVING_LEAVES": true,
+     "WAVING_LILY_PAD": false,
+     "WAVING_RAIN": true,
+     "WAVING_SPEED": "1.00",
+     "WAVING_WATER_VERTEX": true,
+     "WB_ANAMORPHIC": false,
+     "WB_CHROMATIC": false,
+     "WB_DB_DAY_I": "64.0",
+     "WB_DB_END_I": "64.0",
+     "WB_DB_NETHER_I": "64.0",
+     "WB_DB_NIGHT_I": "64.0",
+     "WB_DB_RAIN_I": "64.0",
+     "WB_DB_WATER_I": "64.0",
+     "WB_DOF_FOCUS": "0",
+     "WB_DOF_I": "64.0",
+     "WB_FOV_SCALED": false,
+     "WEATHER_TEX_OPACITY": "100",
+     "WORLD_BLUR": "0",
+     "WORLD_OUTLINE": false,
+     "WORLD_OUTLINE_I": "1.50",
+     "WORLD_OUTLINE_ON_ENTITIES": true,
+     "WORLD_OUTLINE_SCALED": false,
+     "WORLD_OUTLINE_THICKNESS": "1",
+     "WORLD_SPACE_PLAYER_REF": "-1",
+     "WORLD_SPACE_REFLECTIONS": "-1",
+     "WORLD_SPACE_REF_MODE": "2",
+     "XLIGHT_B": "1.00",
+     "XLIGHT_CURVE": "1.00",
+     "XLIGHT_G": "1.00",
+     "XLIGHT_I": "1.00",
+     "XLIGHT_R": "1.00",
+     "info0": "0",
+     "info1": "0",
+     "info10": "0",
+     "info2": "0",
+     "info3": "0",
+     "info4": "0",
+     "info5": "0",
+     "info6": "0",
+     "info7": "0",
+     "info8": "0",
+     "info9": "0",
+     "shadowDistance": "192.0"
+    }
+   }
+  }
+ ],
+ "acceptance": [
+  {
+   "item": "A1",
+   "pass": true,
+   "evidence": {
+    "launch": {
+     "platform": "mc-26.3",
+     "tier": "bench",
+     "world": "spike",
+     "pid": 13620,
+     "log": "runtime/mc-26.3/game/logs/latest.log",
+     "stdout": "runtime/mc-26.3/game/logs/stdout.log",
+     "uuid": {
+      "value": "51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79",
+      "from": "players/data/51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79.dat"
+     },
+     "gate": {
+      "games": [],
+      "sessions": [],
+      "amd": {
+       "presentMon": [
+        {
+         "pid": 10368,
+         "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+         "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+        }
+       ],
+       "rsxTraceSession": true
+      }
+     },
+     "amdAfterJoin": {
+      "presentMon": [
+       {
+        "pid": 10368,
+        "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+        "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+       }
+      ],
+      "rsxTraceSession": true
+     },
+     "hashes": {
+      "classpathJars": 82,
+      "assetIndex": "34",
+      "versionJson": "702fe59163c6ee6578607daa85811d9bc9c7cc40",
+      "packs": [
+       {
+        "file": "Faithful 64x - Release 15.zip",
+        "kind": "resourcePack",
+        "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+       },
+       {
+        "file": "ComplementaryUnbound_r5.9.3.zip",
+        "kind": "referencePack",
+        "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c"
+       }
+      ]
+     },
+     "mods": {
+      "placed": [
+       {
+        "file": "fabric-api-0.161.0+26.3.jar",
+        "sha512": "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+        "state": "kept"
+       },
+       {
+        "file": "sodium-fabric-0.9.2+mc26.3.jar",
+        "sha512": "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93",
+        "state": "kept"
+       },
+       {
+        "file": "iris-fabric-1.11.7+mc26.3.jar",
+        "sha512": "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+        "state": "kept"
+       },
+       {
+        "file": "optilux-helper-0.1.0.jar",
+        "sha512": "eb840262d74e537377c4dfe57cdff1d3fba46187886c185b7a4d0a26c7978ff8048d1e0bafcd3c97860bf25e05787ea0f5abb75ff54167c3abf73d4ae376e9ab",
+        "state": "kept"
+       }
+      ],
+      "removed": [],
+      "helper": "optilux-helper-0.1.0.jar",
+      "sha512": [
+       "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+       "eb840262d74e537377c4dfe57cdff1d3fba46187886c185b7a4d0a26c7978ff8048d1e0bafcd3c97860bf25e05787ea0f5abb75ff54167c3abf73d4ae376e9ab",
+       "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+       "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+      ]
+     },
+     "logMods": [
+      "fabric-api",
+      "fabricloader",
+      "iris",
+      "java",
+      "minecraft",
+      "optilux-helper",
+      "sodium"
+     ],
+     "settings": {
+      "options": {
+       "version": "5023",
+       "fullscreen": "true",
+       "exclusiveFullscreen": "false",
+       "enableVsync": "false",
+       "maxFps": "260",
+       "renderDistance": "16",
+       "simulationDistance": "12",
+       "fov": "0.5",
+       "bobView": "false",
+       "guiScale": "3",
+       "mipmapLevels": "4",
+       "biomeBlendRadius": "2",
+       "graphicsPreset": "\"custom\"",
+       "preferredGraphicsBackend": "\"opengl\"",
+       "improvedTransparency": "false",
+       "pauseOnLostFocus": "false",
+       "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+       "onboardAccessibility": "false",
+       "skipMultiplayerWarning": "true",
+       "joinedFirstServer": "true",
+       "telemetryOptInExtra": "false",
+       "realmsNotifications": "false",
+       "narrator": "0"
+      },
+      "overrides": {},
+      "token": false,
+      "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+      "iris": {
+       "shaderPack": "ComplementaryUnbound_r5.9.3.zip",
+       "enableShaders": "true",
+       "enableDebugOptions": "false",
+       "disableUpdateMessage": "true",
+       "maxShadowRenderDistance": "32"
+      }
+     },
+     "join": {
+      "seconds": 12.33,
+      "line": "[00:19:38] [Server thread/INFO]: optilux[local:E:ed628091] logged in with entity id 6 at (-525.5, 69.0, -360.5)"
+     },
+     "timings": {
+      "prepareSeconds": 0.3,
+      "joinSeconds": 12.33
+     },
+     "command": {
+      "check": "equal",
+      "arguments": 37
+     }
+    },
+    "connectionAttempted": false,
+    "pipes": {
+     "optilux": []
+    },
+    "log": {
+     "file": "results/raw/m1-acceptance-3/a1/latest.log",
+     "inert": [
+      "[00:19:32] [Render thread/INFO]: optilux-helper: inert (no -Doptilux.token): no pipe, no thread, no mixin"
+     ],
+     "declinedMixins": 9,
+     "applied": [],
+     "active": []
+    },
+    "threads": {
+     "file": "results/raw/m1-acceptance-3/a1/threads.txt",
+     "count": 73,
+     "optilux": []
+    },
+    "quit": {
+     "how": "WM_CLOSE",
+     "windows": 1,
+     "exitCode": 0,
+     "seconds": 4.078000000008615
+    },
+    "control": {
+     "sessionPipeListed": true,
+     "sessionMixinsApplied": 9,
+     "sessionThreads": [
+      "optilux-pipe",
+      "optilux-worker-1"
+     ]
+    }
+   }
+  },
+  {
+   "item": "A2",
+   "pass": true,
+   "evidence": {
+    "complete": true,
+    "views": [
+     {
+      "view": "overworld_spawn",
+      "pass": true,
+      "attempts": [
+       {
+        "attempt": 1,
+        "focused": true,
+        "screen": null,
+        "frameBefore": 7288,
+        "frameAtPress": 7294,
+        "frameAfterPress": 7294,
+        "focusedAtPress": true,
+        "sendInput": {
+         "sent": 2,
+         "inserted": 2
+        },
+        "capture": {
+         "folder": "results/raw/m1-acceptance-3/a2/overworld_spawn/attempt-001",
+         "frames": [
+          {
+           "frameIndex": 7289,
+           "sha256": "0599978e69ec5a43da19f75c3b63883843850eb064263619ed935de886951ea1"
+          },
+          {
+           "frameIndex": 7290,
+           "sha256": "57d568e9ac284118df4cb668e88ceda16d207005370fef401284493b8b010c71"
+          },
+          {
+           "frameIndex": 7291,
+           "sha256": "bba235b5d56677ff795cb428c036fffff3370062516c60760008f40eb4b99c6d"
+          },
+          {
+           "frameIndex": 7292,
+           "sha256": "3bf5a25a3111e98bd5eb58e01c38df002e49a135d2f10e99a175af6ff20f39e5"
+          },
+          {
+           "frameIndex": 7293,
+           "sha256": "22bf2fe1838b8d8829bfe22cab21cb46f97c3f52576acc6dc0d74ba59bff51ca"
+          },
+          {
+           "frameIndex": 7294,
+           "sha256": "ec535e895a84a020a902ad8096f32c1713a8cf591a31c64f00faab42c5a65098"
+          },
+          {
+           "frameIndex": 7295,
+           "sha256": "0afd39ba96839509eaa7143aee040af470346d30bc0f5ceeb297eb64a0a0c226"
+          },
+          {
+           "frameIndex": 7296,
+           "sha256": "2f2ec4f3959f5a232bebc67ab7f3c0e7128df8e2e3eb1bed5ac96514a454c615"
+          },
+          {
+           "frameIndex": 7297,
+           "sha256": "248287eeab42a3dd4d6355051437c78267536815654c85d52d0b2869b4c57be2"
+          },
+          {
+           "frameIndex": 7298,
+           "sha256": "3e81d84ba4f65245b0235651bc846ad6389e6e3281a95b33726559cb160a1ab1"
+          },
+          {
+           "frameIndex": 7299,
+           "sha256": "51e3ae5a7b12803152bef2e49012174bcc2627abdbff6b5931a9fc27546ac766"
+          },
+          {
+           "frameIndex": 7300,
+           "sha256": "ca201c4c31ae261c30f6abd8e6554fa10475be7a533842b9affed3483f8619cf"
+          },
+          {
+           "frameIndex": 7301,
+           "sha256": "34d1b604c383f8c65ef63af7dbd581871825d02e14b5e82edb6d5b321a0e4528"
+          },
+          {
+           "frameIndex": 7302,
+           "sha256": "8043f3a9d38dd8b66bb7eabb8f5fbc2406558decf0a9e05bbe316b9c67fc734e"
+          },
+          {
+           "frameIndex": 7303,
+           "sha256": "882e012fa2f071b84129b02546d1196d4cde9bda745a50ce1aca4661dceec225"
+          },
+          {
+           "frameIndex": 7304,
+           "sha256": "2e7ed24b8b0ab82a3e0e6a517c1ba4072a7fd227c4498e1e24f39dc93b04814d"
+          },
+          {
+           "frameIndex": 7305,
+           "sha256": "61c38345b6db223660c0de8928c1783cc9ef92bd456d901f6b699721647bd844"
+          },
+          {
+           "frameIndex": 7306,
+           "sha256": "1ba6dad48491e685aa3141112d0fa72a6fba56a21f80e7c6ab4b2fc34e0d72ce"
+          },
+          {
+           "frameIndex": 7307,
+           "sha256": "cade874c35decd9dd57f88e36d0dfca3d6d31e753462e5abe767d91c600bf5f5"
+          },
+          {
+           "frameIndex": 7308,
+           "sha256": "8d15fabc101b2f45a55f81aa063ed955cf47186b03e13078cd71909318d90ffc"
+          },
+          {
+           "frameIndex": 7309,
+           "sha256": "77ca15f54399aa96daa661e88e6cd6fe3e310f2a973b86a2c91d192ada37458c"
+          },
+          {
+           "frameIndex": 7310,
+           "sha256": "6c0611cb6fd9b702301aad03945791122dfdc5127dc196d5045040c448e716e9"
+          },
+          {
+           "frameIndex": 7311,
+           "sha256": "b7e8deb73c90e997c6c6dd3d35432a9b1d1347323feaa6ef9fef9cc703555848"
+          },
+          {
+           "frameIndex": 7312,
+           "sha256": "a7873d0ac72b71bd8c1aef46db270ae4df28e6633d541c0ced6fc10569b92bee"
+          }
+         ],
+         "distinct": 24,
+         "dropped": [],
+         "complete": true
+        },
+        "poseAfter": {
+         "dimension": "minecraft:overworld",
+         "x": -525.5,
+         "y": 69.0,
+         "z": -360.5,
+         "yaw": 135.0,
+         "pitch": 31.200000762939453
+        },
+        "poseDifferences": [],
+        "invalidatingEvents": [],
+        "screenshot": {
+         "file": "screenshots/2026-10-07_00.18.45.png",
+         "kept": "results/raw/m1-acceptance-3/a2/overworld_spawn/f2/attempt-1-2026-10-07_00.18.45.png",
+         "sha256": "0afd39ba96839509eaa7143aee040af470346d30bc0f5ceeb297eb64a0a0c226",
+         "bytes": 17681578,
+         "size": "3840x2160"
+        },
+        "matches": [
+         7295
+        ],
+        "pass": true
+       }
+      ]
+     },
+     {
+      "view": "nether_deltas",
+      "pass": true,
+      "attempts": [
+       {
+        "attempt": 1,
+        "focused": true,
+        "screen": null,
+        "frameBefore": 8660,
+        "frameAtPress": 8666,
+        "frameAfterPress": 8666,
+        "focusedAtPress": true,
+        "sendInput": {
+         "sent": 2,
+         "inserted": 2
+        },
+        "capture": {
+         "folder": "results/raw/m1-acceptance-3/a2/nether_deltas/attempt-001",
+         "frames": [
+          {
+           "frameIndex": 8661,
+           "sha256": "c57837bf56d27fcb03d8e052f1437296212b43bbc2d75d631dc042fdbbefc5c5"
+          },
+          {
+           "frameIndex": 8662,
+           "sha256": "0349346a0fa99f3a575c6187623619fe647daf76fe2d07b837a1041ad5ffab74"
+          },
+          {
+           "frameIndex": 8663,
+           "sha256": "829efff44274ab8eb2416ee57e62aa4e9f98bb53be398d2c369f5e9a65cf6c59"
+          },
+          {
+           "frameIndex": 8664,
+           "sha256": "b3771b6387f90d6fc47e0c737399deaee9880527455efbb6f8961b4c85f92bbb"
+          },
+          {
+           "frameIndex": 8665,
+           "sha256": "755a5a14ee0aaa27d8acc44810ea85a2f70ebdc196dd991dc97f0e718c1c9dc6"
+          },
+          {
+           "frameIndex": 8666,
+           "sha256": "ac244bf766b5bac8915396b69ae656594079a173158213d93d36b11994ef1244"
+          },
+          {
+           "frameIndex": 8667,
+           "sha256": "be326224288fd030063c8480035a31d034d4bc395539ced812f3a343fdafba20"
+          },
+          {
+           "frameIndex": 8668,
+           "sha256": "0eb0161c48b8eedcf0c758656ee77d4d4adde254643c1303096716dcd6be3050"
+          },
+          {
+           "frameIndex": 8669,
+           "sha256": "19a9f16dcdae034d1a60761624cfe4126caa627b93fbc6500fcfec8b93f4b4e7"
+          },
+          {
+           "frameIndex": 8670,
+           "sha256": "1a1930a81c694fc04e9ea929cb9bc6e3a1ade484dd31c47a9ff883cd41a66ce9"
+          },
+          {
+           "frameIndex": 8671,
+           "sha256": "2896234f68cd8496c023467b3f473538c87d155bc0d3f66504eebe440a9a55e4"
+          },
+          {
+           "frameIndex": 8672,
+           "sha256": "abaf99943269b3e09e03f70f0744bcac519b3396bdb44789a86d6d0190f0fc41"
+          },
+          {
+           "frameIndex": 8673,
+           "sha256": "f201f5431cc92d736bc8be3760401722a3ba5b7f0515acf7049d792abf5a99f3"
+          },
+          {
+           "frameIndex": 8674,
+           "sha256": "949028e3177636e7f03180293d54b06b4a4a8460bce47293369b2d3d58e34583"
+          },
+          {
+           "frameIndex": 8675,
+           "sha256": "484c4f0a77e6ed632ca24d36fb89db44a8be5a5acab63468eacdf36fcddf6c3b"
+          },
+          {
+           "frameIndex": 8676,
+           "sha256": "97d6740b8acae4db4d06653d2d6c56c0f0b72da451b41eceed8a3db3f19c3e3a"
+          },
+          {
+           "frameIndex": 8677,
+           "sha256": "0d56264aa38c19a683cfcce86650516caa54cfd89ac1b7e3b08b5ade094f6eda"
+          },
+          {
+           "frameIndex": 8678,
+           "sha256": "3cc2d8e546b283b381992ec31b51621f39b29b90329ed3b2a92047a172000290"
+          },
+          {
+           "frameIndex": 8679,
+           "sha256": "ca987d46ed6290a827f346193609ced2d9cac72cf3169597850048d062867aa9"
+          },
+          {
+           "frameIndex": 8680,
+           "sha256": "6d398e5ee906b2e3f7fd5a3370a454722b3ca5a65822860fbf59d6431a37a61a"
+          },
+          {
+           "frameIndex": 8681,
+           "sha256": "7cc766ed333b9d1cb8bb6e83063cc82951f20a56641332c818bc801ea2bc59f9"
+          },
+          {
+           "frameIndex": 8682,
+           "sha256": "dfaaf94cdf7bf0792973f972e9937ff3f9471076743cde0cf4ffac3c196f03a7"
+          },
+          {
+           "frameIndex": 8683,
+           "sha256": "4eced4fe6439c307f4c01231ce52a466b607e35042a1db5f5f28e4c0098b0095"
+          },
+          {
+           "frameIndex": 8684,
+           "sha256": "0453dc67acf34e1d44facce075c9710e5cc97c9a58cde25d288c3a68acf69845"
+          }
+         ],
+         "distinct": 24,
+         "dropped": [],
+         "complete": true
+        },
+        "poseAfter": {
+         "dimension": "minecraft:the_nether",
+         "x": -79.5,
+         "y": 91.0,
+         "z": -75.5,
+         "yaw": -90.0,
+         "pitch": 15.0
+        },
+        "poseDifferences": [],
+        "invalidatingEvents": [],
+        "screenshot": {
+         "file": "screenshots/2026-10-07_00.19.00.png",
+         "kept": "results/raw/m1-acceptance-3/a2/nether_deltas/f2/attempt-1-2026-10-07_00.19.00.png",
+         "sha256": "be326224288fd030063c8480035a31d034d4bc395539ced812f3a343fdafba20",
+         "bytes": 17128557,
+         "size": "3840x2160"
+        },
+        "matches": [
+         8667
+        ],
+        "pass": true
+       }
+      ]
+     },
+     {
+      "view": "end_pillars",
+      "pass": true,
+      "attempts": [
+       {
+        "attempt": 1,
+        "focused": true,
+        "screen": null,
+        "frameBefore": 10246,
+        "frameAtPress": 10252,
+        "frameAfterPress": 10252,
+        "focusedAtPress": true,
+        "sendInput": {
+         "sent": 2,
+         "inserted": 2
+        },
+        "capture": {
+         "folder": "results/raw/m1-acceptance-3/a2/end_pillars/attempt-001",
+         "frames": [
+          {
+           "frameIndex": 10247,
+           "sha256": "c0dcd1f2cd0ebd82e016f3f4f9ae9e76785906821d9e7fc2e939ee5263072263"
+          },
+          {
+           "frameIndex": 10248,
+           "sha256": "92f9a8ce943bce512477e4a96da2b896bb2adc08d0a58af2323a56c3f157829f"
+          },
+          {
+           "frameIndex": 10249,
+           "sha256": "e6a52fbd1ab299a058cced993076b41e6b5b6c8496592a9b3b8084de860c18e1"
+          },
+          {
+           "frameIndex": 10250,
+           "sha256": "5266f7f806cf4861e8fca912f2dcc99fa9c549ca61845d1f0160b2f258055708"
+          },
+          {
+           "frameIndex": 10251,
+           "sha256": "357e625cab8f5fc799daf91d615cab5dc859609ceb4ad4926d71017aa2ad7c93"
+          },
+          {
+           "frameIndex": 10252,
+           "sha256": "8e7881281f3ba600211a993c3866cffdff8a3292543d33b7c7b47917dd91ef6a"
+          },
+          {
+           "frameIndex": 10253,
+           "sha256": "8f881d4b6a4851430a8ad3e218df1eba288680a41e1e4cb0bdd6d80b59f85ba4"
+          },
+          {
+           "frameIndex": 10254,
+           "sha256": "54d951f8c18e0594de6bc8c8e0cb0e6b6cf8e1fe1bef95c3dcbbffb0e4e36fa8"
+          },
+          {
+           "frameIndex": 10255,
+           "sha256": "bbf3a38c0e243027b41768cdcf449ee17fe75d348055742b5c091acf93394251"
+          },
+          {
+           "frameIndex": 10256,
+           "sha256": "8fc59a8456dce15417f24c6b658e4618684c41789f5ca169bd790a85a06996bd"
+          },
+          {
+           "frameIndex": 10257,
+           "sha256": "268990c309a4aab3d5a1dc9e1c2ee9847e90666d55768952dcfdeb326f46421c"
+          },
+          {
+           "frameIndex": 10258,
+           "sha256": "221fc2971882fd04c3531dfe761acc79009ab69b994a38426316b2d37246f78b"
+          },
+          {
+           "frameIndex": 10259,
+           "sha256": "42b385b7d908a80c2feeaa5953682a53599cda942e4f1c600edbffe3ca08d29c"
+          },
+          {
+           "frameIndex": 10260,
+           "sha256": "7626d6d9f64d402eb72ce8a86fd7d02b7af373553bd9f1ceb86cf2c53720a938"
+          },
+          {
+           "frameIndex": 10261,
+           "sha256": "e55743fa4ee41a7e2ed8106a4d1c3d5526674d9acc38d08107ab88fea4ded7b7"
+          },
+          {
+           "frameIndex": 10262,
+           "sha256": "2ec949fb5644b892f6126fb1f7eef26d836537b478c88d865eb4f7ffd104ad0c"
+          },
+          {
+           "frameIndex": 10263,
+           "sha256": "db25106dcb4549c799a70831bf5d72d420b1e10dd50f32510d2d2f387a49b196"
+          },
+          {
+           "frameIndex": 10264,
+           "sha256": "ce4585c995f271041df7c7a308b13afe9fc5dc4d9a051e391cc9b4531411b946"
+          },
+          {
+           "frameIndex": 10265,
+           "sha256": "f58bdc13c857d114101f889d66763b2c6af206ef389a83d4e9bfd62698d6fade"
+          },
+          {
+           "frameIndex": 10266,
+           "sha256": "59196593eb5369bf88f53fbb6f2bff5fe5b008bafce45628dc2851f96e0ce685"
+          },
+          {
+           "frameIndex": 10267,
+           "sha256": "65f323c95c83afcdbce5cb9a770fa547921b2516a7b404a7484794551c9a1635"
+          },
+          {
+           "frameIndex": 10268,
+           "sha256": "44c11c38b51a4f4ebd2cd0a68bb154d70363fa1f8cf10b20fd78b8c1513892ec"
+          },
+          {
+           "frameIndex": 10269,
+           "sha256": "7614c9cdfb83c3ffdf88bef9cdfcfffea573087156d50fdb0f3562ec2295790c"
+          },
+          {
+           "frameIndex": 10270,
+           "sha256": "99a9b5406c6366aebafd0dca30b1522db6da998dbb9e38b7ef9d7406bb53b6e3"
+          }
+         ],
+         "distinct": 24,
+         "dropped": [],
+         "complete": true
+        },
+        "poseAfter": {
+         "dimension": "minecraft:the_end",
+         "x": 60.5,
+         "y": 90.0,
+         "z": 60.5,
+         "yaw": 135.0,
+         "pitch": 15.0
+        },
+        "poseDifferences": [],
+        "invalidatingEvents": [],
+        "screenshot": {
+         "file": "screenshots/2026-10-07_00.19.15.png",
+         "kept": "results/raw/m1-acceptance-3/a2/end_pillars/f2/attempt-1-2026-10-07_00.19.15.png",
+         "sha256": "8f881d4b6a4851430a8ad3e218df1eba288680a41e1e4cb0bdd6d80b59f85ba4",
+         "bytes": 16302005,
+         "size": "3840x2160"
+        },
+        "matches": [
+         10253
+        ],
+        "pass": true
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "item": "A3",
+   "pass": true,
+   "evidence": {
+    "complete": true,
+    "views": [
+     {
+      "view": "overworld_spawn",
+      "pass": true,
+      "probes": [
+       {
+        "probe": "centre",
+        "sent": {
+         "x": -525,
+         "y": 70.0,
+         "z": -360,
+         "yaw": 180,
+         "pitch": 31.2
+        },
+        "command": "/execute in minecraft:overworld run tp @s -525 70.0 -360 180 31.2",
+        "feedback": [
+         "Teleported optilux to -524.500000, 70.000000, -359.500000"
+        ],
+        "tp": {
+         "dimension": "minecraft:overworld",
+         "x": -524.5,
+         "y": 70.0,
+         "z": -359.5,
+         "yaw": -180.0,
+         "pitch": 31.200000762939453
+        },
+        "placed": {
+         "dimension": "minecraft:overworld",
+         "x": -524.5,
+         "y": 70.0,
+         "z": -359.5,
+         "yaw": -180.0,
+         "pitch": 31.200000762939453
+        },
+        "read": {
+         "dimension": "minecraft:overworld",
+         "x": -524.5,
+         "y": 70.0,
+         "z": -359.5,
+         "yaw": -180.0,
+         "pitch": 31.200000762939453
+        },
+        "differences": [],
+        "pass": true
+       },
+       {
+        "probe": "wrap",
+        "sent": {
+         "x": -525.5,
+         "y": 69.0,
+         "z": -360.5,
+         "yaw": 495.0,
+         "pitch": 31.2
+        },
+        "command": "/execute in minecraft:overworld run tp @s -525.5 69.0 -360.5 495.0 31.2",
+        "feedback": [
+         "Teleported optilux to -525.500000, 69.000000, -360.500000"
+        ],
+        "tp": {
+         "dimension": "minecraft:overworld",
+         "x": -525.5,
+         "y": 69.0,
+         "z": -360.5,
+         "yaw": 135.0,
+         "pitch": 31.200000762939453
+        },
+        "placed": {
+         "dimension": "minecraft:overworld",
+         "x": -525.5,
+         "y": 69.0,
+         "z": -360.5,
+         "yaw": 135.0,
+         "pitch": 31.200000762939453
+        },
+        "read": {
+         "dimension": "minecraft:overworld",
+         "x": -525.5,
+         "y": 69.0,
+         "z": -360.5,
+         "yaw": 135.0,
+         "pitch": 31.200000762939453
+        },
+        "differences": [],
+        "pass": true
+       }
+      ]
+     },
+     {
+      "view": "nether_deltas",
+      "pass": true,
+      "probes": [
+       {
+        "probe": "centre",
+        "sent": {
+         "x": -79,
+         "y": 92.0,
+         "z": -75,
+         "yaw": 180,
+         "pitch": 15.0
+        },
+        "command": "/execute in minecraft:the_nether run tp @s -79 92.0 -75 180 15.0",
+        "feedback": [
+         "Teleported optilux to -78.500000, 92.000000, -74.500000"
+        ],
+        "tp": {
+         "dimension": "minecraft:the_nether",
+         "x": -78.5,
+         "y": 92.0,
+         "z": -74.5,
+         "yaw": -180.0,
+         "pitch": 15.0
+        },
+        "placed": {
+         "dimension": "minecraft:the_nether",
+         "x": -78.5,
+         "y": 92.0,
+         "z": -74.5,
+         "yaw": -180.0,
+         "pitch": 15.0
+        },
+        "read": {
+         "dimension": "minecraft:the_nether",
+         "x": -78.5,
+         "y": 92.0,
+         "z": -74.5,
+         "yaw": -180.0,
+         "pitch": 15.0
+        },
+        "differences": [],
+        "pass": true
+       },
+       {
+        "probe": "wrap",
+        "sent": {
+         "x": -79.5,
+         "y": 91.0,
+         "z": -75.5,
+         "yaw": 270.0,
+         "pitch": 15.0
+        },
+        "command": "/execute in minecraft:the_nether run tp @s -79.5 91.0 -75.5 270.0 15.0",
+        "feedback": [
+         "Teleported optilux to -79.500000, 91.000000, -75.500000"
+        ],
+        "tp": {
+         "dimension": "minecraft:the_nether",
+         "x": -79.5,
+         "y": 91.0,
+         "z": -75.5,
+         "yaw": -90.0,
+         "pitch": 15.0
+        },
+        "placed": {
+         "dimension": "minecraft:the_nether",
+         "x": -79.5,
+         "y": 91.0,
+         "z": -75.5,
+         "yaw": -90.0,
+         "pitch": 15.0
+        },
+        "read": {
+         "dimension": "minecraft:the_nether",
+         "x": -79.5,
+         "y": 91.0,
+         "z": -75.5,
+         "yaw": -90.0,
+         "pitch": 15.0
+        },
+        "differences": [],
+        "pass": true
+       }
+      ]
+     },
+     {
+      "view": "end_pillars",
+      "pass": true,
+      "probes": [
+       {
+        "probe": "centre",
+        "sent": {
+         "x": 61,
+         "y": 91.0,
+         "z": 61,
+         "yaw": 180,
+         "pitch": 15.0
+        },
+        "command": "/execute in minecraft:the_end run tp @s 61 91.0 61 180 15.0",
+        "feedback": [
+         "Teleported optilux to 61.500000, 91.000000, 61.500000"
+        ],
+        "tp": {
+         "dimension": "minecraft:the_end",
+         "x": 61.5,
+         "y": 91.0,
+         "z": 61.5,
+         "yaw": -180.0,
+         "pitch": 15.0
+        },
+        "placed": {
+         "dimension": "minecraft:the_end",
+         "x": 61.5,
+         "y": 91.0,
+         "z": 61.5,
+         "yaw": -180.0,
+         "pitch": 15.0
+        },
+        "read": {
+         "dimension": "minecraft:the_end",
+         "x": 61.5,
+         "y": 91.0,
+         "z": 61.5,
+         "yaw": -180.0,
+         "pitch": 15.0
+        },
+        "differences": [],
+        "pass": true
+       },
+       {
+        "probe": "wrap",
+        "sent": {
+         "x": 60.5,
+         "y": 90.0,
+         "z": 60.5,
+         "yaw": 495.0,
+         "pitch": 15.0
+        },
+        "command": "/execute in minecraft:the_end run tp @s 60.5 90.0 60.5 495.0 15.0",
+        "feedback": [
+         "Teleported optilux to 60.500000, 90.000000, 60.500000"
+        ],
+        "tp": {
+         "dimension": "minecraft:the_end",
+         "x": 60.5,
+         "y": 90.0,
+         "z": 60.5,
+         "yaw": 135.0,
+         "pitch": 15.0
+        },
+        "placed": {
+         "dimension": "minecraft:the_end",
+         "x": 60.5,
+         "y": 90.0,
+         "z": 60.5,
+         "yaw": 135.0,
+         "pitch": 15.0
+        },
+        "read": {
+         "dimension": "minecraft:the_end",
+         "x": 60.5,
+         "y": 90.0,
+         "z": 60.5,
+         "yaw": 135.0,
+         "pitch": 15.0
+        },
+        "differences": [],
+        "pass": true
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "item": "A10",
+   "pass": true,
+   "evidence": {
+    "selftest": {
+     "pass": true,
+     "checks": {
+      "frameClock": {
+       "pass": true,
+       "first": {
+        "frameIndex": 131,
+        "qpcNs": 104792465800000,
+        "swapQpcNs": 104792462923300
+       },
+       "later": {
+        "frameIndex": 134,
+        "qpcNs": 104792510500800,
+        "swapQpcNs": 104792504361700
+       }
+      },
+      "renderer": {
+       "pass": true,
+       "reading": {
+        "inWorld": true,
+        "noScreen": true,
+        "sections": 14736,
+        "queuedJobs": 53,
+        "busyThreads": 9,
+        "buildResults": 14,
+        "runningJobs": 76,
+        "taskLists": 242,
+        "submittedTasks": 20,
+        "graphClean": false,
+        "rendererCheck": false,
+        "failing": "buildQueue"
+       }
+      },
+      "reload": {
+       "pass": true,
+       "pack": "ComplementaryUnbound_r5.9.3.zip",
+       "pipeline": "IrisRenderingPipeline",
+       "seconds": 0.6827207,
+       "reloadFrame": 135,
+       "frameIndex": 139,
+       "sinceReload": 4
+      },
+      "capture": {
+       "pass": true,
+       "frameIndex": 140,
+       "size": "3840x2160",
+       "target": "3840x2160"
+      },
+      "input": {
+       "pass": true,
+       "mixins": [
+        "KeyboardHandlerMixin",
+        "MouseHandlerMixin",
+        "MinecraftMixin"
+       ],
+       "blocked": false
+      }
+     },
+     "frameIndex": 525,
+     "sinceReload": 390,
+     "qpcNs": 104795757419400
+    },
+    "after": {
+     "worldWait": {
+      "pose": {
+       "dimension": "minecraft:the_nether",
+       "x": -79.5,
+       "y": 91.0,
+       "z": -75.5,
+       "yaw": -90.0,
+       "pitch": 15.0
+      },
+      "time": 6075,
+      "joinedQpcNs": 104791764611400,
+      "frameIndex": 129,
+      "sinceReload": 11,
+      "qpcNs": 104792450287200
+     }
+    }
+   }
+  }
+ ],
+ "session": {
+  "launch": {
+   "platform": "mc-26.3",
+   "tier": "bench",
+   "world": "spike",
+   "pid": 20116,
+   "log": "runtime/mc-26.3/game/logs/latest.log",
+   "stdout": "runtime/mc-26.3/game/logs/stdout.log",
+   "uuid": {
+    "value": "51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79",
+    "from": "players/data/51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79.dat"
+   },
+   "gate": {
+    "games": [],
+    "sessions": [],
+    "amd": {
+     "presentMon": [
+      {
+       "pid": 10368,
+       "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+       "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+      }
+     ],
+     "rsxTraceSession": true
+    }
+   },
+   "amdAfterJoin": {
+    "presentMon": [
+     {
+      "pid": 10368,
+      "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+      "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+     }
+    ],
+    "rsxTraceSession": true
+   },
+   "hashes": {
+    "classpathJars": 82,
+    "assetIndex": "34",
+    "versionJson": "702fe59163c6ee6578607daa85811d9bc9c7cc40",
+    "packs": [
+     {
+      "file": "Faithful 64x - Release 15.zip",
+      "kind": "resourcePack",
+      "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+     },
+     {
+      "file": "ComplementaryUnbound_r5.9.3.zip",
+      "kind": "referencePack",
+      "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c"
+     }
+    ]
+   },
+   "mods": {
+    "placed": [
+     {
+      "file": "fabric-api-0.161.0+26.3.jar",
+      "sha512": "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+      "state": "kept"
+     },
+     {
+      "file": "sodium-fabric-0.9.2+mc26.3.jar",
+      "sha512": "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93",
+      "state": "kept"
+     },
+     {
+      "file": "iris-fabric-1.11.7+mc26.3.jar",
+      "sha512": "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+      "state": "kept"
+     },
+     {
+      "file": "optilux-helper-0.1.0.jar",
+      "sha512": "eb840262d74e537377c4dfe57cdff1d3fba46187886c185b7a4d0a26c7978ff8048d1e0bafcd3c97860bf25e05787ea0f5abb75ff54167c3abf73d4ae376e9ab",
+      "state": "kept"
+     }
+    ],
+    "removed": [],
+    "helper": "optilux-helper-0.1.0.jar",
+    "sha512": [
+     "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+     "eb840262d74e537377c4dfe57cdff1d3fba46187886c185b7a4d0a26c7978ff8048d1e0bafcd3c97860bf25e05787ea0f5abb75ff54167c3abf73d4ae376e9ab",
+     "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+     "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+    ]
+   },
+   "logMods": [
+    "fabric-api",
+    "fabricloader",
+    "iris",
+    "java",
+    "minecraft",
+    "optilux-helper",
+    "sodium"
+   ],
+   "settings": {
+    "options": {
+     "version": "5023",
+     "fullscreen": "true",
+     "exclusiveFullscreen": "false",
+     "enableVsync": "false",
+     "maxFps": "260",
+     "renderDistance": "16",
+     "simulationDistance": "12",
+     "fov": "0.5",
+     "bobView": "false",
+     "guiScale": "3",
+     "mipmapLevels": "4",
+     "biomeBlendRadius": "2",
+     "graphicsPreset": "\"custom\"",
+     "preferredGraphicsBackend": "\"opengl\"",
+     "improvedTransparency": "false",
+     "pauseOnLostFocus": "false",
+     "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+     "onboardAccessibility": "false",
+     "skipMultiplayerWarning": "true",
+     "joinedFirstServer": "true",
+     "telemetryOptInExtra": "false",
+     "realmsNotifications": "false",
+     "narrator": "0"
+    },
+    "overrides": {},
+    "token": true,
+    "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+    "iris": {
+     "shaderPack": "ComplementaryUnbound_r5.9.3.zip",
+     "enableShaders": "true",
+     "enableDebugOptions": "false",
+     "disableUpdateMessage": "true",
+     "maxShadowRenderDistance": "32"
+    }
+   },
+   "join": {
+    "seconds": 12.41,
+    "line": "[00:17:55] [Server thread/INFO]: optilux[local:E:e3d8b1ee] logged in with entity id 1 at (-79.5, 91.0, -75.5)"
+   },
+   "timings": {
+    "prepareSeconds": 0.28,
+    "joinSeconds": 12.41
+   },
+   "command": {
+    "check": "equal",
+    "arguments": 38
+   }
+  },
+  "mod": {
+   "pipe": {
+    "serverPid": 20116,
+    "dacl": "D:(A;;FA;;;S-1-5-21-3689793171-124209945-1107482691-1000)",
+    "secondInstanceError": 231
+   },
+   "hello": {
+    "protocol": 1,
+    "mod": {
+     "id": "optilux-helper",
+     "version": "0.1.0"
+    },
+    "platform": "mc-26.3",
+    "versions": {
+     "minecraft": "26.3",
+     "loader": "0.19.5",
+     "iris": "1.11.7+mc26.3",
+     "sodium": "0.9.2+mc26.3",
+     "java": "25.0.4.1+1-LTS"
+    },
+    "capabilities": [
+     "hello",
+     "selftest",
+     "state",
+     "world.wait",
+     "command",
+     "ticks.step",
+     "ready",
+     "camera.place",
+     "camera.get",
+     "shaders.reload",
+     "shaders.options",
+     "frames.index",
+     "frames.capture",
+     "input.block",
+     "hud.set",
+     "cancel",
+     "quit"
+    ],
+    "pid": 20116,
+    "resumed": false,
+    "cancelled": [],
+    "frameIndex": 118,
+    "sinceReload": 0,
+    "qpcNs": 104789237477200
+   },
+   "frames": {
+    "first": {
+     "frameIndex": 118,
+     "sinceReload": 0,
+     "qpcNs": 104789238916400
+    },
+    "advanced": {
+     "frameIndex": 124,
+     "sinceReload": 6,
+     "qpcNs": 104792251784300
+    },
+    "seconds": 3.03
+   },
+   "requestLog": "results/raw/m1-acceptance-3/requests.jsonl"
+  },
+  "pipeListed": true,
+  "threads": [
+   "optilux-pipe",
+   "optilux-worker-1"
+  ],
+  "reload": {
+   "pack": "ComplementaryUnbound_r5.9.3.zip",
+   "pipeline": "IrisRenderingPipeline",
+   "seconds": 0.5101792,
+   "framesAfter": 2,
+   "reloadFrame": 596,
+   "frameIndex": 599,
+   "sinceReload": 3,
+   "qpcNs": 104796712420600
+  },
+  "views": [
+   {
+    "view": "overworld_spawn",
+    "placed": {
+     "pose": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "arrivedSeconds": 1.8742307,
+     "frameIndex": 6839,
+     "sinceReload": 1,
+     "qpcNs": 104834584104400
+    },
+    "settleSeconds": 4.0,
+    "ready": {
+     "seconds": 4.0047242,
+     "predicateSeconds": 3.2691541,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.744745,
+      "gapFrames": 114
+     },
+     "frames": 448,
+     "frameIndex": 7287,
+     "sinceReload": 449,
+     "qpcNs": 104838590452200
+    }
+   },
+   {
+    "view": "nether_deltas",
+    "placed": {
+     "pose": {
+      "dimension": "minecraft:the_nether",
+      "x": -79.5,
+      "y": 91.0,
+      "z": -75.5,
+      "yaw": -90.0,
+      "pitch": 15.0
+     },
+     "arrivedSeconds": 0.2425156,
+     "frameIndex": 7984,
+     "sinceReload": 1,
+     "qpcNs": 104848950707000
+    },
+    "settleSeconds": 4.0,
+    "ready": {
+     "seconds": 4.0013509,
+     "predicateSeconds": 0.9135902,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.8904988,
+      "gapFrames": 11
+     },
+     "frames": 675,
+     "frameIndex": 8659,
+     "sinceReload": 676,
+     "qpcNs": 104852953524700
+    }
+   },
+   {
+    "view": "end_pillars",
+    "placed": {
+     "pose": {
+      "dimension": "minecraft:the_end",
+      "x": 60.5,
+      "y": 90.0,
+      "z": 60.5,
+      "yaw": 135.0,
+      "pitch": 15.0
+     },
+     "arrivedSeconds": 1.6330237,
+     "frameIndex": 9821,
+     "sinceReload": 1,
+     "qpcNs": 104864165937700
+    },
+    "settleSeconds": 4.0,
+    "ready": {
+     "seconds": 4.0069539,
+     "predicateSeconds": 0.2537735,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.2142778,
+      "gapFrames": 7
+     },
+     "frames": 424,
+     "frameIndex": 10245,
+     "sinceReload": 425,
+     "qpcNs": 104868174248500
+    }
+   }
+  ],
+  "quit": {
+   "how": "quit",
+   "exitCode": 0,
+   "seconds": 1.3439999999973224
+  },
+  "steps": [
+   {
+    "step": "world.wait",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:the_nether",
+      "x": -79.5,
+      "y": 91.0,
+      "z": -75.5,
+      "yaw": -90.0,
+      "pitch": 15.0
+     },
+     "time": 6075,
+     "joinedQpcNs": 104791764611400,
+     "frameIndex": 129,
+     "sinceReload": 11,
+     "qpcNs": 104792450287200
+    },
+    "seconds": 0.015
+   },
+   {
+    "step": "state",
+    "answer": {
+     "inWorld": true,
+     "dimension": "minecraft:the_nether",
+     "gamemode": "spectator",
+     "screen": null,
+     "paused": false,
+     "focused": true,
+     "tick": 73,
+     "frameIndex": 130,
+     "sinceReload": 12,
+     "qpcNs": 104792463024500
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "selftest",
+    "answer": {
+     "pass": true,
+     "checks": {
+      "frameClock": {
+       "pass": true,
+       "first": {
+        "frameIndex": 131,
+        "qpcNs": 104792465800000,
+        "swapQpcNs": 104792462923300
+       },
+       "later": {
+        "frameIndex": 134,
+        "qpcNs": 104792510500800,
+        "swapQpcNs": 104792504361700
+       }
+      },
+      "renderer": {
+       "pass": true,
+       "reading": {
+        "inWorld": true,
+        "noScreen": true,
+        "sections": 14736,
+        "queuedJobs": 53,
+        "busyThreads": 9,
+        "buildResults": 14,
+        "runningJobs": 76,
+        "taskLists": 242,
+        "submittedTasks": 20,
+        "graphClean": false,
+        "rendererCheck": false,
+        "failing": "buildQueue"
+       }
+      },
+      "reload": {
+       "pass": true,
+       "pack": "ComplementaryUnbound_r5.9.3.zip",
+       "pipeline": "IrisRenderingPipeline",
+       "seconds": 0.6827207,
+       "reloadFrame": 135,
+       "frameIndex": 139,
+       "sinceReload": 4
+      },
+      "capture": {
+       "pass": true,
+       "frameIndex": 140,
+       "size": "3840x2160",
+       "target": "3840x2160"
+      },
+      "input": {
+       "pass": true,
+       "mixins": [
+        "KeyboardHandlerMixin",
+        "MouseHandlerMixin",
+        "MinecraftMixin"
+       ],
+       "blocked": false
+      }
+     },
+     "frameIndex": 525,
+     "sinceReload": 390,
+     "qpcNs": 104795757419400
+    },
+    "seconds": 3.297
+   },
+   {
+    "step": "input.block on",
+    "answer": {
+     "on": true,
+     "frameIndex": 525,
+     "sinceReload": 390,
+     "qpcNs": 104795761098900
+    },
+    "seconds": 0.016
+   },
+   {
+    "step": "hud.set hideGui",
+    "answer": {
+     "hideGui": true,
+     "debugOverlay": false,
+     "frameIndex": 526,
+     "sinceReload": 391,
+     "qpcNs": 104795766781800
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "command /tick freeze",
+    "answer": {
+     "succeeded": true,
+     "messages": [
+      "The game is frozen"
+     ],
+     "failures": [],
+     "frameIndex": 529,
+     "sinceReload": 394,
+     "qpcNs": 104795780446400
+    },
+    "seconds": 0.015
+   },
+   {
+    "step": "ready",
+    "answer": {
+     "seconds": 0.3857623,
+     "predicateSeconds": 0.3857623,
+     "limitedBy": "graph",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.3684586,
+      "gapFrames": 4
+     },
+     "frames": 67,
+     "frameIndex": 596,
+     "sinceReload": 461,
+     "qpcNs": 104796167861700
+    },
+    "seconds": 0.391
+   },
+   {
+    "step": "shaders.reload",
+    "answer": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.5101792,
+     "framesAfter": 2,
+     "reloadFrame": 596,
+     "frameIndex": 599,
+     "sinceReload": 3,
+     "qpcNs": 104796712420600
+    },
+    "seconds": 0.531
+   },
+   {
+    "step": "shaders.options",
+    "answer": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "values": {
+      "ACT_CORNER_LEAK_FIX": true,
+      "ACT_CORNER_LEAK_FIX_FOR_WSR": true,
+      "ACT_FIRE_COLOR_WARMNESS": "100",
+      "AMBIENT_MULT": "100",
+      "ANISOTROPIC_FILTER": "0",
+      "ANY_ERROR_MESSAGE": true,
+      "ATMOSPHERIC_FOG": true,
+      "ATM_COLOR_MULTS": false,
+      "ATM_END_B": "1.00",
+      "ATM_END_G": "1.00",
+      "ATM_END_I": "1.00",
+      "ATM_END_R": "1.00",
+      "ATM_FOG_ALTITUDE": "63",
+      "ATM_FOG_DISTANCE": "100",
+      "ATM_FOG_MULT": "0.95",
+      "ATM_MORNING_B": "1.00",
+      "ATM_MORNING_G": "1.00",
+      "ATM_MORNING_I": "1.00",
+      "ATM_MORNING_R": "1.00",
+      "ATM_NETHER_B": "1.00",
+      "ATM_NETHER_G": "1.00",
+      "ATM_NETHER_I": "1.00",
+      "ATM_NETHER_R": "1.00",
+      "ATM_NIGHT_B": "1.00",
+      "ATM_NIGHT_G": "1.00",
+      "ATM_NIGHT_I": "1.00",
+      "ATM_NIGHT_R": "1.00",
+      "ATM_NOON_B": "1.00",
+      "ATM_NOON_G": "1.00",
+      "ATM_NOON_I": "1.00",
+      "ATM_NOON_R": "1.00",
+      "ATM_RAIN_B": "1.00",
+      "ATM_RAIN_G": "1.00",
+      "ATM_RAIN_I": "1.00",
+      "ATM_RAIN_R": "1.00",
+      "AURORA_CONDITION": "3",
+      "AURORA_STYLE_DEFINE": "-1",
+      "BLOCKLIGHT_FLICKERING": "0",
+      "BLOCK_REFLECT_QUALITY": "3",
+      "BLOOM_ENABLED": "1",
+      "BLOOM_FOG": true,
+      "BLOOM_FOG_COMPOSITE1": true,
+      "BLOOM_FOG_COMPOSITE3": true,
+      "BLOOM_STRENGTH": "0.12",
+      "BORDER_FOG": true,
+      "BRIGHT_CAVE_WATER": true,
+      "CAVE_FOG": true,
+      "CAVE_LIGHTING": "100",
+      "CHROMA_ABERRATION": "0",
+      "CLOUDS_REIMAGINED": true,
+      "CLOUDS_UNBOUND": true,
+      "CLOUD_ALT1": "192",
+      "CLOUD_ALT2": "288",
+      "CLOUD_B": "100",
+      "CLOUD_CLOSED_AREA_CHECK": true,
+      "CLOUD_G": "100",
+      "CLOUD_QUALITY": "2",
+      "CLOUD_R": "100",
+      "CLOUD_SHADOWS": false,
+      "CLOUD_SPEED_MULT": "100",
+      "CLOUD_STYLE_DEFINE": "-1",
+      "CLOUD_UNBOUND_AMOUNT": "1.00",
+      "CLOUD_UNBOUND_RAIN_ADD": "0.40",
+      "CLOUD_UNBOUND_SIZE_MULT": "100",
+      "COATED_TEXTURES": false,
+      "COATED_TEXTURE_MULT": "100",
+      "COLORED_CANDLE_LIGHT": false,
+      "COLORED_LIGHTING": "0",
+      "COLORED_LIGHT_FOG": true,
+      "COLORED_LIGHT_FOG_I": "0.65",
+      "COLORED_LIGHT_SATURATION": "100",
+      "COLORGRADING": false,
+      "COLOR_CODED_PROGRAMS": false,
+      "COMPOSITE": true,
+      "COMPOSITE1": true,
+      "CONNECTED_GLASS_CORNER_FIX": true,
+      "CONNECTED_GLASS_EFFECT": true,
+      "COORDINATES_ACT_ERROR": true,
+      "CUSTOM_EMISSION_INTENSITY": "100",
+      "CUSTOM_PBR": true,
+      "DARK_OUTLINE": false,
+      "DARK_OUTLINE_THICKNESS": "1",
+      "DEFERRED1": true,
+      "DETAIL_QUALITY": "2",
+      "DH_BLENDING": true,
+      "DIRECTIONAL_BLOCKLIGHT": "0",
+      "DIRECTIONAL_SHADING": true,
+      "DISTANT_LIGHT_BOKEH": true,
+      "DOUBLE_REIM_CLOUDS": false,
+      "DO_IPBR_LIGHTS": true,
+      "DO_MORE_FOLIAGE_WAVING": true,
+      "DO_PIXELATION_EFFECTS": true,
+      "DURING_WORLDSPACE_REF": true,
+      "EMISSIVE_LAPIS_BLOCK": false,
+      "EMISSIVE_REDSTONE_BLOCK": false,
+      "END": true,
+      "END_BEAM_CENTER_ALT": "68",
+      "END_BEAM_HEIGHT": "1.00",
+      "END_BEAM_INTENSITY": "1.00",
+      "END_FLASHES": true,
+      "END_STAR_INTENSITY": "1.00",
+      "ENTITY_GN_AND_CT": true,
+      "ENTITY_SHADOW": "1",
+      "ENTITY_TAA_NOISY_CLOUD_FIX": true,
+      "FANCY_GLASS": true,
+      "FIX_AMD_REFLECTION_CRASH": true,
+      "FLICKERING_FIX": true,
+      "FOLIAGE_ALT_SUBSURFACE": false,
+      "FRAGMENT_SHADER": true,
+      "FXAA_DEFINE": "1",
+      "FXAA_STRENGTH": "75",
+      "FXAA_TAA_INTERACTION": "10",
+      "GBUFFERS_BLOCK": true,
+      "GBUFFERS_BLOCK_TRANSLUCENT": true,
+      "GBUFFERS_ENTITIES": true,
+      "GBUFFERS_ENTITIES_GLOWING": true,
+      "GBUFFERS_ENTITIES_TRANSLUCENT": true,
+      "GBUFFERS_HAND": true,
+      "GBUFFERS_LIGHTNING": true,
+      "GBUFFERS_LINE": true,
+      "GBUFFERS_TERRAIN": true,
+      "GBUFFERS_TEXTURED": true,
+      "GBUFFERS_WATER": true,
+      "GENERATED_NORMALS": false,
+      "GENERATED_NORMAL_MULT": "100",
+      "GENERATED_NORMAL_RES": "128",
+      "GLOWING_AMETHYST": "1",
+      "GLOWING_ARMOR_TRIM": false,
+      "GLOWING_COLORED_PARTICLES": false,
+      "GLOWING_ENTITY_FIX": true,
+      "GLOWING_LICHEN": "1",
+      "GLOWING_ORE_ANCIENTDEBRIS": true,
+      "GLOWING_ORE_COPPER": true,
+      "GLOWING_ORE_DIAMOND": true,
+      "GLOWING_ORE_EMERALD": true,
+      "GLOWING_ORE_GILDEDBLACKSTONE": true,
+      "GLOWING_ORE_GOLD": true,
+      "GLOWING_ORE_IRON": true,
+      "GLOWING_ORE_LAPIS": true,
+      "GLOWING_ORE_MASTER": "1",
+      "GLOWING_ORE_MODDED": true,
+      "GLOWING_ORE_MULT": "1.00",
+      "GLOWING_ORE_NETHERGOLD": true,
+      "GLOWING_ORE_NETHERQUARTZ": true,
+      "GLOWING_ORE_REDSTONE": true,
+      "GREEN_SCREEN_LIME": false,
+      "GR_BB": "100",
+      "GR_BC": "1.00",
+      "GR_BG": "0",
+      "GR_BR": "0",
+      "GR_GB": "0",
+      "GR_GC": "1.00",
+      "GR_GG": "100",
+      "GR_GR": "0",
+      "GR_RB": "0",
+      "GR_RC": "1.00",
+      "GR_RG": "0",
+      "GR_RR": "100",
+      "HAND_SWAYING": "0",
+      "HELD_LIGHTING_MODE": "2",
+      "HIDE_ARMOR": "0",
+      "HQ_NIGHT_NEBULA": true,
+      "IMAGE_SHARPENING": "5",
+      "IMPROVED_RAIN": true,
+      "IMPROVED_RAIN_DEFINE": "1",
+      "INCLUDE_CAVE_FACTOR": true,
+      "INCLUDE_CLOUD_COORD": true,
+      "INCLUDE_CLOUD_SHADOWS": true,
+      "INCLUDE_CUSTOM_EMISSION": true,
+      "INCLUDE_DFDX_DFDY": true,
+      "INCLUDE_DITHER": true,
+      "INCLUDE_ENDER_BEAMS": true,
+      "INCLUDE_LIGHT_AND_AMBIENT_COLORS": true,
+      "INCLUDE_LIGHT_AND_AMBIENT_MULTIPLIERS": true,
+      "INCLUDE_MOON_PHASE_INF": true,
+      "INCLUDE_SKY": true,
+      "INCLUDE_SKY_COLORS": true,
+      "INCLUDE_VOXELIZATION": true,
+      "INCLUDE_WATER_FOG": true,
+      "IPBR": true,
+      "IPBR_COMPAT_MODE": true,
+      "IPBR_COMPAT_MODE_DEFINE": false,
+      "IPBR_EMISSIVE_MODE": "1",
+      "IPBR_PARTICLE_FEATURES": true,
+      "LEAF_SHADOW_OPTIMISATION": true,
+      "LEAF_SHADOW_OPTIMISATION_DEFINE": "-1",
+      "LENSFLARE_I": "1.00",
+      "LENSFLARE_MODE": "0",
+      "LESS_LAVA_FOG": false,
+      "LIGHTSHAFTS_ACTIVE": true,
+      "LIGHTSHAFT_BEHAVIOUR": "1",
+      "LIGHTSHAFT_NIGHT_I": "100",
+      "LIGHTSHAFT_NOON_I": "100",
+      "LIGHTSHAFT_QUALI_DEFINE": "2",
+      "LIGHTSHAFT_RAIN_I": "100",
+      "LIGHTSHAFT_SMOKE": false,
+      "LIGHTSHAFT_SUNSET_I": "100",
+      "LIGHTSHAFT_SUNSET_SATURATION": "0.25",
+      "LIGHT_COLOR_MULTS": false,
+      "LIGHT_END_B": "1.00",
+      "LIGHT_END_G": "1.00",
+      "LIGHT_END_I": "1.00",
+      "LIGHT_END_R": "1.00",
+      "LIGHT_HIGHLIGHT": true,
+      "LIGHT_MORNING_B": "1.00",
+      "LIGHT_MORNING_G": "1.00",
+      "LIGHT_MORNING_I": "1.00",
+      "LIGHT_MORNING_R": "1.00",
+      "LIGHT_NETHER_B": "1.00",
+      "LIGHT_NETHER_G": "1.00",
+      "LIGHT_NETHER_I": "1.00",
+      "LIGHT_NETHER_R": "1.00",
+      "LIGHT_NIGHT_B": "1.00",
+      "LIGHT_NIGHT_G": "1.00",
+      "LIGHT_NIGHT_I": "1.00",
+      "LIGHT_NIGHT_R": "1.00",
+      "LIGHT_NOON_B": "1.00",
+      "LIGHT_NOON_G": "1.00",
+      "LIGHT_NOON_I": "1.00",
+      "LIGHT_NOON_R": "1.00",
+      "LIGHT_RAIN_B": "1.00",
+      "LIGHT_RAIN_G": "1.00",
+      "LIGHT_RAIN_I": "1.00",
+      "LIGHT_RAIN_R": "1.00",
+      "LOW_QUALITY_MOTION_BLUR": true,
+      "LOW_QUALITY_NETHER_STORM": true,
+      "MIRROR_TINTED_GLASS": "0",
+      "MOON_PHASE_DARK": "0.60",
+      "MOON_PHASE_FULL": "1.00",
+      "MOON_PHASE_INF_ATMOSPHERE": false,
+      "MOON_PHASE_INF_LIGHT": false,
+      "MOON_PHASE_INF_REFLECTION": true,
+      "MOON_PHASE_PARTIAL": "0.85",
+      "MORE_REFLECTIVE_DISTANT_GLASS": true,
+      "MOTION_BLURRING_STRENGTH": "1.00",
+      "MOTION_BLUR_BLOOM_FOG_FIX": true,
+      "MOTION_BLUR_EFFECT": "-1",
+      "MULTIPLE_LOD_MODS_ERROR": true,
+      "NETHER": true,
+      "NETHER_COLOR_MODE": "3",
+      "NETHER_STORM": true,
+      "NETHER_STORM_HEIGHT": "200",
+      "NETHER_STORM_I": "0.40",
+      "NETHER_STORM_LOWER_ALT": "28",
+      "NETHER_VIEW_LIMIT": "256.0",
+      "NIGHT_NEBULAE": "-1",
+      "NIGHT_NEBULA_I": "100",
+      "NIGHT_STAR_AMOUNT": "2",
+      "NORMAL_MAP_STRENGTH": "100",
+      "NO_WAVING_INDOORS": true,
+      "OPTIMIZATION_ACT_BEHIND_PLAYER": true,
+      "OPTIMIZATION_ACT_HALF_RATE_SPREADING": true,
+      "OPTIMIZATION_ACT_HALF_RATE_VOXELS": false,
+      "OPTIMIZATION_ACT_SHARED_MEMORY": false,
+      "OVERWORLD": true,
+      "PBR_REFLECTIONS": true,
+      "PERPENDICULAR_TWEAKS": true,
+      "PIXELATED_AO": false,
+      "PIXELATED_BLOCKLIGHT": false,
+      "PIXELATED_SHADOWS": false,
+      "PIXEL_SCALE": "1",
+      "PLAYER_SHADOW": "1",
+      "POM": true,
+      "POM_ALLOW_CUTOUT": false,
+      "POM_DEPTH": "0.80",
+      "POM_DISTANCE": "32",
+      "POM_LIGHTING_MODE": "2",
+      "POM_QUALITY": "128",
+      "PORTAL_EDGE_EFFECT": true,
+      "PORTAL_REDUCE_CLOSEUP": true,
+      "PUDDLE_VOXELIZATION": true,
+      "RAINBOWS": "1",
+      "RAINBOW_DIAMETER": "1.00",
+      "RAINBOW_STYLE_DEFINE": "-1",
+      "RAIN_PUDDLES": "0",
+      "RAIN_STYLE": "1",
+      "REDUCE_CLOSE_PARTICLES": false,
+      "REFLECTION_BLUR_DEPTH_CHECK": true,
+      "REFLECTION_RES": "0.5",
+      "RP_MODE": "1",
+      "SAFER_GENERATED_NORMALS": false,
+      "SELECT_OUTLINE": "1",
+      "SELECT_OUTLINE_AUTO_HIDE": false,
+      "SELECT_OUTLINE_B": "1.75",
+      "SELECT_OUTLINE_G": "0.35",
+      "SELECT_OUTLINE_I": "1.00",
+      "SELECT_OUTLINE_R": "1.35",
+      "SHADER_STYLE": "4",
+      "SHADOW": true,
+      "SHADOWCOMP": true,
+      "SHADOWDISTANCE_ACT_ERROR": true,
+      "SHADOW_FILTERING": true,
+      "SHADOW_QUALITY": "2",
+      "SHADOW_SMOOTHING": "4",
+      "SHOW_LIGHT_LEVEL": "0",
+      "SIDE_SHADOWING": true,
+      "SKY_EFFECT_REFLECTION_DEFINE": "-1",
+      "SKY_EFFECT_REFLECTION_OPAQUE": true,
+      "SKY_EFFECT_REFLECTION_TRANSLUCENT": true,
+      "SMOOTHNESS_AFFECTED_REF_BLUR": true,
+      "SNOWY_WORLD": false,
+      "SPECIAL_BIOME_WEATHER": true,
+      "SPECIAL_PALE_GARDEN_LIGHTSHAFTS": true,
+      "SPECIAL_PORTAL_EFFECTS": true,
+      "SSAO_I": "100",
+      "SSAO_QUALI_DEFINE": "2",
+      "SULFUR_CAVE_FOG": true,
+      "SUN_ANGLE": "-1",
+      "SUN_MOON_DURING_RAIN": true,
+      "SUN_MOON_HORIZON": true,
+      "SUN_MOON_STYLE_DEFINE": "-1",
+      "TAA": true,
+      "TAA_DEFINE": "-1",
+      "TAA_JITTER": "1",
+      "TAA_MOVEMENT_IMPROVEMENT_FILTER": "1",
+      "TAA_SMOOTHING": "3",
+      "TM_CONTRAST": "1.05",
+      "TM_DARK_DESATURATION": "0.25",
+      "TM_EXPOSURE": "1.00",
+      "TM_WHITE_PATH": "1.00",
+      "T_SATURATION": "1.00",
+      "T_VIBRANCE": "1.00",
+      "UNDERWATERCOLOR_B": "100",
+      "UNDERWATERCOLOR_CHANGED": true,
+      "UNDERWATERCOLOR_G": "100",
+      "UNDERWATERCOLOR_R": "100",
+      "UNDERWATER_DISTORTION": true,
+      "VANILLAAO_I": "100",
+      "VERTEX_SHADER": true,
+      "VIGNETTE_R": true,
+      "VL_CLOUDS_ACTIVE": true,
+      "WATERCOLOR_B": "100",
+      "WATERCOLOR_CHANGED": true,
+      "WATERCOLOR_G": "100",
+      "WATERCOLOR_MODE": "3",
+      "WATERCOLOR_R": "100",
+      "WATER_ALPHA_MULT": "100",
+      "WATER_BUMPINESS": "1.25",
+      "WATER_BUMP_BIG": "2.00",
+      "WATER_BUMP_MED": "1.70",
+      "WATER_BUMP_SMALL": "0.75",
+      "WATER_CAUSTIC_STYLE_DEFINE": "-1",
+      "WATER_FOAM_I": "100",
+      "WATER_FOG_MULT": "100",
+      "WATER_REFLECT_QUALITY": "2",
+      "WATER_REFRACTION": true,
+      "WATER_REFRACTION_INTENSITY": "2.0",
+      "WATER_SIZE_MULT": "100",
+      "WATER_SPEED_MULT": "1.10",
+      "WATER_STYLE_DEFINE": "-1",
+      "WAVING_ANYTHING_TERRAIN": true,
+      "WAVING_FOLIAGE": true,
+      "WAVING_I": "1.00",
+      "WAVING_I_RAIN_MULT": "100",
+      "WAVING_LAVA": true,
+      "WAVING_LEAVES": true,
+      "WAVING_LILY_PAD": false,
+      "WAVING_RAIN": true,
+      "WAVING_SPEED": "1.00",
+      "WAVING_WATER_VERTEX": true,
+      "WB_ANAMORPHIC": false,
+      "WB_CHROMATIC": false,
+      "WB_DB_DAY_I": "64.0",
+      "WB_DB_END_I": "64.0",
+      "WB_DB_NETHER_I": "64.0",
+      "WB_DB_NIGHT_I": "64.0",
+      "WB_DB_RAIN_I": "64.0",
+      "WB_DB_WATER_I": "64.0",
+      "WB_DOF_FOCUS": "0",
+      "WB_DOF_I": "64.0",
+      "WB_FOV_SCALED": false,
+      "WEATHER_TEX_OPACITY": "100",
+      "WORLD_BLUR": "0",
+      "WORLD_OUTLINE": false,
+      "WORLD_OUTLINE_I": "1.50",
+      "WORLD_OUTLINE_ON_ENTITIES": true,
+      "WORLD_OUTLINE_SCALED": false,
+      "WORLD_OUTLINE_THICKNESS": "1",
+      "WORLD_SPACE_PLAYER_REF": "-1",
+      "WORLD_SPACE_REFLECTIONS": "-1",
+      "WORLD_SPACE_REF_MODE": "2",
+      "XLIGHT_B": "1.00",
+      "XLIGHT_CURVE": "1.00",
+      "XLIGHT_G": "1.00",
+      "XLIGHT_I": "1.00",
+      "XLIGHT_R": "1.00",
+      "info0": "0",
+      "info1": "0",
+      "info10": "0",
+      "info2": "0",
+      "info3": "0",
+      "info4": "0",
+      "info5": "0",
+      "info6": "0",
+      "info7": "0",
+      "info8": "0",
+      "info9": "0",
+      "shadowDistance": "192.0"
+     },
+     "frameIndex": 5801,
+     "sinceReload": 5205,
+     "qpcNs": 104826714635400
+    },
+    "seconds": 0.016
+   },
+   {
+    "step": "overworld_spawn: weather",
+    "answer": {
+     "succeeded": true,
+     "messages": [
+      "Set the weather to clear"
+     ],
+     "failures": [],
+     "frameIndex": 5802,
+     "sinceReload": 5206,
+     "qpcNs": 104826716615100
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "overworld_spawn: ticks.step 120",
+    "answer": {
+     "ticks": 120,
+     "frameIndex": 6837,
+     "sinceReload": 6241,
+     "qpcNs": 104832706251200
+    },
+    "seconds": 5.984
+   },
+   {
+    "step": "overworld_spawn: time",
+    "answer": {
+     "succeeded": true,
+     "messages": [
+      "Set minecraft:overworld to 6000 tick(s)"
+     ],
+     "failures": [],
+     "frameIndex": 6837,
+     "sinceReload": 6241,
+     "qpcNs": 104832708702200
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "overworld_spawn: camera.place",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "arrivedSeconds": 1.8742307,
+     "frameIndex": 6839,
+     "sinceReload": 1,
+     "qpcNs": 104834584104400
+    },
+    "seconds": 1.875
+   },
+   {
+    "step": "overworld_spawn: ready",
+    "answer": {
+     "seconds": 4.0047242,
+     "predicateSeconds": 3.2691541,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.744745,
+      "gapFrames": 114
+     },
+     "frames": 448,
+     "frameIndex": 7287,
+     "sinceReload": 449,
+     "qpcNs": 104838590452200
+    },
+    "seconds": 4.016
+   },
+   {
+    "step": "nether_deltas: weather",
+    "answer": {
+     "succeeded": true,
+     "messages": [
+      "Set the weather to clear"
+     ],
+     "failures": [],
+     "frameIndex": 7983,
+     "sinceReload": 1145,
+     "qpcNs": 104848706397100
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "nether_deltas: time",
+    "answer": {
+     "succeeded": false,
+     "messages": [],
+     "failures": [
+      "Clock minecraft:overworld is already set to 6000 tick(s)"
+     ],
+     "frameIndex": 7983,
+     "sinceReload": 1145,
+     "qpcNs": 104848707427700
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "nether_deltas: camera.place",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:the_nether",
+      "x": -79.5,
+      "y": 91.0,
+      "z": -75.5,
+      "yaw": -90.0,
+      "pitch": 15.0
+     },
+     "arrivedSeconds": 0.2425156,
+     "frameIndex": 7984,
+     "sinceReload": 1,
+     "qpcNs": 104848950707000
+    },
+    "seconds": 0.25
+   },
+   {
+    "step": "nether_deltas: ready",
+    "answer": {
+     "seconds": 4.0013509,
+     "predicateSeconds": 0.9135902,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.8904988,
+      "gapFrames": 11
+     },
+     "frames": 675,
+     "frameIndex": 8659,
+     "sinceReload": 676,
+     "qpcNs": 104852953524700
+    },
+    "seconds": 4.0
+   },
+   {
+    "step": "end_pillars: weather",
+    "answer": {
+     "succeeded": true,
+     "messages": [
+      "Set the weather to clear"
+     ],
+     "failures": [],
+     "frameIndex": 9820,
+     "sinceReload": 1837,
+     "qpcNs": 104862531150800
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "end_pillars: time",
+    "answer": {
+     "succeeded": false,
+     "messages": [],
+     "failures": [
+      "Clock minecraft:overworld is already set to 6000 tick(s)"
+     ],
+     "frameIndex": 9820,
+     "sinceReload": 1837,
+     "qpcNs": 104862532156700
+    },
+    "seconds": 0.0
+   },
+   {
+    "step": "end_pillars: camera.place",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:the_end",
+      "x": 60.5,
+      "y": 90.0,
+      "z": 60.5,
+      "yaw": 135.0,
+      "pitch": 15.0
+     },
+     "arrivedSeconds": 1.6330237,
+     "frameIndex": 9821,
+     "sinceReload": 1,
+     "qpcNs": 104864165937700
+    },
+    "seconds": 1.625
+   },
+   {
+    "step": "end_pillars: ready",
+    "answer": {
+     "seconds": 4.0069539,
+     "predicateSeconds": 0.2537735,
+     "limitedBy": "minSeconds",
+     "rendererCheck": {
+      "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+      "holds": true,
+      "seconds": 0.2142778,
+      "gapFrames": 7
+     },
+     "frames": 424,
+     "frameIndex": 10245,
+     "sinceReload": 425,
+     "qpcNs": 104868174248500
+    },
+    "seconds": 4.016
+   },
+   {
+    "step": "camera.place home",
+    "answer": {
+     "pose": {
+      "dimension": "minecraft:overworld",
+      "x": -525.5,
+      "y": 69.0,
+      "z": -360.5,
+      "yaw": 135.0,
+      "pitch": 31.200000762939453
+     },
+     "arrivedSeconds": 0.2304056,
+     "frameIndex": 10960,
+     "sinceReload": 1,
+     "qpcNs": 104877924018700
+    },
+    "seconds": 0.234
+   },
+   {
+    "step": "input.block off",
+    "answer": {
+     "on": false,
+     "frameIndex": 10960,
+     "sinceReload": 1,
+     "qpcNs": 104877925154500
+    },
+    "seconds": 0.0
+   }
+  ],
+  "events": [
+   {
+    "step": "world.wait",
+    "event": "world.joined",
+    "data": {
+     "dimension": "minecraft:the_nether"
+    },
+    "frameIndex": 118,
+    "sinceReload": 0
+   },
+   {
+    "step": "selftest",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.6827207
+    },
+    "frameIndex": 135,
+    "sinceReload": 0
+   },
+   {
+    "step": "selftest",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00001.png",
+     "sha256": "54730a21987d7981ba6dcb1e17076859ce1c7b2cf03345cc96d88d52e2da7db3",
+     "frameIndex": 140
+    },
+    "frameIndex": 466,
+    "sinceReload": 331
+   },
+   {
+    "step": "shaders.reload",
+    "event": "reload.done",
+    "data": {
+     "pack": "ComplementaryUnbound_r5.9.3.zip",
+     "pipeline": "IrisRenderingPipeline",
+     "seconds": 0.5101792
+    },
+    "frameIndex": 596,
+    "sinceReload": 0
+   },
+   {
+    "step": "overworld_spawn: camera.place",
+    "event": "dimension.changed",
+    "data": {
+     "from": "minecraft:the_nether",
+     "to": "minecraft:overworld"
+    },
+    "frameIndex": 6838,
+    "sinceReload": 0
+   },
+   {
+    "step": "overworld_spawn: camera.place",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.LevelLoadingScreen"
+    },
+    "frameIndex": 6839,
+    "sinceReload": 1
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00001.png",
+     "sha256": "0599978e69ec5a43da19f75c3b63883843850eb064263619ed935de886951ea1",
+     "frameIndex": 7289
+    },
+    "frameIndex": 7305,
+    "sinceReload": 467
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00002.png",
+     "sha256": "57d568e9ac284118df4cb668e88ceda16d207005370fef401284493b8b010c71",
+     "frameIndex": 7290
+    },
+    "frameIndex": 7305,
+    "sinceReload": 467
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00003.png",
+     "sha256": "bba235b5d56677ff795cb428c036fffff3370062516c60760008f40eb4b99c6d",
+     "frameIndex": 7291
+    },
+    "frameIndex": 7307,
+    "sinceReload": 469
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00004.png",
+     "sha256": "3bf5a25a3111e98bd5eb58e01c38df002e49a135d2f10e99a175af6ff20f39e5",
+     "frameIndex": 7292
+    },
+    "frameIndex": 7307,
+    "sinceReload": 469
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00005.png",
+     "sha256": "22bf2fe1838b8d8829bfe22cab21cb46f97c3f52576acc6dc0d74ba59bff51ca",
+     "frameIndex": 7293
+    },
+    "frameIndex": 7309,
+    "sinceReload": 471
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00006.png",
+     "sha256": "ec535e895a84a020a902ad8096f32c1713a8cf591a31c64f00faab42c5a65098",
+     "frameIndex": 7294
+    },
+    "frameIndex": 7309,
+    "sinceReload": 471
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00007.png",
+     "sha256": "0afd39ba96839509eaa7143aee040af470346d30bc0f5ceeb297eb64a0a0c226",
+     "frameIndex": 7295
+    },
+    "frameIndex": 7311,
+    "sinceReload": 473
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00008.png",
+     "sha256": "2f2ec4f3959f5a232bebc67ab7f3c0e7128df8e2e3eb1bed5ac96514a454c615",
+     "frameIndex": 7296
+    },
+    "frameIndex": 7311,
+    "sinceReload": 473
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00009.png",
+     "sha256": "248287eeab42a3dd4d6355051437c78267536815654c85d52d0b2869b4c57be2",
+     "frameIndex": 7297
+    },
+    "frameIndex": 7464,
+    "sinceReload": 626
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00011.png",
+     "sha256": "51e3ae5a7b12803152bef2e49012174bcc2627abdbff6b5931a9fc27546ac766",
+     "frameIndex": 7299
+    },
+    "frameIndex": 7465,
+    "sinceReload": 627
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00010.png",
+     "sha256": "3e81d84ba4f65245b0235651bc846ad6389e6e3281a95b33726559cb160a1ab1",
+     "frameIndex": 7298
+    },
+    "frameIndex": 7467,
+    "sinceReload": 629
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00012.png",
+     "sha256": "ca201c4c31ae261c30f6abd8e6554fa10475be7a533842b9affed3483f8619cf",
+     "frameIndex": 7300
+    },
+    "frameIndex": 7472,
+    "sinceReload": 634
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00013.png",
+     "sha256": "34d1b604c383f8c65ef63af7dbd581871825d02e14b5e82edb6d5b321a0e4528",
+     "frameIndex": 7301
+    },
+    "frameIndex": 7624,
+    "sinceReload": 786
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00014.png",
+     "sha256": "8043f3a9d38dd8b66bb7eabb8f5fbc2406558decf0a9e05bbe316b9c67fc734e",
+     "frameIndex": 7302
+    },
+    "frameIndex": 7624,
+    "sinceReload": 786
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00015.png",
+     "sha256": "882e012fa2f071b84129b02546d1196d4cde9bda745a50ce1aca4661dceec225",
+     "frameIndex": 7303
+    },
+    "frameIndex": 7627,
+    "sinceReload": 789
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00016.png",
+     "sha256": "2e7ed24b8b0ab82a3e0e6a517c1ba4072a7fd227c4498e1e24f39dc93b04814d",
+     "frameIndex": 7304
+    },
+    "frameIndex": 7630,
+    "sinceReload": 792
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00017.png",
+     "sha256": "61c38345b6db223660c0de8928c1783cc9ef92bd456d901f6b699721647bd844",
+     "frameIndex": 7305
+    },
+    "frameIndex": 7772,
+    "sinceReload": 934
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00018.png",
+     "sha256": "1ba6dad48491e685aa3141112d0fa72a6fba56a21f80e7c6ab4b2fc34e0d72ce",
+     "frameIndex": 7306
+    },
+    "frameIndex": 7773,
+    "sinceReload": 935
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00019.png",
+     "sha256": "cade874c35decd9dd57f88e36d0dfca3d6d31e753462e5abe767d91c600bf5f5",
+     "frameIndex": 7307
+    },
+    "frameIndex": 7777,
+    "sinceReload": 939
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00020.png",
+     "sha256": "8d15fabc101b2f45a55f81aa063ed955cf47186b03e13078cd71909318d90ffc",
+     "frameIndex": 7308
+    },
+    "frameIndex": 7782,
+    "sinceReload": 944
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00021.png",
+     "sha256": "77ca15f54399aa96daa661e88e6cd6fe3e310f2a973b86a2c91d192ada37458c",
+     "frameIndex": 7309
+    },
+    "frameIndex": 7918,
+    "sinceReload": 1080
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00023.png",
+     "sha256": "b7e8deb73c90e997c6c6dd3d35432a9b1d1347323feaa6ef9fef9cc703555848",
+     "frameIndex": 7311
+    },
+    "frameIndex": 7924,
+    "sinceReload": 1086
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00022.png",
+     "sha256": "6c0611cb6fd9b702301aad03945791122dfdc5127dc196d5045040c448e716e9",
+     "frameIndex": 7310
+    },
+    "frameIndex": 7925,
+    "sinceReload": 1087
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00024.png",
+     "sha256": "a7873d0ac72b71bd8c1aef46db270ae4df28e6633d541c0ced6fc10569b92bee",
+     "frameIndex": 7312
+    },
+    "frameIndex": 7931,
+    "sinceReload": 1093
+   },
+   {
+    "step": "overworld_spawn: A2 attempt 1",
+    "event": "capture.done",
+    "data": {
+     "manifest": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-3\\a2\\overworld_spawn\\attempt-001\\capture.json"
+    },
+    "frameIndex": 7931,
+    "sinceReload": 1093
+   },
+   {
+    "step": "nether_deltas: camera.place",
+    "event": "dimension.changed",
+    "data": {
+     "from": "minecraft:overworld",
+     "to": "minecraft:the_nether"
+    },
+    "frameIndex": 7983,
+    "sinceReload": 0
+   },
+   {
+    "step": "nether_deltas: camera.place",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.LevelLoadingScreen"
+    },
+    "frameIndex": 7984,
+    "sinceReload": 1
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00002.png",
+     "sha256": "0349346a0fa99f3a575c6187623619fe647daf76fe2d07b837a1041ad5ffab74",
+     "frameIndex": 8662
+    },
+    "frameIndex": 8677,
+    "sinceReload": 694
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00001.png",
+     "sha256": "c57837bf56d27fcb03d8e052f1437296212b43bbc2d75d631dc042fdbbefc5c5",
+     "frameIndex": 8661
+    },
+    "frameIndex": 8677,
+    "sinceReload": 694
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00003.png",
+     "sha256": "829efff44274ab8eb2416ee57e62aa4e9f98bb53be398d2c369f5e9a65cf6c59",
+     "frameIndex": 8663
+    },
+    "frameIndex": 8678,
+    "sinceReload": 695
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00004.png",
+     "sha256": "b3771b6387f90d6fc47e0c737399deaee9880527455efbb6f8961b4c85f92bbb",
+     "frameIndex": 8664
+    },
+    "frameIndex": 8678,
+    "sinceReload": 695
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00005.png",
+     "sha256": "755a5a14ee0aaa27d8acc44810ea85a2f70ebdc196dd991dc97f0e718c1c9dc6",
+     "frameIndex": 8665
+    },
+    "frameIndex": 8681,
+    "sinceReload": 698
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00006.png",
+     "sha256": "ac244bf766b5bac8915396b69ae656594079a173158213d93d36b11994ef1244",
+     "frameIndex": 8666
+    },
+    "frameIndex": 8682,
+    "sinceReload": 699
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00007.png",
+     "sha256": "be326224288fd030063c8480035a31d034d4bc395539ced812f3a343fdafba20",
+     "frameIndex": 8667
+    },
+    "frameIndex": 8682,
+    "sinceReload": 699
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00008.png",
+     "sha256": "0eb0161c48b8eedcf0c758656ee77d4d4adde254643c1303096716dcd6be3050",
+     "frameIndex": 8668
+    },
+    "frameIndex": 8682,
+    "sinceReload": 699
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00009.png",
+     "sha256": "19a9f16dcdae034d1a60761624cfe4126caa627b93fbc6500fcfec8b93f4b4e7",
+     "frameIndex": 8669
+    },
+    "frameIndex": 8923,
+    "sinceReload": 940
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00010.png",
+     "sha256": "1a1930a81c694fc04e9ea929cb9bc6e3a1ade484dd31c47a9ff883cd41a66ce9",
+     "frameIndex": 8670
+    },
+    "frameIndex": 8924,
+    "sinceReload": 941
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00012.png",
+     "sha256": "abaf99943269b3e09e03f70f0744bcac519b3396bdb44789a86d6d0190f0fc41",
+     "frameIndex": 8672
+    },
+    "frameIndex": 8927,
+    "sinceReload": 944
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00011.png",
+     "sha256": "2896234f68cd8496c023467b3f473538c87d155bc0d3f66504eebe440a9a55e4",
+     "frameIndex": 8671
+    },
+    "frameIndex": 8935,
+    "sinceReload": 952
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00013.png",
+     "sha256": "f201f5431cc92d736bc8be3760401722a3ba5b7f0515acf7049d792abf5a99f3",
+     "frameIndex": 8673
+    },
+    "frameIndex": 9181,
+    "sinceReload": 1198
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00015.png",
+     "sha256": "484c4f0a77e6ed632ca24d36fb89db44a8be5a5acab63468eacdf36fcddf6c3b",
+     "frameIndex": 8675
+    },
+    "frameIndex": 9185,
+    "sinceReload": 1202
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00014.png",
+     "sha256": "949028e3177636e7f03180293d54b06b4a4a8460bce47293369b2d3d58e34583",
+     "frameIndex": 8674
+    },
+    "frameIndex": 9188,
+    "sinceReload": 1205
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00016.png",
+     "sha256": "97d6740b8acae4db4d06653d2d6c56c0f0b72da451b41eceed8a3db3f19c3e3a",
+     "frameIndex": 8676
+    },
+    "frameIndex": 9197,
+    "sinceReload": 1214
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00017.png",
+     "sha256": "0d56264aa38c19a683cfcce86650516caa54cfd89ac1b7e3b08b5ade094f6eda",
+     "frameIndex": 8677
+    },
+    "frameIndex": 9441,
+    "sinceReload": 1458
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00018.png",
+     "sha256": "3cc2d8e546b283b381992ec31b51621f39b29b90329ed3b2a92047a172000290",
+     "frameIndex": 8678
+    },
+    "frameIndex": 9443,
+    "sinceReload": 1460
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00019.png",
+     "sha256": "ca987d46ed6290a827f346193609ced2d9cac72cf3169597850048d062867aa9",
+     "frameIndex": 8679
+    },
+    "frameIndex": 9456,
+    "sinceReload": 1473
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00020.png",
+     "sha256": "6d398e5ee906b2e3f7fd5a3370a454722b3ca5a65822860fbf59d6431a37a61a",
+     "frameIndex": 8680
+    },
+    "frameIndex": 9467,
+    "sinceReload": 1484
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00021.png",
+     "sha256": "7cc766ed333b9d1cb8bb6e83063cc82951f20a56641332c818bc801ea2bc59f9",
+     "frameIndex": 8681
+    },
+    "frameIndex": 9698,
+    "sinceReload": 1715
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00022.png",
+     "sha256": "dfaaf94cdf7bf0792973f972e9937ff3f9471076743cde0cf4ffac3c196f03a7",
+     "frameIndex": 8682
+    },
+    "frameIndex": 9702,
+    "sinceReload": 1719
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00024.png",
+     "sha256": "0453dc67acf34e1d44facce075c9710e5cc97c9a58cde25d288c3a68acf69845",
+     "frameIndex": 8684
+    },
+    "frameIndex": 9724,
+    "sinceReload": 1741
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00023.png",
+     "sha256": "4eced4fe6439c307f4c01231ce52a466b607e35042a1db5f5f28e4c0098b0095",
+     "frameIndex": 8683
+    },
+    "frameIndex": 9737,
+    "sinceReload": 1754
+   },
+   {
+    "step": "nether_deltas: A2 attempt 1",
+    "event": "capture.done",
+    "data": {
+     "manifest": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-3\\a2\\nether_deltas\\attempt-001\\capture.json"
+    },
+    "frameIndex": 9737,
+    "sinceReload": 1754
+   },
+   {
+    "step": "end_pillars: camera.place",
+    "event": "dimension.changed",
+    "data": {
+     "from": "minecraft:the_nether",
+     "to": "minecraft:the_end"
+    },
+    "frameIndex": 9820,
+    "sinceReload": 0
+   },
+   {
+    "step": "end_pillars: camera.place",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.LevelLoadingScreen"
+    },
+    "frameIndex": 9821,
+    "sinceReload": 1
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00002.png",
+     "sha256": "92f9a8ce943bce512477e4a96da2b896bb2adc08d0a58af2323a56c3f157829f",
+     "frameIndex": 10248
+    },
+    "frameIndex": 10263,
+    "sinceReload": 443
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00001.png",
+     "sha256": "c0dcd1f2cd0ebd82e016f3f4f9ae9e76785906821d9e7fc2e939ee5263072263",
+     "frameIndex": 10247
+    },
+    "frameIndex": 10263,
+    "sinceReload": 443
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00003.png",
+     "sha256": "e6a52fbd1ab299a058cced993076b41e6b5b6c8496592a9b3b8084de860c18e1",
+     "frameIndex": 10249
+    },
+    "frameIndex": 10264,
+    "sinceReload": 444
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00004.png",
+     "sha256": "5266f7f806cf4861e8fca912f2dcc99fa9c549ca61845d1f0160b2f258055708",
+     "frameIndex": 10250
+    },
+    "frameIndex": 10264,
+    "sinceReload": 444
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00005.png",
+     "sha256": "357e625cab8f5fc799daf91d615cab5dc859609ceb4ad4926d71017aa2ad7c93",
+     "frameIndex": 10251
+    },
+    "frameIndex": 10267,
+    "sinceReload": 447
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00006.png",
+     "sha256": "8e7881281f3ba600211a993c3866cffdff8a3292543d33b7c7b47917dd91ef6a",
+     "frameIndex": 10252
+    },
+    "frameIndex": 10267,
+    "sinceReload": 447
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00007.png",
+     "sha256": "8f881d4b6a4851430a8ad3e218df1eba288680a41e1e4cb0bdd6d80b59f85ba4",
+     "frameIndex": 10253
+    },
+    "frameIndex": 10268,
+    "sinceReload": 448
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00008.png",
+     "sha256": "54d951f8c18e0594de6bc8c8e0cb0e6b6cf8e1fe1bef95c3dcbbffb0e4e36fa8",
+     "frameIndex": 10254
+    },
+    "frameIndex": 10269,
+    "sinceReload": 449
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00010.png",
+     "sha256": "8fc59a8456dce15417f24c6b658e4618684c41789f5ca169bd790a85a06996bd",
+     "frameIndex": 10256
+    },
+    "frameIndex": 10417,
+    "sinceReload": 597
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00009.png",
+     "sha256": "bbf3a38c0e243027b41768cdcf449ee17fe75d348055742b5c091acf93394251",
+     "frameIndex": 10255
+    },
+    "frameIndex": 10418,
+    "sinceReload": 598
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00011.png",
+     "sha256": "268990c309a4aab3d5a1dc9e1c2ee9847e90666d55768952dcfdeb326f46421c",
+     "frameIndex": 10257
+    },
+    "frameIndex": 10421,
+    "sinceReload": 601
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00012.png",
+     "sha256": "221fc2971882fd04c3531dfe761acc79009ab69b994a38426316b2d37246f78b",
+     "frameIndex": 10258
+    },
+    "frameIndex": 10421,
+    "sinceReload": 601
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00013.png",
+     "sha256": "42b385b7d908a80c2feeaa5953682a53599cda942e4f1c600edbffe3ca08d29c",
+     "frameIndex": 10259
+    },
+    "frameIndex": 10574,
+    "sinceReload": 754
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00015.png",
+     "sha256": "e55743fa4ee41a7e2ed8106a4d1c3d5526674d9acc38d08107ab88fea4ded7b7",
+     "frameIndex": 10261
+    },
+    "frameIndex": 10579,
+    "sinceReload": 759
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00016.png",
+     "sha256": "2ec949fb5644b892f6126fb1f7eef26d836537b478c88d865eb4f7ffd104ad0c",
+     "frameIndex": 10262
+    },
+    "frameIndex": 10579,
+    "sinceReload": 759
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00014.png",
+     "sha256": "7626d6d9f64d402eb72ce8a86fd7d02b7af373553bd9f1ceb86cf2c53720a938",
+     "frameIndex": 10260
+    },
+    "frameIndex": 10579,
+    "sinceReload": 759
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00017.png",
+     "sha256": "db25106dcb4549c799a70831bf5d72d420b1e10dd50f32510d2d2f387a49b196",
+     "frameIndex": 10263
+    },
+    "frameIndex": 10731,
+    "sinceReload": 911
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00019.png",
+     "sha256": "f58bdc13c857d114101f889d66763b2c6af206ef389a83d4e9bfd62698d6fade",
+     "frameIndex": 10265
+    },
+    "frameIndex": 10736,
+    "sinceReload": 916
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00018.png",
+     "sha256": "ce4585c995f271041df7c7a308b13afe9fc5dc4d9a051e391cc9b4531411b946",
+     "frameIndex": 10264
+    },
+    "frameIndex": 10737,
+    "sinceReload": 917
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00020.png",
+     "sha256": "59196593eb5369bf88f53fbb6f2bff5fe5b008bafce45628dc2851f96e0ce685",
+     "frameIndex": 10266
+    },
+    "frameIndex": 10740,
+    "sinceReload": 920
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00021.png",
+     "sha256": "65f323c95c83afcdbce5cb9a770fa547921b2516a7b404a7484794551c9a1635",
+     "frameIndex": 10267
+    },
+    "frameIndex": 10890,
+    "sinceReload": 1070
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00022.png",
+     "sha256": "44c11c38b51a4f4ebd2cd0a68bb154d70363fa1f8cf10b20fd78b8c1513892ec",
+     "frameIndex": 10268
+    },
+    "frameIndex": 10893,
+    "sinceReload": 1073
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00024.png",
+     "sha256": "99a9b5406c6366aebafd0dca30b1522db6da998dbb9e38b7ef9d7406bb53b6e3",
+     "frameIndex": 10270
+    },
+    "frameIndex": 10898,
+    "sinceReload": 1078
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.frame",
+    "data": {
+     "name": "frame-00023.png",
+     "sha256": "7614c9cdfb83c3ffdf88bef9cdfcfffea573087156d50fdb0f3562ec2295790c",
+     "frameIndex": 10269
+    },
+    "frameIndex": 10904,
+    "sinceReload": 1084
+   },
+   {
+    "step": "end_pillars: A2 attempt 1",
+    "event": "capture.done",
+    "data": {
+     "manifest": "C:\\Projects\\Optilux\\results\\raw\\m1-acceptance-3\\a2\\end_pillars\\attempt-001\\capture.json"
+    },
+    "frameIndex": 10904,
+    "sinceReload": 1084
+   },
+   {
+    "step": "camera.place home",
+    "event": "dimension.changed",
+    "data": {
+     "from": "minecraft:the_end",
+     "to": "minecraft:overworld"
+    },
+    "frameIndex": 10959,
+    "sinceReload": 0
+   },
+   {
+    "step": "camera.place home",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.LevelLoadingScreen"
+    },
+    "frameIndex": 10960,
+    "sinceReload": 1
+   },
+   {
+    "step": "quit",
+    "event": "world.left",
+    "data": {},
+    "frameIndex": 10962,
+    "sinceReload": 3
+   },
+   {
+    "step": "quit",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.GenericMessageScreen"
+    },
+    "frameIndex": 10963,
+    "sinceReload": 4
+   },
+   {
+    "step": "quit",
+    "event": "screen.opened",
+    "data": {
+     "screen": "net.minecraft.client.gui.screens.ProgressScreen"
+    },
+    "frameIndex": 10993,
+    "sinceReload": 34
+   }
+  ],
+  "logCheck": {
+   "lines": 490,
+   "bytes": 115549,
+   "tokenAbsent": true
+  },
+  "readBack": {
+   "ok": true,
+   "options": {
+    "keys": 23,
+    "moved": {},
+    "excepted": {}
+   },
+   "iris": {
+    "keys": 5,
+    "moved": {}
+   },
+   "sodium": {
+    "flagsMoved": {},
+    "sameText": true
+   }
+  },
+  "helperLog": {
+   "applied": 9,
+   "active": 1
+  }
+ },
+ "raw": "results/raw/m1-acceptance-3"
+}

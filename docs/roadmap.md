@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 closed (release v0.00.06); M1 in progress: 0.01.07 (the renderer and Iris adapters) is the last phase done, next 0.01.08, the run skeleton and A1-A3, A10. Latest stop: handoff.md.
+Status: M0 closed (release v0.00.06); M1 in progress: 0.01.08 (`run`, the provisional world, A1-A3 and A10) is the last phase done, next 0.01.09, A4, A7, A9 and the reload table. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -98,7 +98,7 @@ The Phase -1 spike's handoff findings (2026-10-06), each with the milestone and 
 | F9 | Iris has no release tags since 1.7.3; the 26.3 branch head says MOD_VERSION 1.11.6 | landed in 0.01.04 | the pinned jar's bytecode is the authority (`javap -c -p`); the source at commit adc75283b is context; the mixin-target test reads every target from the hash-checked jars with ASM (mod.md#11-build-and-test) |
 | F10 | Offline mode still calls api.minecraftservices.com at startup; GPULatency read 1.04 frames idle at 141 fps | M2 P1 and calibration notes | the call is recorded, not blocked; the CPU-floor measurement reads GPULatency next to the 90 % rule (measurement.md#validity) |
 | F11 | A launch takes about 20 s; 167 s only with the modal dialog | 0.01.03 launch | the world timeout is 120 s (6x the spike's 18.4 s join); the Sodium file is written before every launch so no dialog appears; a timeout ends the process and fails the run |
-| Q1 | The game directory under runtime/ still holds the spike world and files | 0.01.08 | the provisional world is a copy of runtime/mc-26.3/game/saves/spike under snapshots/provisional/, made by hand and hashed (design.md#6-milestones); nothing else under runtime/ is reused: `install` rebuilds from the launch spec |
+| Q1 | The game directory under runtime/ still holds the spike world and files | landed in 0.01.08 | the provisional world is a copy of runtime/mc-26.3/game/saves/spike under snapshots/provisional/, made by hand and hashed (design.md#6-milestones); nothing else under runtime/ is reused: `install` rebuilds from the launch spec |
 
 ## Decisions
 Owner: who decides. Recommendation: what an unattended run takes. Closed decisions live in design.md#7-decisions-taken-user-2026-10-05; evidence decisions E1-E5 in design.md#8-open-decisions.

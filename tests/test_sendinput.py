@@ -22,7 +22,7 @@ class FakeUser32:
                 events.append(("mouse", mi.dx, mi.dy, mi.dwFlags))
             else:
                 ki = event.u.ki
-                events.append(("key", ki.wVk, ki.dwFlags))
+                events.append(("key", ki.wVk, ki.wScan, ki.dwFlags))
         self.calls.append(events)
         return count if self.take is None else self.take
 
@@ -43,7 +43,22 @@ def test_a_mouse_move_is_one_relative_motion() -> None:
 def test_a_key_press_is_down_then_up() -> None:
     api = FakeUser32()
     assert sendinput.key_press(0x71, api) == 2  # VK_F2
-    assert api.calls == [[("key", 0x71, 0), ("key", 0x71, sendinput.KEYEVENTF_KEYUP)]]
+    assert api.calls == [[("key", 0x71, 0, 0), ("key", 0x71, 0, sendinput.KEYEVENTF_KEYUP)]]
+
+
+def test_f2_carries_its_scan_code_down_and_up() -> None:
+    # SDL3 reads the scan code from the message: an injected F2 carries 0x3C as a keyboard would.
+    api = FakeUser32()
+    assert sendinput.key_press(sendinput.VK_F2, api, scan=sendinput.SCAN_F2) == 2
+    up = sendinput.KEYEVENTF_KEYUP
+    assert api.calls == [[("key", 0x71, 0x3C, 0), ("key", 0x71, 0x3C, up)]]
+
+
+def test_a_left_click_is_button_down_then_up() -> None:
+    api = FakeUser32()
+    assert sendinput.left_click(api) == 2
+    down, up = sendinput.MOUSEEVENTF_LEFTDOWN, sendinput.MOUSEEVENTF_LEFTUP
+    assert api.calls == [[("mouse", 0, 0, down), ("mouse", 0, 0, up)]]
 
 
 def test_the_count_sendinput_reports_is_returned() -> None:
