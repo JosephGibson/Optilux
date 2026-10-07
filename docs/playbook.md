@@ -36,7 +36,7 @@ Status: rough, 2026-10-05.
   - uniform-work scan of the ISA (vector work whose sources are all scalar, literal or uniform; confirm each in the source) -> L2;
   - custom-uniform check in Iris's own engine (gpu-iris.md#custom-uniforms) -> L3;
   - pipeline audit: producer -> buffer -> reader and uniform -> reader, per option and dimension. It catches the stale-read and reads-0 bugs (section 7) -> L1;
-  - similarity and line-ending checks -> L0. They replace PB's upstream diff.
+  - the similarity check -> L0, line endings -> .gitattributes (`eol=lf`). They replace PB's upstream diff.
 - Review every round [PB, ALC]:
   - critique the plan;
   - critique the diff, in small pieces;

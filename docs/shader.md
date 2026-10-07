@@ -13,7 +13,7 @@ Policy · Look and scope · Dropped features · Method · Pipeline spec · Deter
 - Write:
   - Every Optilux line is written fresh: own structure, names and decomposition.
   - Describe a technique in your own words in docs/research/ before implementing it.
-- `optilux verify similarity`:
+- `optilux verify similarity` (built in M3; not yet a verb):
   - method: normalized-token fingerprints (winnowing) of Optilux shader files against reference/; spans over the threshold are flagged.
   - Runs locally before each commit; CI has no reference copy.
   - The threshold is set in M3 from controls: Complementary against itself, and against an unrelated pack.
@@ -33,7 +33,7 @@ Policy · Look and scope · Dropped features · Method · Pipeline spec · Deter
   - selection outline as vanilla draws it. This is Complementary's "Default" mode, which leaves the line color untouched and is what the played settings use.
 - Minimal material map: block reflections and puddles need to know which blocks are smooth. A small block-ID map (block.properties groups such as glass, ice, metal, polished stone) sets smoothness. No generated normals, coated textures or per-texture analysis.
 - Everything else is dropped (next section).
-- Settings: most features Off / Low / Medium / High; fewer look knobs than Unbound. Option profiles are JSON (config/profiles/), written to the Iris settings file by the harness.
+- Settings: most features Off / Low / Medium / High; fewer look knobs than Unbound. Option profiles are JSON (config/profiles/), written to the Iris settings file by the harness from M2; until then a run takes the pack's defaults (run-record.md#run-spec).
 - Textures: built and tested on Faithful 64x; no texture assets ship.
 
 ## Dropped features
@@ -103,7 +103,7 @@ The user's list of 2026-10-05. Unbound's switch for each, where known, is in con
   - keep algorithms in includes free of Iris built-in names, with thin per-backend glue.
 
 ## Determinism and TAA
-- BENCH_DETERMINISTIC from the first commit (measurement.md#visual-protocol).
+- BENCH_DETERMINISTIC from M3's hello pack, the first with programs (measurement.md#visual-protocol; roadmap.md#decisions D9).
 - Every frame-varying term (jitter, dither, noise offsets) derives from frameCounter modulo one short cycle. frameCounter resets at every reload (gpu-iris.md#frame-counters-and-reload).
   - Complementary's dithers use frameCounter mod 3600, so its bitwise cycle would be 3600 frames, not its 8-step jitter.
 - History: zero marks it invalid, as in Complementary's TAA. A reload clears it. BENCH_DETERMINISTIC also invalidates it in the flush frame, the one frame where the hideGUI uniform reads 0 (mod.md#6-time-and-determinism).
@@ -144,4 +144,4 @@ Filled in M4: every program Iris draws, its fallback and its coverage view.
   - Minecraft 26.x rendering (OIT), Iris internals, AMD RDNA3;
   - shader languages (GLSL now, Slang for Aperture), pipeline architecture.
 - Trigger: the cost table names the expensive pass; research that pass first.
-- Output: docs/research/<topic>.md, at most 16 KB each. Claims with sources, then what applies to Optilux and the measurement that would confirm it. Superseded text is deleted.
+- Output: docs/research/<topic>.md, within the docs cap (workflow.md#docs-rules). Claims with sources, then what applies to Optilux and the measurement that would confirm it. Superseded text is deleted.

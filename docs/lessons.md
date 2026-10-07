@@ -22,9 +22,9 @@ Each item reads "fact -> technique". Brackets name the ALC record a fact came fr
 ## Game control
 - `/tick` needs permission level 3; datapack functions run at level 2. -> Send it through the mod's `command` (OWNER level). Command feedback is not completion. [MC] 26.3: verified by reading (allowCommands=1 gives the owner OWNER); Viewfinder's control_ticks froze ticks in the spike.
 - Weather ramps only while ticking. -> `/tick step 120`, only on an overworld weather change, only while frozen. [MC] 26.3: deferred to M2 (weather not exercised).
-- `/tp` adds 0.5 to integer coordinates and wraps yaw (180 -> -180). A mod that set yaw 180 changed frames on 4 views. -> The mod copies both behaviors, implemented once in the mod, never in the harness. [m3-run-plan-1] [MC] 26.3: deferred to M1 (A3).
-- Keystrokes were lost behind loading screens; a resent `/tick freeze` landed in open chat. -> No keystrokes. Confirm commands from latest.log, gate on readiness. [_archive/harness-plan] [MC] 26.3: deferred to M1; the spike drove the scene through Viewfinder's set_scene and control_ticks instead.
-- F2 screenshots include the GUI and chat. -> Capture in the mod right after `renderLevel` with the vanilla screenshot writer (byte-identical to F2 on 8/8). F2 takes at most 64 frames per capture. [m3-run-plan-1] [MC] 26.3: deferred to M1 (A2); the spike's PrintWindow and Viewfinder captures show the HUD toast.
+- `/tp` adds 0.5 to integer coordinates and wraps yaw (180 -> -180). A mod that set yaw 180 changed frames on 4 views. -> The mod copies both behaviors, implemented once in the mod, never in the harness. [m3-run-plan-1] [MC] 26.3: verified in M1 (A3, m1-acceptance-10).
+- Keystrokes were lost behind loading screens; a resent `/tick freeze` landed in open chat. -> No keystrokes. Confirm commands from latest.log, gate on readiness. [_archive/harness-plan] [MC] 26.3: M1 confirms each command by the mod's `command` answer (mod-protocol.md#commands), not latest.log, and gates on `ready`.
+- F2 screenshots include the GUI and chat. -> Capture in the mod right after `renderLevel` with the vanilla screenshot writer (byte-identical to F2 on 8/8). F2 takes at most 64 frames per capture. [m3-run-plan-1] [MC] 26.3: verified in M1 (A2, m1-acceptance-10); the spike's PrintWindow and Viewfinder captures show the HUD toast.
 - 1.21.11 gamerules are snake_case (`advance_time`, `advance_weather`, `spawn_mobs`, `random_tick_speed`); datapack format [94,1]. -> Read both from the platform. [MC] 26.3: names unchanged, formats data 121.0 and resource 97.1 (verified).
 - Setup function: spectator; kill non-player entities except the dragon; time 6000; weather clear. [tools/bench/datapack]
 - World load: `--quickPlaySingleplayer <world>`. [MC] 26.3: verified (L1, 18.4 s to the world).
@@ -47,7 +47,7 @@ Each item reads "fact -> technique". Brackets name the ALC record a fact came fr
 ## Iris and Sodium
 Shader-pack facts are in gpu-iris.md.
 - Reload: 0.5-1.9 s, or 3.2-5.3 s for a copy's first reload. A reload longer than the settle puts its stall in the window. -> Record the answer time. [environment, m3-run-plan-1] [MC] 26.3: 0.54-0.61 s warm, 1.72 s after a settings change, dev tier (spike V1, V3).
-- Iris reload leak (issue #1569): +10.4 MB per reload, GPU time flat over 288 reloads. -> Cap 288 per session. [_archive/harness-plan] [MC] 26.3: refuted as a number: 20.6 MiB heap and 320 MiB private bytes per reload on the dev tier with debug options (spike V3); the cap waits for M1's bench-tier measurement.
+- Iris reload leak (issue #1569): +10.4 MB per reload, GPU time flat over 288 reloads. -> Cap 288 per session. [_archive/harness-plan] [MC] 26.3: refuted as a number: 20.6 MiB heap and 320 MiB private bytes per reload on the dev tier with debug options (spike V3); on the bench tier 33.16 MiB heap and 46.3 MiB private per reload (m1-acceptance-10), so M2 sets the cap (roadmap.md#findings-assigned F4).
 - `Iris.reload()` builds synchronously; a failed pipeline falls back to vanilla. -> Read the compile result. [m3-run-plan-1] [MC] 26.3: verified by reading; in a world the error goes to chat, not to getStoredError (spike R4).
 - Sodium rebuilds terrain shaders lazily. -> Wait >= 2 frames after a reload. [MC] 26.3: verified by reading (PipelineManager's versionCounterForSodiumShaderReload).
 - Sodium's `isTerrainRenderComplete()` reads the queue size only. -> Full predicate in mod.md#7-readiness. [MC] 26.3: verified (`getBuilder().isBuildQueueEmpty()`).
@@ -99,7 +99,7 @@ Further facts:
 - Windows 11 Notepad starts through a windowless stub, so it is a bad focus test; use charmap.exe.
 - ALC's OS input lock: low-level hooks, started before the game, released by Escape x3. Raw mouse input bypassed it (971 events blocked, camera still turned). -> Optilux blocks input in the mod (`input.block`), raw motion included. [MC] 26.3: the rawMouseInput option is gone (deprecated.json lists it removed; InputConstants.grabMouse uses SDL3's relative mouse mode), so the suite writes no such key (user, 2026-10-06).
 - Task Manager or qrenderdoc opening mid-session stole focus. `GetLastInputInfo` also counts the harness's own input. -> Idle check before a session; validity catches the rest.
-- HAGS on (registry value 2); present mode Independent Flip; GPUBusy/FrameTime 0.995-1.005. [HW]
+- HAGS on (registry value 2); present mode Independent Flip in exclusive fullscreen (borderless: Composed: Copy with GPU GDI, measurement.md#validity); GPUBusy/FrameTime 0.995-1.005. [HW] [MC]
 
 ## Statistics
 - GPU time has +-1 % regimes lasting 10-40 s. ABBA blocks were noisier (0.52 % rms) than bracketing each candidate between two A captures (0.33 %). Calibrated R=2 gave 0.21 %.

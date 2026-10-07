@@ -40,7 +40,7 @@ jobs:
       # locked with it (pyright[nodejs], uv.lock).
       - run: uv run pyright
       # Serially: the 4 vCPU runner ran pytest-xdist slower (82 and 95 s against 63 s serially,
-      # 0.01.12); the local default stays parallel (12 s against 43 s).
+      # 0.01.12); the local default stays parallel (optilux/verbs/test.py has its timing).
       - run: uv run optilux test --serial
       - run: uv run optilux verify docs
       # The rules release.yml applies after the merge (docs/workflow.md#release), before it:

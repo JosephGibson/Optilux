@@ -1,5 +1,5 @@
-# Mod protocol (draft v1)
-Status: rough draft, 2026-10-05; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block and the world, dimension, focus and screen events; 0.01.07: ready, shaders.reload, shaders.options, frames.capture, selftest, sinceReload and the reload and capture events; the rest is still spec.
+# Mod protocol (v1)
+Status: protocol 1, built and accepted for M1's 17 commands, the rest spec; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block and the world, dimension, focus and screen events; 0.01.07: ready, shaders.reload, shaders.options, frames.capture, selftest, sinceReload and the reload and capture events; the rest is still spec.
 
 ## Contents
 Transport · Envelope · Errors · Events · Commands · Choreography · Client rules
@@ -8,9 +8,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 - Windows named pipe, `\\.\pipe\optilux-` + the first 32 hex digits of SHA-256("optilux-pipe:" + token).
 - One client at a time. A client may reconnect. On disconnect, state survives and work does not: running requests are cancelled, and input blocking is released after 10 s without a client's `hello` (mod.md#4-architecture).
 - UTF-8, one JSON value per line (`\n`; a trailing `\r` is dropped).
-- Lines are at most 1 MiB before the `
-`. An overlong or malformed line is answered at once with a coded error and `id: null`, never by a timeout: an overlong one the moment it passes 1 MiB, its rest skipped up to its `
-`.
+- Lines are at most 1 MiB before the `\n`. An overlong or malformed line is answered at once with a coded error and `id: null`, never by a timeout: an overlong one the moment it passes 1 MiB, its rest skipped up to its `\n`.
 - Security: see mod.md#5-safety. `hello` must carry the token before any other command.
 
 ## Envelope
@@ -77,7 +75,7 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
 | cancel | id | the cancelled request answers `cancelled` | M1 |
 | quit | - | closes the game cleanly | M1 |
 
-- Pack switch: the harness writes `shaderPack=<folder or zip in shaderpacks/>` in iris.properties and the pack's settings .txt, then calls `shaders.reload`; the result's `pack` must equal the requested one, else the variant is failed. Spike R4 checks that `Iris.reload()` re-reads both files (V1 exercises it); if it does not, the switch needs another mechanism.
+- Pack switch: the harness writes `shaderPack=<folder or zip in shaderpacks/>` in iris.properties and the pack's settings .txt, then calls `shaders.reload`; the result's `pack` must equal the requested one, else the variant is failed. Spike R4 verified that `Iris.reload()` re-reads both files on 1.11.7, and V1 exercised it (platform.md#mc-263-verified).
 
 - Capture layout (0.01.07): `directory` is absolute; each attempt gets the first free `attempt-NNN` under it, holding `frame-NNNNN.png` and capture.json: schema, complete (false after a stop or a dropped frame), stopped, count, every or intervalMs, frames, dropped (name, frameIndex, reason). align, flush and after answer `unsupported` until M3 and M5.
 

@@ -15,7 +15,7 @@ config/suite.json is the source of every value below.
 - Coverage views (M3): a frozen area with entities and special renderers, out of sight of the perf views.
 - Reference pack: Complementary Unbound r5.9.3, unmodified. Profile `played`: the user's settings; profile `iso`: every dropped feature switched off (shader.md#dropped-features), kept features matched to Optilux as they land; start point: the ALC ablation costs in config/profiles/complementary-unbound-played.json.
 - Resource packs: M2 calibrates on Faithful 64x alone. From M3 every session uses the deterministic set (Faithful 64x + optilux-static-textures, animated textures held on frame 1) and M3 recalibrates both modes on it. The run spec names the set; `run` refuses a set the calibration does not cover.
-- Display: suite.json display, whose optionsTxt block holds every key the spike wrote and read back; the remaining options the harness writes are fixed in M1 from it (platform.md#install-and-launch).
+- Display: suite.json display, whose optionsTxt block holds every key the harness writes: the spike's, read back, and M1's inactivityFpsLimit and exclusiveFullscreen (platform.md#install-and-launch).
 
 ## Session
 1. Restore the world snapshot and hash-check it. One session per run name; run names are single-use.
@@ -24,7 +24,7 @@ config/suite.json is the source of every value below.
 4. Warm-up pass over all views; kept only if M2 shows pass 1 differs from pass 2.
 5. Per view: a generated datapack function sets time and weather (`/function optilux:view/<id>`, written from the views file and ending in `return 1`: on 26.3 a function reports a result only through `/return`, so without it `command` answers succeeded false, 0.01.13's read of FunctionCommand's bytecode; LF; stale functions pruned); `camera.place` sets the exact pose; `ticks.step n` (n = suite.json capture.ticksAfterWeatherChange) only when overworld weather changes. The GUI is hidden (`hud.set hideGui`) at every view but entities: hiding it also drops the held item, and entities keeps its torch in frame (0.01.12's frames, handoff.md); captures stop before the GUI, so no frame shows it.
 6. Per variant: reload, then read the compile result (a failed pipeline falls back to vanilla, so a compile error invalidates the variant); wait at least 2 frames (Sodium rebuilds terrain shaders lazily); settle: the window's skipSeconds is the largest suite.json settle that applies to anything since the last window (afterReload, afterViewSwitch, afterDimensionChange).
-7. Schedule: A, then (Ci, A) pairs, R rounds; the A/A twin is always one Ci. `run` refuses a spec whose planned reloads (start-of-run + warm-up pass + views x (1 + 2 x R x (candidates + 1))) exceed suite.json capture.reloadCap (288, the Iris reload leak; re-measure on the platform): full mode holds at most 5 candidates plus the twin.
+7. Schedule: A, then (Ci, A) pairs, R rounds; the A/A twin is always one Ci. `run` refuses a spec whose planned reloads (start-of-run + warm-up pass + views x (1 + 2 x R x (candidates + 1))) exceed suite.json capture.reloadCap (288, ALC's figure for the Iris reload leak): at 288 full mode holds at most 5 candidates plus the twin. M1's bench-tier table (about 33 MiB of heap per reload) fills the 6 GiB heap near 160 reloads, so M2 sets the cap and the session budget from it (roadmap.md#findings-assigned F4).
 8. Capture: PresentMon GPUBusy median (primary), and as the tail the median of per-capture p95 frame times, which the record can re-judge. One PresentMon session at a time, its rows cut by the mod's window stamps (mod-protocol.md#choreography). FPS is shown for humans only. Settle and window are in seconds, timed by the mod on the QPC clock.
 9. Perf windows measure the variant with BENCH_DETERMINISTIC on, the build that also gives its frames (user, 2026-10-06). Each release carries a cost row of the define (on vs off) on every view, and the M6 ratio vs Unbound is measured with it off.
 
@@ -64,7 +64,7 @@ config/suite.json is the source of every value below.
 
 ## Visual protocol
 - Determinism rests on Iris facts re-verified in the spike (R5; gpu-iris.md#frame-counters-and-reload): frameCounter and frameTimeCounter reset at every pipeline creation; frameTimeCounter is wall-clock; a reload clears every buffer and re-meshes all chunks, so the first frames after it are not final.
-- BENCH_DETERMINISTIC, from Optilux's first commit:
+- BENCH_DETERMINISTIC, from M3's hello pack, the first with programs (roadmap.md#decisions D9):
   - frameTimeCounter pinned to a constant (ALC pinned it to 0);
   - every frame-varying term (jitter, dither, noise offsets) derives from frameCounter modulo one cycle;
   - smoothing instant, animation pinned. Wall-clock smoothing otherwise keeps moving under /tick freeze;
@@ -88,7 +88,7 @@ config/suite.json is the source of every value below.
 The identity contract (every input that can move a measurement), the record's fields, comparison rules and the run spec: run-record.md. Verdicts are re-judged from the record's per-capture summaries alone.
 
 ## Readiness
-- Predicate: mod.md#7-readiness (Sodium's own isTerrainRenderComplete() reads only the queue size). [MC] 26.3: verified; the 0.9.2 fields are in platform.md#mod-adapter-surface, and M1 rebuilds the predicate on them.
+- Predicate: mod.md#7-readiness (Sodium's own isTerrainRenderComplete() reads only the queue size). [MC] 26.3: verified; the 0.9.2 fields are in platform.md#mod-adapter-surface, and M1 rebuilt the predicate on them (0.01.07).
 - For visual captures the calibrated settle stays the floor until A5 shows predicate-ready -> frame-final over at least 30 waits (mod.md#12-acceptance); perf windows keep the calibrated settle regardless, because the thresholds were calibrated with it.
 - Chunk meshing is client-side and cannot be pre-done; dimension changes need the longer settle.
 
@@ -101,4 +101,4 @@ The identity contract (every input that can move a measurement), the record's fi
   - AMD Software starts its own PresentMon-x64.exe (session RSXTraceSession, v1 metrics to stdout) with every game and stops it after (spike L1); record it, never block on it.
 - FLIP (flip-evaluator), LDR, sRGB inputs, ppd from suite.json. SSIM and PSNR via scikit-image.
 - RenderDoc 1.46 (debug tier): injected by gfx-debuggers (`-Ddebugger=renderdoc`, forward-slash path); what replay may decide: offline.md#decision-powers.
-- Python deps: locked in uv.lock (workflow.md#code-conventions). ALC's set is the start: numpy, pillow, scikit-image, scipy, flip-evaluator, minecraft-launcher-lib, nbtlib.
+- Python deps: locked in uv.lock (workflow.md#code-conventions). At M1: minecraft-launcher-lib and psutil. ALC's set is the candidate list for the analysis verbs: numpy, pillow, scikit-image, scipy, flip-evaluator, nbtlib.
