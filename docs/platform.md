@@ -38,13 +38,13 @@ Data: config/platforms/mc-26.3.json (version, file, Modrinth version id, sha512;
 | bench | fabric-api, sodium, iris, optilux-helper; resource pack faithful-64x | every measurement |
 | played | cloth-config, entityculling, ferrite-core, immediatelyfast, lithium, modmenu, moreculling, scalablelux, placeholder-api | compatibility smoke, never shader perf evidence |
 | debug | gfx-debuggers | RenderDoc attribution only |
-| dev | viewfinder (MCP at http://127.0.0.1:7150/mcp, started with the game; no auth; not read-only; tools in L2) | development and diagnostics with Claude Code; not evidence until measured (offline.md) |
+| dev | viewfinder (its MCP server: offline.md#tools; tools in L2) | development and diagnostics with Claude Code; not evidence until measured (offline.md) |
 | lod | voxy (pending a 26.3 build) | Voxy compatibility |
 | jvm | chunky; lithium and c2me-fabric as axes | post-1.0 JVM track |
 
 - World prep set (not a tier, never in a session): the platform file's `worldPrep`, bench + Chunky 1.5.3 (ALC typed the prep commands in chat).
 - Shader perf evidence only on bench, with one declared exception, its tier in the identity: Viewfinder's per-pass timers on the dev tier after E5's overhead check and A11 (design.md#8-open-decisions). The JVM track's S4 runs on the played tier as JVM evidence (jvm.md#scenarios). ALC's reason for the rule: each extra mod changes the measured set (ModernFix startup, MoreCulling leaf geometry, ImmediatelyFast overlay cost, Voxy distant terrain).
-- Dev tier: `enableDebugOptions=true` creates a KHR_debug context and, on a fresh sodium-options.json, a modal Iris dialog over Sodium's `use_no_error_g_l_context` (L2): write it false first. The dev quit ends in a watchdog crash report, exit -8, after the world is saved (Viewfinder's MCP thread stays alive): accepted as known, no shutdown step (user, 2026-10-06).
+- Dev tier: `enableDebugOptions=true` creates a KHR_debug context and, on a fresh sodium-options.json, a modal Iris dialog over Sodium's `use_no_error_g_l_context` (L2): write it false first. The dev quit's exit -8 after the save (L2 quit) is accepted as known, no shutdown step (user, 2026-10-06).
 - ScalableLux and C2ME are alpha builds; re-pin when stable builds land.
 
 ## Mod adapter surface
@@ -93,7 +93,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
 - Cross-check, once per platform: minecraft-launcher-lib's own command for the same versions must match the spec's main class, asset index and jars by content (ALC's check against Prism).
 
 ## mc-26.3 verified
-The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform change step 3 reruns these checks on a new platform. Evidence is quoted; the raw records live under runtime/ (ignored).
+The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform change step 3 reruns these checks on a new platform. Evidence is quoted; the raw records live under runtime/ (ignored). 0.01.10 closed the deferred rows; the user's look review passed.
 
 | Check | Result | Evidence |
 |---|---|---|
@@ -103,7 +103,7 @@ The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform c
 | S4 Mods | pass | 6 files sha512-equal to the platform file and to Modrinth's metadata |
 | S5 Launch spec | pass | KnotClient, 82 jars, asset index 34 (abfaa525...adbe); the lib's own command: same main class, `--assetIndex 34`, 82 jars equal by SHA-1 (its client jar is the copy under the Fabric version folder; rerun in 0.01.02) |
 | S6 PresentMon | pass | 2.6.0 console build, sha256 b2a706bc...f1af (GitHub publishes none); `--help` lists every flag the harness uses; unelevated: "Started recording.", the session listed by `logman query -ets` and gone after exit |
-| S7 Viewfinder | client deferred | .mcp.json present; the server answered JSON-RPC in L2; this session's client never connected (needs the user's /mcp): M1's first dev session |
+| S7 Viewfinder | pass | .mcp.json; the server answered JSON-RPC in L2; 0.01.10: Claude Code's client, reconnected by the user, ran get_diagnostics (32 ms, errors []) |
 | S8 AF_UNIX | pass | `hasattr(socket, "AF_UNIX")` is False on 3.12.10 |
 | S9 World | pass | launch 0: server "Done (1.431s)!", `stop` on stdin, exit 0; level.dat Data.allowCommands Byte(0) -> Byte(1), GameType Int(3) kept, no Player, DataVersion 5023 |
 | R1 Formats | pass | version.json: data 121.0, resource 97.1, world_version 5023, protocol 777 |
@@ -126,17 +126,17 @@ The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform c
 | L1 PresentMon stop | finding | CTRL_C_EVENT to its own process group ignored for 6 s (Windows disables Ctrl+C in a CREATE_NEW_PROCESS_GROUP child); CTRL_BREAK_EVENT: exit 0, complete CSV, no optilux-spike session left; the CSV grew during the run (243 KB at 20 s, 441 KB at exit) |
 | AMD PresentMon | finding | RadeonSoftware.exe starts `PresentMon-x64.exe -stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession` with the game: a process, not only a session |
 | L1 heap | lower bound | after GC.run, 60 s idle at spawn: "used 725195K" of "committed 6291456K"; private bytes 11,067 MiB; the bench heap stays provisional |
-| L1 screenshot | review deferred | PrintWindow(PW_RENDERFULLCONTENT) returned a frame (not black); the capture process was not DPI-aware (2560x1440), fixed for L2 |
+| L1 screenshot | pass | PrintWindow(PW_RENDERFULLCONTENT) returned a frame (not black); the capture process was not DPI-aware (2560x1440), fixed for L2 |
 | L1 quit | pass | WM_CLOSE: "Stopping!", "Saving worlds", three dimensions saved, exit 0 in 1.9 s |
 | L1 options | finding | Sodium: "Setting exclusive fullscreen to true by default, as the user is using a language that likely does not need an IME" and "Exclusive target 3840x2160@240"; the fancy preset set simulationDistance 12; "fabric" dropped from resourcePacks; every other key read back as written |
 | L2 launch | pass, finding | 66 mods; "Viewfinder MCP server started at http://127.0.0.1:7150/mcp"; the modal Iris dialog blocked until WM_CLOSE (join 167.3 s with that wait); exclusiveFullscreen false held |
 | L2 tools | pass | tools/list: 23 tools (reload_shaders, list_shaderpacks, switch_shaderpack, set_shader_options, capture_frame, profile_frames, set_scene, control_ticks, ...); no server-command tool |
-| V1 | pass, look deferred | CLOUD_QUALITY "2" -> file "CLOUD_QUALITY=0" + reload -> "0"; Iris rewrote the file with a date header; iris.properties shaderPack=...-copy.zip + reload -> current "ComplementaryUnbound_r5.9.3-copy.zip", CLOUD_QUALITY "2"; back -> original; reloads 1.72, 0.59, 0.61 s; pre-screen: clouds at 2, none at 0; pixel diffs are swamped by TAA and animation (control pair 56.7 % changed) |
+| V1 | pass | CLOUD_QUALITY "2" -> file "CLOUD_QUALITY=0" + reload -> "0"; Iris rewrote the file with a date header; iris.properties shaderPack=...-copy.zip + reload -> current "ComplementaryUnbound_r5.9.3-copy.zip", CLOUD_QUALITY "2"; back -> original; reloads 1.72, 0.59, 0.61 s; pre-screen: clouds at 2, none at 0; pixel diffs are swamped by TAA and animation (control pair 56.7 % changed) |
 | V3 | finding | 50 reloads, 0 failures, 0.54-0.61 s; heap after GC 674 -> 1,208 -> 1,703 MiB (20.6 MiB per reload); private bytes 11,987 -> 27,968 MiB (320 MiB per reload); dev tier with debug context and dumps (F4 re-measures on bench) |
 | V4 | pass | patched_shaders/: 270 files, numbered per program with a .json each; `#version 330 core` in composite, composite1, final and terrain_solid where the source says `#version 130`; "// Generated by glsl-transformer" |
 | V5 | pass | profile_frames(120): 26 passes, ns avg/min/max/latest, sampleCount 50, nesting deferred/deferred1; Terrain solid 3.38 ms, deferred1 1.85; no cutout or translucent terrain group even with water in view; Viewfinder reported 30 fps under the debug context (not evidence) |
-| V6 | review deferred | set_scene to the water at (-533, 62, -368): "Singleplayer scene updated"; pre-screen: water through Unbound with reflections, no black translucency; no glass or ice near spawn and no tool to place any |
-| V2 | deferred | no server-command tool for /summon and /setblock; control_ticks freeze and resume work ("Tick control applied: freeze"); the animal and particle pairs go to M1's first dev session |
+| V6 | pass | set_scene to the water at (-533, 62, -368): "Singleplayer scene updated"; pre-screen: water through Unbound with reflections, no black translucency; glass and ice placed by /setblock in 0.01.10 |
+| V2 | pass, finding | 0.01.10, through the mod's `command`: under /tick freeze particles neither spawn nor age, and a mob moved by /tp keeps its client position until ticks run (summon in place); cow mean abs diff 0.35 frozen, 2.41 across `/tick step 20` |
 | L2 quit | finding | WM_CLOSE saved the world ("Saving worlds", three dimensions) but the shutdown watchdog fired: crash report "Client shutdown from post-main" with Viewfinder's "HTTP-Dispatcher" thread alive, exit code -8 after 17 s |
 
 ## Platform change

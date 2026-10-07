@@ -51,6 +51,9 @@ class ProtocolTest {
     private final AtomicBoolean waitInterrupted = new AtomicBoolean();
     private final AtomicBoolean waitLiveAfter = new AtomicBoolean(true);
     private final CountDownLatch waitEnded = new CountDownLatch(1);
+    // Counted when the world.wait handler starts: a request answered before its worker starts
+    // never runs its handler (Protocol.execute), so a test that cancels a running wait waits here.
+    private final CountDownLatch waitStarted = new CountDownLatch(1);
     private ExecutorService workers;
     private ScheduledExecutorService timers;
     private State state;
@@ -66,6 +69,7 @@ class ProtocolTest {
         handlers.put("frames.index", request -> Map.of());
         handlers.put("shaders.options", request -> Map.of("pack", "x", "values", Double.NaN));
         handlers.put("world.wait", request -> {
+            waitStarted.countDown();
             try {
                 release.await();
             } catch (InterruptedException interrupted) {
@@ -277,6 +281,7 @@ class ProtocolTest {
     void cancelAnswersTheRequestOnceAndInterruptsIt() throws InterruptedException {
         hello();
         send(1, "world.wait", "{\"timeoutSeconds\":30}");
+        assertTrue(waitStarted.await(5, TimeUnit.SECONDS), "world.wait never started");
         send(1, "frames.index", "{}");
         assertEquals(Errors.BAD_REQUEST, code(next()));
         send(2, "cancel", "{\"id\":1}");
@@ -301,7 +306,10 @@ class ProtocolTest {
     @Test
     void theRequestsOwnTimeout() throws InterruptedException {
         hello();
-        send(1, "world.wait", "{\"timeoutSeconds\":0.05}");
+        // 1 s, not less: under load the worker can start late, and a request that times out
+        // before its worker starts never runs its handler.
+        send(1, "world.wait", "{\"timeoutSeconds\":1.0}");
+        assertTrue(waitStarted.await(5, TimeUnit.SECONDS), "world.wait never started");
         Map<String, Object> answer = next();
         assertEquals(1L, id(answer));
         assertEquals(Errors.TIMEOUT, code(answer));
@@ -422,6 +430,7 @@ class ProtocolTest {
         state.blockInput(true);
         send(1, "world.wait", "{\"timeoutSeconds\":30}");
         send("two", "frames.capture", "{\"directory\":\"d\",\"count\":3,\"timeoutSeconds\":30}");
+        assertTrue(waitStarted.await(5, TimeUnit.SECONDS), "world.wait never started");
         disconnect();
         assertTrue(waitEnded.await(5, TimeUnit.SECONDS));
         assertTrue(waitInterrupted.get());
