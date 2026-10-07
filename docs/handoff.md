@@ -53,7 +53,7 @@ Each pose flown by the user in spectator (creative for entities), read with came
 - Pre-generation extents for M2: overworld x -367..28, z 244..909; Nether x -9..230, z -321..16; the End around the main island; each plus 256 blocks.
 
 ## End city candidate
-The user asked for an End city view; the user's decision (2026-10-07): scout now, M2's plan decides on an 11th role before any calibration. Nearest city (368, ~, 992), 1,058 blocks from the main island. Kept pose: the End, (317.1, 75.1, 1054.8), yaw -120.3, pitch -9.0, time 6000; frame a2727557 (results/raw/views-flights/end_city/attempt-001/); GPUBusy 9.42 ms. Shulkers survive Peaceful: two closed ones at 56 and 62 m are in view; the ship's elytra item frame at 65 m is past its render limit.
+The user asked for an End city view; scouted here, then the user made it an 11th perf role, end_city, added in 0.01.12 (D29, 2026-10-07). Nearest city (368, ~, 992), 1,058 blocks from the main island. Kept pose: the End, (317.1, 75.1, 1054.8), yaw -120.3, pitch -9.0, time 6000; frame a2727557 (results/raw/views-flights/end_city/attempt-001/); GPUBusy 9.42 ms. Shulkers survive Peaceful: two closed ones at 56 and 62 m are in view; the ship's elytra item frame at 65 m is past its render limit.
 
 ## Checks
 - The entity counts the capture script printed for the first six views were void: the game answers "Test passed. Count: N" and the pattern sought "count: " (lowercase). Fixed for the last four, and every kept view rechecked: each non-player entity within 128 blocks of the eye listed (`execute as @e[...] run data get entity @s Pos`, the camera at the view so its chunks load) and projected into the camera (vertical FOV 90 at 16:9). In-frustum hits beyond their render limit (64 blocks times the bounding box's mean size: chicken about 32, cow and sheep about 67, item 16, strider 75): forest_noon chickens 74-79 m and cows 110-117 m (crops of the frame at their pixels show canopy only), rain chickens 125-127 m, night sheep 111-117 m, cave items 117 m, nether_crimson striders 95-127 m, nether_soul striders 111 m; ocean_sunset and underwater none. entities: the seven tagged at 7-13 m, and untagged horses at 57-62 m (rendered: small shapes mid-frame), a villager at 65.5 m and cows near 70 m. All untagged; M2's world prep kills them.
@@ -87,15 +87,15 @@ m1-acceptance-7's reloadTable (bench tier, 50 `shaders.reload`, heap after GC, p
 - 0.01.09: A4, A7, A9, A10 and F4's table in m1-acceptance-7; 0.01.08 run and acceptance (A1-A3, A10 in m1-acceptance-3); 0.01.07 renderer and Iris adapters (mod jar eb840262..., unchanged since); 0.01.06 game adapter; 0.01.05 transport; 0.01.04 mod project; 0.01.03 launch; 0.01.02 install; 0.01.01 Plan M1 (approved 2026-10-06, D17-D26).
 
 ## Open questions
-Each has its phase or milestone in roadmap.md#qa-pass-open-questions.
+Each has its phase or milestone in roadmap.md#qa-pass-open-questions; 0.01.11's five close in 0.01.12 (user, 2026-10-07; D29, D30).
 - inactivityFpsLimit "afk" caps every session without player input at 30 fps after a minute, 10 after 10 (0.01.12: display.optionsTxt writes "minimized", an identity change before M2 calibrates).
-- World prep's kill spares only the dragon and optilux_bench: it would take end_dragon's ten end crystals and change the entities frame (M2).
-- The entities frame shows no hand: the capture point follows renderLevel, which skips the hand when the GUI is hidden (F1 or hud.set hideGui); whether F1 was on is unread (M2).
-- The End city candidate (M2's plan, user 2026-10-07).
+- World prep's kill spares only the dragon and optilux_bench: it would take end_dragon's ten end crystals and change the entities frame (0.01.12 spares end crystals in the spec; M2 implements it).
+- The entities frame shows no hand: the capture point follows renderLevel, which skips the hand when the GUI is hidden (F1 or hud.set hideGui); whether F1 was on is unread (0.01.12: one launch on world spike, hideGui false, a frame).
+- end_city, the 11th role (0.01.12, D29); the candidate worlds bench_7800 and bench_20261005 deleted (0.01.12, D30, the user's exception to the runtime/ rule).
 - PresentMode: "Composed: Copy with GPU GDI" in every row of 0.01.09's runs and this session's probes, against the spike's "Hardware: Independent Flip" (0.01.13; M2).
 - A2's F2 press still needs only `focused`; A7's foreground check belongs there too (0.01.12).
 - The live world differs from its snapshot after every launch; every run needs a retake first (M2's `world restore`). bench_263 equals its snapshot now.
-- Byte caps: AGENTS.md 9 bytes of margin, platform.md 54, mod.md 36, plans/m1.md 31, prompts/m1.md 20: the next sentence in any needs a cut first (0.01.12).
+- Byte caps: AGENTS.md 9 bytes of margin, platform.md 54, mod.md 36, plans/m1.md 58, prompts/m1.md 5: the next sentence in any needs a cut first (0.01.12).
 - The A9 capture takes 46 s for 120 frames at 4K (M2).
 - Carried: release.yml runs on ubuntu-latest while CI is windows-latest; VS Code's Java and Gradle extensions import mod/; Gradle's other downloads trusted by coordinate; `launch` does not look for a running Gradle; a JVM fatal-error log would list the token; whether `/function` reports success without `/return` on 26.3 is unread.
 
@@ -104,4 +104,4 @@ Each has its phase or milestone in roadmap.md#qa-pass-open-questions.
 - 0.01.10: 1.1 h against 1.5. 0.01.09: 1.3 h against 2. 0.01.08: 1.0 h against 2.5. 0.01.07: 0.7 h. 0.01.06: 0.8 h. 0.01.05: 1.1 h. 0.01.04: 0.7 h. 0.01.03: 1.6 h. 0.01.02: 0.8 h. 0.01.01: 1.6 h. 0.01.00: 0.5 h. M0: 3.3 h against 7.8.
 
 ## Next
-/optilux-next prints 0.01.12 Review and cleanup (offline, L, 3 h), then 0.01.13 debug, timing and the acceptance re-run on the final jar (L, 2 h). Plan around: the inactivity cap's fix lands in 0.01.12, before 0.01.13's timed session; the provisional snapshot retaken before any `run`; bench_263 is not used by M1's acceptance runs.
+/optilux-next prints 0.01.12 Review and cleanup (offline, L, 3 h), then 0.01.13 debug, timing and the acceptance re-run on the final jar (L, 2 h). Plan around: 0.01.11's five rows close in 0.01.12 (the inactivity cap, the crystals in the kill, the held-torch launch on world spike, end_city, the two worlds), the cap before 0.01.13's timed session; the provisional snapshot retaken before any `run`; bench_263 is not used by M1's acceptance runs.
