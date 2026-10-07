@@ -8,7 +8,7 @@ Status: M1 in progress: 0.01.11 (the bench world's seed and its ten views, found
 - Start gate: branch m1, pushed; tests 360 passed, `mod test` 80 passed, verify docs 0 violations, ruff clean; the tree held the uncommitted QA split (D27, D28: plans/m1.md, prompts/m1.md, roadmap.md, handoff.md, test_status.py), folded into this phase's commit at the user's word (2026-10-07), as 0.01.09's amendment was.
 - Two announced bench-tier launches through a scratchpad driver (launch.launch and launch.open_mod, requests from a file queue, run in the background; no SendInput, input.block never on):
   - Launch 1 (10:47:06, pid 5032), world spike: joined in 14.2 s; the user created the three candidate worlds from the title screen; the mod's quit at 11:08:03, exit 0 in 1.7 s; request log 1,903 lines, the token absent; options.txt (23 keys), iris.properties and the Sodium flags read back unmoved. Raw: results/raw/views-seeds/.
-  - Launch 2 (11:09:16, pid 16236), world bench_263: joined in 13.6 s, `Seed: [263]`; `/tick freeze`, spectator; the flights; the player put back at spawn (-5.5, 75, 8.5), spectator, time 6000, clear; the mod's quit at 11:58:4x, exit 0 in 2.7 s; request log 13,881 lines, the token absent; the read-back unmoved. Raw: results/raw/views-flights/ (frames, previews, views.jsonl, PresentMon probes).
+  - Launch 2 (11:09:16, pid 16236), world bench_263: joined in 13.6 s, `Seed: [263]`; `/tick freeze`, spectator; the flights; the player put back at spawn (-5.5, 75, 8.5), spectator, time 6000, clear; the mod's quit at 11:58:44, exit 0 in 2.7 s; request log 13,881 lines, the token absent; the read-back unmoved. Raw: results/raw/views-flights/ (frames, previews, views.jsonl, PresentMon probes).
 - config/views/bench_263.json (sha256 e074f336f4499d8319c45511da33eed8ed9ef6bf88e3ecabb081c7877810c143) loads through record.load_views; suite.json world.seed 263 and its source; test_record.py checks the file holds suite.json's roles in order with each role's dimension, time and weather, and the seed.
 
 ## Seeds
@@ -66,7 +66,7 @@ The user asked for an End city view; the user's decision (2026-10-07): scout now
 - World id bench_263: the views file, the snapshot and the save folder share it ([a-z0-9_], record.VIEW_ID).
 - One launch for all candidate worlds (created from the title screen), a second for the flights; `/locate` from the join point, the Nether from spawn / 8; the views file's `why`s written once (its bytes are identity).
 - Each role's time and weather set before its flight, so the user framed it lit as captured; the pose re-placed rounded before the frame, so the frame is the recorded pose.
-- The informal GPUBusy probes and the entity projection: scratchpad tools, nothing committed; the driver too (roadmap.md's QA row on it: nothing to review in 0.01.12).
+- The driver, the informal GPUBusy probe, the entity projection, `/locate` and the ocean map: scratch tools, nothing committed (roadmap.md's QA row on the driver: nothing to review in 0.01.12); copies kept in results/raw/views-flights/tools/ (ignored) for M2's world prep and view checks.
 
 ## F4's table
 m1-acceptance-7's reloadTable (bench tier, 50 `shaders.reload`, heap after GC, private bytes): M2 sets capture.reloadCap from it.
@@ -100,7 +100,7 @@ Each has its phase or milestone in roadmap.md#qa-pass-open-questions.
 - Carried: release.yml runs on ubuntu-latest while CI is windows-latest; VS Code's Java and Gradle extensions import mod/; Gradle's other downloads trusted by coordinate; `launch` does not look for a running Gradle; a JVM fatal-error log would list the token; whether `/function` reports success without `/return` on 26.3 is unread.
 
 ## Time
-- 0.01.11: 04:36 ADT to the commit about 12:20, 7.7 h on the clock, of which about 5.9 h waited on the user's answer to the start gate's question (asked within the first 20 minutes; the next step at 10:46); about 1.8 h of work against 2 h, the two stops' flights included. M1 so far about 12.9 h of 28; tripwire: M0-M3 55.8 h, trip at 111.6 h, actuals about 16.2 h (M0 3.3, M1 12.9).
+- 0.01.11: 04:36 ADT to the commit at 12:36:51, CI green at 12:38: 8.0 h on the clock, of which about 5.8 h waited on the user's answer to the start gate's question (asked within the first 20 minutes; the next step at 10:46); about 2.2 h of work against 2 h, the flights included, about 2.4 h with the close-out (the first commit's handoff said 12:20 and 1.8 h). M1 so far about 13.5 h of 28; tripwire: M0-M3 55.8 h, trip at 111.6 h, actuals about 16.8 h (M0 3.3, M1 13.5).
 - 0.01.10: 1.1 h against 1.5. 0.01.09: 1.3 h against 2. 0.01.08: 1.0 h against 2.5. 0.01.07: 0.7 h. 0.01.06: 0.8 h. 0.01.05: 1.1 h. 0.01.04: 0.7 h. 0.01.03: 1.6 h. 0.01.02: 0.8 h. 0.01.01: 1.6 h. 0.01.00: 0.5 h. M0: 3.3 h against 7.8.
 
 ## Next
