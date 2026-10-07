@@ -40,10 +40,17 @@ def sha512(data: bytes) -> str:
 
 
 def zipped(folder: str) -> bytes:
+    """A JDK archive whose bytes depend on `folder` alone: an entry named by a string takes the
+    clock's time, so two zips of one folder made 2 s apart would differ, and the pin with them."""
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
-        archive.writestr(f"{folder}/bin/java.exe", b"MZ fake java")
-        archive.writestr(f"{folder}/release", b"JAVA_VERSION=fixture\n")
+        for name, data in (
+            ("bin/java.exe", b"MZ fake java"),
+            ("release", b"JAVA_VERSION=fixture\n"),
+        ):
+            archive.writestr(
+                zipfile.ZipInfo(f"{folder}/{name}", date_time=(1980, 1, 1, 0, 0, 0)), data
+            )
     return buffer.getvalue()
 
 
