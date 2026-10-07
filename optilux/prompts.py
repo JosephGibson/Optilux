@@ -1,11 +1,14 @@
 """Stored prompts, which `optilux status` prints verbatim.
 
-- docs/prompts/m<MM>.md, a milestone's prompt set, in the format of docs/prompts/m0.md Rules: one
-  `## 0.MM.PP <title>` heading per phase, each followed by exactly one fenced block holding the
+- docs/prompts/m<N>.md, a milestone's prompt set (docs/workflow.md#running-a-milestone): one
+  `## <phase> <title>` heading per phase, each followed by exactly one fenced block holding the
   prompt; `## Resume` last, with one fenced block.
 - docs/prompts/standing.md, the Plan and Release prompts every milestone uses, each with its own
   `- Estimate: <h> h` line; placeholders such as {M} are filled in for the milestone at hand.
-- A phase prompt's size comes from its phase's `- Estimate: <h> h` in docs/plans/m<MM>.md.
+- A phase prompt's size comes from its phase's `- Estimate: <h> h` in docs/plans/m<N>.md.
+
+A phase is `M<N>.P<PP>` from M2 on (roadmap.md D33); M0's and M1's sets and plans keep `0.MM.PP`,
+which reads as the same milestone and number.
 """
 
 import re
@@ -17,22 +20,22 @@ from optilux.docs_check import FENCE
 
 # A section heading, at column 0 as the Rules write them; the title is the rest of the line.
 SECTION = re.compile(r"^## (\S.*?)\s*$")
-# A phase heading's text: the version, then the title.
-PHASE = re.compile(r"(0\.(\d{2})\.(\d{2}))(?:\s+(.*))?")
+# A phase ID, M2.P01, or as M0 and M1 wrote it, 0.01.02 (the milestone, then the number).
+PHASE_ID = re.compile(r"M(\d{1,2})\.P(\d{2})|0\.(\d{2})\.(\d{2})")
+# A phase heading's text: the phase, then the title.
+PHASE = re.compile(r"(\S+)(?:\s+(.*))?")
 RESUME = "Resume"
-# A commit's version (repo.VERSION): the phase, then the patch number, ignored here.
-VERSION = re.compile(r"0\.(\d{2})\.(\d{2})(?:\.\d+)?")
 STANDING = "docs/prompts/standing.md"
 PLAN, RELEASE = "Plan", "Release"
 # The estimate line of a plan phase and of a standing prompt: agent hours, the first number on the
-# line, written `2 agent` as docs/templates/plan.md has it or `1.5 h` as plans/m0.md does.
+# line, written `1.5 h` as docs/templates/plan.md has it; a bare number passes too.
 ESTIMATE = re.compile(r"^- Estimate: (\d+(?:\.\d+)?)(?: ?h)?\b")
 # What a plan phase's estimate line may add after the hours (plans/m1.md section 5):
 # `; machine: 1 launch.` and ` Attended: the user's look review.`, each up to its full stop.
 MACHINE = re.compile(r"machine: (.+?)\.?(?:\s+Attended:|$)")
 ATTENDED = re.compile(r"Attended: (.+?)\.?$")
-# A plan phase's heading: `### 0.MM.PP <title>`.
-PLAN_PHASE = re.compile(r"^### (0\.\d{2}\.\d{2})(?:\s|$)")
+# A plan phase's heading: `### <phase> <title>`.
+PLAN_PHASE = re.compile(r"^### (\S+)(?:\s|$)")
 # Size buckets of an estimate in agent hours (user, 2026-10-06). M is a typical phase: ALC's took
 # about 1 h (docs/workflow.md#git) and M0's were estimated at 1-1.5 h; XL is past two typical
 # phases, a candidate for a split. The last bucket is open-ended.
@@ -44,12 +47,32 @@ class PromptError(ValueError):
     """A prompt file that breaks the format; the message names the file, the line and the fix."""
 
 
+def phase_key(text: str | None) -> tuple[int, int] | None:
+    """(milestone, number) of a phase ID in either form: M2.P01 -> (2, 1), 0.01.13 -> (1, 13);
+    None for any other text."""
+    match = PHASE_ID.fullmatch(text or "")
+    if match is None:
+        return None
+    if match.group(1) is not None:
+        return int(match.group(1)), int(match.group(2))
+    return int(match.group(3)), int(match.group(4))
+
+
+def phase_id(milestone: int, number: int) -> str:
+    """The ID of a new phase: M2.P01."""
+    return f"M{milestone}.P{number:02d}"
+
+
 @dataclass(frozen=True)
 class Prompt:
-    version: str
+    phase: str  # the ID as its heading writes it
     title: str
     text: str  # the fenced block's lines, verbatim, with a trailing newline
     line: int  # of the heading
+
+    @property
+    def key(self) -> tuple[int, int]:
+        return phase_key(self.phase) or (-1, -1)  # parse admits only phase IDs
 
 
 @dataclass(frozen=True)
@@ -59,8 +82,10 @@ class PromptSet:
     phases: tuple[Prompt, ...]
     resume: str
 
-    def phase(self, version: str) -> Prompt | None:
-        return next((prompt for prompt in self.phases if prompt.version == version), None)
+    def phase(self, phase: str) -> Prompt | None:
+        """The prompt of a phase, its ID in either form."""
+        key = phase_key(phase)
+        return next((prompt for prompt in self.phases if prompt.key == key), None)
 
 
 @dataclass
@@ -144,35 +169,37 @@ def one_block(section: Section, file: str, what: str) -> str:
 
 
 def parse_phase(
-    section: Section, match: re.Match[str], milestone: int, previous: str | None, file: str
+    section: Section, match: re.Match[str], milestone: int, previous: Prompt | None, file: str
 ) -> Prompt:
-    version, major, minor, title = match.groups()
-    name = f"`## {version}`"
+    phase, title = match.groups()
+    key = phase_key(phase) or (-1, -1)  # the caller matched a phase ID
+    name = f"`## {phase}`"
     if not title:
         raise error(file, section.line, f"{name} has no title", f"write {name[:-1]} <title>`")
-    if int(major) != milestone:
+    if key[0] != milestone:
         detail = f"{name} is not a phase of milestone {milestone}"
-        fix = f"number it 0.{milestone:02d}.{minor} or move it to {prompt_name(int(major))}"
+        fix = f"number it {phase_id(milestone, key[1])} or move it to {prompt_name(key[0])}"
         raise error(file, section.line, detail, fix)
-    if previous is not None and version <= previous:
-        detail = f"{name} after `## {previous}`"
-        raise error(file, section.line, detail, "order the phases ascending, each version once")
-    return Prompt(version, title, one_block(section, file, f"the {version} prompt"), section.line)
+    if previous is not None and key <= previous.key:
+        detail = f"{name} after `## {previous.phase}`"
+        raise error(file, section.line, detail, "order the phases ascending, each phase once")
+    return Prompt(phase, title, one_block(section, file, f"the {phase} prompt"), section.line)
 
 
-def parse(text: str, milestone: int, file: str = "docs/prompts/m<MM>.md") -> PromptSet:
+def parse(text: str, milestone: int, file: str = "docs/prompts/m<N>.md") -> PromptSet:
     """The phases and the Resume prompt of a prompt file; PromptError names the first fault."""
     phases: list[Prompt] = []
     resume: str | None = None
-    form = f"`## 0.{milestone:02d}.PP <title>`"
+    form = f"`## M{milestone}.P<PP> <title>`"
     for section in sections(text, file)[1:]:
+        match = PHASE.fullmatch(section.heading)
         if resume is not None:
             detail = f"`## {section.heading}` follows `## {RESUME}`"
             raise error(file, section.line, detail, f"move `## {RESUME}` to the end")
         if section.heading == RESUME:
             resume = one_block(section, file, "the Resume prompt")
-        elif match := PHASE.fullmatch(section.heading):
-            previous = phases[-1].version if phases else None
+        elif match and phase_key(match.group(1)):
+            previous = phases[-1] if phases else None
             phases.append(parse_phase(section, match, milestone, previous, file))
         elif phases:
             detail = f"`## {section.heading}` is neither a phase nor `## {RESUME}`"
@@ -198,13 +225,13 @@ def load(root: Path, milestone: int) -> PromptSet:
     return parse(text, milestone, name)
 
 
-def next_phase(newest: str | None, milestone: int) -> str:
-    """The phase after the newest version prefix, inside the milestone: the newest plus one, or
-    the milestone's first phase when nothing of it is committed yet."""
-    match = VERSION.fullmatch(newest or "")
-    if match and int(match.group(1)) == milestone:
-        return f"0.{milestone:02d}.{int(match.group(2)) + 1:02d}"
-    return f"0.{milestone:02d}.00"
+def next_phase(last: str | None, milestone: int) -> str:
+    """The phase after the last one done, inside the milestone: its number plus one, or the
+    milestone's first phase, P00 (its plan), when the last one done belongs to another."""
+    key = phase_key(last)
+    if key and key[0] == milestone:
+        return phase_id(milestone, key[1] + 1)
+    return phase_id(milestone, 0)
 
 
 def size(hours: float) -> str:
@@ -236,21 +263,21 @@ def plan_title(root: Path, milestone: int) -> str | None:
     return next((line[2:].strip() for line in lines if line.startswith("# ")), None)
 
 
-def plan_phases(root: Path, milestone: int) -> dict[str, PlanPhase]:
-    """The phases of a plan that carry a `- Estimate:` line: the first one under each
-    `### <version> ...`, up to the next heading. Empty without a plan."""
-    found: dict[str, PlanPhase] = {}
-    version: str | None = None
+def plan_phases(root: Path, milestone: int) -> dict[tuple[int, int], PlanPhase]:
+    """The phases of a plan that carry a `- Estimate:` line, by phase_key: the first one under
+    each `### <phase> ...`, up to the next heading. Empty without a plan."""
+    found: dict[tuple[int, int], PlanPhase] = {}
+    key: tuple[int, int] | None = None
     for line in unfenced_lines(root / plan_name(milestone)):
         if line.startswith("#"):
             heading = PLAN_PHASE.match(line)
-            version = heading.group(1) if heading else None
-        elif version is not None and version not in found:
+            key = phase_key(heading.group(1)) if heading else None
+        elif key is not None and key not in found:
             estimate = ESTIMATE.match(line)
             if estimate:
                 rest = line[estimate.end() :]
                 machine, attended = MACHINE.search(rest), ATTENDED.search(rest)
-                found[version] = PlanPhase(
+                found[key] = PlanPhase(
                     float(estimate.group(1)),
                     machine.group(1) if machine else None,
                     attended.group(1) if attended else None,
@@ -258,11 +285,12 @@ def plan_phases(root: Path, milestone: int) -> dict[str, PlanPhase]:
     return found
 
 
-def phase_estimate(root: Path, milestone: int, version: str) -> float | None:
+def phase_estimate(root: Path, milestone: int, phase: str) -> float | None:
     """The estimate of a phase in its plan; None when the plan, the phase or the line is
     missing."""
-    phase = plan_phases(root, milestone).get(version)
-    return phase.estimate if phase else None
+    key = phase_key(phase)
+    found = plan_phases(root, milestone).get(key) if key else None
+    return found.estimate if found else None
 
 
 def load_standing(root: Path) -> dict[str, Standing]:
@@ -288,13 +316,13 @@ def load_standing(root: Path) -> dict[str, Standing]:
     return standing
 
 
-def fill(text: str, milestone: int, version: str) -> str:
-    """A standing prompt for a milestone: {M} its number, {MM} its two digits, {PREV} the
-    previous milestone's number, {VERSION} the phase the prompt commits."""
+def fill(text: str, milestone: int, phase: str, version: str) -> str:
+    """A standing prompt for a milestone: {M} its number, {PREV} the previous milestone's
+    number, {PHASE} the phase the prompt completes, {VERSION} the release version it sets."""
     for key, value in (
-        ("{MM}", f"{milestone:02d}"),
         ("{M}", str(milestone)),
         ("{PREV}", str(milestone - 1)),
+        ("{PHASE}", phase),
         ("{VERSION}", version),
     ):
         text = text.replace(key, value)

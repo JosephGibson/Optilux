@@ -9,15 +9,18 @@ Read-only, and always exit 0: the optilux-next skill injects its output, and an 
 that fails cancels the skill (docs/workflow.md#skills). Every problem becomes a printed line with
 its fix instead of an exit code.
 
-The next prompt follows the milestone cycle (docs/workflow.md#running-a-milestone):
+The next prompt follows the milestone cycle (docs/workflow.md#running-a-milestone), from the last
+phase done: docs/handoff.md's `Last phase:` line, or without one the newest `0.MM.PP.N: ` subject
+(M0 and M1 named their phases there; roadmap.md D33):
 - the milestone has no prompt set yet: the standing Plan prompt, which writes it;
 - the set starts at the phase after the next one: the Plan prompt again, since the plan phase
   is the one before the set's first phase and is still in progress (its set is written, not
   committed); a set starting any later leaves a gap, which is a problem;
 - the set has a prompt for the next phase: that prompt, sized by the phase's plan estimate;
-- every phase is committed and origin/main lacks the newest: the standing Release prompt;
-- every phase is committed and merged: the block that switches to the next milestone's branch,
-  then that milestone's Plan prompt.
+- every phase is done and origin/main carries another version than VERSION: the standing
+  Release prompt;
+- every phase is done and origin/main carries this VERSION (merged): the block that switches to
+  the next milestone's branch, then that milestone's Plan prompt.
 """
 
 import argparse
@@ -27,15 +30,15 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-from optilux import REPO_ROOT, docs_check, prompts, repo
+from optilux import REPO_ROOT, prompts, repo
 from optilux.verbs import Verb
 
-# The docs whose Status lines say where the milestone stands (docs/workflow.md#running-a-milestone).
-STATUS_DOCS = ("AGENTS.md", "docs/roadmap.md")
 # The hooks path the git hooks need (docs/workflow.md#hooks-and-guards).
 HOOKS_PATH = ".githooks"
-# The latest stop, whose open questions the briefing lists (docs/workflow.md#running-a-milestone).
+# The latest stop: its `Last phase: <phase>` line is where the milestone stands, and the briefing
+# lists its open questions (docs/workflow.md#running-a-milestone).
 HANDOFF = "docs/handoff.md"
+LAST_PHASE = re.compile(r"^Last phase: (\S+)")
 # The kinds of next prompt the briefing names (user, 2026-10-06), each with what it does.
 PLANNING, IMPLEMENTATION, RELEASE = "planning", "implementation", "release"
 KINDS = {
@@ -66,8 +69,6 @@ PLANNING_MODEL = (
 # step's number, and for a stop its words up to the clause's end.
 CRITIQUE_STEP = re.compile(r"^(\d+)\. .*?/critique")
 STOP_STEP = re.compile(r"^(\d+)\. .*?((?:\b[Ii]f [^,;.]*, )?\bSTOP\b[^.;]*)")
-# A Status line's claim of the next phase.
-STATUS_NEXT = re.compile(r"\bnext (0\.\d{2}\.\d{2})\b")
 # Briefing layout: the label column (the longest label, PROGRESS or COMPLEXITY, plus two), the
 # rule and progress bar, the most bullets shown per row, and the cut width of a bullet. They keep
 # every row under 100 columns, so a terminal or a chat block shows it without wrapping.
@@ -93,17 +94,17 @@ class Next:
     attended: str | None = None
 
 
-def status_line(path: Path) -> str | None:
-    """A doc's Status line outside fenced code, None when it has none or does not exist."""
-    if not path.is_file():
-        return None
-    text = path.read_bytes().decode("utf-8", errors="replace").replace("\r\n", "\n")
-    lines = docs_check.unfenced(docs_check.split_lines(text))
-    return next((line for _, line in lines if line.startswith(docs_check.STATUS)), None)
+def local_version(root: Path) -> str | None:
+    """The working tree's VERSION, as the plan step sets it before its commit; on a tree from
+    before VERSION existed, the newest `0.MM.PP.N: ` subject prefix."""
+    path = root / repo.VERSION_FILE
+    if path.is_file():
+        return path.read_text(encoding="utf-8").strip() or None
+    return repo.newest_version(root)
 
 
 def remote_version(root: Path, branch: str, problems: list[str]) -> tuple[str | None, str | None]:
-    """(sha, version prefix) of a branch on origin; the version needs the commit fetched."""
+    """(sha, version) of a branch on origin; the version needs the commit fetched."""
     try:
         sha = repo.remote_sha(root, branch)
     except repo.GitError as error:
@@ -117,13 +118,34 @@ def remote_version(root: Path, branch: str, problems: list[str]) -> tuple[str | 
         return None, None
     if sha is None:
         return None, None
-    version = repo.newest_version(root, sha) if repo.subject(root, sha) else None
-    if version is None:
+    if repo.subject(root, sha) is None:
         problems.append(f"origin/{branch} ({sha[:7]}) is not fetched; fix: `git fetch origin`")
-    return sha, version
+        return sha, None
+    return sha, repo.released_at(root, sha)
 
 
-def standing(root: Path, name: str, milestone: int, phase: str | None, problems: list[str]) -> Next:
+def last_phase(root: Path, problems: list[str]) -> tuple[str | None, str | None]:
+    """(the last phase done, where it was read): the handoff's `Last phase:` line, else the
+    newest `0.MM.PP.N: ` subject's phase (M0 and M1); (None, None) when neither has one."""
+    for line in prompts.unfenced_lines(root / HANDOFF):
+        if found := LAST_PHASE.match(line):
+            if prompts.phase_key(found.group(1)) is None:
+                fix = "write `Last phase: M<N>.P<PP>`, the phase the stop completed"
+                problems.append(f"{HANDOFF}: `{line}` names no phase; fix: {fix}")
+                return None, None
+            return found.group(1), HANDOFF
+    version = repo.newest_version(root)
+    return (repo.phase_of(version), "git log") if version else (None, None)
+
+
+def standing(
+    root: Path,
+    name: str,
+    milestone: int,
+    phase: str | None,
+    version: str | None,
+    problems: list[str],
+) -> Next:
     """The standing Plan or Release prompt, filled in for the milestone."""
     try:
         prompt = prompts.load_standing(root)[name]
@@ -137,7 +159,7 @@ def standing(root: Path, name: str, milestone: int, phase: str | None, problems:
         source=prompts.STANDING,
         estimate=prompt.estimate,
         estimate_source=prompts.STANDING,
-        prompt=prompts.fill(prompt.text, milestone, phase or ""),
+        prompt=prompts.fill(prompt.text, milestone, phase or "", version or ""),
     )
 
 
@@ -158,12 +180,19 @@ def switch_lines(root: Path, milestone: int) -> list[str]:
 
 
 def next_step(
-    root: Path, milestone: int, local: str | None, main: str | None, problems: list[str]
+    root: Path,
+    milestone: int,
+    last: str | None,
+    local: str | None,
+    main: str | None,
+    problems: list[str],
 ) -> Next:
-    """The next prompt in the milestone cycle (module docstring)."""
-    phase = prompts.next_phase(local, milestone)
+    """The next prompt in the milestone cycle (module docstring). A Plan prompt sets VERSION to
+    the minor after origin/main's (docs/workflow.md#release)."""
+    phase = prompts.next_phase(last, milestone)
+    target = repo.next_minor(main)
     if not prompts.prompt_file(root, milestone).is_file():
-        return standing(root, prompts.PLAN, milestone, phase, problems)
+        return standing(root, prompts.PLAN, milestone, phase, target, problems)
     try:
         prompt_set = prompts.load(root, milestone)
     except prompts.PromptError as error:
@@ -172,13 +201,13 @@ def next_step(
     prompt = prompt_set.phase(phase)
     if prompt is not None:
         plan = prompts.plan_name(milestone)
-        info = prompts.plan_phases(root, milestone).get(phase)
+        info = prompts.plan_phases(root, milestone).get(prompt.key)
         if info is None:
-            fix = f"add `- Estimate: <h> h.` to `### {phase}` in {plan}"
-            problems.append(f"no estimate for {phase} in {plan}; fix: {fix}")
+            fix = f"add `- Estimate: <h> h.` to `### {prompt.phase}` in {plan}"
+            problems.append(f"no estimate for {prompt.phase} in {plan}; fix: {fix}")
         return Next(
             IMPLEMENTATION,
-            phase,
+            prompt.phase,
             prompt.title,
             prompt_set.file,
             info.estimate if info else None,
@@ -187,17 +216,19 @@ def next_step(
             machine=info.machine if info else None,
             attended=info.attended if info else None,
         )
-    first, last = prompt_set.phases[0].version, prompt_set.phases[-1].version
-    if prompts.next_phase(phase, milestone) == first:
-        return standing(root, prompts.PLAN, milestone, phase, problems)
-    if phase <= last:
-        fix = f"add `## {phase} <title>` to {prompt_set.file} (its phases end at {last})"
+    first, last_set = prompt_set.phases[0], prompt_set.phases[-1]
+    key = prompts.phase_key(phase) or (milestone, 0)
+    if prompts.phase_key(prompts.next_phase(phase, milestone)) == first.key:
+        return standing(root, prompts.PLAN, milestone, phase, target, problems)
+    if key <= last_set.key:
+        fix = f"add `## {phase} <title>` to {prompt_set.file} (its phases end at {last_set.phase})"
         problems.append(f"no stored prompt for {phase}; fix: {fix}")
         return Next(phase=phase)
     if main is None or main != local:
-        return standing(root, prompts.RELEASE, milestone, None, problems)
+        return standing(root, prompts.RELEASE, milestone, None, local, problems)
     following = milestone + 1
-    step = standing(root, prompts.PLAN, following, prompts.next_phase(None, following), problems)
+    first_phase = prompts.next_phase(None, following)
+    step = standing(root, prompts.PLAN, following, first_phase, target, problems)
     step.switch = switch_lines(root, milestone)
     return step
 
@@ -223,40 +254,42 @@ def prompt_steps(prompt: str | None) -> tuple[int | None, list[str]]:
     return critique, stops
 
 
-def outlook(root: Path, milestone: int, local: str | None, phase: str | None) -> dict:
-    """Progress through the milestone's prompt set (phases and agent hours done against all)
-    and the two phases after `phase`. A set that does not load shows no progress: next_step
-    reports its fault. Hours are None when any phase lacks an estimate, never summed around."""
+def outlook(root: Path, milestone: int, last: str | None, phase: str | None) -> dict:
+    """Progress through the milestone's prompt set (phases and agent hours done against all, the
+    last phase done counting with every phase before it) and the two phases after `phase`. A set
+    that does not load shows no progress: next_step reports its fault. Hours are None when any
+    phase lacks an estimate, never summed around."""
     try:
         prompt_set = prompts.load(root, milestone)
     except prompts.PromptError:
         return {"progress": None, "upcoming": [], "last_title": None}
     plan = prompts.plan_phases(root, milestone)
-    versions = [p.version for p in prompt_set.phases]
-    hours = {v: plan[v].estimate for v in versions if v in plan}
-    known = len(hours) == len(versions)
-    current = repo.phase_of(local) if local else None
-    done = [v for v in versions if current is not None and v <= current]
+    phases = prompt_set.phases
+    hours = {p.key: plan[p.key].estimate for p in phases if p.key in plan}
+    known = len(hours) == len(phases)
+    current = prompts.phase_key(last)
+    done = [p.key for p in phases if current is not None and p.key <= current]
     progress = {
-        "first": versions[0],
-        "last": versions[-1],
+        "first": phases[0].phase,
+        "last": phases[-1].phase,
         "done": len(done),
-        "total": len(versions),
-        "hours_done": sum(hours[v] for v in done) if known else None,
+        "total": len(phases),
+        "hours_done": sum(hours[key] for key in done) if known else None,
         "hours_total": sum(hours.values()) if known else None,
     }
+    after = prompts.phase_key(phase)
     upcoming = [
         {
-            "version": p.version,
+            "phase": p.phase,
             "title": p.title,
-            "hours": hours.get(p.version),
-            "size": prompts.size(hours[p.version]) if p.version in hours else None,
+            "hours": hours.get(p.key),
+            "size": prompts.size(hours[p.key]) if p.key in hours else None,
         }
-        for p in prompt_set.phases
-        if phase is not None and p.version > phase
+        for p in phases
+        if after is not None and p.key > after
     ]
-    last = next((p.title for p in prompt_set.phases if p.version == current), None)
-    return {"progress": progress, "upcoming": upcoming[:2], "last_title": last}
+    title = next((p.title for p in phases if p.key == current), None)
+    return {"progress": progress, "upcoming": upcoming[:2], "last_title": title}
 
 
 def open_questions(root: Path) -> list[str]:
@@ -280,12 +313,13 @@ def collect(root: Path) -> dict:
         return facts
     branch = repo.current_branch(root)
     head = repo.head(root)
-    local = repo.newest_version(root)
+    local = local_version(root)
     facts.update(branch=branch, head=head, version_local=local)
     if branch is None:
         problems.append("HEAD is detached; fix: `git switch` to the milestone branch")
     if local is None:
-        problems.append("no commit with a `0.MM.PP.N: ` subject; fix: commit the first phase")
+        fix = "add it with the release version (docs/workflow.md#release)"
+        problems.append(f"no {repo.VERSION_FILE} in the tree; fix: {fix}")
     main_sha, main_version = remote_version(root, repo.MAIN, problems)
     facts.update(main_sha=main_sha, version_main=main_version)
     pushed = None
@@ -296,11 +330,17 @@ def collect(root: Path) -> dict:
         if not pushed:
             problems.append(f"HEAD is not on origin/{branch}; fix: `git push -u origin {branch}`")
     facts["pushed"] = pushed
+    last, last_source = last_phase(root, problems)
     milestone = repo.milestone_of(branch)
-    if milestone is None:
-        match = prompts.VERSION.fullmatch(local or "")
-        milestone = int(match.group(1)) if match else 0
-    step = next_step(root, milestone, local, main_version, problems)
+    if milestone is None:  # on main: the milestone of the last phase done
+        key = prompts.phase_key(last)
+        milestone = key[0] if key else 0
+    step = next_step(root, milestone, last, local, main_version, problems)
+    newer = repo.version_key(local) or (0, 0, 0)
+    if step.kind in (IMPLEMENTATION, RELEASE) and newer <= (repo.version_key(main_version) or ()):
+        fix = f"set it to {repo.next_minor(main_version)} (docs/workflow.md#release)"
+        detail = f"VERSION {local} is not newer than origin/main's {main_version}"
+        problems.append(f"{detail}; fix: {fix}")
     size = prompts.size(step.estimate) if step.estimate is not None else None
     model = model_for(step.kind, size)
     critique, stops = prompt_steps(step.prompt)
@@ -322,28 +362,12 @@ def collect(root: Path) -> dict:
         next_attended=step.attended,
         prompt=step.prompt,
         switch=step.switch,
-        last_commit=repo.newest_subject(root),
-        last_commits=repo.newest_version_run(root),
+        last_phase=last,
+        last_phase_source=last_source,
+        last_commit=repo.subject(root, head) if head else None,
         open_questions=open_questions(root),
-        **outlook(root, milestone, local, step.phase),
+        **outlook(root, milestone, last, step.phase),
     )
-    facts["status_lines"] = {doc: status_line(root / doc) for doc in STATUS_DOCS}
-    for doc, line in facts["status_lines"].items():
-        if line is None:
-            problems.append(f"{doc} has no Status line; fix: add one under its title")
-    claims = {
-        doc: found.group(1)
-        for doc, line in facts["status_lines"].items()
-        if line and (found := STATUS_NEXT.search(line))
-    }
-    facts["status_next"] = claims
-    facts["status_agree"] = bool(claims) and all(c == step.phase for c in claims.values())
-    for doc, claimed in claims.items():
-        if step.phase and step.kind != RELEASE and claimed != step.phase:
-            problems.append(
-                f"{doc} Status says next {claimed}, the repo says {step.phase}; "
-                "fix: update its Status line"
-            )
     try:
         changes = repo.changes(root)
     except repo.GitError as error:
@@ -359,10 +383,11 @@ def collect(root: Path) -> dict:
     return facts
 
 
-def cut(text: str, width: int = CUT) -> str:
+def cut(text: str, width: int = CUT, asides: bool = True) -> str:
     """The text cut to the width. A text that is too long first drops its parentheticals, which
-    carry cites and asides, not the point; one still too long ends in an ellipsis at a word."""
-    while len(text) > width and (shorter := re.sub(r"\s*\([^()]*\)", "", text)) != text:
+    carry cites and asides, not the point (unless `asides` is False: a commit subject's scope is
+    part of it); one still too long ends in an ellipsis at a word."""
+    while asides and len(text) > width and (shorter := re.sub(r"\s*\([^()]*\)", "", text)) != text:
         text = shorter
     if len(text) <= width:
         return text
@@ -409,23 +434,19 @@ def decision_rows(facts: dict) -> list[str]:
 
 
 def last_text(facts: dict) -> str:
-    """The newest version's commit. A phase with side commits (tooling, a prompt fix) or patches
-    shows its count and the newest message, so the newest commit is not read as the phase itself."""
-    subjects = facts["last_commits"]
-    if not subjects:
-        return "no commit with a version yet"
-    if len(subjects) == 1:
-        return subjects[0]
-    newest = subjects[0]
-    message = newest.split(": ", 1)[1] if ": " in newest else newest
-    phase = repo.phase_of(facts["version_local"])
-    name = " ".join(filter(None, (phase, facts["last_title"])))
-    return f'{name}: {len(subjects)} commits, newest "{cut(message, 44)}"'
+    """The last phase done, where it was read, and the newest commit: a phase may take several
+    commits, and commits after it are the next phase's work in progress."""
+    head = "no phase done yet"
+    if facts["last_phase"] is not None:
+        name = " ".join(filter(None, (facts["last_phase"], facts["last_title"])))
+        head = f"{name} done ({facts['last_phase_source']})"
+    room = max(CUT - len(head) - len('; newest ""'), 24)
+    return f'{head}; newest "{cut(facts["last_commit"] or "none", room, asides=False)}"'
 
 
 def state_rows(facts: dict) -> list[str]:
-    """The briefing's rows on the milestone: progress, the last commit, what follows the next
-    prompt and the handoff's open questions."""
+    """The briefing's rows on the milestone: progress, the last phase done, what follows the
+    next prompt and the handoff's open questions."""
     progress = facts["progress"]
     bar = "no plan or prompt set yet"
     if progress:
@@ -443,7 +464,7 @@ def state_rows(facts: dict) -> list[str]:
         cost = "no estimate"
         if phase["hours"] is not None:
             cost = f"{phase['size']}, {phase['hours']:g} h"
-        then.append(f"{phase['version']} {cut(phase['title'], 48)} ({cost})")
+        then.append(f"{phase['phase']} {cut(phase['title'], 48)} ({cost})")
     if then:
         out += rows("THEN", then)
     # Each question as its first clause: the handoff words them in full, one per bullet.
@@ -456,13 +477,11 @@ def state_rows(facts: dict) -> list[str]:
 
 
 def check_rows(facts: dict) -> list[str]:
-    """The briefing's last rows: the tree, the hooks and Status lines, then every problem."""
+    """The briefing's last rows: the tree and the hooks, then every problem."""
     changes = facts["changes"]
     shown = "; ".join(change.strip() for change in changes[:SHOWN])
     tree = "clean" if not changes else cut(f"{len(changes)} changes: {shown}")
     checks = ["hooks set" if facts["hooks_set"] else "hooks not set"]
-    if facts["status_agree"]:
-        checks.append(f"status lines agree (next {facts['next_phase']})")
     out = rows("TREE", [tree]) + rows("CHECKS", [" | ".join(checks)])
     for problem in facts["problems"]:  # a label on each: a problem is read alone
         out += rows("PROBLEM", [problem])

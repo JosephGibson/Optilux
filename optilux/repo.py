@@ -124,41 +124,16 @@ def version_of(subject: str) -> str | None:
 
 
 def phase_of(version: str) -> str:
-    """The phase of a version, its patch number dropped (`0.01.12.1` -> `0.01.12`)."""
+    """The phase of a legacy version, its patch number dropped (`0.01.12.1` -> `0.01.12`)."""
     return ".".join(version.split(".")[:3])
 
 
-def newest_subject(root: Path, ref: str = "HEAD") -> str | None:
-    """The subject of the newest commit on ref that carries a version prefix."""
-    log = read(root, "log", "--format=%s", ref)
-    if log is None:
-        return None
-    return next((line for line in log.splitlines() if version_of(line)), None)
-
-
-def newest_version_run(root: Path, ref: str = "HEAD") -> list[str]:
-    """The subjects, newest first, of the commits on ref whose version is of the newest version's
-    phase: a phase with side commits (tooling, a prompt fix) or patches has several. Commits
-    without a version are skipped; the run ends at the first commit of another phase."""
-    log = read(root, "log", "--format=%s", ref)
-    run: list[str] = []
-    phase = None
-    for line in (log or "").splitlines():
-        version = version_of(line)
-        if version is None:
-            continue
-        if phase is None:
-            phase = phase_of(version)
-        elif phase_of(version) != phase:
-            break
-        run.append(line)
-    return run
-
-
 def newest_version(root: Path, ref: str = "HEAD") -> str | None:
-    """The version prefix of the newest commit on ref whose subject carries one."""
-    subject = newest_subject(root, ref)
-    return version_of(subject) if subject else None
+    """The legacy version prefix of the newest commit on ref whose subject carries one: M0's and
+    M1's last phase done, and the version of a ref from before VERSION existed."""
+    log = read(root, "log", "--format=%s", ref)
+    found = (version_of(line) for line in (log or "").splitlines())
+    return next((version for version in found if version), None)
 
 
 def changes(root: Path) -> list[str]:
