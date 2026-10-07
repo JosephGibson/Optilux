@@ -1,6 +1,6 @@
 # Optilux
 Shader + runtime benchmark suite for Minecraft, driven by Claude Code. Solo and boutique: one machine (Win11, RX 7800 XT, 5800X3D, 3840x2160), one platform at a time (mc-26.3).
-Status: M1 in progress: 0.01.10 (dev session 1, optilux-plan) is the last phase done, next 0.01.11, the bench world's views (docs/plans/m1.md). Latest stop: docs/handoff.md.
+Status: M1 in progress: 0.01.11 (the bench world's views) is the last phase done, next 0.01.12, review and cleanup (docs/plans/m1.md). Latest stop: docs/handoff.md.
 
 ## Rules
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.

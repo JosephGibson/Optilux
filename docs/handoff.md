@@ -1,38 +1,72 @@
 # Handoff
-Status: M1 in progress: 0.01.10 (dev session 1 and optilux-plan) is done; the user's look review passed and optilux-plan is built. The next prompt is 0.01.11, the bench world and its views, which /optilux-next prints.
+Status: M1 in progress: 0.01.11 (the bench world's seed and its ten views, found with the user) is done; the next prompt is 0.01.12, review and cleanup, which /optilux-next prints.
 
 ## Contents
-0.01.10 dev session 1 · V2 · optilux-plan and the skill evals · Close-out · F4's table · Choices · Earlier · Open questions · Time · Next
+0.01.11 the bench world · Seeds · Snapshot · The ten views · End city candidate · Checks · Choices · F4's table · Earlier · Open questions · Time · Next
 
-## 0.01.10 dev session 1
-- `install --tier dev`: 5,242 hashes checked, 0 files downloaded, viewfinder-26.3-2.1.4+26.3.jar sha512-equal.
-- Two announced dev-tier launches of world spike against the prompt's one. Launch 1 (01:51, pid 20036) joined in 14.0 s with the mod connected (hello with the launched pid, the DACL one allow ACE, a second instance refused with error 231); the user closed its window at 01:52:14 and asked for a relaunch: "Saving worlds", exit 4294967288 (-8), crash report crash-2026-10-07_01.52.30-client.txt, F7's clean dev quit.
-- Launch 2 (01:52:40, pid 16532) joined in 12.9 s; "Viewfinder MCP server started at http://127.0.0.1:7150/mcp" at 01:52:47; the mod's quit at 02:11:10: "Stopping!", "Saving worlds", exit 4294967288 (-8) after 17.3 s, crash report crash-2026-10-07_02.11.27-client.txt ("Watchdog (Client shutdown from post-main)", Viewfinder's "HTTP-Dispatcher" alive): F7's clean dev quit. Request log 450 lines, the token absent; options.txt's 23 keys, iris.properties and the Sodium flags read back as written. Raw: results/raw/dev-session-1/ (launch 1's files under launch-1/).
-- `input.block on` while the user switched windows locked the game for them; released at their word, on again only for the V2 scene and captures.
-- Viewfinder: `/mcp reconnect viewfinder` answered "Reconnect, enable, and disable aren't available in this session" (the VS Code extension); a raw initialize to the server answered 200 with 23 tools, and `claude mcp get viewfinder` read "Pending approval". The user then reconnected it ("Reconnected") and the 23 mcp__viewfinder__ tools appeared. The one call, get_diagnostics through Claude Code's MCP client: request fd244f6a..., 32 ms, "Viewfinder operation completed"; pack ComplementaryUnbound_r5.9.3.zip, IrisRenderingPipeline, debugEnabled true, errors [], 29 observed passes, 10 programs, fps 30, 3840x2160 fullscreen, GL "3.3.0 Core Profile Context 26.9.2.260915"; saved as viewfinder-get_diagnostics.json. S7's client check is done; the mod drove the scene, Viewfinder only read.
-- Look review (user, 2026-10-07) of L1 (runtime/spike/launch-1/screenshot.png), V1 (v1-A1, v1-A2, v1-B, v1-C), V6 (v6-water.png) and the V2 pairs below: "Everything looks good". No retake.
+## 0.01.11 the bench world
+- Start gate: branch m1, pushed; tests 360 passed, `mod test` 80 passed, verify docs 0 violations, ruff clean; the tree held the uncommitted QA split (D27, D28: plans/m1.md, prompts/m1.md, roadmap.md, handoff.md, test_status.py), folded into this phase's commit at the user's word (2026-10-07), as 0.01.09's amendment was.
+- Two announced bench-tier launches through a scratchpad driver (launch.launch and launch.open_mod, requests from a file queue, run in the background; no SendInput, input.block never on):
+  - Launch 1 (10:47:06, pid 5032), world spike: joined in 14.2 s; the user created the three candidate worlds from the title screen; the mod's quit at 11:08:03, exit 0 in 1.7 s; request log 1,903 lines, the token absent; options.txt (23 keys), iris.properties and the Sodium flags read back unmoved. Raw: results/raw/views-seeds/.
+  - Launch 2 (11:09:16, pid 16236), world bench_263: joined in 13.6 s, `Seed: [263]`; `/tick freeze`, spectator; the flights; the player put back at spawn (-5.5, 75, 8.5), spectator, time 6000, clear; the mod's quit at 11:58:4x, exit 0 in 2.7 s; request log 13,881 lines, the token absent; the read-back unmoved. Raw: results/raw/views-flights/ (frames, previews, views.jsonl, PresentMon probes).
+- config/views/bench_263.json (sha256 e074f336f4499d8319c45511da33eed8ed9ef6bf88e3ecabb081c7877810c143) loads through record.load_views; suite.json world.seed 263 and its source; test_record.py checks the file holds suite.json's roles in order with each role's dimension, time and weather, and the seed.
 
-## V2
-- Through the mod's `command`, ticks frozen: /time set 6000, /weather clear; a cow summoned at (-550.5, 64.0, -379.5) (the surface found with a server-only marker and /spreadplayers), an area_effect_cloud with custom_particle flame at (-552.5, 66, -381.5); /setblock two glass, two ice and a campfire; camera.place (-555.5, 66.9, -376.5, yaw -116.6, pitch 15.0); `ready` before each capture.
-- Captures (4K, manifests verified): v2-setblock/attempt-001 and -002 (before, after); v2-frozen/attempt-001 (two frames 3 s apart, frames 56085 and 56175); v2-stepped/attempt-001 (after `/tick step 20`, two frames 3 s apart); 1280 px copies and diff masks in review/; preview/ holds five framing frames.
-- Mean |d| in a box around the cow: frozen pair 0.348, across the step 2.414 (60.6 % of the box changed), the stepped pair 0.318; the frozen pair's campfire box 0.456 and flames box 0.617. Whole frames: 47.6 % of pixels changed within the frozen pair (Unbound's TAA and wall-clock animation; the spike's 44.5 %).
-- Findings: under /tick freeze particles neither spawn nor age (each stepped tick adds some, which then hold) and campfire smoke appears only after a step; a mob moved by /spreadplayers or /tp while frozen keeps its client position, because the client's interpolation advances only with ticks (the cow was invisible until summoned in place); a mob summoned in place renders at once. Recorded in platform.md#mc-263-verified V2.
-- Cleanup: both cows sent to y -200 (they died below the world when ticks resumed, no item left), the cloud killed, the five blocks set to air, /tick unfreeze; `execute if entity @e[tag=v2]` failed. The time stays 6000 and the weather clear.
+## Seeds
+Candidates proposed unscreened: no seed map covers 26.3, which adds dappled_forest, sulfur_caves and the abandoned camps (the client jar's worldgen lists), so `/locate` in game was the screen. Worlds created by the user: Default, Peaceful, structures on, no bonus chest, commands on. `/locate` through the mod's `command` from the join point (the Nether from the spawn / 8): results/raw/views-seeds/locate-<seed>.json.
 
-## optilux-plan and the skill evals
-- .claude/skills/optilux-plan/SKILL.md (D8): 28 lines, description 833 characters (third person, triggers /plan, /optilux-plan, plan the milestone, the standing Plan prompt), medium freedom; read first; steps: section 3 first with every premise verified that day or `open:`, sections 1-2, the phases with their Estimate lines, sections 4 and 6-10, verify docs and the 40,960-byte cap (or a proposed split), the /critique offer, the approval stop, then the prompt set and the status check; never. Files are m<N>.md without zero padding.
-- The standing Plan prompt's step 1 now opens "With /optilux-plan"; workflow.md (Skills, Running a milestone) says so, and holds the three eval scenarios of each skill.
-- Evals, 16 fresh `claude -p` sessions in auto mode with pushes, PRs, commits, releases and edits denied (streams in results/raw/skill-evals/, about $5.85):
-  - optilux-next (Sonnet 5): byte-for-byte against `optilux status`. Two of six runs cut the briefing at its first dashed rule (11 of 24 lines; one also dropped the prompt's first line); the skill now names the briefing's last rows (TREE, CHECKS, PROBLEM); after it 4 of 4 exact (three `/optilux-next`, one natural question). The first two `/optilux-next` runs were void: Git Bash turned the argument into C:/Program Files/Git/optilux-next.
-  - optilux-release (Sonnet 5 xHigh): real state with no PR: steps 0-3 run (verify docs, 360 tests), stopped at `pack release --check`'s "the tree is not clean" with its fix; dry from OPEN: steps 6-7, no merge; dry from MERGED: steps 8-10, the switch block printed, never run (its prose called the branch m01). 3 of 3.
-  - optilux-plan (Fable 5.1 xHigh), the plan's fresh-session test: the ten headings in order, section 3 first, the cap and split, critique, approval, prompt set; the first run wrote m02.md and `# M02`, the rerun after the m<N> fix docs/plans/m2.md and `# M2 perf loop`. The baseline with skills disabled found the skill file by Glob and read it (11 turns, $1.66, 64 s against 3 turns, $1.29, 31 s), so it is not a clean measure.
+| Role | 263 | 7800 | 20261005 |
+|---|---|---|---|
+| forest_noon, rain | forest 258 | forest 250 | forest 417 |
+| ocean_sunset, night | beach 250, cold ocean 226 | beach 0, cold ocean 45 | beach 615, frozen ocean 550 |
+| underwater | cold ocean 226; lukewarm 2,815 | cold ocean 45; lukewarm 921 | frozen ocean 550; lukewarm 1,601 |
+| cave | deep_dark 0, mineshaft 123 | sulfur_caves 91, mineshaft 189 | mineshaft 21, deep_dark 45 |
+| entities | plains 0 | plains 45 | plains 724 |
+| nether_crimson | 163 | 264 | 258 |
+| nether_soul | 115 | 250 | 0 |
 
-## Close-out
-A second 0.01.10 commit, after the user's "Close out any remaining items with your judgement":
-- ProtocolTest's race: aDisconnectCancelsWorkAndAReconnectIsResumed failed twice while the user's Prism Launcher game used about 11 cores. A request answered before its worker starts never runs its handler (Protocol.execute, as designed), so the test's wait for the handler's end timed out when the disconnect came first; the cancel and timeout tests shared the window (50 ms in the latter). The test now waits for a waitStarted latch before cancelling, and the timeout test uses 1 s; the mod is unchanged. `mod test`: 80 of 80 three times idle and twice with all 16 threads busy (a scratchpad load script, 150 s).
-- platform.md: S7, the L1 screenshot, V1, V2 and V6 read pass with 0.01.10's outcomes; two cuts of duplicated text paid for it (the dev row's Viewfinder details, now offline.md#tools; the dev-quit sentence, now the L2 quit row); margin 8 -> 54 bytes. roadmap.md F6 cites platform.md for V2's findings.
-- The time line now separates the first commit (0.8 h; the first handoff put its end at 02:50) from the close-out.
-- Not closable now: optilux-plan's two real-run scenarios (M2's plan) and optilux-release's first real run (M1's PR).
+The user picked 263 (the recommendation): the most compact nearest sites. Warm ocean lies 3.7-4.2 km out in all three. bench_7800 and bench_20261005 stay under runtime/mc-26.3/game/saves/ (deletable in game).
+
+## Snapshot
+- First copy (11:08, after launch 1): snapshots/bench_263/ da7ee4207564a4334616d40080af2c1dec78458d36b13218b4e652df0a8355f8, 42 files, equal to the live world.
+- Retaken after the flights (11:58:50): **fc515d355c076ad023cc3619745da0f43e7011e19b2b06bff820339fa3c52f67**, 104 files, 148,253,469 bytes, equal to the live world. It holds the entities role's seven mobs.
+
+## The ten views
+Each pose flown by the user in spectator (creative for entities), read with camera.get, rounded to 0.1 (yaw wrapped to -180..180), the role's weather (120 ticks stepped when it changed) and time set, camera.place at the rounded pose, `ready` (10 frames, settle 1 s, underwater 2 s), one 4K frame. Every frame kept by the user (cave, nether_crimson and underwater confirmed after the flights). GPUBusy: one 5 s PresentMon window each, median, informal (not M2's check); "capped": the inactivity cap below held, so it reads high.
+
+| View | Pose (x, y, z, yaw, pitch) | Frame | GPUBusy ms |
+|---|---|---|---|
+| forest_noon | 22.6, 102.8, 533.0, -136.0, 37.2 (attempt 2) | 2db48ebc | 11.54 (10.42 at pitch 15) |
+| ocean_sunset | -218.4, 81.0, 779.9, 77.4, 34.1 (attempt 3) | e381ed75 | 10.73 |
+| cave | 28.3, -52.5, 426.9, 14.4, -13.8 | 5209aba3 | 9.18 |
+| rain | -20.5, 76.8, 491.2, -89.5, 30.3 (attempt 2) | 4b26c24c | 9.93 (11.76 at forest_noon's pose) |
+| nether_crimson | 230.2, 86.6, 15.7, 175.7, 27.0 | 25b4faf2 | 6.77 |
+| end_dragon | 56.9, 101.6, -19.9, 66.0, 38.7 | fdc8306a | 16.76 capped |
+| night | -301.9, 72.5, 637.6, -11.1, -9.4 | ea1aa10b | 7.81 |
+| underwater | -333.1, 54.5, 908.5, -145.6, 34.9 | 7df29a9d | 11.11 |
+| nether_soul | -9.0, 91.4, -321.3, -54.0, 27.3 | dcff6592 | 7.15 |
+| entities | -366.8, 80.0, 244.4, -5.8, 19.0 | 80b13c92 | 12.52 capped |
+
+- ocean_sunset: attempt 1 faced a small enclosed sea (land on the horizon); a biome map (`execute if biome ... #minecraft:is_ocean`, 96-block cells within 2.4 km) found one open ocean, x -680..-200, z 490..1060, and its east shore.
+- cave: a lava lake found by testing air at y -46 and -52 over lava at -56 on a 16-block grid near the views.
+- entities: seven mobs summoned in place under the freeze (chicken, sheep, cow, pig, villager, horse, llama) 7-13 m ahead, facing the camera: NoAI, PersistenceRequired, Silent, tag optilux_bench; creative, a torch in the main hand.
+- end_dragon: ten end crystals on the pillars, no dragon (ticks frozen before the End first loaded; M2's frozen sessions see the same). The role's beams are Complementary's End beams (playbook.md), not crystal beams.
+- Pre-generation extents for M2: overworld x -367..28, z 244..909; Nether x -9..230, z -321..16; the End around the main island; each plus 256 blocks.
+
+## End city candidate
+The user asked for an End city view; the user's decision (2026-10-07): scout now, M2's plan decides on an 11th role before any calibration. Nearest city (368, ~, 992), 1,058 blocks from the main island. Kept pose: the End, (317.1, 75.1, 1054.8), yaw -120.3, pitch -9.0, time 6000; frame a2727557 (results/raw/views-flights/end_city/attempt-001/); GPUBusy 9.42 ms. Shulkers survive Peaceful: two closed ones at 56 and 62 m are in view; the ship's elytra item frame at 65 m is past its render limit.
+
+## Checks
+- The entity counts the capture script printed for the first six views were void: the game answers "Test passed. Count: N" and the pattern sought "count: " (lowercase). Fixed for the last four, and every kept view rechecked: each non-player entity within 128 blocks of the eye listed (`execute as @e[...] run data get entity @s Pos`, the camera at the view so its chunks load) and projected into the camera (vertical FOV 90 at 16:9). In-frustum hits beyond their render limit (64 blocks times the bounding box's mean size: chicken about 32, cow and sheep about 67, item 16, strider 75): forest_noon chickens 74-79 m and cows 110-117 m (crops of the frame at their pixels show canopy only), rain chickens 125-127 m, night sheep 111-117 m, cave items 117 m, nether_crimson striders 95-127 m, nether_soul striders 111 m; ocean_sunset and underwater none. entities: the seven tagged at 7-13 m, and untagged horses at 57-62 m (rendered: small shapes mid-frame), a villager at 65.5 m and cows near 70 m. All untagged; M2's world prep kills them.
+- Eye block: air for every view, water for underwater; no frame near-black (darkest: cave 7.5 % of pixels under 8, its unlit roof).
+- The game's frame rate read 29.9 fps by frames.index at three poses (156 frames in 5.21 s each) while the user was away: options.txt keeps inactivityFpsLimit "afk", the game's default, which "Limits framerate to 30 when the game is not getting any player input for more than a minute. Further limits it to 10 after 9 more minutes" (en_us.json). Uncapped windows ran 85-148 fps; the capped ones read GPUBusy high (rain at forest_noon's pose 21.58 ms capped, 11.76 uncapped). Open question below.
+- PresentMode: every row of the session's 14 probes reads "Composed: Copy with GPU GDI".
+
+## Choices
+- Candidate seeds 20261005, 263 and 7800, unscreened (above); worlds Peaceful (no hostile mobs in any view; the entities role uses passive mobs), commands on, creative at creation, spectator for the flights.
+- World id bench_263: the views file, the snapshot and the save folder share it ([a-z0-9_], record.VIEW_ID).
+- One launch for all candidate worlds (created from the title screen), a second for the flights; `/locate` from the join point, the Nether from spawn / 8; the views file's `why`s written once (its bytes are identity).
+- Each role's time and weather set before its flight, so the user framed it lit as captured; the pose re-placed rounded before the frame, so the frame is the recorded pose.
+- The informal GPUBusy probes and the entity projection: scratchpad tools, nothing committed; the driver too (roadmap.md's QA row on it: nothing to review in 0.01.12).
 
 ## F4's table
 m1-acceptance-7's reloadTable (bench tier, 50 `shaders.reload`, heap after GC, private bytes): M2 sets capture.reloadCap from it.
@@ -48,28 +82,26 @@ m1-acceptance-7's reloadTable (bench tier, 50 `shaders.reload`, heap after GC, p
 
 - Per reload: heap 20.05 MiB, private 72.7 MiB (repeated in -5 and -6); the current reloadCap 288 would add about 20 GiB of private bytes.
 
-## Choices
-- The session ran from a scratchpad driver over launch.launch and launch.open_mod with a file queue, in the background, because it had to outlive the two stops; the foreground rule exists for SendInput items, and none ran.
-- World spike: V2 left no entity or block; the snapshot is retaken before the next `run` as before.
-- The step through `command` (`/tick step 20`), as the prompt says; `ticks.step 5` once to settle the moved cow before the summon in place.
-- optilux-next's one-sentence fix after its eval (the creation rule's step 4), inside this phase.
-
 ## Earlier
-- 0.01.09: A4, A7, A9, A10 passed and F4's table in m1-acceptance-7 (four launches, A9's span anchored on the swap stamps by the user's decision); the full section is in the 0.01.09 handoff (git history).
-- 0.01.08 run and acceptance (A1-A3, A10 in m1-acceptance-3); 0.01.07 renderer and Iris adapters (mod jar eb840262..., unchanged since); 0.01.06 game adapter; 0.01.05 transport; 0.01.04 mod project; 0.01.03 launch; 0.01.02 install; 0.01.01 Plan M1 (approved 2026-10-06, D17-D26).
+- 0.01.10: dev session 1, the look review passed, optilux-plan built and its evals; the full section is in the 0.01.10 handoff (git history).
+- 0.01.09: A4, A7, A9, A10 and F4's table in m1-acceptance-7; 0.01.08 run and acceptance (A1-A3, A10 in m1-acceptance-3); 0.01.07 renderer and Iris adapters (mod jar eb840262..., unchanged since); 0.01.06 game adapter; 0.01.05 transport; 0.01.04 mod project; 0.01.03 launch; 0.01.02 install; 0.01.01 Plan M1 (approved 2026-10-06, D17-D26).
 
 ## Open questions
-- 0.01.11 needs the mod held connected while the user flies (camera.get on demand) and worlds of candidate seeds; this session's driver (a background process taking requests from a file queue) is one shape, untested for SendInput.
-- PresentMode: every row of 0.01.09's runs reads "Composed: Copy with GPU GDI" against the spike's "Hardware: Independent Flip"; M2's validity rules decide whether composed copy is the measured mode.
+Each has its phase or milestone in roadmap.md#qa-pass-open-questions.
+- inactivityFpsLimit "afk" caps every session without player input at 30 fps after a minute, 10 after 10 (0.01.12: display.optionsTxt writes "minimized", an identity change before M2 calibrates).
+- World prep's kill spares only the dragon and optilux_bench: it would take end_dragon's ten end crystals and change the entities frame (M2).
+- The entities frame shows no hand: the capture point follows renderLevel, which skips the hand when the GUI is hidden (F1 or hud.set hideGui); whether F1 was on is unread (M2).
+- The End city candidate (M2's plan, user 2026-10-07).
+- PresentMode: "Composed: Copy with GPU GDI" in every row of 0.01.09's runs and this session's probes, against the spike's "Hardware: Independent Flip" (0.01.13; M2).
 - A2's F2 press still needs only `focused`; A7's foreground check belongs there too (0.01.12).
-- The live world differs from its snapshot after every launch; every run needs a retake first (M2's `world restore` removes the step).
-- Byte caps: AGENTS.md at its cap (0 bytes), platform.md 54, mod.md 36, plans/m1.md 169: the next sentence in any needs a cut first.
-- The A9 capture takes 46 s for 120 frames at 4K (the vanilla readback on the render thread).
+- The live world differs from its snapshot after every launch; every run needs a retake first (M2's `world restore`). bench_263 equals its snapshot now.
+- Byte caps: AGENTS.md 9 bytes of margin, platform.md 54, mod.md 36, plans/m1.md 31, prompts/m1.md 20: the next sentence in any needs a cut first (0.01.12).
+- The A9 capture takes 46 s for 120 frames at 4K (M2).
 - Carried: release.yml runs on ubuntu-latest while CI is windows-latest; VS Code's Java and Gradle extensions import mod/; Gradle's other downloads trusted by coordinate; `launch` does not look for a running Gradle; a JVM fatal-error log would list the token; whether `/function` reports success without `/return` on 26.3 is unread.
 
 ## Time
-- 0.01.10: 01:47 to 02:36 ADT to the first commit, 0.8 h (both stops and 16 eval sessions included); with the close-out to about 02:53, about 1.1 h against 1.5 h. M1 so far about 11.1 h of 25 estimated; tripwire: M0-M3 52.8 h, trip at 105.6 h, actuals about 14.4 h (M0 3.3, M1 11.1).
-- 0.01.09: 1.3 h against 2. 0.01.08: 1.0 h against 2.5. 0.01.07: 0.7 h. 0.01.06: 0.8 h. 0.01.05: 1.1 h. 0.01.04: 0.7 h. 0.01.03: 1.6 h. 0.01.02: 0.8 h. 0.01.01: 1.6 h. 0.01.00: 0.5 h. M0: 3.3 h against 7.8.
+- 0.01.11: 04:36 ADT to the commit about 12:20, 7.7 h on the clock, of which about 5.9 h waited on the user's answer to the start gate's question (asked within the first 20 minutes; the next step at 10:46); about 1.8 h of work against 2 h, the two stops' flights included. M1 so far about 12.9 h of 28; tripwire: M0-M3 55.8 h, trip at 111.6 h, actuals about 16.2 h (M0 3.3, M1 12.9).
+- 0.01.10: 1.1 h against 1.5. 0.01.09: 1.3 h against 2. 0.01.08: 1.0 h against 2.5. 0.01.07: 0.7 h. 0.01.06: 0.8 h. 0.01.05: 1.1 h. 0.01.04: 0.7 h. 0.01.03: 1.6 h. 0.01.02: 0.8 h. 0.01.01: 1.6 h. 0.01.00: 0.5 h. M0: 3.3 h against 7.8.
 
 ## Next
-/optilux-next prints 0.01.11 The bench world and its views (implementation, L, 2 h; attended: the seed veto and the flights). Then 0.01.12 (QA). Plan around: summon entities in place under /tick freeze (the entities role); a driver that outlives the user's turns; retake the snapshot before any `run`.
+/optilux-next prints 0.01.12 Review and cleanup (offline, L, 3 h), then 0.01.13 debug, timing and the acceptance re-run on the final jar (L, 2 h). Plan around: the inactivity cap's fix lands in 0.01.12, before 0.01.13's timed session; the provisional snapshot retaken before any `run`; bench_263 is not used by M1's acceptance runs.

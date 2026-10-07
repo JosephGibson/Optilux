@@ -1,5 +1,5 @@
 # Roadmap
-Status: M0 closed (release v0.00.06); M1 in progress: 0.01.10 (dev session 1 and optilux-plan) is the last phase done, next 0.01.11, the bench world and its views. Latest stop: handoff.md.
+Status: M0 closed (release v0.00.06); M1 in progress: 0.01.11 (the bench world and its views) is the last phase done, next 0.01.12, review and cleanup. Latest stop: handoff.md.
 
 ## Contents
 Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates
@@ -22,8 +22,8 @@ Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 
 - Goal (design.md#6-milestones): `install`, `launch`, the `run` skeleton, `mod build` and `mod test`, and the helper mod's M1 commands (mod-protocol.md#commands), proven by acceptance A1-A4, A7, A9 and A10 on unmodified Complementary in a provisional world with three views.
 - Verbs (design.md#5-interfaces, From = M1): `install`, `launch`, `run`, `mod build`, `mod test`. Mod: optilux-helper under mod/ with the 17 M1 commands and commands.json. Skill: optilux-plan (Decisions D8). CI moves to windows-latest (Decisions D5).
 - Not in M1: PresentMon's session and window cut beyond A9's minimal start and stop, the world verbs, `calibrate`, `compare`, `report`, `verify records`, the reload cap, pre-generation around the final views and their GPU-bound check (M2); `camera.path`, `window.measure`, timers, `shaders.dump`, capture align and flush (M2-M5); the hello pack and `verify similarity` (M3); A5, A6, A8, A11, A12; the TCP fallback (design.md#8-open-decisions E1) unless the pipe fails acceptance.
-- Exit, all of: every verb above runs with its tests green; the 17 commands answer as mod-protocol.md specifies; acceptance records under results/records/ hold A1-A4, A7, A9, A10 passed and F4's bench-tier reload table; snapshots/provisional/ hashed and config/views/provisional.json committed; dev session 1 done; optilux-plan built; the bench world's seed and its ten views found with the user; the QA pass with the acceptance re-run on the final jar; CI green on every push and on the PR; the PR `0.01 Game control: <what it delivers>` rebase-merged by the user; the release for the newest phase with its optilux-<version>.zip; docs/handoff.md written.
-- Branch m1; 0.01.00 (workflow tooling) and 0.01.01 (this plan) precede the phases 0.01.02 to 0.01.12. Plan: plans/m1.md, premises verified 2026-10-06, decisions D17-D26 there, amended with 0.01.09 (its section 10). Prompts: prompts/m1.md.
+- Exit, all of: every verb above runs with its tests green; the 17 commands answer as mod-protocol.md specifies; acceptance records under results/records/ hold A1-A4, A7, A9, A10 passed and F4's bench-tier reload table; snapshots/provisional/ hashed and config/views/provisional.json committed; dev session 1 done; optilux-plan built; the bench world's seed and its ten views found with the user; the QA pass (review and cleanup, then debug, timing and the acceptance re-run on the final jar); CI green on every push and on the PR; the PR `0.01 Game control: <what it delivers>` rebase-merged by the user; the release for the newest phase with its optilux-<version>.zip; docs/handoff.md written.
+- Branch m1; 0.01.00 (workflow tooling) and 0.01.01 (this plan) precede the phases 0.01.02 to 0.01.13. Plan: plans/m1.md, premises verified 2026-10-06, decisions D17-D26 there, amended with 0.01.09 and for the QA pass (its section 10; D27 and D28 below). Prompts: prompts/m1.md.
 
 ## M1 phases
 Change, exit and agent-time estimate per phase; files, tests, decisions and commit messages are in plans/m1.md section 5.
@@ -78,10 +78,42 @@ Change, exit and agent-time estimate per phase; files, tests, decisions and comm
 - Exit: the ten views committed, each frame reviewed by the user; the seed set; the snapshot hashed.
 - Estimate: 2 h. Attended: the seed veto and the flights.
 
-### 0.01.12 QA pass
-- Change: a debug, QA and optimization pass before the release: the whole stack reviewed, the handoff's open questions closed or handed to M2, one session timed to scope any optimization to the loop's wall time, the acceptance spec re-run on the final jar; the Status lines and CHANGELOG entry closed; the handoff.
+### 0.01.12 Review and cleanup
+The QA pass is two phases (D27, D28): this offline half, then 0.01.13 with the game. Both run before the release because the harness and the jar become identity once M2 calibrates, and a fix after that costs a recalibration.
+- Tools first, so the review reads their output: ruff adds BLE (blind except), S, SIM, RUF and PERF; pyright in basic mode over optilux/ as a CI step; javac -Xlint:all -Werror on the mod; pytest-xdist runs the suite in parallel (360 tests took 56-58 s serially on 2026-10-07, the slowest git-subprocess setups of 1-2 s each); one serial coverage.py branch report. Every hit is fixed, or suppressed on its line with the reason.
+- Review: the reviewer agent once per dimension, in parallel: correctness (two calls, optilux/ and mod/); failure paths (every error surfaced, no swallowed exception, no missing measurement passed, a timeout on every wait); identity (every input that can move a measurement recorded: run-record.md#identity against record.py and launch.py); concurrency and the protocol (Protocol, PipeServer, Session, Tasks, modclient, winpipe: cancel, timeout, disconnect, reconnect); security (the token, the DACL, the redacted log, subprocess arguments, paths written); docs against code (mod-protocol.md and commands.json against the mod and the client, run-record.md against record.py, platform.md against platform.py and launch.py, design.md#5-interfaces against cli.py); test coverage, handed the coverage report; simplification (dead code, duplication, the run.py seam). Then /code-review high (Claude Code's built-in skill) on branch m1 against main; if it cannot run, a reviewer-agent correctness pass over that diff instead, noted in the handoff. Every finding is verified at its source before it is acted on; one that does not hold is listed with the reason.
+- Fix rule (D27): a defect's fix carries a test that fails without it. A cleanup goes in when it largely justifies itself: it fixes a verified defect, makes a doc and the code agree, removes code without changing behaviour, shortens the loop without dropping a check, or is the seam (verbs/run.py's acceptance items into their own module, the part M2's verbs extend). Style-only rewrites and speculative abstractions stay out; a finding against a closed decision is reported with evidence, never fixed.
+- Open questions: the rows of QA pass open questions (below) that land in 0.01.12.
+- Exit: every finding fixed, rejected with its reason or assigned by name; ruff, pyright and javac -Werror clean; workflow.md#testing's "Unit tests only for" list reconciled with the tests M1 wrote (docs against code), then the coverage report's untested branches on the failure and measurement paths tested within it; tests green in parallel and serially, the suite's wall time before and after in the handoff.
+- Estimate: 3 h; machine: none, or one announced launch for a fix only the game can show.
+
+### 0.01.13 Debug, timing and the acceptance re-run
+- Timing: one session of the full acceptance spec (A1-A4, A7, A9, A10 on the provisional world and views, world spike, as m1-acceptance-3 and -7 ran) timed step by step (the record's step seconds, the launch's own steps, the run's wall time). An optimization goes in only where it shortens the loop without dropping a check or moving identity unrecorded; the rest goes to M2 with its numbers.
+- Debug: latest.log, the mod's lines and the request log read for every warning, error and exception from Optilux code, each explained or fixed with a test; the rows of QA pass open questions that land in 0.01.13.
+- Close: `mod build` if the mod changed; the acceptance spec (A1-A4, A7, A9, A10) re-run on the final jar (the timed session's record serves when nothing changed after it); the Status lines and the CHANGELOG entry closed; the handoff.
 - Exit: no open question unassigned; an ok acceptance record on the final jar; the Release prompt is next.
-- Estimate: 2 h.
+- Estimate: 2 h; machine: 2-6 launches.
+
+### QA pass open questions
+handoff.md's open questions on 2026-10-07, each with the phase or milestone that closes it.
+
+| Open question | Lands in | How |
+|---|---|---|
+| The views session's driver: the mod held connected while the user flies | 0.01.11 | solved for that session; whatever it commits is reviewed in 0.01.12 |
+| PresentMode reads "Composed: Copy with GPU GDI" against the spike's "Hardware: Independent Flip" | 0.01.13; M2 | the cause found with one variable per launch, at most two extra launches, no system setting changed; fixed if a file Optilux writes causes it; M2's validity rules decide whether composed copy may be measured |
+| A2's F2 press checks only `focused`, where A7's injections also require the game's window in the foreground (run.py `inject`); no test covers either check | 0.01.12 | A2's press takes A7's check; both tested on a fake; 0.01.13's run shows it live |
+| The live world differs from its snapshot after every launch | M2 | `world restore`; until then every run retakes the snapshot first |
+| Byte caps: AGENTS.md 0, platform.md 54, mod.md 36, plans/m1.md 31, prompts/m1.md 20 bytes of margin | 0.01.12 | margin regained by cutting duplicated text, never by splitting a doc by concern |
+| A9's capture: 46 s for 120 frames at 4K, the readback on the render thread | M2 | the session budget, with 0.01.13's step times; an asynchronous readback changes the capture path and the jar |
+| release.yml on ubuntu-latest, CI on windows-latest | 0.01.12 | CI's zip artifact and a local `pack build` compared by sha256 (DEFLATE output can vary with the zlib build), a difference being a defect; release.yml to windows-latest, so the released zip is built as CI builds it (one run per milestone) |
+| VS Code's Java and Gradle extensions import mod/; `launch` does not look for a running Gradle | 0.01.12; M2 | the gate refuses a running Gradle build and records other java processes, as it records AMD's PresentMon; M2's validity rules decide what blocks a measured run |
+| Gradle's other downloads trusted by coordinate | M2 | revisited with the mod's next dependency change; verification metadata not taken in the QA pass (D28) |
+| A JVM fatal-error log would list the token | 0.01.12 | the security dimension: closed with evidence if the token dies with its launch, else moved off the command line |
+| Whether `/function` reports success without `/return` on 26.3 | 0.01.13 | read once through `command` in the timed session |
+| 0.01.11: options.txt keeps the game's inactivityFpsLimit "afk" (not in display.optionsTxt): 30 fps after a minute without player input, 10 fps after 9 more | 0.01.12 | display.optionsTxt writes "minimized" (an identity change, before M2 calibrates) with its test; 0.01.13's session runs uncapped without input |
+| 0.01.11: world prep's kill spares only the dragon and optilux_bench, so it takes end_dragon's ten end crystals and the untagged mobs behind the entities view | M2 | the selector also spares minecraft:end_crystal; reference frames retaken after the prep |
+| 0.01.11: the entities frame shows no hand; the capture point follows renderLevel, which skips the hand when the GUI is hidden (F1 or hud.set hideGui), so a session hiding the GUI never shows the held torch | M2 | the session's HUD state for the entities view, checked on a frame |
+| 0.01.11: the user's End city candidate, (317.1, 75.1, 1054.8) in the End, 1,058 blocks from the main island | M2 | M2's plan decides on an 11th role before any calibration (user, 2026-10-07) |
 
 ## M1 to M6
 One line each, from design.md#6-milestones; phase lists are provisional until each plan is approved. F and Q numbers refer to Findings assigned.
@@ -122,13 +154,15 @@ Owner: who decides. Recommendation: what an unattended run takes. Closed decisio
 | D5 | CI runner | Claude | ubuntu-latest: M0's tests are pure Python, and Windows minutes cost 2x on a private repo (2,000 minutes a month on GitHub Free); switch to windows-latest when a Windows-only path (ctypes, the named pipe) gets a test, in M1 | 0.00.06 |
 | D6 | Release tag and asset | Claude | tag v<version> (workflow.md#release), asset optilux-<version>.zip, body = the milestone's CHANGELOG entry; the workflow creates the tag at main's head; title `Optilux <version>: <Name>`, the name from the CHANGELOG heading `## 0.MM <Name>` (user, 2026-10-06; from v0.01) | 0.00.06 |
 | D7 | Repository merge settings | user | rebase merge on, squash and merge commits off, set in 0.00.06 by `gh repo edit` so a merge cannot pick another method; the prompt names the command and stops for the go | 0.00.06 |
-| D8 | When optilux-plan is built | Claude | in M1's last phase, from two hand-made plans (m0.md, m1.md), used from M2's plan on; workflow.md#skills says after the first hand-written plan, and one plan is too little for the creation rule's 3 eval scenarios | 0.01.10 |
+| D8 | When optilux-plan is built | Claude | in 0.01.10 (M1's last phase when planned), from two hand-made plans (m0.md, m1.md), used from M2's plan on; workflow.md#skills says after the first hand-written plan, and one plan is too little for the creation rule's 3 eval scenarios | 0.01.10 |
 | D9 | Placeholder pack content | Claude | shader/shaders/shaders.properties with one comment line and no programs; never launched in M0; M3's hello pack replaces it and BENCH_DETERMINISTIC starts there (shader.md#determinism-and-taa) | 0.00.05 |
 | D10 | Default branch name | Claude | `git init -b main`: the machine's init.defaultBranch is master and no config changes | 0.00.00 |
 | D11 | Phase 0 question: the simulationDistance pin | user | closed: 12, the value the game chose (user, 2026-10-06); config/suite.json display | closed |
 | D12 | Phase 0 question: the dev-tier exit code -8 | user | closed: accepted as known, no shutdown step (user, 2026-10-06); F7 | closed |
+| D27 | The QA pass: shape, review and cleanup | user | closed: two phases, 0.01.12 review and cleanup offline and 0.01.13 debug, timing and the acceptance re-run; the reviewer agent per dimension plus /code-review high, every finding verified at its source; cleanup takes the run.py seam, the bugs and any change that largely justifies itself (user, 2026-10-07) | closed |
+| D28 | The QA pass's tools | user | closed: ruff adds BLE, S, SIM, RUF, PERF; pyright basic over optilux/ in CI; javac -Xlint:all -Werror; one coverage.py branch report; pytest-xdist; Gradle verification metadata not taken (user, 2026-10-07). Pins (Claude's recommendation): the newest release the day 0.01.12 runs, locked by uv (resolved 2026-10-07 by `uv pip compile`: coverage 7.16.2, pyright 1.1.414 with nodejs-wheel-binaries 24.19.0, pytest-xdist 3.8.0) | closed |
 
 ## Estimates
 - M0: 0.3 + 1 + 1 + 1.5 + 1.5 + 1 + 1.5 = 7.8 h agent, no machine time. Basis: ALC's phases took about 1 h each (workflow.md#git); the spike estimated 4 h and took 2.5 h; ALC's run estimates of 4-6 h took about 1.2 h (workflow.md#running-a-milestone), so these are expected to run short rather than long.
-- M1: 25 h agent from plans/m1.md (2, 2, 2, 3, 3, 3, 2.5, 2, 1.5, 2, 2; the mod phases carry 3 h each: ALC's mod ran 3x its line estimate, lessons.md#mod). M2 and M3, rough until each plan is approved: 10 h each. Machine time apart: M2 calibration about 2 h per identity (measurement.md#calibration).
-- Tripwire baseline: M0-M3 summed 52.8 h (7.8 + 25 + 10 + 10); the trip is at 105.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 0.01.00 about 0.5 h, the rest in handoff.md.
+- M1: 28 h agent from plans/m1.md (2, 2, 2, 3, 3, 3, 2.5, 2, 1.5, 2, 3, 2; 25 h before the QA pass became two phases, D27; the mod phases carry 3 h each: ALC's mod ran 3x its line estimate, lessons.md#mod). M2 and M3, rough until each plan is approved: 10 h each. Machine time apart: M2 calibration about 2 h per identity (measurement.md#calibration).
+- Tripwire baseline: M0-M3 summed 55.8 h (7.8 + 28 + 10 + 10); the trip is at 111.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 0.01.00 about 0.5 h, the rest in handoff.md.
