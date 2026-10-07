@@ -987,14 +987,14 @@ def dacl_aces(sddl: str) -> list[dict]:
 
 
 def open_mod(
-    launched: "Launched", root: Path, host: Host, say: Say
+    launched: "Launched", root: Path, host: Host, say: Say, log: Path | None = None
 ) -> tuple[modclient.Client, dict]:
     """The mod's pipe after the join, checked from both sides: served by the launched pid, a
     DACL of one allow ACE for this user (D21), a second server instance refused; then `hello`
     answering the launched pid and frames.index advancing within FRAMES_TIMEOUT. Each check is
-    said as it passes. The open client and the facts; LaunchError (the client closed) when a
-    check fails."""
-    log = request_log(root, datetime.now(UTC))
+    said as it passes. The request log goes to `log` (a run's folder), else to this launch's
+    folder. The open client and the facts; LaunchError (the client closed) when a check fails."""
+    log = log or request_log(root, datetime.now(UTC))
     try:
         client = host.connect(launched.token, launched.pid, log)
     except modclient.ModError as error:

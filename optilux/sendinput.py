@@ -13,7 +13,13 @@ from typing import Any
 INPUT_MOUSE = 0
 INPUT_KEYBOARD = 1
 MOUSEEVENTF_MOVE = 0x0001
+MOUSEEVENTF_LEFTDOWN = 0x0002
+MOUSEEVENTF_LEFTUP = 0x0004
 KEYEVENTF_KEYUP = 0x0002
+# F2, the vanilla screenshot key (A2): its virtual-key code and its set-1 scan code. SDL3 reads a
+# key's scan code from the message, so an injected key carries both, as a keyboard's would.
+VK_F2 = 0x71
+SCAN_F2 = 0x3C
 # Fixed-width fields, so the layout is Windows' on any host: 40 bytes per INPUT on 64-bit.
 LONG = ctypes.c_int32
 DWORD = ctypes.c_uint32
@@ -81,10 +87,20 @@ def mouse_move(dx: int, dy: int, api: Any = None) -> int:
     return send([event], api)
 
 
-def key_press(vk: int, api: Any = None) -> int:
-    """One key down and up by virtual-key code; 2 when SendInput took both."""
+def key_press(vk: int, api: Any = None, scan: int = 0) -> int:
+    """One key down and up by virtual-key code and scan code; 2 when SendInput took both."""
     down = INPUT(type=INPUT_KEYBOARD)
-    down.u.ki = KEYBDINPUT(wVk=vk)
+    down.u.ki = KEYBDINPUT(wVk=vk, wScan=scan)
     up = INPUT(type=INPUT_KEYBOARD)
-    up.u.ki = KEYBDINPUT(wVk=vk, dwFlags=KEYEVENTF_KEYUP)
+    up.u.ki = KEYBDINPUT(wVk=vk, wScan=scan, dwFlags=KEYEVENTF_KEYUP)
+    return send([down, up], api)
+
+
+def left_click(api: Any = None) -> int:
+    """One left button down and up where the cursor is; 2 when SendInput took both. In game with
+    no screen open it grabs the mouse (docs/mod.md#9-input-and-hud)."""
+    down = INPUT(type=INPUT_MOUSE)
+    down.u.mi = MOUSEINPUT(dwFlags=MOUSEEVENTF_LEFTDOWN)
+    up = INPUT(type=INPUT_MOUSE)
+    up.u.mi = MOUSEINPUT(dwFlags=MOUSEEVENTF_LEFTUP)
     return send([down, up], api)
