@@ -50,17 +50,16 @@ def test_cuts_the_fetched_origin_main_with_no_track(
     cloned: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     # origin/main moves on after the clone, so a cut from the stale local main would be wrong.
-    advanced = commit_file(cloned, "docs/x.md", b"# X\n", "0.00.01: Advance.")
+    advanced = commit_file(cloned, "docs/x.md", b"# X\n", "docs: advance")
     git(cloned, "push", "-q", "origin", "main")
     git(cloned, "reset", "-q", "--hard", "HEAD~1")
     assert milestone.start(cloned, 1) == 0
     out = capsys.readouterr().out
-    assert out.startswith(
+    # main carries the legacy bootstrap subject 0.00.00 and no VERSION: the next minor is 0.1.0.
+    assert out == (
         f"optilux milestone start: on m1 at {advanced[:7]} (origin/main), no upstream\n"
-    )
-    assert "next: write docs/plans/m1.md and docs/prompts/m1.md (phase 0.01.00)\n" in out
-    assert out.endswith(
-        "then: `optilux status`; the first commit pushes with `git push -u origin m1`\n"
+        "next: `uv run optilux status` prints the next prompt\n"
+        "then: the first commit sets VERSION 0.1.0; push it with `git push -u origin m1`\n"
     )
     assert branch(cloned) == "m1"
     assert git(cloned, "rev-parse", "m1").stdout.strip() == advanced
@@ -73,21 +72,19 @@ def test_cuts_the_fetched_origin_main_with_no_track(
     assert milestone.start(cloned, 1) == 1 and "origin has m1 already" in capsys.readouterr().err
 
 
-def test_names_the_stored_prompt_when_it_exists(
+def test_names_the_version_the_first_commit_sets(
     cloned: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    prompt = (
-        b"# M1\n\n## 0.01.00 First\n```text\nRun 0.01.00.\n```\n\n## Resume\n```text\nR.\n```\n"
-    )
-    commit_file(cloned, "docs/prompts/m1.md", prompt, "0.00.01: Prompts.")
+    # After a release at 0.2.0 (or its patch 0.2.1), the next milestone ships as 0.3.0.
+    commit_file(cloned, "VERSION", b"0.2.1\n", "fix: a patch release")
     git(cloned, "push", "-q", "origin", "main")
-    assert milestone.start(cloned, 1) == 0
-    assert "next: paste the `## 0.01.00` prompt of docs/prompts/m1.md\n" in capsys.readouterr().out
+    assert milestone.start(cloned, 2) == 0
+    assert "then: the first commit sets VERSION 0.3.0; push it" in capsys.readouterr().out
 
 
 def test_cli_rejects_a_bad_number(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["milestone", "start", "x1"]) == 1
-    assert "milestone 'x1' is not a number; fix: give the MM of 0.MM.PP" in capsys.readouterr().err
+    assert "milestone 'x1' is not a number; fix: give its number" in capsys.readouterr().err
     assert cli.main(["milestone", "start", "123"]) == 1
 
 
