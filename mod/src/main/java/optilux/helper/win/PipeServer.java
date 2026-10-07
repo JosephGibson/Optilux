@@ -59,7 +59,6 @@ public final class PipeServer implements Runnable {
     private final Overlapped connectOverlapped = new Overlapped();
     private final Memory readBuffer = new Memory(READ_BYTES);
     private final LineFramer framer;
-    private volatile String problem;
 
     private record Outgoing(long connection, byte[] bytes, Runnable after) {
     }
@@ -110,11 +109,6 @@ public final class PipeServer implements Runnable {
         }
     }
 
-    /** Why the server stopped, or null while it serves. */
-    public String problem() {
-        return problem;
-    }
-
     /** Create the pipe: one instance, first instance only, local clients, the user-only DACL. */
     public HANDLE create() {
         Security.UserOnly security = Security.userOnly();
@@ -136,8 +130,7 @@ public final class PipeServer implements Runnable {
         try {
             pipe = create();
         } catch (RuntimeException error) {
-            problem = error.getMessage();
-            LOG.error("optilux-helper: pipe {}: {}; no client can connect", name, problem);
+            LOG.error("optilux-helper: pipe {}: {}; no client can connect", name, error.getMessage());
             return;
         }
         LOG.info("optilux-helper: pipe {} open: one instance, local clients, DACL with one ACE "
@@ -156,7 +149,9 @@ public final class PipeServer implements Runnable {
                 LOG.info("optilux-helper: pipe client pid {} connected", client);
                 serve(pipe);
                 LOG.info("optilux-helper: pipe client pid {} disconnected", client);
-            } catch (RuntimeException error) {
+            } catch (RuntimeException | Error error) {
+                // An Error too (a worker that cannot start): the pipe thread never dies of one
+                // (docs/mod.md#4-architecture).
                 LOG.error("optilux-helper: pipe I/O failed; serving again", error);
                 K32.DisconnectNamedPipe(pipe);
                 pause();

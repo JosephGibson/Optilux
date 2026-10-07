@@ -343,6 +343,31 @@ class ProtocolTest {
     }
 
     @Test
+    void aMeasurementWaitsForAMutationStillRunning() throws InterruptedException {
+        // docs/mod-protocol.md#envelope: no mutation lands inside a measurement, in both orders:
+        // a capture asked for while a tick step runs answers busy until the step ends.
+        CountDownLatch stepping = new CountDownLatch(1);
+        handlers.put("ticks.step", request -> {
+            stepping.await();
+            return Map.of("ticks", 600);
+        });
+        protocol = new Protocol(Wire.COMMANDS, TOKEN, handlers, () -> FACTS, stamps, state, workers,
+            timers); // the protocol copies its handlers when built
+        connect();
+        hello();
+        send(1, "ticks.step", "{\"n\":600,\"timeoutSeconds\":30}");
+        send(2, "frames.capture", "{\"directory\":\"d\",\"count\":3,\"timeoutSeconds\":30}");
+        Map<String, Object> refused = next();
+        assertEquals(2L, id(refused));
+        assertEquals(Errors.BUSY, code(refused));
+        stepping.countDown();
+        assertEquals(1L, id(next()));
+        send(3, "frames.capture", "{\"directory\":\"d\",\"count\":3,\"timeoutSeconds\":30}");
+        release.countDown();
+        assertEquals(3L, id(next()));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void aHandlerTellsAnIntegerLiteralFromADecimal() throws InterruptedException {
         hello();

@@ -1200,6 +1200,14 @@ def launch(
     uuid, uuid_from = player_uuid(game / SAVES / world, plat.data["offlinePlayer"]["uuid"])
     pack = reference_pack(plat)
     pre = prelaunch(suite["display"], tier, pack.file, overrides)  # refused before any write
+    # Iris.loadExternalShaderpack reads a pack's saved options from shaderpacks/<pack>.txt (the
+    # 1.11.7 jar's bytecode): M1 runs the reference pack at its defaults (profile null).
+    saved = base / GAME / SHADER_PACKS / f"{pack.file}.txt"
+    if saved.exists():
+        raise LaunchError(
+            f"{shown(saved, root)} holds saved settings for {pack.file}, so it would not run at "
+            "its defaults (profile null); fix: delete it (M2's profiles write the file themselves)"
+        )
     began = host.clock()
 
     found = gate(base, host.processes(), host.logman(), os.getpid())

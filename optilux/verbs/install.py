@@ -322,6 +322,9 @@ def java(root: Path, outcome: Outcome, say: Say) -> None:
     unpacked = (home / "bin" / "java.exe").is_file()
     if not unpacked:
         say(f"java: unpacking {profile['archive']} into {shown(home, root)}")
+        # Into a .part folder, renamed when whole: a stop midway leaves no java.exe at home.
+        part = home.with_name(home.name + ".part")
+        shutil.rmtree(part, ignore_errors=True)
         with zipfile.ZipFile(archive) as zipped:
             tops = {name.split("/", 1)[0] for name in zipped.namelist()}
             if tops != {profile["build"]}:
@@ -329,7 +332,16 @@ def java(root: Path, outcome: Outcome, say: Say) -> None:
                     f"{profile['archive']} unpacks to {', '.join(sorted(tops))}, not "
                     f"{profile['build']}; fix: make bench.json's `build` the archive's folder"
                 )
-            zipped.extractall(root / JAVA_DIR)
+            try:
+                zipped.extractall(part)
+            except OSError as error:
+                shutil.rmtree(part, ignore_errors=True)
+                raise InstallError(
+                    f"unpacking {profile['archive']} failed: {error}; fix: free the disk, rerun"
+                ) from None
+        shutil.rmtree(home, ignore_errors=True)  # an earlier partial unpack
+        (part / profile["build"]).rename(home)
+        shutil.rmtree(part, ignore_errors=True)
     outcome.java = {
         "build": profile["build"],
         "archive": profile["archive"],

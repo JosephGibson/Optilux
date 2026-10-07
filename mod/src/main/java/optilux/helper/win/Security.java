@@ -63,12 +63,6 @@ public final class Security {
             return attributes;
         }
 
-        /** The ACEs the DACL holds, read back from its native memory. */
-        public int aceCount() {
-            acl.read();
-            return acl.AceCount;
-        }
-
         /** Keep the native memory alive until the pipe is created. */
         public void keepAlive() {
             java.lang.ref.Reference.reachabilityFence(sid);

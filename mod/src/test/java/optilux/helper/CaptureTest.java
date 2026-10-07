@@ -66,6 +66,8 @@ class CaptureTest {
         assertEquals(capture.folder().resolve(Capture.MANIFEST), manifestPath);
         Map<String, Object> manifest = (Map<String, Object>) Json.parse(Files.readString(manifestPath));
         assertEquals(true, manifest.get("complete"));
+        // `every` is a frame count: an integer in the JSON, as the protocol fake writes it.
+        assertTrue(Files.readString(manifestPath).contains("\"every\":1,"), "every is no integer");
         List<Map<String, Object>> frames = (List<Map<String, Object>>) manifest.get("frames");
         assertEquals(1, frames.size());
         Map<String, Object> entry = frames.get(0);

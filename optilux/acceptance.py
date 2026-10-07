@@ -537,6 +537,12 @@ def a4_names(message: str) -> dict:
     return {"namesProgram": program in message, "namesIdentifier": A4_IDENTIFIER in message}
 
 
+def a4_clean(events: list[dict]) -> bool:
+    """No event across A4's window invalidates its capture (docs/mod-protocol.md#client-rules)
+    but its own reloads: the broken one's reload.failed and the good one's reload.done."""
+    return not any(e["event"] in INVALIDATING and e["event"] != "reload.done" for e in events)
+
+
 def a4(s: Session, evidence: dict) -> None:
     """A4 at the placed overworld view, its evidence filled as it goes and `pass` set last: the
     broken copy written beside the reference zip; iris.properties names it and shaders.reload must
@@ -603,8 +609,7 @@ def a4(s: Session, evidence: dict) -> None:
         lambda a: f"frame {a['frames'][0]['frameIndex'] if a['frames'] else 'none'}",
     )
     s.drain()
-    kinds = ("reload.failed", "reload.done", "screen.opened", "hook.error")
-    events = [e for e in s.events[mark:] if e["event"] in kinds]
+    events = [e for e in s.events[mark:] if e["event"] in ("reload.failed", *INVALIDATING)]
     frames = shot["frames"]
     evidence.update(
         recovery=recovery,
@@ -627,7 +632,7 @@ def a4(s: Session, evidence: dict) -> None:
         and shot["verified"]["complete"] is True
         and len(frames) == 1
         and any(e["event"] == "reload.failed" for e in events)
-        and not any(e["event"] in ("screen.opened", "hook.error") for e in events)
+        and a4_clean(events)
     )
     s.say(f"A4: {'pass' if evidence['pass'] else 'fail'}")
 

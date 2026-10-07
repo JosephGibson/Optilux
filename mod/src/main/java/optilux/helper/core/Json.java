@@ -169,8 +169,6 @@ public final class Json {
                 throw new IllegalArgumentException("JSON has no " + number);
             }
             out.append(number);
-        } else if (value instanceof BigDecimal decimal) {
-            out.append(decimal.toString());
         } else if (value instanceof Map<?, ?> map) {
             out.append('{');
             boolean first = true;

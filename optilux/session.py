@@ -245,6 +245,18 @@ def record_status(
     if any(e["event"] == "hook.error" for e in facts.get("events", [])):
         status = "invalid" if status == "ok" else status
         problems.append("hook.error in the session")
+    check = facts.get("logCheck")
+    if check is not None and check.get("tokenAbsent") is not True:
+        problems.append(f"the request log holds the token: {check.get('problem', 'redaction')}")
+    elif check is None and "mod" in facts:
+        problems.append("the request log was not checked for the token")
+    stray = [s for s in facts.get("stray", []) if s.get("ok") is False]
+    if stray:
+        codes = ", ".join(sorted({str((s.get("error") or {}).get("code")) for s in stray}))
+        problems.append(
+            f"the mod sent {len(stray)} answer(s) to no request of ours ({codes}): a line it "
+            "could not read"
+        )
     logged = facts.get("helperLog", {})
     if logged.get("hookFailures"):
         status = "invalid" if status == "ok" else status
