@@ -1,58 +1,43 @@
 # Handoff
-Status: the latest stop: the workflow and docs pass that closes M1, its checks, and what the first release under the new model must show.
+Status: the latest stop: M2's plan phase, the plan approved and amended, its prompt set written, and what the first phase starts from.
 
 ## Contents
-Outcome · What changed · Checks · Kept as history · Left alone · Weak points · Open questions · Commits and time · Next
+Outcome · What changed · Checks · Open questions · Left alone · Weak points · Commits and time · Next
 
 ## Outcome
-Last phase: 0.01.13
-- M1's 12 phases are done (0.01.02 to 0.01.13), and this pass ran after them on m1. The exit's open items: CI green on every push, which two pushes of this pass miss (Weak points; their green reruns are an open question for the user), and the release's (the PR and its CI, the merge, release v0.2.0). `optilux status` prints the Release prompt, version 0.2.0 local against 0.00.06 on origin/main.
-- Commits are Conventional Commits, the version is the root file VERSION, and phase progress is this file's `Last phase:` line (roadmap.md#decisions D33; workflow.md#git, workflow.md#release). No game launch, nothing under runtime/, no system setting, no PR, merge, tag or release.
+Last phase: M2.P00
+- docs/plans/m2.md approved by the user on 2026-10-08 as written, then amended the same day (its section 10): three facts corrected from the reviewer agent's readings, and the user's choice to build A8's and A11's code before the identity freeze. Eleven phases, M2.P01 to M2.P11, 23.5 h agent, 26-31 launches and 3-5 h of calibration sessions apart (its sections 5 and 8).
+- docs/prompts/m2.md holds one prompt per phase and Resume; `optilux status` prints M2.P01's. VERSION 0.3.0 with CHANGELOG.md's `## 0.3.0 Perf loop`; M1 closed in the roadmap (one line), its open rows F15-F24 in Findings assigned. No game launch, nothing under runtime/, no system setting.
 
 ## What changed
-- Tooling: hooks.py's commit-msg rule; repo.py reads VERSION at a ref (legacy subjects for refs before it); pack.py's one rule set for `--check` and the release (VERSION newer than origin/main's, no tag v<VERSION> elsewhere, `## <version> <Name>`, a pushed commit behind a later push passing); status.py reads `Last phase:`, decides Release or the switch by VERSION against origin/main's and fills {PHASE} and {VERSION} into the Plan prompt; prompts.py reads M<N>.P<PP> and 0.MM.PP alike; `milestone start` prints the version the first commit sets; release.yml runs `pack release --check` before `pack release`.
-- Fixes found on the way: `mod build|test` named nothing when only a Gradle build closed the gate; test_install's JDK zip took the clock's time, so CI's serial run failed when a 2 s boundary fell between two zips.
-- Docs: workflow.md (Git and Release rewritten; Agent principles and Doc ownership added), AGENTS.md, roadmap.md (D33, F12, D5 and D8 marked, M1's exit), design.md (Status, E1 closed by evidence, the 26.3 specifics outside the platform layer), the plan template, standing.md, the three skills, the researcher's cite, CHANGELOG's 0.2.0 entry, README; the 75 audit findings' corrections in measurement, run-record, platform, mod, mod-protocol, gpu-iris, shader, playbook and lessons.
+- docs/plans/m2.md: premises P1-P21 verified at their sources on 2026-10-08, P9 open until M2.P04's first Chunky task; the reviewer agent's 23 findings on the first draft and /critique's four (gpt-6-astra, effort max: three folded in, one rejected as the user's closed decision); the user's answers D34, D35 and D52; after the approval, P20's id9, M2.P06's 68 and 44 reloads (measurement.md#session's budget; 90 and 58 counted three variants), M2.P11's 1-2 launches, and A8's and A11's code moved into M2.P05 (the runner admits them) and M2.P07 (their verdicts, 3 h), M2.P10 only running them (1 h; user, 2026-10-08).
+- docs/roadmap.md: D34; the M2 perf loop and M2 phases sections from the plan, each phase's estimate line as the plan's; each finding that lands in M2 names its phase, F17's jar change M3's (D48), E5 outside M2 (D53); Estimates with M2's 23.5 h and the tripwire recomputed.
+- docs/prompts/m2.md: in the form of prompts/standing.md#phase-prompts.
+- Before this run resumed, on the branch: VERSION, the CHANGELOG entry and the phase-prompt form in one commit; M1's open rows moved into Findings assigned in the next.
 
 ## Checks
-- `optilux test` 449 passed; `verify docs` 0 violations; `pack release --check` 8 ok; pyright and ruff clean.
-- Tests cover the hook's rules end to end, `pack build` naming the zip from VERSION, a version tagged elsewhere refused by CI's command line and by the release, a VERSION not newer than main's, the switch block and `milestone start` taking M7 to M8 with VERSION 0.8.0 to 0.9.0, and mixed old and new history.
-- The reviewer agent read the changed docs in five calls per round: 31 findings, then 9, then 4, then 3 in a narrow fourth round on the changed sentences, each fixed or rejected with its reason; the fourth round's three fixes were not read again.
-
-## Kept as history
-- Old subjects (`0.MM.PP: `, from 0.01.12.1 `0.MM.PP.N: `) on m1 and main, tag and release v0.00.06, CHANGELOG's `## 0.00 Foundation`, plans/m0.md and m1.md, prompts/m0.md and m1.md, D4, D6 and D32 as written; status and pack read the old subjects and the 0.MM.PP sets.
-
-## Left alone
-Wrong at HEAD but closed or out of scope:
-- platform.md#mc-263-verified (approved as written): S5's asset index abfaa525... is 1e4e4a68... since 0.01.02; V3's "F4 re-measures on bench" was measured in m1-acceptance-10.
-- roadmap.md D28 and 0.01.12 give `javac -Xlint:all -Werror`; the build has `-Xlint:all,-classfile`. The QA row's "12 s against 43 s" against test.py's 12.6 s against 39.8 s.
-- measurement.md#calibration records the baseline pack unmatched (user); record.py hashes it (reading 2's c4, M2).
-- Config notes: suite.json's capture `why` (M1 re-measures), modes.full's "10 views", mc-26.3.json's renderer `why` (optionKey, which no code reads).
-- mod.md#11-build-and-test's first build "on a Gradle cache filled on 2026-10-05" against verbs/mod.py's "the first one downloaded 1-2 GB (0.01.04)": neither the tree nor 0.01.04's handoff settles it.
-- A first-round finding that a cached dimension keeps its pipeline was rejected: m1-acceptance-10 shows sinceReload at 0 on every dimension change, a return to the overworld included.
-
-## Weak points
-- A phase's last commit must still write `Last phase:` itself: the pre-commit hook refuses a wrong value and status counts the commits after the line, but nothing tells a finished phase from one in progress.
-- The pre-commit hook checks VERSION against the local origin/main: one not fetched since a merge lets a commit through that CI's check then refuses.
-- M6's 1.0.0 is a hand edit, named on the roadmap's M6 line; the hook still checks it is newer.
-- The subject rule refuses `M` and a number as a word, as intended (M-numbers are milestones here); old phase IDs pass it, shaped like dependency versions.
-- Two pushes of this pass stay red in CI: `feat(status)!: progress from the handoff, release from VERSION` (its check ran after the next push moved the tip) and `fix(mod): name a Gradle build that closes the launch gate` (the zip flake); both causes were fixed after them.
+- `optilux test` 449 passed; ruff clean; `verify docs` 0 violations: the plan 40,155 of 40,960 bytes, the prompt set 40,671, the roadmap 28,926.
+- The prompt set parses into M2.P01 to M2.P11 and Resume, each first line in the standing form, each Report's estimate the plan's; every `path#heading` cite in it, fenced ones included, resolves.
+- The reviewer agent read the roadmap's expansion (14 findings) and the prompt set (18) against the plan, then the fixes (8): each fixed, or left below with its reason. The A8 and A11 amendment and the fixes of that last round were not read again.
 
 ## Open questions
-- Whether those two commits get green CI runs through two temporary branches before m1 is deleted (the user).
-- A run needs the machine to itself; exclusive fullscreen on two displays minimizes on a click on the other one (M2; when runs happen is the user's).
-- A run killed from outside writes no record (M2).
-- The session's time split and A9's capture (M2); F4's cap (M2, roadmap.md#findings-assigned F4).
-- Reading 2's c4 (the reference pack in identity) and c5 (a failed selftest ending a calibration session), with c1-c3 (M2).
-- The live world against its snapshot, Gradle's other downloads, 0.01.12's review rows for M2 (M2); the flush against the entities GUI (F12, M5).
-- The record budget against M1's 238 KB records, and F4's heap per reload moving from about 20 to about 33 MiB with the full session's dimension visits (roadmap.md#findings-assigned F13 and F14, M2).
+- P9: whether Chunky's end line reaches latest.log in singleplayer and whether a task runs under /tick freeze; M2.P04's first task decides, D45 plans both ways.
+- F10's startup call to api.minecraftservices.com may close before the join, where M2.P05 records the game's connections (unverified).
+- M1's handoff questions are now phases of the plan: the machine to itself (D42), a killed run's record (D41), the time split and A9's capture (D48), c1-c5 (D36-D39, D49, M2.P05), the live world (M2.P04), the record budget (D51), the heap per reload (D43). The red CI runs of two M1 commits got no rerun: m1 is gone from origin, and main's CI is green.
+
+## Left alone
+- roadmap.md keeps M0's second section, M0 phases, against the rule that a closed milestone shrinks to one line: it predates this phase.
+- M2.P11's prompt puts its docs before its review, against standing.md's order, so that the review reads them.
+- The Resume lets a record under results/records/ made after a phase's last fix stand for a launch's exit: standing.md asks for a rerun because runtime/ leaves nothing in the tree, which a committed record does not share.
+
+## Weak points
+- Margins: the prompt set 289 bytes, the plan 805; AGENTS.md 12, platform.md 21, mod.md 110 and workflow.md about 1,100, which M2's phases must cut before they add (their prompts say so).
+- M2.P10 rests on M2.P05 and M2.P07 keeping A8's and A11's code within the frozen identity; its first step checks `run --check`'s identity against the full calibration's and stops on a difference.
 
 ## Commits and time
-- This pass: seventeen commits before this one, each pushed alone, CI green on all but the two in Weak points; this one's CI follows the push. The last two code commits and this one answer the first handoff's weak points: the hook checks, the status count, F13 and F14.
-- 18:26 to 20:10 ADT, about 1.7 h with the decision stop, then the weak-points follow-up to 23:20 (its start unrecorded, so not counted). M1: about 20.3 h against 28 (18.6 h through 0.01.13). Tripwire: M0-M3 55.8 h, trip at 111.6 h; actuals about 23.6 h (M0 3.3, M1 20.3).
+- This phase: two commits before the resume, then the amended plan with the roadmap's expansion, the prompt set and this handoff, each pushed alone with CI green.
+- The first run from about 00:09 ADT (the switch to m2) to about 01:40 (the draft's last save), its end inferred; this run 02:09 to 03:48 and 10:57 to about 11:20, the A8 and A11 decision stop between them not counted. M2.P00 about 3.5 h against the Plan prompt's 1 h.
+- Tripwire: M0-M3 summed 69.3 h, the trip at 138.6 h; actuals about 27 h (M0 3.3, M1 20.3, M2.P00 about 3.5).
 
 ## Next
-/optilux-next prints the Release prompt (/optilux-release). The first release under the new model must show:
-- the PR titled `0.2.0 Game control: <what it delivers>`, CI's `pack release --check --no-remote --ref HEAD^2` passing (VERSION 0.2.0 newer than 0.00.06, no tag v0.2.0);
-- after the rebase merge, release.yml's `pack release --check` and `pack release` green: release v0.2.0 titled `Optilux 0.2.0: Game control` with optilux-0.2.0.zip and the `## 0.2.0` entry as its body; CI's run on main passing beside it;
-- then `optilux status` printing the switch block (`milestone start 2`, which names VERSION 0.3.0) and M2's Plan prompt for M2.P00.
+/optilux-next prints M2.P01's prompt: Identity before calibration, 2 h (L), no launch.
