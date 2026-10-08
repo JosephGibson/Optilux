@@ -12,7 +12,7 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path, PurePosixPath
 
-from optilux import REPO_ROOT, docs_check, repo
+from optilux import REPO_ROOT, docs_check, prompts, repo
 
 # main moves only by the user's rebase merge of a PR (docs/workflow.md#git).
 MAIN = repo.MAIN
@@ -288,14 +288,63 @@ def staged(root: Path) -> list[str]:
     return [name for name in result.stdout.split("\0") if name]
 
 
+def handoff_findings(root: Path) -> list[str]:
+    """The staged handoff's `Last phase:` line against HEAD's (docs/workflow.md#running-a-
+    milestone): when it changes, it names the phase after HEAD's, of the branch's milestone, so
+    `optilux status` never skips or repeats one."""
+    old = prompts.handoff_phase(repo.file_at(root, "HEAD", prompts.HANDOFF))
+    new = prompts.handoff_phase(repo.file_at(root, "", prompts.HANDOFF))
+    if new == old:
+        return []
+    where = f"{prompts.HANDOFF}'s `Last phase:`"
+    if new is None:
+        return [f"{where} line is gone; fix: keep it, naming the last phase done"]
+    key = prompts.phase_key(new)
+    if key is None:
+        return [f"{where} {new} names no phase; fix: write M<N>.P<PP>, the phase just done"]
+    milestone = repo.milestone_of(repo.current_branch(root))
+    if milestone is not None and key[0] != milestone:
+        return [f"{where} {new} is no phase of m{milestone}; fix: name a phase of M{milestone}"]
+    if old is not None and prompts.phase_key(old) is not None:
+        expected = prompts.next_phase(old, key[0])
+        if prompts.phase_key(expected) != key:
+            return [f"{where} {new} does not follow {old}; fix: write {expected}"]
+    return []
+
+
+def version_findings(root: Path) -> list[str]:
+    """The staged VERSION against the fetched origin/main's (docs/workflow.md#release): newer,
+    with its `## <version> <Name>` entry staged in CHANGELOG.md, so a milestone's or a patch's
+    first commit carries both. Read locally, without the network; skipped without origin/main."""
+    from optilux.verbs import pack  # pack imports this module: a deferred import breaks the loop
+
+    if repo.resolve(root, f"refs/remotes/{repo.ORIGIN}/{repo.MAIN}") is None:
+        return []
+    main = repo.released_at(root, f"{repo.ORIGIN}/{repo.MAIN}")
+    version = repo.version_at(root, "")
+    if version is None:
+        return [f"no {repo.VERSION_FILE} staged; fix: add it with the release version"]
+    if (repo.version_key(version) or ()) <= (repo.version_key(main) or ()):
+        detail = f"VERSION {version} is not newer than origin/main's {main}"
+        return [f"{detail}; fix: {pack.bump_fix(main or version)}"]
+    try:
+        pack.changelog_entry(root, version, "")
+    except pack.PackError as error:
+        return [str(error)]
+    return []
+
+
 def pre_commit(root: Path) -> list[str]:
-    """ruff on the staged .py files, the doc rules when a .md is staged; empty when clean."""
+    """ruff on the staged .py files, the doc rules when a .md is staged, the handoff's
+    `Last phase:` line and VERSION against origin/main's; empty when clean."""
     files = staged(root)
     sources = [root / name for name in files if name.endswith(".py")]
     findings = ruff(sources, root) if sources else []
     if any(name.endswith(".md") for name in files):
         findings += doc_findings(root)
-    return findings
+    if prompts.HANDOFF in files:
+        findings += handoff_findings(root)
+    return findings + version_findings(root)
 
 
 def post_edit(path: Path, root: Path) -> list[str]:

@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from conftest import fresh_repo
 
 from optilux import REPO_ROOT, hooks
 
@@ -302,3 +303,93 @@ def test_git_guard_blocks_when_it_cannot_read_the_event() -> None:
         command, input="{not json", capture_output=True, text=True, cwd=REPO_ROOT
     )
     assert found.returncode == 2 and "cannot read" in found.stderr
+
+
+def stage(root: Path, name: str, content: str) -> None:
+    (root / name).parent.mkdir(parents=True, exist_ok=True)
+    (root / name).write_bytes(content.encode())
+    git(root, "add", name)
+
+
+def handoff(phase: str | None) -> str:
+    line = f"Last phase: {phase}\n" if phase else ""
+    return f"# Handoff\nStatus: fixture.\n\n## Outcome\n{line}- Done.\n"
+
+
+def test_the_handoff_line_advances_one_phase_of_the_branch(tmp_path: Path) -> None:
+    root = fresh_repo(tmp_path / "repo", "m1")
+    stage(root, "docs/handoff.md", handoff(None))
+    git(root, "commit", "-q", "-m", "docs: start")
+    stage(root, "docs/handoff.md", handoff("0.01.13"))  # M1's own form, from no line at all
+    assert hooks.handoff_findings(root) == []
+    git(root, "commit", "-q", "-m", "docs: hand off")
+    git(root, "switch", "-q", "-c", "m2")
+    where = "docs/handoff.md's `Last phase:`"
+    for phase, finding in (
+        ("M2.P01", f"{where} M2.P01 does not follow 0.01.13; fix: write M2.P00"),
+        ("M3.P00", f"{where} M3.P00 is no phase of m2; fix: name a phase of M2"),
+        ("M2.P1", f"{where} M2.P1 names no phase; fix: write M<N>.P<PP>"),
+        (None, f"{where} line is gone; fix: keep it"),
+    ):
+        stage(root, "docs/handoff.md", handoff(phase))
+        found = hooks.handoff_findings(root)
+        assert len(found) == 1 and found[0].startswith(finding), (phase, found)
+    stage(root, "docs/handoff.md", handoff("M2.P00"))
+    assert hooks.handoff_findings(root) == []
+    git(root, "commit", "-q", "-m", "docs: plan")
+    stage(root, "docs/handoff.md", handoff("M2.P02"))  # P01 skipped
+    assert hooks.handoff_findings(root)[0].endswith("does not follow M2.P00; fix: write M2.P01")
+    stage(root, "docs/handoff.md", handoff("M2.P00") + "More.\n")  # the line unchanged
+    assert hooks.handoff_findings(root) == []
+
+
+def test_version_is_newer_than_origin_mains_with_its_entry(cloned: Path) -> None:
+    # cloned: main holds the legacy bootstrap subject 0.00.00 and no VERSION, pushed.
+    git(cloned, "switch", "-q", "-c", "m2")
+    assert hooks.version_findings(cloned) == [
+        "no VERSION staged; fix: add it with the release version"
+    ]
+    stage(cloned, "VERSION", "0.0.0\n")
+    found = hooks.version_findings(cloned)
+    assert found[0].startswith("VERSION 0.0.0 is not newer than origin/main's 0.00.00; fix: set")
+    stage(cloned, "VERSION", "0.3.0\n")
+    assert hooks.version_findings(cloned)[0].startswith("no CHANGELOG.md under")
+    stage(cloned, "CHANGELOG.md", "# Changelog\n\n## 0.2.0 Old\nOld.\n")
+    assert "has no `## 0.3.0 <Name>` section" in hooks.version_findings(cloned)[0]
+    stage(cloned, "CHANGELOG.md", "# Changelog\n\n## 0.3.0 Perf loop\nPerf.\n")
+    assert hooks.version_findings(cloned) == []
+    (cloned / "VERSION").write_bytes(b"0.0.1\n")  # unstaged: the index is what commits
+    assert hooks.version_findings(cloned) == []
+    git(cloned, "commit", "-q", "-m", "docs: plan")
+    git(cloned, "push", "-q", "origin", "m2:main")  # merged: main carries 0.3.0 now
+    git(cloned, "fetch", "-q", "origin")
+    git(cloned, "checkout", "-q", "--", "VERSION")
+    assert hooks.version_findings(cloned) == [
+        "VERSION 0.3.0 is not newer than origin/main's 0.3.0; fix: set VERSION to 0.4.0 for a "
+        "milestone or 0.3.1 for a patch (workflow.md#release)"
+    ]
+
+
+def test_version_check_waits_for_an_origin(tmp_path: Path) -> None:
+    root = fresh_repo(tmp_path / "lonely", "m2")
+    assert hooks.version_findings(root) == []  # nothing to compare with
+
+
+def test_pre_commit_refuses_a_first_commit_without_its_version(repo: Path, tmp_path: Path) -> None:
+    # End to end through .githooks: origin/main at 0.2.0, a new branch's commit is refused until
+    # VERSION moves past it with its CHANGELOG entry.
+    git(tmp_path, "init", "-q", "--bare", "-b", "main", "origin.git")
+    git(repo, "remote", "add", "origin", (tmp_path / "origin.git").as_posix())
+    stage(repo, "VERSION", "0.2.0\n")
+    stage(repo, "CHANGELOG.md", "# Changelog\n\n## 0.2.0 Game control\nGame control.\n")
+    assert commit(repo, "docs: release").returncode == 0
+    git(repo, "push", "-q", "origin", "m0:main")
+    git(repo, "fetch", "-q", "origin")
+    stage(repo, "notes.md", "# Notes\nStatus: fixture.\n")
+    refused = commit(repo, "docs: plan the next milestone")
+    assert refused.returncode != 0
+    assert "pre-commit: VERSION 0.2.0 is not newer than origin/main's 0.2.0" in refused.stderr
+    stage(repo, "VERSION", "0.3.0\n")
+    stage(repo, "CHANGELOG.md", "# Changelog\n\n## 0.3.0 Perf loop\nPerf.\n\n## 0.2.0 G\nG.\n")
+    accepted = commit(repo, "docs: plan the next milestone")
+    assert accepted.returncode == 0, accepted.stderr
