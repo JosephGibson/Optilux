@@ -15,7 +15,7 @@ Last phase: 0.01.13
 - Docs: workflow.md (Git and Release rewritten; Agent principles and Doc ownership added), AGENTS.md, roadmap.md (D33, F12, D5 and D8 marked, M1's exit), design.md (Status, E1 closed by evidence, the 26.3 specifics outside the platform layer), the plan template, standing.md, the three skills, the researcher's cite, CHANGELOG's 0.2.0 entry, README; the 75 audit findings' corrections in measurement, run-record, platform, mod, mod-protocol, gpu-iris, shader, playbook and lessons.
 
 ## Checks
-- `optilux test` 445 passed; `verify docs` 0 violations; `pack release --check` 8 ok; pyright and ruff clean.
+- `optilux test` 449 passed; `verify docs` 0 violations; `pack release --check` 8 ok; pyright and ruff clean.
 - Tests cover the hook's rules end to end, `pack build` naming the zip from VERSION, a version tagged elsewhere refused by CI's command line and by the release, a VERSION not newer than main's, the switch block and `milestone start` taking M7 to M8 with VERSION 0.8.0 to 0.9.0, and mixed old and new history.
 - The reviewer agent read the changed docs in five calls per round: 31 findings, then 9, then 4, then 3 in a narrow fourth round on the changed sentences, each fixed or rejected with its reason; the fourth round's three fixes were not read again.
 
@@ -32,9 +32,10 @@ Wrong at HEAD but closed or out of scope:
 - A first-round finding that a cached dimension keeps its pipeline was rejected: m1-acceptance-10 shows sinceReload at 0 on every dimension change, a return to the overworld included.
 
 ## Weak points
-- A phase's last commit must rewrite `Last phase:`; without it status shows the phase again. The Plan prompt's VERSION step is prose, caught by CI's check on the push and by `optilux status` once a phase or the release is next.
-- `next_minor` cannot know the 1.0.0 milestone: M6's VERSION is set by hand.
-- The subject rule refuses `M` and a number as a word; old phase IDs pass it, shaped like dependency versions.
+- A phase's last commit must still write `Last phase:` itself: the pre-commit hook refuses a wrong value and status counts the commits after the line, but nothing tells a finished phase from one in progress.
+- The pre-commit hook checks VERSION against the local origin/main: one not fetched since a merge lets a commit through that CI's check then refuses.
+- M6's 1.0.0 is a hand edit, named on the roadmap's M6 line; the hook still checks it is newer.
+- The subject rule refuses `M` and a number as a word, as intended (M-numbers are milestones here); old phase IDs pass it, shaped like dependency versions.
 - Two pushes of this pass stay red in CI: `feat(status)!: progress from the handoff, release from VERSION` (its check ran after the next push moved the tip) and `fix(mod): name a Gradle build that closes the launch gate` (the zip flake); both causes were fixed after them.
 
 ## Open questions
@@ -44,12 +45,11 @@ Wrong at HEAD but closed or out of scope:
 - The session's time split and A9's capture (M2); F4's cap (M2, roadmap.md#findings-assigned F4).
 - Reading 2's c4 (the reference pack in identity) and c5 (a failed selftest ending a calibration session), with c1-c3 (M2).
 - The live world against its snapshot, Gradle's other downloads, 0.01.12's review rows for M2 (M2); the flush against the entities GUI (F12, M5).
-- m1-acceptance-9 and -10 run to 238 KB against the ~200 KB record budget (M2's `verify records`).
-- F4's heap per reload moved from about 20 MiB (m1-acceptance-5 to -7) to about 33 MiB on the final jar (-9, -10), cause unexamined (M2's cap).
+- The record budget against M1's 238 KB records, and F4's heap per reload moving from about 20 to about 33 MiB with the full session's dimension visits (roadmap.md#findings-assigned F13 and F14, M2).
 
 ## Commits and time
-- This pass: fourteen commits before this one, each pushed alone, CI green on twelve and red on the two in Weak points; this one's CI follows the push.
-- 18:26 to 20:10 ADT, about 1.7 h with the decision stop. M1: about 20.3 h against 28 (18.6 h through 0.01.13). Tripwire: M0-M3 55.8 h, trip at 111.6 h; actuals about 23.6 h (M0 3.3, M1 20.3).
+- This pass: seventeen commits before this one, each pushed alone, CI green on all but the two in Weak points; this one's CI follows the push. The last two code commits and this one answer the first handoff's weak points: the hook checks, the status count, F13 and F14.
+- 18:26 to 20:10 ADT, about 1.7 h with the decision stop, then the weak-points follow-up to 23:20 (its start unrecorded, so not counted). M1: about 20.3 h against 28 (18.6 h through 0.01.13). Tripwire: M0-M3 55.8 h, trip at 111.6 h; actuals about 23.6 h (M0 3.3, M1 20.3).
 
 ## Next
 /optilux-next prints the Release prompt (/optilux-release). The first release under the new model must show:
