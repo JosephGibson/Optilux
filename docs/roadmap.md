@@ -2,7 +2,7 @@
 Status: milestones M0-M6, the current one in detail, the findings assigned and the decisions.
 
 ## Contents
-Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 · Findings assigned · Decisions · Estimates
+Rules · M0 foundation · M0 phases · M1 game control · M1 to M6 · Findings assigned · Decisions · Estimates
 
 ## Rules
 - Commits and versions (D33): Conventional Commits, each one logical, test-green change (`optilux test` and `optilux verify docs` pass before it), a phase one or more of them (workflow.md#git); the version in VERSION, a milestone a minor release, one PR and one release per milestone plus patches (workflow.md#release). Phases are M<N>.P<PP>; M0's and M1's are 0.MM.PP.
@@ -19,113 +19,11 @@ Rules · M0 foundation · M0 phases · M1 game control · M1 phases · M1 to M6 
 - 0.00.00 to 0.00.06 ran as planned in plans/m0.md section 5; the per-phase table is in the 0.00.06 handoff (git history).
 
 ## M1 game control
-- Goal (design.md#6-milestones): `install`, `launch`, the `run` skeleton, `mod build` and `mod test`, and the helper mod's M1 commands (mod-protocol.md#commands), proven by acceptance A1-A4, A7, A9 and A10 on unmodified Complementary in a provisional world with three views.
-- Verbs (design.md#5-interfaces, From = M1): `install`, `launch`, `run`, `mod build`, `mod test`. Mod: optilux-helper under mod/ with the 17 M1 commands and commands.json. Skill: optilux-plan (Decisions D8). CI moves to windows-latest (Decisions D5).
-- Not in M1: PresentMon's session and window cut beyond A9's minimal start and stop, the world verbs, `calibrate`, `compare`, `report`, `verify records`, the reload cap, pre-generation around the final views and their GPU-bound check (M2); `camera.path`, `window.measure`, timers, `shaders.dump`, capture align and flush (M2-M5); the hello pack and `verify similarity` (M3); A5, A6, A8, A11, A12; the TCP fallback (design.md#8-open-decisions E1, closed by the pipe's acceptance).
-- Exit, all of: every verb above runs with its tests green; the 17 commands answer as mod-protocol.md specifies; acceptance records under results/records/ hold A1-A4, A7, A9, A10 passed and F4's bench-tier reload table; snapshots/provisional/ hashed and config/views/provisional.json committed; dev session 1 done; optilux-plan built; the bench world's seed and its views found with the user (ten, and D29's eleventh); the QA pass (review and cleanup, then debug, timing and the acceptance re-run on the final jar); CI green on every push and on the PR; the PR rebase-merged by the user; release v0.2.0 with its optilux-0.2.0.zip (D33); docs/handoff.md written.
-- Branch m1; 0.01.00 (workflow tooling) and 0.01.01 (this plan) precede the phases 0.01.02 to 0.01.13. Plan: plans/m1.md, premises verified 2026-10-06, decisions D17-D26 there, amended with 0.01.09 and for the QA pass (its section 10; D27 and D28 below). Prompts: prompts/m1.md.
-
-## M1 phases
-Change, exit and agent-time estimate per phase; files, tests, decisions and commit messages are in plans/m1.md section 5.
-
-### 0.01.02 `install` and the launch spec
-- Change: `install [--tier] [--refresh]` fills runtime/mc-26.3/ hash-checked: Minecraft through minecraft-launcher-lib, the Fabric profile, the tier's Modrinth files by sha512, Temurin by sha256, PresentMon by sha256; the launch spec built from Mojang's and Fabric's JSON and compared with the committed one, `--refresh` rewriting it. Mojang moved asset index 34 on 2026-10-06 (plans/m1.md P6, D20): the spec is refreshed once and committed.
-- Exit: `optilux install` exits 0 with every hash equal and the spec equal to the committed one.
-- Estimate: 2 h.
-
-### 0.01.03 Pre-launch files and `launch`
-- Change: options.txt, sodium-options.json and iris.properties written before every launch (F3; no rawMouseInput: 26.3 removed it, user 2026-10-06); the launch gate (F2); `launch <world>`: game/mods/ made to hold exactly the tier's jars, jar and asset-index hashes checked, the offline session with the fresh token (`--no-token` for A1, `--set` for A7's option), `--uuid` from the snapshot's player file (F8), the started command line checked, the join awaited within 120 s (F11), WM_CLOSE until `quit` exists. CI to windows-latest. One announced launch.
-- Exit: launch, join and quit pass with exit 0; the options read back equal the written keys; CI green on windows-latest.
-- Estimate: 2 h.
-
-### 0.01.04 Mod project, inert gate, `mod build` and `mod test`
-- Change: mod/ as a Gradle project (Loom 1.18.2, Gradle 9.7.1 pinned by sha256, Java 25, Iris and Sodium compile-only from the pinned jars); fabric.mod.json generated from the platform file; the mixin config plugin and entrypoint inert without `-Doptilux.token`; the frame hook; `optilux mod build` and `mod test`; the metadata and mixin-target tests (F9).
-- Exit: the jar builds, the JUnit tests pass, a launch without a token applies no mixin (A1's evidence).
-- Estimate: 2 h.
-
-### 0.01.05 Transport, protocol core and the client
-- Change: the named pipe (token-derived name, first instance only, local clients only, a user-only DACL), framing and the envelope, dispatcher, errors, events, `cancel`, `busy`, the state owner, `hello`, `frames.index`, `quit`; commands.json; the Python client with its redacted request log and the protocol fake.
-- Exit: `hello` answers from the game with its pid; `quit` ends it with exit 0.
-- Estimate: 3 h.
-
-### 0.01.06 Game adapter commands
-- Change: `state`, `world.wait`, `command` at OWNER, `ticks.step`, `camera.place` with `/tp` semantics and the dimension argument, `camera.get`, `hud.set`, `input.block` with raw input, the world, focus and screen events.
-- Exit: one launch runs the commands end to end, a Nether round trip included; a SendInput nudge turns the camera (A7's positive control, early).
-- Estimate: 3 h.
-
-### 0.01.07 Renderer and Iris adapters, capture, selftest
-- Change: `ready` on Sodium 0.9.2's fields, `shaders.reload` with the hooked error path (F5) and sinceReload, `shaders.options`, `frames.capture` with its manifest, `selftest`.
-- Exit: one launch: ready holds, the reload answers Unbound, three captured frames match the manifest, selftest passes.
-- Estimate: 3 h.
-
-### 0.01.08 `run` skeleton, the provisional world, A1-A3 and A10
-- Change: the spike's world copied to snapshots/provisional/ and hashed (Q1); config/views/provisional.json with three poses; `run <spec>` validates, launches, runs the session start and the items, writes the acceptance record with its identity; A1, A2 (F2 parity through SendInput), A3, A10; the snapshot retaken after the Nether and End visits.
-- Exit: an acceptance record with A1-A3 and A10 passed; the snapshot hashed; the views file committed.
-- Estimate: 2.5 h.
-
-### 0.01.09 A4, A7, A9 and the reload memory table
-- Change: PresentMon start and stop (CTRL_BREAK_EVENT, F1's mechanism) and the row match for A9; A4 on a broken copy of Unbound; A7 blocked and unblocked (26.3 has no raw-input switch, plans/m1.md D24); F4's 50 reloads on the bench tier with heap after GC and private bytes every 10.
-- Exit: the records hold A4, A7, A9 passed and F4's table.
-- Estimate: 2 h.
-
-### 0.01.10 Dev session 1 and optilux-plan
-- Change: the dev tier installed and launched once; F6's deferred batch (the /mcp reconnect, one Viewfinder call, V2's pairs through `command`, the user's look review); the optilux-plan skill from the two hand-made plans (D8); the pending skill evals; the handoff.
-- Exit: the session's captures and notes in the handoff; optilux-plan present; 0.01.11's prompt is next.
-- Estimate: 1.5 h. Attended: the user's /mcp reconnect and look review.
-
-### 0.01.11 The bench world and its views, with the user
-- Change: the new 26.3 world's seed picked (Claude locates the view roles' biomes through the mod's `command`, the user vetoes), the world snapshotted and hashed; the user flies to each of the ten view roles in spectator while Claude reads the pose (camera.get) and takes a 4K frame; suite.json's seed and config/views/<world-id>.json written. Pre-generation and the GPU-bound check stay in M2.
-- Exit: the ten views committed, each frame reviewed by the user; the seed set; the snapshot hashed.
-- Estimate: 2 h. Attended: the seed veto and the flights.
-
-### 0.01.12 Review and cleanup
-The QA pass is two phases (D27, D28): this offline half, then 0.01.13 with the game. Both run before the release because the harness and the jar become identity once M2 calibrates, and a fix after that costs a recalibration.
-- Tools first, so the review reads their output: ruff adds BLE (blind except), S, SIM, RUF and PERF; pyright in basic mode over optilux/ as a CI step; javac -Xlint:all -Werror on the mod; pytest-xdist runs the suite in parallel (360 tests took 56-58 s serially on 2026-10-07, the slowest git-subprocess setups of 1-2 s each); one serial coverage.py branch report. Every hit is fixed, or suppressed on its line with the reason.
-- Review: the reviewer agent once per dimension, in parallel: correctness (two calls, optilux/ and mod/); failure paths (every error surfaced, no swallowed exception, no missing measurement passed, a timeout on every wait); identity (every input that can move a measurement recorded: run-record.md#identity against record.py and launch.py); concurrency and the protocol (Protocol, PipeServer, Session, Tasks, modclient, winpipe: cancel, timeout, disconnect, reconnect); security (the token, the DACL, the redacted log, subprocess arguments, paths written); docs against code (mod-protocol.md and commands.json against the mod and the client, run-record.md against record.py, platform.md against platform.py and launch.py, design.md#5-interfaces against cli.py); test coverage, handed the coverage report; simplification (dead code, duplication, the run.py seam). Then /code-review high (Claude Code's built-in skill) on branch m1 against main; if it cannot run, a reviewer-agent correctness pass over that diff instead, noted in the handoff. Every finding is verified at its source before it is acted on; one that does not hold is listed with the reason.
-- Fix rule (D27): a defect's fix carries a test that fails without it. A cleanup goes in when it largely justifies itself: it fixes a verified defect, makes a doc and the code agree, removes code without changing behaviour, shortens the loop without dropping a check, or is the seam (verbs/run.py's acceptance items into their own module, the part M2's verbs extend). Style-only rewrites and speculative abstractions stay out; a finding against a closed decision is reported with evidence, never fixed.
-- Open questions: the rows of QA pass open questions (below) that land in 0.01.12, 0.01.11's five among them (user, 2026-10-07; D29, D30): each closes here; world prep's code stays M2's.
-- Exit: every finding fixed, rejected with its reason or assigned by name; ruff, pyright and javac -Werror clean; workflow.md#testing's "Unit tests only for" list reconciled with the tests M1 wrote (docs against code), then the coverage report's untested branches on the failure and measurement paths tested within it; tests green in parallel and serially, the suite's wall time before and after in the handoff.
-- Estimate: 3 h; machine: one announced bench launch on world spike, the held-torch check, which any fix only the game can show shares.
-
-### 0.01.13 Debug, timing and the acceptance re-run
-- Timing: one session of the full acceptance spec (A1-A4, A7, A9, A10 on the provisional world and views, world spike, as m1-acceptance-3 and -7 ran) timed step by step (the record's step seconds, the launch's own steps, the run's wall time). An optimization goes in only where it shortens the loop without dropping a check or moving identity unrecorded; the rest goes to M2 with its numbers.
-- Debug: latest.log, the mod's lines and the request log read for every warning, error and exception from Optilux code, each explained or fixed with a test; the rows of QA pass open questions that land in 0.01.13.
-- Close: `mod build` if the mod changed; the acceptance spec (A1-A4, A7, A9, A10) re-run on the final jar (the timed session's record serves when nothing changed after it); the Status lines and the CHANGELOG entry closed; the handoff.
-- Critique (D31): the debug ends with the second of two narrow /critique readings, `--repo --model gpt-6-astra --effort xhigh`: its artifact optilux/record.py and optilux/session.py (under the 50,000-character guard) after a line asking what in them would make M2's calibration untrustworthy or its loop slower, run in the background from a `git archive HEAD` copy in the scratchpad given its own `git init` (results/, tests/fixtures/, uv.lock, docs/sources/, docs/prompts/, docs/plans/ and docs/templates/ left out; reference/, runtime/, snapshots/ and results/raw/ never reach the critic, workflow.md#running-a-milestone). It starts only with Codex's 5 h window at or under 10 %: a one-line `codex exec` (gpt-6.1-sol, effort low, not ephemeral) logs `rate_limits` in its session file under ~/.codex/sessions; above that the session waits for `resets_at`. A run that stops at the limit is recorded, never retried. The first reading, the contracts (run-record.md and mod-protocol.md against the code), ran on 2026-10-07; its four findings were handled in 0.01.12.4. Each finding is verified at its source and handled under D27 (fixed with a test failing before the fix, assigned by name, or rejected with its reason; one against a closed decision reported with evidence) before the acceptance re-run on the final jar; the findings and their fates go in the handoff.
-- Exit: no open question unassigned; the critique's findings each handled; an ok acceptance record on the final jar; the Release prompt is next.
-- Estimate: 2 h; machine: 2-6 launches.
-
-### QA pass open questions
-handoff.md's open questions on 2026-10-07, each with the phase or milestone that closes it; 0.01.12's outcomes in its handoff.
-
-| Open question | Lands in | How |
-|---|---|---|
-| The views session's driver | closed in 0.01.12 | nothing committed (scratch tools under results/raw/views-flights/tools/, ignored); if M2's world prep reuses them, their file queue takes requests without the token |
-| PresentMode reads "Composed: Copy with GPU GDI" against the spike's "Hardware: Independent Flip" | landed in 0.01.13; M2 | one variable, one launch: exclusiveFullscreen true read Hardware: Independent Flip on 8,723 of 8,723 rows (runtime DXGI), the written borderless Composed: Copy with GPU GDI on every row of m1-acceptance-8 and -9; suite.json display.window is exclusive fullscreen, and m1-acceptance-10's A9 rows all flip; M2's validity rules decide what a focus change does in exclusive mode (two displays: a click on the second minimizes the game) |
-| A2's F2 press checked only `focused` | landed in 0.01.12 | A2 starts and presses through A7's check (session.in_front, acceptance.inject), tested on fakes; live in m1-acceptance-9 and -10 (the foreground pid at each press the game's) |
-| The live world differs from its snapshot after every launch | M2 | `world restore`; until then every run retakes the snapshot first |
-| Byte caps | landed in 0.01.12 | duplicated text cut: AGENTS.md 98 bytes of margin, platform.md 82, mod.md 98, plans/m1.md 147, prompts/m1.md 201 |
-| A9's capture: 46 s for 120 frames at 4K, the readback on the render thread | M2 | 0.01.13: 44.5 s, bound by the four PNG writers (about 1.4 s per 4K frame each, 2.8 frames/s), not the readback (18.8 ms median between captured frames, 10 ms uncaptured); the session budget and the capture path (more writers, or A9's stamps without PNGs; A2 needs F2's own PNG writer) are M2's, and either changes the jar |
-| release.yml on ubuntu-latest, CI on windows-latest | landed in 0.01.12 | release.yml on windows-latest; CI's zip and a local `pack build` compared by sha256 (0.01.12's handoff, git history) |
-| VS Code's Java and Gradle extensions import mod/; `launch` did not look for a running Gradle | landed in 0.01.12; M2 | the gate refuses a Gradle build and records the other JVMs (0.01.12's launch recorded three idle daemons); M2's validity rules decide what blocks a measured run |
-| Gradle's other downloads trusted by coordinate | M2 | revisited with the mod's next dependency change; verification metadata not taken in the QA pass (D28) |
-| A JVM fatal-error log would list the token | closed in 0.01.12 | the token dies with its launch: fresh per launch, one pipe per JVM, a stale token finds no pipe or answers unauthenticated, the gate keeps launches apart (0.01.12's handoff, git history) |
-| Whether `/function` reports success without `/return` on 26.3 | closed in 0.01.13 | no: FunctionCommand hands the source's callback to the function's frame, which only `/return` calls (Frame.returnSuccess and returnFailure have no other callers in the pinned jar but `return run`'s FallthroughTask), so `command` answers succeeded false; read in the bytecode, as no function was reachable live (none in the client jar, the bench mods or either world, and runtime/ takes no hand-written file); measurement.md#session's view functions end in `return 1`; M2's prep sees it live with its first function |
-| CI's test step: 82 and 95 s with pytest-xdist on the 4 vCPU runner against 63 s serially | landed in 0.01.12 | ci.yml runs `optilux test --serial` (user, 2026-10-07: recommendations taken); the local default stays parallel (12 s against 43 s) |
-| options.txt kept the game's inactivityFpsLimit "afk": 30 fps after a minute without input | landed in 0.01.12 | display.optionsTxt writes "minimized", read back in 0.01.12's launch; 0.01.13's probe held 100 s without input at 99.7 fps (its request log), 98 fps 60 to 105 s after the start (PresentMon) |
-| World prep's kill took end_dragon's end crystals | landed in 0.01.12; M2 | suite.json world.setup and measurement.md spare minecraft:end_crystal; M2's prep implements it and retakes the reference frames |
-| The entities frame showed no hand | landed in 0.01.12 | hiding the GUI also drops the held item (0.01.12's two frames); measurement.md#session hides it at every view but entities; M2's session sets it per view |
-| The End city view | landed in 0.01.12 | D29: end_city, suite.json's eleventh role, in config/views/bench_263.json and measurement.md; M2 pre-generates a second End area |
-| The candidate worlds bench_7800 and bench_20261005 | closed by the user | deleted by the user: 0.01.13 found only bench_263 and spike under runtime/mc-26.3/game/saves/ (2026-10-07) |
-| 0.01.12's review findings assigned onward (0.01.12's handoff, git history) | landed in 0.01.12.4; M2 | 0.01.12.4 closed 0.01.13's offline rows (the token check on every session's request log, `run`'s OS errors named before its session, stray `id: null` answers failing the run) and moved the mod's small rows into one jar change (busy both ways, capture.json's `every` an integer, an Error on the pipe thread, dead code), with Gradle's and git fetch's timeouts and the JDK unpacked whole; live in m1-acceptance-9 and -10: each request log checked (the token absent), no stray answer, hook failures and Iris loads outside a reload counted (0), every written key and Sodium's text read back, options.txt recorded as the game read it, A1's three controls. M2, before it calibrates: the identity rows (unwritten options matched, PresentMon and the harness in identity, the render target against the display, HAGS as applied, identity read before the session, the suite's descriptive copies), a hello after its own disconnect, a stopped capture's frames, the game adapter's delegates, PresentMon's waits re-reading the CSV, perform's session skeleton |
-| D31's reading 2 on record.py and session.py: five findings, each holding (0.01.13's handoff, git history) | M2 | three were M2's already (the GUI shown at entities, PresentMon and the harness in identity, identity read before the session); two added: the reference pack out of identity (the platform file's referencePacks and iris.properties' shaderPack are hashed, though measurement.md#calibration records the baseline pack and never matches it), and a failed selftest ending a calibration or measurement session at once (acceptance runs go on for each item's evidence) |
-| A run needs the machine to itself: m1-acceptance-8 met the user at the computer (focus.lost three times, A2's first attempt missed) and was stopped | M2; the user | M2's session and validity rules (a focus change invalidates the window; exclusive fullscreen on two displays minimizes on a click on the other one); when runs happen is the user's |
-| A run killed from outside writes no record and leaves A4's copy (m1-acceptance-8: the interrupt ended the process tree; raw kept, the name used) | M2 | the next `run` refuses the copy; M2's long sessions write their record as they go |
-| The session's time split (0.01.13: m1-acceptance-9, 215 s, its handoff in git history) | M2 | none taken in 0.01.13, each moves identity or the jar: the GPU warm-up's 30 s a session (capture.gpuWarmupS), `ticks.step 120`'s 6 s per weather change at 20 ticks a second, A2's 9 s per view (PNG writers), A9's 44.5 s (above), each launch's 13-14 s join |
+- Closed with release v0.2.0 (2026-10-08): `install`, `launch`, `run` for acceptance runs, `mod build`, `mod test` and the helper mod's 17 M1 commands, accepted on A1-A4, A7, A9 and A10 (m1-acceptance-10); the bench world bench_263 and its eleven views; optilux-plan; the QA pass; about 20.3 h against 28 estimated. Plan: plans/m1.md; prompts: prompts/m1.md; what happened: the 0.01.13 handoff and the workflow pass's, in git history; its open rows: Findings assigned.
 
 ## M1 to M6
 One line each, from design.md#6-milestones; phase lists are provisional until each plan is approved. F and Q numbers refer to Findings assigned.
-- M1 game control: detailed above (M1 game control, M1 phases); exit: design.md#6-milestones M1.
+- M1 game control: closed (above); exit: design.md#6-milestones M1.
 - M2 perf loop: PresentMon session and window cut (F1, F10); `world prep`, `world snapshot`, `world restore` (F8); `calibrate`, `compare`, `report`, run records and `verify records` (F13); capture.reloadCap and the session budget from F4 and F14; pre-generation around the final views and their GPU-bound check; optilux-bench after the first manual sessions. Exit: design.md#6-milestones M2.
 - M3 visual loop: the static-texture pack, the hello pack with BENCH_DETERMINISTIC and pipeline spec v0, offline L0-L2 (`check`), `verify similarity`, coverage views, review page, iso profile v1, both modes recalibrated on the deterministic set. Exit: every perf view identical across 2 sessions (TAA off); A5.
 - M4 shader base: every coverage-list program, lighting, tonemap; cost rows, timer rows below the CPU floor; offline L3-L4; debug-tier attribution; E2 decided.
@@ -152,6 +50,16 @@ The Phase -1 spike's handoff findings (2026-10-06) and later ones, each with the
 | F12 | The flush frame is the one where the hideGUI uniform reads 0 (shader.md#determinism-and-taa), but the entities view shows the GUI (measurement.md#session), where it reads 0 on every frame (the 2026-10-07 doc audit) | M5 (E4) | the history flush gets a signal that holds with the GUI shown, or the entities view keeps its hand another way; no design change before M5 |
 | F13 | M1's full acceptance records run to 238 KB (m1-acceptance-9 and -10) against run-record.md#record's ~200 KB budget | M2 (`verify records`) | the budget is scoped to measurement records, or acceptance records shed their per-frame lists to results/raw/; committed records are never edited |
 | F14 | F4's heap per reload: about 20 MiB in m1-acceptance-5 to -7 (A4, A7, A9, A10 in one dimension), about 33 MiB in -9 and -10 (the full set, A2 and A3 visiting the Nether and End first; each reload 0.48 s against 0.34 s). Between them the identities differ in the helper jar (0.01.12.4: Protocol's mutation set, emptied on every path), inactivityFpsLimit, the platform and suite files and the world's 5 new files | M2 (capture.reloadCap) | the cap is set from a session that visits all three dimensions, as M2's do; one controlled pair, the same session with and without the dimension visits, names the cause before calibration |
+| F15 | The live world differs from its snapshot after every launch (0.01.12) | M2 (`world restore`) | `run` restores the snapshot before every session; until then every run retakes it first |
+| F16 | World prep (0.01.11 to 0.01.13): the kill would take end_dragon's end crystals; untagged mobs stand in several views; end_city (D29) needs a second End area; on 26.3 a function reports success only through `/return` | M2 (`world prep`) | the kill spares minecraft:end_crystal (suite.json world.setup); view functions end in `return 1`; the reference frames are retaken after prep |
+| F17 | A9's capture: 44.5 s for 120 4K frames, bound by the four PNG writers (about 1.4 s a frame each), not the readback (0.01.13) | M2 (its plan decides) | more writers, or A9's stamps without PNGs; either changes the jar, so it is decided before calibration |
+| F18 | The session's time split (m1-acceptance-9, 215 s): the GPU warm-up's 30 s, `ticks.step 120`'s 6 s per weather change, A2's 9 s per view, A9's 44.5 s, a join's 13-14 s | M2 | each gain moves identity or the jar, so it is taken or left before calibration |
+| F19 | A run needs the machine to itself: m1-acceptance-8 met the user at the computer (focus.lost three times); in exclusive fullscreen a click on the second display minimizes the game; the gate refuses only a game under runtime/, an optilux- ETW session and a Gradle build, and records other JVMs (0.01.12's r2) | M2 (validity) | what blocks a measured run before its launch and what a focus change does to a session; when runs happen is the user's |
+| F20 | A run killed from outside writes no record and leaves A4's copy (m1-acceptance-8) | M2 | the next `run` refuses the copy; long sessions write as they go |
+| F21 | Identity (0.01.12's review; D31's reading 2): options.txt's unwritten keys recorded, never matched (id1); PresentMon and the harness in no key (id3, id4, c2); the render target never compared with the display (id5); HwSchMode is the requested HAGS state (id6); the launch spec, views and Java hashed after the session, no identity after a failed launch (id7, id9, c3); the suite hash covers copies no code reads (id8); the reference pack in identity twice, through referencePacks and shaderPack (c4) | M2, before calibration | each key fixed or decided before the first calibration session |
+| F22 | The session (0.01.12's review; D31's reading 2): a failed selftest does not end a session (c5); the GUI hidden at entities, whose torch measurement.md#session keeps (c1); perform keeps the session skeleton inline and the end-the-game policies apart (simp2, simp20); the spec's notes, pack and resource_packs unread (simp11); wait_rows re-reads the CSV at every poll (cr10) | M2 | the measured session's runner |
+| F23 | The jar (0.01.12's review): a hello after its own disconnect cancels the 10 s release (conc2); a stopped capture's frames outlive its resource (conc5); the game adapter's delegates are dead code | M2, before calibration | one jar change with `window.measure` |
+| F24 | Gradle's other downloads are trusted by coordinate (0.01.12) | the mod's next dependency change | verification metadata not taken (D28); M2 plans no dependency change |
 
 ## Decisions
 Owner: who decides. Recommendation: what an unattended run takes. The user's decisions of 2026-10-05 live in design.md#7-decisions-taken-user-2026-10-05, later closed ones in this table; evidence decisions E1-E5 in design.md#8-open-decisions.

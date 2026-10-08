@@ -1,5 +1,5 @@
 """The acceptance items' verdicts and the run's status, on fakes: no game, no Windows
-(docs/workflow.md#testing; the QA pass, docs/roadmap.md#00112-review-and-cleanup)."""
+(docs/workflow.md#testing; the QA pass, docs/plans/m1.md#00112-review-and-cleanup)."""
 
 from pathlib import Path
 from types import SimpleNamespace
