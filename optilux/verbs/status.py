@@ -35,10 +35,9 @@ from optilux.verbs import Verb
 
 # The hooks path the git hooks need (docs/workflow.md#hooks-and-guards).
 HOOKS_PATH = ".githooks"
-# The latest stop: its `Last phase: <phase>` line is where the milestone stands, and the briefing
-# lists its open questions (docs/workflow.md#running-a-milestone).
-HANDOFF = "docs/handoff.md"
-LAST_PHASE = re.compile(r"^Last phase: (\S+)")
+# The latest stop: its `Last phase:` line is where the milestone stands, and the briefing lists
+# its open questions (docs/workflow.md#running-a-milestone).
+HANDOFF = prompts.HANDOFF
 # The kinds of next prompt the briefing names (user, 2026-10-06), each with what it does.
 PLANNING, IMPLEMENTATION, RELEASE = "planning", "implementation", "release"
 KINDS = {
@@ -127,13 +126,14 @@ def remote_version(root: Path, branch: str, problems: list[str]) -> tuple[str | 
 def last_phase(root: Path, problems: list[str]) -> tuple[str | None, str | None]:
     """(the last phase done, where it was read): the handoff's `Last phase:` line, else the
     newest `0.MM.PP.N: ` subject's phase (M0 and M1); (None, None) when neither has one."""
-    for line in prompts.unfenced_lines(root / HANDOFF):
-        if found := LAST_PHASE.match(line):
-            if prompts.phase_key(found.group(1)) is None:
-                fix = "write `Last phase: M<N>.P<PP>`, the phase the stop completed"
-                problems.append(f"{HANDOFF}: `{line}` names no phase; fix: {fix}")
-                return None, None
-            return found.group(1), HANDOFF
+    path = root / HANDOFF
+    text = path.read_bytes().decode("utf-8", errors="replace") if path.is_file() else None
+    if (phase := prompts.handoff_phase(text)) is not None:
+        if prompts.phase_key(phase) is None:
+            fix = "write `Last phase: M<N>.P<PP>`, the phase the stop completed"
+            problems.append(f"{HANDOFF}: `Last phase: {phase}` names no phase; fix: {fix}")
+            return None, None
+        return phase, HANDOFF
     version = repo.newest_version(root)
     return (repo.phase_of(version), "git log") if version else (None, None)
 
@@ -364,6 +364,11 @@ def collect(root: Path) -> dict:
         switch=step.switch,
         last_phase=last,
         last_phase_source=last_source,
+        # Commits after the one that wrote the line: the next phase's work in progress, or a
+        # phase whose last commit forgot to name it (docs/workflow.md#running-a-milestone).
+        last_phase_after=repo.commits_after_change(root, HANDOFF, "^Last phase:")
+        if last_source == HANDOFF
+        else None,
         last_commit=repo.subject(root, head) if head else None,
         open_questions=open_questions(root),
         **outlook(root, milestone, last, step.phase),
@@ -434,13 +439,19 @@ def decision_rows(facts: dict) -> list[str]:
 
 
 def last_text(facts: dict) -> str:
-    """The last phase done, where it was read, and the newest commit: a phase may take several
-    commits, and commits after it are the next phase's work in progress."""
+    """The last phase done, where it was read, how many commits came after the handoff named it
+    and the newest commit: a phase may take several commits, and commits after it are the next
+    phase's work in progress, or a phase whose last commit forgot the line."""
     head = "no phase done yet"
     if facts["last_phase"] is not None:
-        name = " ".join(filter(None, (facts["last_phase"], facts["last_title"])))
-        head = f"{name} done ({facts['last_phase_source']})"
-    room = max(CUT - len(head) - len('; newest ""'), 24)
+        title = cut(facts["last_title"], 32) if facts["last_title"] else None
+        name = " ".join(filter(None, (facts["last_phase"], title)))
+        source = facts["last_phase_source"]
+        after = facts.get("last_phase_after")
+        if source == HANDOFF:
+            source = "handoff" if after is None else f"handoff, {after} commits since"
+        head = f"{name} done ({source})"
+    room = max(CUT - len(head) - len('; newest ""'), 12)
     return f'{head}; newest "{cut(facts["last_commit"] or "none", room, asides=False)}"'
 
 

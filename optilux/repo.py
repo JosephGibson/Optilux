@@ -187,6 +187,16 @@ def remote_tag(root: Path, tag: str, remote: str = ORIGIN) -> str | None:
     return refs.get(f"{ref}^{{}}") or refs.get(ref)
 
 
+def commits_after_change(root: Path, path: str, pattern: str) -> int | None:
+    """How many commits on HEAD came after the newest one that changed a line of path matching
+    pattern (git log -G); None when no commit did."""
+    changed = read(root, "log", "-1", "--format=%H", f"-G{pattern}", "HEAD", "--", path)
+    if not changed:
+        return None
+    count = read(root, "rev-list", "--count", f"{changed}..HEAD")
+    return int(count) if count is not None else None
+
+
 def is_ancestor(root: Path, sha: str, tip: str) -> bool:
     """Whether sha is tip or behind it; False when either commit is not present locally."""
     return git(root, "merge-base", "--is-ancestor", sha, tip).returncode == 0

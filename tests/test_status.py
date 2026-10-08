@@ -470,7 +470,7 @@ def test_status_text_prints_the_briefing_and_the_prompt_verbatim(
             "PROGRESS",
             "[##########..........] 1 of 2 phases (M7.P01 to M7.P02), 0.3 of 2.3 h agent",
         ),
-        row("LAST", 'M7.P01 First done (docs/handoff.md); newest "feat: first"'),
+        row("LAST", 'M7.P01 First done (handoff, 0 commits since); newest "feat: first"'),
         row("OPEN", "none in docs/handoff.md"),
         light,
         row("TREE", "clean"),
@@ -490,7 +490,8 @@ def test_status_counts_phases_by_the_handoff_not_the_commits(cloned: Path) -> No
     commit_file(root, "more.txt", b"x\n", "test: more")
     facts = status.collect(root)
     assert (facts["last_phase"], facts["next_phase"]) == ("M7.P01", "M7.P02")
-    last = row("LAST", 'M7.P01 First done (docs/handoff.md); newest "test: more"')
+    assert facts["last_phase_after"] == 2  # a forgotten line shows as commits piling up
+    last = row("LAST", 'M7.P01 First done (handoff, 2 commits since); newest "test: more"')
     assert last in status.briefing(facts)
     commit_file(root, "docs/handoff.md", handoff("M7.P02"), "docs: hand off the second phase")
     facts = status.collect(root)
