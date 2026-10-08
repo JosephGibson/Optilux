@@ -171,7 +171,8 @@ def test_repo_prompts_number_their_steps_in_sequence() -> None:
 
 def test_m1_prompts_follow_the_audited_form() -> None:
     # The form of docs/prompts/m1.md Rules: the why and a Done-when up front, a Report that backs
-    # its claims; 0.01.02 predates it and ran as written. The Plan prompt asks the same of M2+.
+    # its claims; 0.01.02 predates it and ran as written. The Plan prompt asks the same of M2+
+    # through docs/prompts/standing.md#phase-prompts.
     phases = prompts.load(REPO_ROOT, 1).phases
     texts = {p.phase: p.text for p in phases if p.key > (1, 2)}
     texts["Plan"] = prompts.load_standing(REPO_ROOT)[prompts.PLAN].text
@@ -347,6 +348,7 @@ def test_standing_prompts_of_this_repo() -> None:
     assert filled.startswith("Plan milestone M2 as phase M2.P00 on branch m2 in C:\\Projects\\")
     assert "docs/plans/m1.md as the worked example" in filled
     assert "Number the phases M2.P01 on" in filled and "headed `## M2.P<PP> <title>`" in filled
+    assert "in the form of docs/prompts/standing.md#phase-prompts" in filled
     assert "Set VERSION to 0.3.0 and add `## 0.3.0 <Name>` to CHANGELOG.md" in filled
     assert "`Last phase: M2.P00`" in filled and "VERSION reads 0.3.0" in filled
     assert "{" not in filled

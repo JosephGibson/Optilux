@@ -2,6 +2,9 @@
 
 User-facing changes per release, newest first. Versions are MAJOR.MINOR.PATCH from 0.2.0 on; the first release was v0.00.06.
 
+## 0.3.0 Perf loop
+The goal: a performance verdict on a shader change. The harness times calibrated sessions on the bench world's views, restores the world before each run and says whether a change is faster, slower or inside the noise. The plan fixes the details; this entry grows with what ships.
+
 ## 0.2.0 Game control
 The harness installs the pinned Minecraft, Fabric, mods, Java and tools hash-checked, launches the game directly, and drives it through the rewritten helper mod. Still nothing to run for a shader user: the first real pack arrives in a later release.
 - `optilux install` fetches Minecraft 26.3, Fabric Loader 0.19.5, Fabric API, Sodium 0.9.2, Iris 1.11.7, Temurin 25 and PresentMon 2.6.0, each checked against its pinned hash, and checks the launch command against Mojang's and Fabric's metadata.
