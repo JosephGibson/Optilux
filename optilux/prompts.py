@@ -26,6 +26,10 @@ PHASE_ID = re.compile(r"M(\d{1,2})\.P(\d{2})|0\.(\d{2})\.(\d{2})")
 PHASE = re.compile(r"(\S+)(?:\s+(.*))?")
 RESUME = "Resume"
 STANDING = "docs/prompts/standing.md"
+# The latest stop; its `Last phase: <phase>` line is where the milestone stands
+# (docs/workflow.md#running-a-milestone).
+HANDOFF = "docs/handoff.md"
+LAST_PHASE = re.compile(r"^Last phase: (\S+)")
 PLAN, RELEASE = "Plan", "Release"
 # The estimate line of a plan phase and of a standing prompt: agent hours, the first number on the
 # line, written `1.5 h` as docs/templates/plan.md has it; a bare number passes too.
@@ -253,8 +257,22 @@ def unfenced_lines(path: Path) -> list[str]:
     """The lines of a text file outside fenced code, LF-normalized; empty when it is no file."""
     if not path.is_file():
         return []
-    text = path.read_bytes().decode("utf-8", errors="replace").replace("\r\n", "\n")
-    return [line for _, line in docs_check.unfenced(docs_check.split_lines(text))]
+    return unfenced_text(path.read_bytes().decode("utf-8", errors="replace"))
+
+
+def unfenced_text(text: str) -> list[str]:
+    """The lines of a text outside fenced code, LF-normalized."""
+    lines = docs_check.split_lines(text.replace("\r\n", "\n"))
+    return [line for _, line in docs_check.unfenced(lines)]
+
+
+def handoff_phase(text: str | None) -> str | None:
+    """The value of a handoff's first `Last phase:` line outside fenced code, as written (it may
+    name no phase); None when the text or the line is absent."""
+    for line in unfenced_text(text or ""):
+        if found := LAST_PHASE.match(line):
+            return found.group(1)
+    return None
 
 
 def plan_title(root: Path, milestone: int) -> str | None:
