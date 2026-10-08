@@ -1190,7 +1190,7 @@ def test_end_reports_a_game_that_outlasts_its_kill() -> None:
 def test_the_gate_refuses_a_gradle_build_and_records_other_java(tmp_path: Path) -> None:
     """A Gradle build competes with the game for the CPU and the store's jars: it blocks. An
     idle daemon (VS Code's Gradle extension) and other JVMs (its language server) are recorded,
-    as AMD's PresentMon is (roadmap.md#qa-pass-open-questions)."""
+    as AMD's PresentMon is (roadmap.md#findings-assigned F19)."""
     base, _ = paths(tmp_path)
     jdk = "C:\\jdk\bin\\java.exe"
     wrapper = proc(8, "java.exe", jdk, r"C:\work\mod", ["java", "-classpath", "gradle-wrapper.jar"])
