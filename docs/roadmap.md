@@ -126,11 +126,11 @@ handoff.md's open questions on 2026-10-07, each with the phase or milestone that
 ## M1 to M6
 One line each, from design.md#6-milestones; phase lists are provisional until each plan is approved. F and Q numbers refer to Findings assigned.
 - M1 game control: detailed above (M1 game control, M1 phases); exit: design.md#6-milestones M1.
-- M2 perf loop: PresentMon session and window cut (F1, F10); `world prep`, `world snapshot`, `world restore` (F8); `calibrate`, `compare`, `report`, run records and `verify records`; capture.reloadCap and the session budget from F4; pre-generation around the final views and their GPU-bound check; optilux-bench after the first manual sessions. Exit: design.md#6-milestones M2.
+- M2 perf loop: PresentMon session and window cut (F1, F10); `world prep`, `world snapshot`, `world restore` (F8); `calibrate`, `compare`, `report`, run records and `verify records` (F13); capture.reloadCap and the session budget from F4 and F14; pre-generation around the final views and their GPU-bound check; optilux-bench after the first manual sessions. Exit: design.md#6-milestones M2.
 - M3 visual loop: the static-texture pack, the hello pack with BENCH_DETERMINISTIC and pipeline spec v0, offline L0-L2 (`check`), `verify similarity`, coverage views, review page, iso profile v1, both modes recalibrated on the deterministic set. Exit: every perf view identical across 2 sessions (TAA off); A5.
 - M4 shader base: every coverage-list program, lighting, tonemap; cost rows, timer rows below the CPU floor; offline L3-L4; debug-tier attribution; E2 decided.
 - M5 features and temporal: shadows, sky, clouds, water, fog, AO, bloom, full TAA; the history flush (E4, F12), A6, A12; temporal positive controls; live pass.
-- M6 1.0: ratio vs Unbound iso reported; live pass; look review; README; release. Post-1.0: optimization, the JVM track, the lod tier, the Aperture backend.
+- M6 1.0: ratio vs Unbound iso reported; live pass; look review; README; release, as 1.0.0, which its first commit writes into VERSION by hand (workflow.md#release). Post-1.0: optimization, the JVM track, the lod tier, the Aperture backend.
 
 ## Findings assigned
 The Phase -1 spike's handoff findings (2026-10-06) and later ones, each with the milestone and phase that acts on it.
@@ -150,6 +150,8 @@ The Phase -1 spike's handoff findings (2026-10-06) and later ones, each with the
 | F11 | A launch takes about 20 s; 167 s only with the modal dialog | landed in 0.01.03 (launch) | the world timeout is 120 s (6x the spike's 18.4 s join); the Sodium file is written before every launch so no dialog appears; a timeout ends the process and fails the run |
 | Q1 | The game directory under runtime/ still holds the spike world and files | landed in 0.01.08 | the provisional world is a copy of runtime/mc-26.3/game/saves/spike under snapshots/provisional/, made by hand and hashed (design.md#6-milestones); nothing else under runtime/ is reused: `install` rebuilds from the launch spec |
 | F12 | The flush frame is the one where the hideGUI uniform reads 0 (shader.md#determinism-and-taa), but the entities view shows the GUI (measurement.md#session), where it reads 0 on every frame (the 2026-10-07 doc audit) | M5 (E4) | the history flush gets a signal that holds with the GUI shown, or the entities view keeps its hand another way; no design change before M5 |
+| F13 | M1's full acceptance records run to 238 KB (m1-acceptance-9 and -10) against run-record.md#record's ~200 KB budget | M2 (`verify records`) | the budget is scoped to measurement records, or acceptance records shed their per-frame lists to results/raw/; committed records are never edited |
+| F14 | F4's heap per reload: about 20 MiB in m1-acceptance-5 to -7 (A4, A7, A9, A10 in one dimension), about 33 MiB in -9 and -10 (the full set, A2 and A3 visiting the Nether and End first; each reload 0.48 s against 0.34 s). Between them the identities differ in the helper jar (0.01.12.4: Protocol's mutation set, emptied on every path), inactivityFpsLimit, the platform and suite files and the world's 5 new files | M2 (capture.reloadCap) | the cap is set from a session that visits all three dimensions, as M2's do; one controlled pair, the same session with and without the dimension visits, names the cause before calibration |
 
 ## Decisions
 Owner: who decides. Recommendation: what an unattended run takes. The user's decisions of 2026-10-05 live in design.md#7-decisions-taken-user-2026-10-05, later closed ones in this table; evidence decisions E1-E5 in design.md#8-open-decisions.
