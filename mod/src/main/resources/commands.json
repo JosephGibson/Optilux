@@ -4,6 +4,7 @@
   "doc": "docs/mod-protocol.md#commands; this file is the table in machine form (docs/mod.md#11-build-and-test): the mod's argument checks and busy rules read it, the harness's protocol fake is generated from it, and tests keep the doc's table in step",
   "argKeys": "type (string, integer, number, boolean, object, array, id), required, default, min and max (inclusive), gt (exclusive minimum), minLength and maxLength (characters), values (the allowed strings)",
   "resultTypes": "string, integer, number, boolean, object, array, id; `|null` admits null",
+  "commandKeys": "mutating and exclusive (busy, docs/mod-protocol.md#envelope); exclusiveUntil (the command that ends the resource); excludes (resources that must be free to start: a window and a capture never overlap)",
   "common": {
     "frameIndex": "integer",
     "sinceReload": "integer",
@@ -65,7 +66,8 @@
         "screen": "string|null",
         "paused": "boolean",
         "focused": "boolean",
-        "tick": "integer|null"
+        "tick": "integer|null",
+        "framebuffer": "object"
       }
     },
     {
@@ -197,6 +199,7 @@
       "name": "frames.capture",
       "phase": "M1",
       "exclusive": "capture",
+      "excludes": ["window"],
       "args": {
         "directory": {"type": "string", "required": true, "minLength": 1, "maxLength": 1024},
         "count": {"type": "integer", "required": true, "min": 1, "max": 4096},
@@ -213,6 +216,7 @@
       "name": "window.measure",
       "phase": "M2",
       "exclusive": "window",
+      "excludes": ["capture"],
       "args": {
         "after": {"type": "string", "required": true, "values": ["reload", "path", "now"]},
         "skipSeconds": {"type": "number", "min": 0, "max": 3600},
@@ -220,7 +224,13 @@
         "skipFrames": {"type": "integer", "min": 0, "max": 1000000},
         "frames": {"type": "integer", "min": 1, "max": 1000000}
       },
-      "result": {"start": "object", "end": "object", "seconds": "number"}
+      "result": {
+        "start": "object",
+        "end": "object",
+        "frames": "integer",
+        "seconds": "number",
+        "skippedSeconds": "number"
+      }
     },
     {
       "name": "input.block",

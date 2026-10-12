@@ -18,13 +18,15 @@ import optilux.helper.core.Errors;
 import optilux.helper.core.FrameClock;
 import optilux.helper.core.Protocol;
 import optilux.helper.core.ReloadOutcome;
+import optilux.helper.core.Window;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * The Iris 1.11.7 shader-loader adapter (docs/mod.md#4-architecture; targets in
  * docs/platform.md#mod-adapter-surface, each read in the pinned jar): `shaders.reload`,
- * `shaders.options`, sinceReload for every answer and event, and the reload events. Iris.reload
+ * `shaders.options`, sinceReload for every answer and event, the reload events, and the reload's
+ * completion that `window.measure {after: reload}` counts from. Iris.reload
  * runs on the render thread: it re-reads iris.properties and the pack's settings file, destroys
  * the pipeline and, in a world, creates the new one at once (preparePipeline), which resets
  * SystemTimeUniforms.COUNTER; a load failure goes through handleException, hooked here (F5).
@@ -42,6 +44,7 @@ final class IrisAdapter {
     private final FrameClock clock;
     private final BooleanSupplier inWorld;
     private final BiConsumer<String, Map<String, Object>> events;
+    private final Window window;
     private final List<FrameWait> waits = new CopyOnWriteArrayList<>();
     // A reload runs from Iris.reload until its frames after: a second one would reset the counter
     // under the first's reloadFrame.
@@ -50,10 +53,13 @@ final class IrisAdapter {
     private boolean reloading;
     private Exception hooked;
 
-    IrisAdapter(FrameClock clock, BooleanSupplier inWorld, BiConsumer<String, Map<String, Object>> events) {
+    /** A reload's completion anchors `window`'s `after: reload`; a failed one drops the anchor. */
+    IrisAdapter(FrameClock clock, BooleanSupplier inWorld, BiConsumer<String, Map<String, Object>> events,
+        Window window) {
         this.clock = clock;
         this.inWorld = inWorld;
         this.events = events;
+        this.window = window;
     }
 
     Map<String, Protocol.Handler> handlers() {
@@ -164,16 +170,19 @@ final class IrisAdapter {
                 reloading = false;
             }
             double seconds = (System.nanoTime() - start) / 1e9;
+            long completed = clock.now();
             Exception error = hooked;
             hooked = null;
             String wanted = Iris.getIrisConfig().getShaderPackName().orElse("(none)");
             Errors.Refused refused = ReloadOutcome.of(error, thrown, Iris.isFallback(), wanted);
             if (refused != null) {
+                window.reloadFailed();
                 LOG.warn("optilux-helper: shaders.reload of {} failed in {} s: {} {}", wanted,
                     seconds, refused.code(), refused.getMessage());
                 events.accept("reload.failed", Map.of("message", refused.getMessage()));
                 throw refused;
             }
+            window.reloaded(completed);
             Reloaded reloaded = new Reloaded(Iris.getCurrentPackName(), pipeline(), seconds,
                 clock.last().frameIndex());
             Map<String, Object> data = new LinkedHashMap<>();

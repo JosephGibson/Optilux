@@ -25,6 +25,7 @@ import optilux.helper.core.FrameClock;
 import optilux.helper.core.PipeName;
 import optilux.helper.core.Protocol;
 import optilux.helper.core.State;
+import optilux.helper.core.Window;
 import optilux.helper.win.PipeServer;
 import optilux.helper.win.Qpc;
 import org.slf4j.Logger;
@@ -36,8 +37,9 @@ import org.slf4j.LoggerFactory;
  * the timer thread, and the pipe server on its I/O thread. Built from the entrypoint only with a
  * valid token. hello's facts come from Fabric Loader, `quit` goes through Minecraft.stop on the
  * render thread (what the window's close button does: Window.shouldClose, then stop() in
- * Minecraft.runTick of 26.3); the game, renderer, shader-loader and capture adapters and selftest
- * answer the rest, the game adapter owns the world leave, and one poll runs them at each frame.
+ * Minecraft.runTick of 26.3); the game, renderer, shader-loader and capture adapters, the window
+ * clock and selftest answer the rest, the game adapter owns the world leave, and one poll runs them
+ * at each frame, the window clock's first.
  */
 final class Session {
     private static final Logger LOG = LoggerFactory.getLogger("optilux-helper");
@@ -78,7 +80,9 @@ final class Session {
             }
         };
         RendererAdapter renderer = new RendererAdapter(game::inWorldNow);
-        IrisAdapter iris = new IrisAdapter(clock, game::inWorldNow, events);
+        Window window = new Window(clock::now, game::inWorldNow, events);
+        game.onPipelineLost(window::lost);
+        IrisAdapter iris = new IrisAdapter(clock, game::inWorldNow, events, window);
         ExecutorService writers = Executors.newFixedThreadPool(WRITERS, daemons("optilux-writer"));
         CaptureAdapter capture = new CaptureAdapter(clock, iris::sinceReload, game::inWorldNow,
             writers, events);
@@ -89,6 +93,7 @@ final class Session {
         handlers.putAll(iris.handlers());
         handlers.putAll(capture.handlers());
         handlers.putAll(selftest.handlers());
+        handlers.put("window.measure", window::measure);
         handlers.put("frames.index", request -> Map.of());
         handlers.put("quit", request -> {
             request.afterAnswer(() -> {
@@ -118,7 +123,8 @@ final class Session {
             workers, timers);
         wired.set(protocol);
         game.listen(protocol);
-        Hooks.attach(List.of(new Hooks.Poll("game", game::frame),
+        Hooks.attach(List.of(new Hooks.Poll("window", () -> window.frame(clock.last(),
+            iris.sinceReload())), new Hooks.Poll("game", game::frame),
             new Hooks.Poll("renderer", renderer::frame), new Hooks.Poll("iris", iris::frame)), () -> {
             try {
                 capture.capturePoint();

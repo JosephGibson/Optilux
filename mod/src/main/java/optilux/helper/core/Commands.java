@@ -26,8 +26,10 @@ public final class Commands {
         Double max, Double gt, Integer minLength, Integer maxLength, List<String> values) {
     }
 
+    /** `excludes`: resources that must be free for the command to start (a window and a capture). */
     public record Command(String name, String phase, Map<String, Arg> args,
-        Map<String, String> result, boolean mutating, String exclusive, String exclusiveUntil) {
+        Map<String, String> result, boolean mutating, String exclusive, String exclusiveUntil,
+        List<String> excludes) {
     }
 
     private final int protocol;
@@ -99,11 +101,18 @@ public final class Commands {
             if (exclusive != null && !resources.contains(exclusive)) {
                 throw new IllegalArgumentException(name + ": exclusive " + exclusive + " is no resource");
             }
+            List<String> excludes = entry.containsKey("excludes")
+                ? List.copyOf((List<String>) (List<?>) entry.get("excludes")) : List.of();
+            for (String other : excludes) {
+                if (!resources.contains(other)) {
+                    throw new IllegalArgumentException(name + ": excludes " + other + ", no resource");
+                }
+            }
             Command command = new Command(name, (String) entry.get("phase"),
                 Collections.unmodifiableMap(args),
                 strings((Map<String, Object>) entry.get("result"), name + " result"),
                 Boolean.TRUE.equals(entry.get("mutating")), exclusive,
-                (String) entry.get("exclusiveUntil"));
+                (String) entry.get("exclusiveUntil"), excludes);
             if (commands.put(name, command) != null) {
                 throw new IllegalArgumentException("commands.json lists " + name + " twice");
             }

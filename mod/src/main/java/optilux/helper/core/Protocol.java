@@ -347,6 +347,12 @@ public final class Protocol {
                 throw new Errors.Refused(Errors.BUSY, mutations.iterator().next().command()
                     + " is running: no measurement starts over a mutation");
             }
+            for (String other : command.excludes()) {
+                if (state.held().containsKey(other)) {
+                    throw new Errors.Refused(Errors.BUSY, other
+                        + " is in use: a window and a capture never overlap");
+                }
+            }
             if (command.exclusive() != null && !state.acquire(command.exclusive(), request)) {
                 throw new Errors.Refused(Errors.BUSY, command.exclusive() + " is in use");
             }
@@ -487,14 +493,17 @@ public final class Protocol {
         }
     }
 
-    private Map<String, Object> hello(Request request) {
+    private Map<String, Object> hello(Request request) throws Errors.Refused {
+        Map<String, Object> facts = helloFacts.get();
         Connection current = request.connection;
         synchronized (current) {
             if (current.resume == null) {
-                current.resume = state.hello();
+                current.resume = state.hello(request::live);
+            }
+            if (current.resume == null) {
+                throw new Errors.Refused(Errors.CANCELLED, "the client disconnected first");
             }
         }
-        Map<String, Object> facts = helloFacts.get();
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("protocol", commands.protocol());
         result.put("mod", facts.get("mod"));

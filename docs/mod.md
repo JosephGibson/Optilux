@@ -1,5 +1,5 @@
 # Helper mod (optilux-helper)
-Status: spec, built through M1 and accepted (m1-acceptance-10); full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the MC 26.3 game adapter, ticks, poses, input and HUD (4, 6, 9), 0.01.06; the Sodium and Iris adapters, readiness, capture and selftest (6-8, 11), 0.01.07; the rest is still spec.
+Status: spec, built through M1 and accepted (m1-acceptance-10); full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the MC 26.3 game adapter, ticks, poses, input and HUD (4, 6, 9), 0.01.06; the Sodium and Iris adapters, readiness, capture and selftest (6-8, 11), 0.01.07; `window.measure` and F23's fixes (4, 6, 8), M2.P02; the rest is still spec.
 
 ## Contents
 1 Stance · 2 Consumers · 3 Non-goals · 4 Architecture · 5 Safety · 6 Time and determinism · 7 Readiness · 8 Capture · 9 Input and HUD · 10 Adapter surface · 11 Build and test · 12 Acceptance · 13 Lessons · 14 Open questions
@@ -30,7 +30,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
      - running requests are cancelled;
      - a capture stops, its manifest marked incomplete;
      - a path and timers stop;
-     - input blocking is released if no client says `hello` within 10 s. That is long enough for a client restart, and a crashed harness must not leave the game locked.
+     - input blocking is released if no client says `hello` within 10 s (a hello its own disconnect answered never counts). That is long enough for a client restart, and a crashed harness must not leave the game locked.
      - A reconnecting `hello` reports `resumed` and the cancelled request ids.
      - As built (0.01.05): the state owner holds the exclusive resources and their holders, the input-block flag with its release timer and the resume facts; a world leave (Fabric's play disconnect) answers the requests holding a resource `failed` and frees everything.
   4. services: camera, capture, readiness, reload, input, hud, timers, metrics; pure Java, unit-testable;
@@ -51,7 +51,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 
 - As built (0.01.06), the MC 26.3 game adapter: game state is read and changed only on its thread (the render thread through Minecraft.execute, the server thread through the integrated server's), the worker waits; Fabric's ClientPlayConnectionEvents JOIN and DISCONNECT, ClientLevelEvents.AFTER_CLIENT_LEVEL_CHANGE and ServerTickEvents.END_SERVER_TICK; the frame hook polls focus (Minecraft.isWindowActive), screens (Gui.screen(), Gui.overlay()) and the in-world frames; a poll that throws never breaks the frame: the first failure of a run is logged and sent as `hook.error`. `world.wait` answers at the second frame head in the world with no level-loading screen, so the frame between rendered it (Iris builds its pipeline inside the first, 3 s on Unbound). `command` runs as the player at OWNER (`withPermission(LevelBasedPermissionSet.OWNER)`) with the mod's own CommandSource and result callback: failures are sendFailure's lines (its red empty-literal wrapper), and it succeeded when no failure came, at least one context reported a result and every result was a success.
 - An Error in any task becomes a coded response and never kills a thread. ALC's did, once.
-- Timed-out game-thread work is not cancelled, but a task whose request was already answered `timeout` or `cancelled` skips its mutation when it runs and logs `skipped-late`. While a window, capture, path or timers are active, every mutating command answers `busy` (mod-protocol.md#envelope). Only repeat-safe work may use short waits; a long one is cancelled cooperatively through `cancel`.
+- Timed-out game-thread work is not cancelled, but a task whose request was already answered `timeout` or `cancelled` skips its mutation when it runs and logs `skipped-late`. `busy`: mod-protocol.md#envelope. Only repeat-safe work may use short waits; a long one is cancelled cooperatively through `cancel`.
 - Prefer Fabric API events (join and leave, client and server ticks) over mixins where their timing fits. Mixins only for:
   - frame boundaries and the capture point;
   - input;
@@ -73,12 +73,10 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 
 ## 6. Time and determinism
 - Clocks: every result, event and frame stamp carries `frameIndex` (frames since mod start), `sinceReload` and `qpcNs`. Frame stamps are taken at the HEAD of the frame hook; `window.measure` and the capture manifest carry that stamp.
-  - `sinceReload` = frames since the last pipeline creation (reload, dimension change, join). This equals Iris's own frameCounter, which resets then and wraps at 720720 (gpu-iris.md#frame-counters-and-reload), so mod and shader agree on phase; cycles must divide 720720 so phase survives the wrap. ALC's mod held the reload frame but never exposed it.
-  - `qpcNs` = QueryPerformanceCounter ticks x 1e9 / QueryPerformanceFrequency, read through the JNA the game ships (the pipe already uses it). Not `System.nanoTime()` (origin unspecified).
-  - This is PresentMon's clock: run with `--qpc_time_ms`, PresentMon writes CPUStartQPCTime as absolute QPC milliseconds, so qpcNs = CPUStartQPCTime x 1e6 (measurement.md#tools).
+  - `sinceReload` = frames since the last pipeline creation (reload, dimension change, join). This equals Iris's own frameCounter, which resets then and wraps at 720720 (gpu-iris.md#frame-counters-and-reload), so mod and shader agree on phase; cycles must divide 720720 so phase survives the wrap.
+  - `qpcNs` = QueryPerformanceCounter ticks x 1e9 / QueryPerformanceFrequency, read through the JNA the game ships (the pipe already uses it). Not `System.nanoTime()` (origin unspecified). PresentMon's clock: qpcNs = CPUStartQPCTime x 1e6 (measurement.md#tools).
   - As built (0.01.07): a frame stamp also carries swapQpcNs, the previous frame's swap return (after `GpuSurface.present` in Minecraft.renderFrame; 26.3 has no Window.updateDisplay), for D26 (plans/m1.md); sinceReload is SystemTimeUniforms.COUNTER.
-  - The harness cuts PresentMon rows by the mod's window stamps instead of sleeping around an assumed 150 ms PresentMon start. A9 checks the mapping on real frames.
-- Measurement windows: `window.measure` waits a settle after a trigger (reload done, path started), then marks start and end in frameIndex + qpcNs. Settle and window are in seconds on the QPC clock (frames optional).
+- Measurement windows (M2.P02): `window.measure` counts its skip from the last reload's completion inside the mod (`after: reload`) or from the request (`now`), in seconds on the QPC clock (no frames or `path` yet); it starts at the first frame whose HEAD stamp lies past the skip and ends at the first `seconds` or more later, spanning end - start frames, the rows the harness cuts between the two stamps. A reload, a dimension change, a join or leave, or sinceReload falling (not at its wrap) inside it answers `failed` and drops the reload anchor.
 - Determinism support:
   - `frames.index` reports Iris's frameCounter next to the mod's index;
   - alignment, history flush and capture are scheduled together inside the mod: `frames.capture` takes `align` and `flush`; `camera.path` carries its own capture. Never across a request round trip: rendering advances during one;
@@ -115,7 +113,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 - Retry-safe: each attempt writes to a new subfolder. ALC's refused non-empty folders and a late frame could land in a cleared one.
 - Live pass: a low-stall mode (readback queued, written later). Measure its frame-time cost before relying on it.
 - As built (0.01.07): the point is right after GameRenderer.render's applyPostEffects call (frames that render the level); Screenshot.takeScreenshot's readback arrives on the render thread frames later and 4 writers write it with NativeImage.writeToFile, F2's writer; at the cap the render thread waits only while a writer holds a frame, as a readback in flight needs the render thread. Layout: mod-protocol.md#commands.
-- Limits: at most 4096 frames per capture (ALC), one capture at a time (`busy`). F2 itself takes at most 64 frames per capture. Pending readbacks: at most 16 (CaptureAdapter.MAX_PENDING, in the jar; ~530 MB at 4K). At the cap a deterministic capture stalls the render thread until a writer frees a slot (time, not correctness); the live pass drops the frame and lists it under `dropped`. On cancel or disconnect, pending frames are still written and the manifest marked incomplete.
+- Limits: at most 4096 frames per capture (ALC), one capture at a time (`busy`). F2 itself takes at most 64 frames per capture. Pending readbacks: at most 16 (CaptureAdapter.MAX_PENDING, in the jar; ~530 MB at 4K). At the cap a deterministic capture stalls the render thread until a writer frees a slot (time, not correctness); the live pass drops the frame and lists it under `dropped`. On cancel or disconnect, pending frames are still written and the manifest marked incomplete; the resource is freed after them.
 
 ## 9. Input and HUD
 - `input.block`: cancel mouse movement and button and key handling in the game while on. Include raw mouse input: ALC's OS lock missed raw input.
@@ -150,7 +148,7 @@ What each platform's adapter must provide, and where ALC hooked it: platform.md#
   - metadata test: reads the built jar; `depends` is derived on its own from the platform file and the pinned jars;
   - mixin-target test: ASM reads every target class, injected method (name and descriptor), INVOKE and accessor field (name and type) from the hash-checked pinned jars, and each call the adapters make into Sodium and Iris; a mixin annotation it does not read fails it;
   - capture: the decoded PNG equals the read-back pixels;
-  - commands.json, the command table in machine-readable form (args, results, phase). The mod's argument checks, the Python client and the protocol fake are generated or checked against it, and a test keeps mod-protocol.md's table in step;
+  - commands.json, the command table in machine form (mod-protocol.md#commands);
   - in-game `selftest` (0.01.07: the clock and swap stamps, a renderer reading, a real reload, one frame to a temp folder, the input mixins);
   - acceptance launches (12).
 - Tests write only under mod/build/ (working folder build/test-work/, java.io.tmpdir inside it; ALC's test JVM wrote logs/ into mod/). `.npy` fixtures are marked binary in .gitattributes.
