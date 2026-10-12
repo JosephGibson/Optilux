@@ -17,7 +17,9 @@ options; frames.capture writes `count` small PNGs and capture.json into a new at
 an absolute directory, as the mod does; window.measure times its window on 7 ms frames from the
 last reload's frame (none after a dimension change: not-ready) or from now, pushes window.start
 and window.end and moves the frames to its end; state reports the model's framebuffer; selftest
-passes. Like the mod
+passes; timers.start times every frame from the next on with FAKE_PASSES (the top level only
+without perPass), timers.read answers the frames that ended before it, timers.stop those and the
+one in progress, both not-ready without a start, and a disconnect stops them. Like the mod
 it answers busy for the exclusive resources (a window and a capture each other's too, and any of
 them while a delayed mutating request runs) and the running cap, a request's own timeoutSeconds
 with `timeout`, an unbuilt command with unsupported, and keeps one resume per connection. Tests
@@ -88,6 +90,7 @@ def initial_game() -> dict:
         "inputBlocked": False,
         "hideGui": False,
         "debugOverlay": False,
+        "timers": None,
     }
 
 
@@ -112,6 +115,24 @@ RENDER_COMMANDS = (
     "selftest",
 )
 SELFTEST_CHECKS = ("frameClock", "renderer", "reload", "capture", "input")
+# The per-pass timers, from the model.
+TIMER_COMMANDS = ("timers.start", "timers.read", "timers.stop")
+# Each fake frame's passes as Iris groups them (name, depth, gpuNanos), names as Unbound's frames
+# carry them in game (M2.P03's exit): 6.85 ms at the top level.
+FAKE_PASSES = (
+    ("Clear textures", 0, 20_000),
+    ("Shadow Terrain solid", 0, 1_200_000),
+    ("shadowcomp", 0, 150_000),
+    ("Terrain solid", 0, 1_800_000),
+    ("deferred", 0, 900_000),
+    ("deferred1", 1, 500_000),
+    ("deferred2", 1, 380_000),
+    ("Rain snow", 0, 400_000),
+    ("composite", 0, 2_260_000),
+    ("composite1", 1, 1_400_000),
+    ("composite2", 1, 840_000),
+    ("final", 0, 120_000),
+)
 # The fake's captured frames: tiny RGBA PNGs.
 FRAME_SIZE = 2
 # The fake's frame time: frame n's HEAD stamp at n x 7 ms; a window's swap stamps 0.1 ms before.
@@ -241,6 +262,7 @@ class Fake:
                     for resource, owner in self._held.items()
                     if not self._until(resource)
                 }
+                self.game["timers"] = None  # stopped with their resource, as the mod's
                 if self._authenticated:
                     self._last_cancelled = cancelled
             stream.close()
@@ -354,7 +376,7 @@ class Fake:
         delay = self.delays.get(name)
         if delay is None:
             answer = self._answer(request_id, name, args)
-            self._free(name, request_id, ok=True)
+            self._free(name, request_id, ok=answer["ok"] is True)
             return answer
         stop = threading.Event()
         with self._lock:
@@ -410,7 +432,7 @@ class Fake:
             self._free(name, request_id, ok=False)
             return
         answer = self._answer(request_id, name, args)
-        self._free(name, request_id, ok=True)
+        self._free(name, request_id, ok=answer["ok"] is True)
         if write is not None:
             write(answer)
 
@@ -451,14 +473,62 @@ class Fake:
             self._frame = next(self._frames)
         elif name == "quit":
             self.quit.set()
-        elif name in GAME_COMMANDS or name in RENDER_COMMANDS:
+        elif name in GAME_COMMANDS or name in RENDER_COMMANDS or name in TIMER_COMMANDS:
             try:
-                fields = (
-                    self._game(name, args) if name in GAME_COMMANDS else self._render(name, args)
-                )
+                if name in GAME_COMMANDS:
+                    fields = self._game(name, args)
+                elif name in RENDER_COMMANDS:
+                    fields = self._render(name, args)
+                else:
+                    fields = self._timers(name, args)
             except Refusal as refusal:
                 return self._error(request_id, refusal.code, str(refusal))
         return self._ok(request_id, fields)
+
+    def _timers(self, name: str, args: dict) -> dict:
+        """The per-pass timers on the fake's frame clock: every frame from the start's next one
+        times FAKE_PASSES; a read takes the frames that ended before it, a stop those and the
+        one in progress, and each answers maxPending + 1 frames later, when the mod has read
+        them; at most maxFrames between reads, the rest counted full, the first such drop since
+        the start or a read pushed as timers.dropped."""
+        game = self.game
+        if name == "timers.start":
+            settings = {key: args[key] for key in ("perPass", "maxPending", "maxFrames")}
+            game["timers"] = {**settings, "next": self._frame + 1, "full": 0, "reported": False}
+            return {"on": True, **settings}
+        timers = game["timers"]
+        if timers is None:
+            raise Refusal("not-ready", "timers are not running; fix: timers.start first")
+        through = self._frame + (1 if name == "timers.stop" else 0)
+        frames = []
+        for index in range(timers["next"], through):
+            if len(frames) == timers["maxFrames"]:
+                timers["full"] += 1
+                if not timers["reported"]:
+                    timers["reported"] = True
+                    self.emit(
+                        "timers.dropped",
+                        {"count": timers["full"], "frameIndex": index, "reason": "full"},
+                    )
+                continue
+            passes = [
+                {"name": pass_name, "depth": depth, "gpuNanos": nanos}
+                for pass_name, depth, nanos in FAKE_PASSES
+                if timers["perPass"] or depth == 0
+            ]
+            frames.append({"frameIndex": index, "passes": passes})
+        timers["next"] = max(timers["next"], through)
+        timers["reported"] = False
+        if name == "timers.stop":
+            game["timers"] = None
+        self._frame += timers["maxPending"] + 1  # the heads the mod's wait takes
+        self._frames = itertools.count(self._frame + FRAMES_PER_CALL, FRAMES_PER_CALL)
+        return {
+            "frames": frames,
+            "dropped": {"late": 0, "full": timers["full"], "overflow": 0, "lost": 0},
+            "unmatchedPops": 0,
+            "cutPasses": 0,
+        }
 
     def _render(self, name: str, args: dict) -> dict:
         """The renderer and shader-loader answers, capture and selftest, from the model."""

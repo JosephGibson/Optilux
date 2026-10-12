@@ -473,6 +473,205 @@ def test_the_fake_keeps_a_window_and_a_capture_apart(tmp_path: Path) -> None:
     client.close()
 
 
+def advance(client: modclient.Client, until: int) -> int:
+    """The fake's frame clock moved to `until` or past through frames.index; the frame now."""
+    now = client.request("frames.index")["frameIndex"]
+    while now < until:
+        now = client.request("frames.index")["frameIndex"]
+    return now
+
+
+def test_the_timers_against_the_fake(tmp_path: Path) -> None:
+    """timers.start holds the timers resource until timers.stop: a second start and a mutation
+    answer busy meanwhile; a read takes the frames that ended before it, each with Iris's passes
+    in push order, answered once the mod read them; a stop takes the rest, the frame in progress
+    included, and frees the resource; read and stop answer not-ready without a start; maxFrames
+    (its first drop pushed as timers.dropped) and perPass as the mod's; a disconnect stops them."""
+    fake = modfake.Fake(TOKEN)
+    stream, serving = modfake.serve_streams(fake)
+    client = modclient.Client(stream, TOKEN, tmp_path / "requests.jsonl", os.getpid())
+    client.hello()
+    for command in ("timers.read", "timers.stop"):
+        with pytest.raises(modclient.ModRefused) as refused:
+            client.request(command)
+        assert refused.value.code == "not-ready", command
+    started = client.timers_start(max_pending=3, max_frames=600)
+    assert (started["perPass"], started["maxPending"], started["maxFrames"]) == (True, 3, 600)
+    first = started["frameIndex"] + 1
+    with pytest.raises(modclient.ModRefused, match=r"timers.start: busy: timers is in use"):
+        client.timers_start()
+    with pytest.raises(modclient.ModRefused, match="command: busy: timers active"):
+        client.command("/tick freeze")
+    now = advance(client, first + 2)
+    read = client.timers_read()
+    assert [f["frameIndex"] for f in read["frames"]] == list(range(first, now))
+    assert read["frameIndex"] > now, "answered once the mod read them, frames later"
+    expected = [{"name": n, "depth": d, "gpuNanos": g} for n, d, g in modfake.FAKE_PASSES]
+    assert all(frame["passes"] == expected for frame in read["frames"])
+    assert modclient.top_level_nanos(read["frames"][0]) == 6_850_000
+    assert read["dropped"] == {"late": 0, "full": 0, "overflow": 0, "lost": 0}
+    later = advance(client, read["frameIndex"] + 2)
+    stopped = client.timers_stop()
+    assert [f["frameIndex"] for f in stopped["frames"]] == list(range(now, later + 1))
+    assert stopped["frameIndex"] > later
+    assert client.command("/tick freeze")["succeeded"], "the stop freed the resource"
+    with pytest.raises(modclient.ModRefused, match=r"timers.read: not-ready"):
+        client.timers_read()
+    started = client.timers_start(per_pass=False, max_frames=2)
+    ended = advance(client, started["frameIndex"] + 6) - started["frameIndex"] - 1
+    read = client.timers_read()
+    assert len(read["frames"]) == 2 and read["dropped"]["full"] == ended - 2 >= 3
+    assert all(item["depth"] == 0 for item in read["frames"][0]["passes"])
+    event = client.next_event(5)
+    assert event is not None and event["event"] == "timers.dropped"
+    assert event["data"] == {"count": 1, "frameIndex": started["frameIndex"] + 3, "reason": "full"}
+    client.close()
+    serving.join(5)
+    assert fake.game["timers"] is None, "a disconnect left the timers running"
+    stream, serving = modfake.serve_streams(fake)
+    again = modclient.Client(stream, TOKEN, tmp_path / "again.jsonl", os.getpid())
+    again.hello()
+    with pytest.raises(modclient.ModRefused, match="not-ready"):
+        again.timers_read()
+    assert again.command("/tick freeze")["succeeded"]
+    again.close()
+
+
+def test_the_timers_waits_outlast_the_mods_bounds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Timeouts nest (docs/mod-protocol.md#client-rules): the client waits for timers.read and
+    timers.stop the mod's own bounds, read from Timers.java, plus MARGIN."""
+    source = (REPO_ROOT / "mod/src/main/java/optilux/helper/core/Timers.java").read_text(
+        encoding="utf-8"
+    )
+    bounds = {
+        name: int(value.replace("_", "")) / 1e9
+        for name, value in re.findall(r"(READ_WAIT_NANOS|DRAIN_NANOS) = ([\d_]+)L;", source)
+    }
+    assert bounds == {
+        "READ_WAIT_NANOS": modclient.TIMERS_READ_SECONDS,
+        "DRAIN_NANOS": modclient.TIMERS_DRAIN_SECONDS,
+    }
+    client, _ = session(tmp_path)
+    client.hello()
+    waits = []
+    answer = client.answer
+    monkeypatch.setattr(
+        client,
+        "answer",
+        lambda c, a=None, wait=None: waits.append((c, wait)) or answer(c, a, wait),
+    )
+    client.timers_start()
+    client.timers_read()
+    client.timers_stop()
+    assert waits == [
+        ("timers.read", modclient.TIMERS_READ_SECONDS + modclient.MARGIN),
+        ("timers.stop", modclient.TIMERS_DRAIN_SECONDS + modclient.MARGIN),
+    ]
+    client.close()
+
+
+def test_the_fake_keeps_the_timers_and_a_mutation_apart(tmp_path: Path) -> None:
+    """As the mod's Protocol.dispatch: timers.start answers busy while a mutating request's
+    handler runs, its early `timeout` notwithstanding, and a mutation while the timers run."""
+    client, fake = session(tmp_path)
+    client.hello()
+    fake.delays["shaders.reload"] = 0.8
+    with pytest.raises(modclient.ModRefused) as refused:
+        client.request("shaders.reload", {"timeoutSeconds": 0.2})
+    assert refused.value.code == "timeout"
+    with pytest.raises(modclient.ModRefused, match="busy: a mutation is running"):
+        client.timers_start()
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            client.timers_start()
+            break
+        except modclient.ModRefused as error:
+            assert error.code == "busy" and time.monotonic() < deadline
+            time.sleep(0.05)
+    del fake.delays["shaders.reload"]
+    with pytest.raises(modclient.ModRefused, match=r"shaders.reload: busy: timers active"):
+        client.shaders_reload(30)
+    client.timers_stop()
+    client.shaders_reload(30)
+    client.close()
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (
+            lambda found: {**found, "frames": found["frames"][::-1]},
+            r"frame \d+ follows frame \d+",
+        ),
+        (lambda found: {**found, "frames": None}, "frames is None, not a list"),
+        (lambda found: {**found, "frames": [{"frameIndex": 1}]}, "a frame lacks frameIndex"),
+        (
+            lambda found: {
+                **found,
+                "frames": [{"frameIndex": 1, "passes": [{"name": "final", "depth": 0}]}],
+            },
+            "a pass of frame 1 lacks gpuNanos",
+        ),
+        (
+            lambda found: {
+                **found,
+                "frames": [
+                    {"frameIndex": 1, "passes": [{"name": "c1", "depth": 1, "gpuNanos": 5}]}
+                ],
+            },
+            "pass c1 at depth 1 after depth -1",
+        ),
+        (
+            lambda found: {
+                **found,
+                "frames": [
+                    {"frameIndex": 1, "passes": [{"name": "final", "depth": 0, "gpuNanos": -5}]}
+                ],
+            },
+            "pass final took -5 ns",
+        ),
+        (lambda found: {**found, "dropped": {"late": 0}}, "lacks late, full, overflow, lost"),
+        (lambda found: {**found, "cutPasses": None}, "are not all integers"),
+    ],
+)
+def test_the_timers_helpers_refuse_an_answer_they_cannot_use(
+    tmp_path: Path, change, message: str
+) -> None:
+    class Off(modfake.Fake):
+        def _timers(self, name: str, args: dict) -> dict:
+            found = super()._timers(name, args)
+            return found if name == "timers.start" else change(found)
+
+    client, _ = session(tmp_path, Off(TOKEN))
+    client.hello()
+    started = client.timers_start()
+    advance(client, started["frameIndex"] + 3)
+    with pytest.raises(modclient.ModError, match=message):
+        client.timers_read()
+    client.close()
+
+
+def test_timers_start_stops_the_timers_it_refuses(tmp_path: Path) -> None:
+    """An ok start with other settings than asked is refused, and the timers it started are
+    stopped first, so the session's mutations run."""
+
+    class Off(modfake.Fake):
+        def _timers(self, name: str, args: dict) -> dict:
+            found = super()._timers(name, args)
+            return {**found, "maxPending": 4} if name == "timers.start" else found
+
+    client, fake = session(tmp_path, Off(TOKEN))
+    client.hello()
+    with pytest.raises(modclient.ModError, match=r"timers.start: the mod answered"):
+        client.timers_start(max_pending=3)
+    assert fake.game["timers"] is None
+    assert client.command("/tick freeze")["succeeded"]
+    client.close()
+
+
 def test_a_capture_is_judged_by_its_files(tmp_path: Path) -> None:
     client, _ = session(tmp_path)
     client.hello()
