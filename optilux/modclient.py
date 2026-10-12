@@ -60,6 +60,14 @@ MANIFEST = "capture.json"
 FRAME_KEYS = ("name", "sha256", "frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
 # A measurement window's start and end: frame-hook HEAD stamps (docs/mod.md#6-time-and-determinism).
 MARK_KEYS = ("frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
+# The per-pass timers' answers: a pass's fields, the dropped frames' reasons, the counts.
+PASS_KEYS = ("name", "depth", "gpuNanos")
+DROP_REASONS = ("late", "full", "overflow", "lost")
+TIMER_COUNTS = ("unmatchedPops", "cutPasses")
+# The mod's bounds on a timers.read's and a timers.stop's wait for frames in flight
+# (Timers.READ_WAIT_NANOS, DRAIN_NANOS); the client waits MARGIN longer.
+TIMERS_READ_SECONDS = 2.0
+TIMERS_DRAIN_SECONDS = 5.0
 PNG_SIGNATURE = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
 
 
@@ -514,6 +522,39 @@ class Client:
             raise ModError(f"window.measure: frames {result['frames']}, its marks span {span}")
         return result
 
+    # The per-pass timers (docs/mod-protocol.md#commands). Frames carry their frameIndex: cut them
+    # by a window's marks, never by an answer's stamp. dropped, unmatchedPops and cutPasses count
+    # from the start, so a read's and the stop's are not added.
+
+    def timers_start(
+        self, per_pass: bool = True, max_pending: int = 3, max_frames: int = 1000
+    ) -> dict:
+        """GPU timers on every Iris pass from the next frame head on, held until timers_stop: a
+        frame is read `max_pending` frames after it ended if its stamps are in, else dropped; at
+        most `max_frames` wait for a read. ModError when the mod answers other settings, after
+        stopping the timers it started."""
+        args = {"perPass": per_pass, "maxPending": max_pending, "maxFrames": max_frames}
+        result = self.request("timers.start", args)
+        changed = [key for key, value in args.items() if result.get(key) != value]
+        if result.get("on") is not True or changed:
+            with contextlib.suppress(ModError):
+                self.request("timers.stop", wait=TIMERS_DRAIN_SECONDS + MARGIN)
+            raise ModError(f"timers.start: the mod answered {result}, asked {args}")
+        return result
+
+    def timers_read(self) -> dict:
+        """The frames read since the start or the last read, answered once every frame that
+        ended before the request is read or dropped; checked by check_timers."""
+        answer = self.answer("timers.read", wait=TIMERS_READ_SECONDS + MARGIN)
+        return check_timers("timers.read", answer)
+
+    def timers_stop(self) -> dict:
+        """Stop the timers: the frames not yet read, the one in progress at the stop included,
+        once the frames in flight are read or dropped (those the mod gave up on count lost);
+        checked by check_timers."""
+        answer = self.answer("timers.stop", wait=TIMERS_DRAIN_SECONDS + MARGIN)
+        return check_timers("timers.stop", answer)
+
     def next_event(self, timeout: float) -> dict | None:
         try:
             return self.events.get(timeout=timeout)
@@ -600,6 +641,59 @@ def pose_differences(wanted: dict, got: dict) -> list[str]:
         elif key not in ("yaw", "pitch") and have != want:
             found.append(f"{key} {have!r} != {want!r}")
     return found
+
+
+def is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def check_timers(command: str, result: dict) -> dict:
+    """A timers.read or timers.stop answer as the mod builds it: a list of frames in rising
+    frameIndex, each pass a name, a depth and gpuNanos (never negative) in push order (the first
+    at depth 0, each at most one deeper than the one before), the dropped counts by reason and
+    the stack's counts; ModError naming the first fault."""
+    if not isinstance(result.get("frames"), list):
+        raise ModError(f"{command}: frames is {result.get('frames')!r}, not a list")
+    last = None
+    for frame in result["frames"]:
+        index = frame.get("frameIndex") if isinstance(frame, dict) else None
+        passes = frame.get("passes") if isinstance(frame, dict) else None
+        if not is_int(index) or not isinstance(passes, list):
+            raise ModError(f"{command}: a frame lacks frameIndex or passes: {frame!r}")
+        if last is not None and index <= last:
+            raise ModError(f"{command}: frame {index} follows frame {last}")
+        last = index
+        depth = -1
+        for item in passes:
+            bad = [
+                key
+                for key in PASS_KEYS
+                if not isinstance(item, dict)
+                or not (isinstance(item.get(key), str) if key == "name" else is_int(item.get(key)))
+            ]
+            if bad:
+                raise ModError(f"{command}: a pass of frame {index} lacks {', '.join(bad)}")
+            if not 0 <= item["depth"] <= depth + 1:
+                raise ModError(
+                    f"{command}: frame {index}'s pass {item['name']} at depth {item['depth']} "
+                    f"after depth {depth}"
+                )
+            if item["gpuNanos"] < 0:
+                raise ModError(
+                    f"{command}: frame {index}'s pass {item['name']} took {item['gpuNanos']} ns"
+                )
+            depth = item["depth"]
+    dropped = result["dropped"]
+    if not isinstance(dropped, dict) or not all(is_int(dropped.get(r)) for r in DROP_REASONS):
+        raise ModError(f"{command}: dropped {dropped!r} lacks {', '.join(DROP_REASONS)}")
+    if not all(is_int(result.get(key)) for key in TIMER_COUNTS):
+        raise ModError(f"{command}: {', '.join(TIMER_COUNTS)} are not all integers")
+    return result
+
+
+def top_level_nanos(frame: dict) -> int:
+    """A timed frame's passes that no other pass holds (depth 0), summed: disjoint on the GPU."""
+    return sum(item["gpuNanos"] for item in frame["passes"] if item["depth"] == 0)
 
 
 def verify_manifest(result: dict) -> dict:
