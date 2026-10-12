@@ -407,9 +407,9 @@ def install(root: Path, tier: str, refresh: bool, say: Say) -> Outcome:
     """One install of the current platform's tier; InstallError or PlatformError when it cannot
     proceed, every hash checked before the spec verdict."""
     plat = platform.load(root)
-    if tier not in plat.tiers:
+    if tier not in plat.sets:
         raise InstallError(
-            f"no tier {tier!r} in {plat.path.name}; fix: one of {', '.join(plat.tiers)}"
+            f"no tier {tier!r} in {plat.path.name}; fix: one of {', '.join(plat.sets)}"
         )
     outcome = Outcome(plat.id, tier)
     version, source, profile, profile_url = minecraft(root, plat, outcome, say)

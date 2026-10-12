@@ -1205,9 +1205,9 @@ def launch(
     host = host or Host()
     overrides = overrides or {}
     plat = platform.load(root)
-    if tier not in plat.tiers:
+    if tier not in plat.sets:
         raise LaunchError(
-            f"no tier {tier!r} in {plat.path.name}; fix: one of {', '.join(plat.tiers)}"
+            f"no tier {tier!r} in {plat.path.name}; fix: one of {', '.join(plat.sets)}"
         )
     if pending := plat.pending(tier):
         raise LaunchError(f"tier {tier} lacks {'; '.join(pending)}; fix: launch another tier")
