@@ -1,9 +1,9 @@
-"""`optilux run <spec.json> [--json]` (docs/run-record.md#run-spec, docs/plans/m1.md
+"""`optilux run <spec.json> [--check] [--json]` (docs/run-record.md#run-spec, docs/plans/m1.md
 0.01.08 and 0.01.09, docs/plans/m2.md M2.P01).
 
 An acceptance run: the spec checked (optilux/record.py, every refusal naming its fix), the display
-against the suite and the identity built before anything launches, the live world hash-checked
-against its snapshot,
+against the suite and the identity built before anything launches (`--check` prints it and
+stops there, the live world left to the run), the live world hash-checked against its snapshot,
 then the announced launches; the session's launch facts are held against the identity. The
 session launch runs the session start of docs/mod-protocol.md#choreography (A10 is its
 selftest). At the first view: A4 (a copy of the reference zip with one program broken, selected
@@ -91,7 +91,7 @@ class Prepared:
 
 def prepare(root: Path, spec_path: Path, machine: record.Machine) -> Prepared:
     """Everything `run` checks before the live world, and the identity (run-record.md#identity)
-    built from what the session will use, nothing launched or written: the
+    built from what the session will use, nothing launched or written (`--check` stops here): the
     spec, the views and the snapshot's tree hash, the display and HAGS, PresentMon's pin, no copy
     left by an earlier A4, then the launch spec, the views file and the JDK's release file
     hashed, the jars launch places, the pinned resource packs, the options file as the launch
@@ -397,6 +397,26 @@ def perform(
 
 def configure(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("spec", help="the run spec, a JSON file (docs/run-record.md#run-spec)")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="validate the spec and print the identity; nothing launches",
+    )
+
+
+def check(ready: Prepared, as_json: bool) -> int:
+    """`--check`: the identity `run` would record, key by key; nothing launched or written."""
+    if as_json:
+        found = {"ok": True, "name": ready.spec.name, "launched": False}
+        print(json.dumps({**found, "identity": ready.identity}))
+        return 0
+    print(
+        f"{PREFIX} --check: {ready.spec.name} ({ready.spec.kind} on {ready.spec.views}) holds; "
+        "nothing launched, the live world left to the run; the identity:"
+    )
+    for key, value in ready.identity.items():
+        print(f"{key}: {json.dumps(value)}")  # ASCII: a piped stdout may be cp1252
+    return 0
 
 
 def run(args: argparse.Namespace) -> int:
@@ -414,6 +434,8 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     try:
+        if args.check:
+            return check(prepare(root, Path(args.spec), record.Machine()), args.json)
         found = perform(root, Path(args.spec), RunHost(), record.Machine(), say, announce)
     except OSError as error:  # a file the run reads or writes before its session (a lock)
         return refuse(f"{error}; fix: quit whatever holds or removed that file, then rerun")
