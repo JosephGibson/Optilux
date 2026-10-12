@@ -366,11 +366,11 @@ def amd_facts(procs: Iterable[ProcessInfo], sessions: list[str]) -> dict:
     return {"presentMon": found, "rsxTraceSession": AMD_SESSION in sessions}
 
 
-def gate(base: Path, procs: list[ProcessInfo], logman_text: str, own_pid: int) -> Gate:
-    """No process may run from runtime/<platform>/ (its executable, working folder or any
-    argument there) and no optilux-* ETW session may be running (F2)."""
+def games(base: Path, procs: list[ProcessInfo], own_pid: int) -> list[dict]:
+    """The processes running from runtime/<platform>/: its executable, working folder or any
+    argument there; each with what named it."""
     needle = norm(str(base))
-    games = []
+    found = []
     for proc in procs:
         if proc.pid == own_pid:
             continue
@@ -381,17 +381,24 @@ def gate(base: Path, procs: list[ProcessInfo], logman_text: str, own_pid: int) -
         ]
         hits = [name for name, hit in where if hit]
         if hits:
-            games.append({"pid": proc.pid, "name": proc.name, "via": hits})
+            found.append({"pid": proc.pid, "name": proc.name, "via": hits})
+    return found
+
+
+def gate(base: Path, procs: list[ProcessInfo], logman_text: str, own_pid: int) -> Gate:
+    """No process may run from runtime/<platform>/ (games) and no optilux-* ETW session may be
+    running (F2)."""
+    running = games(base, procs, own_pid)
     sessions = etw_sessions(logman_text)
     own = [name for name in sessions if name.lower().startswith(OWN_SESSION)]
-    blocking = {game["pid"] for game in games}
+    blocking = {game["pid"] for game in running}
     java = [
         {"pid": proc.pid, "name": proc.name, "exe": proc.exe, "role": java_role(proc.cmdline)}
         for proc in procs
         if proc.name.lower() in JAVA_NAMES and proc.pid not in blocking and proc.pid != own_pid
     ]
     builds = [{"pid": j["pid"], "name": j["name"]} for j in java if j["role"] == "gradle build"]
-    return Gate(games, own, amd_facts(procs, sessions), builds, java)
+    return Gate(running, own, amd_facts(procs, sessions), builds, java)
 
 
 def java_role(cmdline: list[str]) -> str:

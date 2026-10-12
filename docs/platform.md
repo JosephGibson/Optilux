@@ -87,7 +87,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   2. the classpath jars, asset index and version JSON hashed against the spec, the packs against their pins;
   3. game/mods/ made to hold exactly the tier's jars plus optilux-helper from the store (sorted sha512: identity);
   4. Java from the profile, `-Doptilux.token=<fresh>` (not with `--no-token`), the spec's JVM options, KnotClient, `--gameDir runtime/<platform>/game`, `--accessToken 0 --offlineDeveloperMode` (no --clientId or --xuid: Main defaults both), `--quickPlaySingleplayer <world>`; JAVA_TOOL_OPTIONS and kin dropped;
-  5. `--username optilux`, `--uuid` from the world's players/data/<uuid>.dat, else the platform file's `offlinePlayer` (F8); a snapshot follows the bench player's first join (ALC);
+  5. `--username optilux`, `--uuid` from the world's players/data/<uuid>.dat, else the platform file's `offlinePlayer` (F8), which `world snapshot` records;
   6. the started command line (psutil) equal to the built one and to the profile and the spec, the token's value excepted (fresh per launch, never identity);
   7. the join in this session's latest.log within 120 s (F11), Fabric's mod list equal to the tier; a failed check ends the game; `--quit-after S` holds S s, quits through the mod's `quit` (WM_CLOSE without a mod session) and reads the files back: every written key, the Iris keys, Sodium's text (`--set` and `--no-token`: run-record.md#identity).
 - Cross-check, once per platform: minecraft-launcher-lib's own command for the same versions must match the spec's main class, asset index and jars by content.

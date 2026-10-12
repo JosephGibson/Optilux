@@ -494,6 +494,7 @@ MEASURED = {
     "optilux.verbs.install",
     "optilux.verbs.run",
     "optilux.winpipe",
+    "optilux.world",
 }
 
 
@@ -1062,6 +1063,13 @@ def matching_facts(ready) -> dict:
     }
 
 
+class NoGames:
+    """The host as world.restore asks it before a run: no game running."""
+
+    def processes(self) -> list:
+        return []
+
+
 @pytest.fixture
 def faked_launch(check_root, monkeypatch: pytest.MonkeyPatch):
     """perform on check_root with launch.launch, open_mod and end faked: `then(root)` runs
@@ -1086,7 +1094,7 @@ def faked_launch(check_root, monkeypatch: pytest.MonkeyPatch):
         pass
 
     def perform() -> dict:
-        return run_verb.perform(root, path, None, FakeMachine(), quiet, quiet)  # type: ignore[arg-type]
+        return run_verb.perform(root, path, NoGames(), FakeMachine(), quiet, quiet)  # type: ignore[arg-type]
 
     return ready, plan, ended, perform
 
@@ -1122,3 +1130,18 @@ def test_a_failed_launch_records_the_identity_built_before_it(faked_launch) -> N
     found = perform()
     assert found["identity"] == ready.identity and found["status"] == "failed"
     assert "no pipe in a test" in found["reason"] and len(ended) == 1
+
+
+def test_run_restores_the_live_world_to_its_snapshot_before_the_launch(faked_launch) -> None:
+    """F15, D44: a live world that moved since the snapshot is restored, not refused."""
+    ready, plan, _, perform = faked_launch
+    live = Path(ready.base) / launch.GAME / launch.SAVES / "spike"
+    (live / "level.dat").write_bytes(b"moved")
+    (live / "added.dat").write_bytes(b"A")
+    seen: dict = {}
+    plan["then"] = lambda root: seen.update(at_launch=record.tree_hash(live)[0])
+    found = perform()
+    assert seen["at_launch"] == ready.snapshot[0]
+    restored = found["session"]["restore"]
+    assert (restored["copied"], restored["deleted"]) == (1, 1)
+    assert restored["treeSha256"] == ready.snapshot[0]

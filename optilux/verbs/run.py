@@ -3,7 +3,7 @@
 
 An acceptance run: the spec checked (optilux/record.py, every refusal naming its fix), the display
 against the suite and the identity built before anything launches (`--check` prints it and
-stops there, the live world left to the run), the live world hash-checked against its snapshot,
+stops there, the live world left to the run), the live world restored to its snapshot (D44),
 then the announced launches; the session's launch facts are held against the identity. The
 session launch runs the session start of docs/mod-protocol.md#choreography (A10 is its
 selftest). At the first view: A4 (a copy of the reference zip with one program broken, selected
@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from optilux import REPO_ROOT, launch, modclient, platform, presentmon, record, repo
+from optilux import REPO_ROOT, launch, modclient, platform, presentmon, record, repo, world
 from optilux.acceptance import (
     MOD_THREAD,
     a1,
@@ -169,23 +169,19 @@ def reread(root: Path, ready: Prepared) -> list[str]:
 def perform(
     root: Path, spec_path: Path, host: RunHost, machine: record.Machine, say: Say, announce: Say
 ) -> dict:
-    """The run: prepare's checks and identity, the live world against its snapshot, the session
+    """The run: prepare's checks and identity, the live world restored to its snapshot, the session
     launch held against the identity, A1's launch, the record. Returns the record."""
     ready = prepare(root, spec_path, machine)
     spec, suite, pack, views = ready.spec, ready.suite, ready.pack, ready.views
     snap_hash, snap_files, manifest = ready.snapshot
-    saves = ready.base / launch.GAME / launch.SAVES
-    live_hash, live_files = record.tree_hash(saves / spec.world)
-    if live_hash != snap_hash:
+    # The live world restored to its snapshot before every session (D44, F15).
+    restored = world.restore(root, spec.views, spec.world, host, say)
+    if restored["treeSha256"] != snap_hash:
         raise record.RecordError(
-            f"saves/{spec.world} hashes {live_hash[:12]}... ({live_files} files), its snapshot "
-            f"{record.SNAPSHOTS}/{spec.views}/ {snap_hash[:12]}... ({snap_files}); fix: retake the "
-            "snapshot from the world, or restore it (M2's `world restore`)"
+            f"{record.SNAPSHOTS}/{spec.views}/ hashes {restored['treeSha256'][:12]}... now, "
+            f"{snap_hash[:12]}... ({snap_files} files) when the identity was built; fix: rerun "
+            "with nothing writing snapshots/ beside the run"
         )
-    say(
-        f"world: saves/{spec.world} equals {record.SNAPSHOTS}/{spec.views}/: {snap_hash} "
-        f"({snap_files} files)"
-    )
     system = ready.identity["system"]
     say(
         f"system: {system['gpu']}, {system['resolution']} {system['windowMode']}, HAGS "
@@ -203,7 +199,8 @@ def perform(
     except repo.GitError as error:
         dirty = f"unread: {error}"
     items: dict[str, dict] = {}
-    session_facts: dict[str, Any] = {}
+    restored["copied"], restored["deleted"] = len(restored["copied"]), len(restored["deleted"])
+    session_facts: dict[str, Any] = {"restore": restored}
     problems: list[str] = []
     ident: dict | None = ready.identity  # a failed launch records it (id9)
     table = None
@@ -371,6 +368,13 @@ def perform(
                 "sessionMixinsApplied": session_facts["helperLog"]["applied"],
                 "sessionThreads": session_facts["threads"],
             }
+            # A1's launch is a session too: the world back to its snapshot first (D44).
+            again = world.restore(root, spec.views, spec.world, host, say)
+            session_facts["restoreA1"] = {
+                **again,
+                "copied": len(again["copied"]),
+                "deleted": len(again["deleted"]),
+            }
             items["A1"] = a1(root, raw, spec.world, spec.tier, host, say, announce, jcmd, control)
     except KeyboardInterrupt:
         status = "aborted"
@@ -445,7 +449,12 @@ def run(args: argparse.Namespace) -> int:
         found = perform(root, Path(args.spec), RunHost(), record.Machine(), say, announce)
     except OSError as error:  # a file the run reads or writes before its session (a lock)
         return refuse(f"{error}; fix: quit whatever holds or removed that file, then rerun")
-    except (record.RecordError, platform.PlatformError, launch.LaunchError) as error:
+    except (
+        record.RecordError,
+        platform.PlatformError,
+        launch.LaunchError,
+        world.WorldError,
+    ) as error:
         return refuse(str(error))
     try:
         path = record.write_record(root, found, say)

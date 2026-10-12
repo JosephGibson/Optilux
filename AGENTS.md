@@ -14,7 +14,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout
-- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py the stored-prompt parser, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, session.py a game session, acceptance.py M1's items, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper, presentmon.py PresentMon and A9's match, docs_check.py the doc rules. Run `uv run optilux <verb>`.
+- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py stored prompts, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, session.py a game session, acceptance.py M1's items, world.py the world verbs, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper, presentmon.py PresentMon, docs_check.py the doc rules. Run `uv run optilux <verb>`.
 - tests/: pytest, run in parallel by `uv run optilux test` (`--serial`: one process); fixtures/ saved 26.3 JSON, log, logman, jcmd and PresentMon output; `windows`-marked tests skip elsewhere.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`), optilux-release (the PR checklist, the release watch, the switch block), optilux-plan; agents/researcher.md and reviewer.md (read-only).
