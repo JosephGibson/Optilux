@@ -5,6 +5,7 @@ User-facing changes per release, newest first. Versions are MAJOR.MINOR.PATCH fr
 ## 0.3.0 Perf loop
 The goal: a performance verdict on a shader change. The harness times calibrated sessions on the bench world's views, restores the world before each run and says whether a change is faster, slower or inside the noise. The plan fixes the details; this entry grows with what ships.
 - `optilux run <spec> --check` validates a run spec and prints the identity the run would record, without launching the game. The identity now also covers the harness code a session runs, PresentMon's build and flags, every Minecraft option the game reads and Windows' GPU scheduling as applied.
+- The helper mod times measurement windows itself (`window.measure`): a settle counted from the shader reload's completion inside the game, then a window in seconds on PresentMon's clock, so the harness cuts PresentMon's frames by the window's own stamps instead of sleeping. A reload, a dimension change or leaving the world inside a window fails it. `state` reports the size the game renders at.
 
 ## 0.2.0 Game control
 The harness installs the pinned Minecraft, Fabric, mods, Java and tools hash-checked, launches the game directly, and drives it through the rewritten helper mod. Still nothing to run for a shader user: the first real pack arrives in a later release.

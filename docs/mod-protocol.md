@@ -1,5 +1,5 @@
 # Mod protocol (v1)
-Status: protocol 1, built and accepted for M1's 17 commands, the rest spec; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block, the world, dimension, focus and screen events and hook.error; 0.01.07: ready, shaders.reload, shaders.options, frames.capture, selftest, sinceReload and the reload and capture events; the rest is still spec.
+Status: protocol 1, built and accepted for M1's 17 commands, the rest spec; the harness client and the mod are written against this file (mod spec: mod.md). As built, 0.01.05: transport, envelope, errors, the event mechanism, hello, frames.index, cancel, quit and commands.json; 0.01.06: state, world.wait, command, ticks.step, camera.place, camera.get, hud.set, input.block, the world, dimension, focus and screen events and hook.error; 0.01.07: ready, shaders.reload, shaders.options, frames.capture, selftest, sinceReload and the reload and capture events; M2.P02: window.measure, its events and `state`'s framebuffer; the rest is still spec.
 
 ## Contents
 Transport · Envelope · Errors · Events · Commands · Choreography · Client rules
@@ -18,7 +18,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 - Concurrency:
   - requests run concurrently, at most 32 at once (more answer `busy`, `cancel` excepted);
   - responses may arrive out of order, matched by `id`;
-  - exclusive resources (window, capture, path, timers) answer `busy`; while one is active, every mutating command (commands.json: `camera.place`, `camera.path`, `command`, `ticks.step`, `shaders.reload`, `hud.set`, `input.block`, `selftest`, `player.path`) also answers `busy`, and an exclusive request answers `busy` while a mutating one still runs, so no mutation lands inside a measurement.
+  - exclusive resources (window, capture, path, timers) answer `busy`; while one is active, every mutating command (commands.json: `camera.place`, `camera.path`, `command`, `ticks.step`, `shaders.reload`, `hud.set`, `input.block`, `selftest`, `player.path`) also answers `busy`, and an exclusive request answers `busy` while a mutating one still runs, so no mutation lands inside a measurement; a window and a capture keep each other out the same way (commands.json `excludes`), a stopped capture until its pending frames are written.
 - Long requests can be cancelled with `cancel {"id"}`. The cancelled request answers `cancelled`; `cancel` answers `cancelled: true`, or false when that id was not running. Game-thread work already queued for a request answered `timeout` or `cancelled` skips its mutation when it runs (mod.md#4-architecture).
 - Event: `{"event": "<name>", "data": {...}, "frameIndex", "sinceReload", "qpcNs"}`. Events have no `id`; the mod pushes them once it has read `hello`'s line, so one may precede hello's answer.
 - Versioning: `hello` returns `protocol` (integer) and `capabilities` (the commands this build answers). The client adapts to capabilities, never to version strings. A missing capability answers `unsupported`.
@@ -29,7 +29,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 | bad-json, bad-encoding, line-too-long, bad-request | the line or its arguments are invalid; answered at once |
 | unknown-command, unsupported | no such command; capability absent on this platform |
 | unauthenticated | anything before a valid `hello` |
-| not-ready | no world, no player, a screen open when one is required, or camera.place without spectator or flight |
+| not-ready | no world, no player, a screen open when one is required, camera.place without spectator or flight, or `window.measure {after: reload}` with no reload since the last pipeline creation |
 | busy | exclusive resource in use, a tick step or a reload running, 32 requests running, or no worker free |
 | timeout | the request's own `timeoutSeconds` expired (game work may still finish: see mod.md#4-architecture) |
 | cancelled | stopped by `cancel` |
@@ -40,7 +40,7 @@ Transport · Envelope · Errors · Events · Commands · Choreography · Client 
 - `world.joined` (dimension), `world.left`, `dimension.changed` (from, to); a join before `hello` is not pushed: `world.wait` reports it
 - `focus.lost`, `focus.gained`, `screen.opened` (screen: the class name of any screen or overlay that opens)
 - `reload.done` (pack, pipeline, seconds), `reload.failed` (message)
-- `window.start`, `window.end` (see window.measure)
+- `window.start` (its start mark), `window.end` (its end mark and frames): window.measure's stamps as its answer gives them
 - `path.started`, `path.done`
 - `capture.frame` (name, sha256, frameIndex), `capture.done` (manifest)
 - `timers.dropped` (count), `hook.error` (message: an exception inside a frame hook, once per run of failures; the session marks the run invalid)
@@ -52,7 +52,7 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
 |---|---|---|---|
 | hello | token | protocol, mod (id, version), platform, versions (minecraft, loader, iris, sodium, java), capabilities, pid; `resumed` and the ids cancelled by the last disconnect (false and empty at the first hello) | M1 |
 | selftest | timeoutSeconds | pass, and per check (frameClock, renderer, reload, capture, input) its pass and what it saw; needs a world and answers `not-ready` before `world.wait`; holds the capture resource and is mutating (its reload) | M1 |
-| state | - | inWorld, dimension, gamemode, screen, paused, focused, frameIndex, tick | M1 |
+| state | - | inWorld, dimension, gamemode, screen, paused, focused, frameIndex, tick; framebuffer (width, height: the main render target, which the world renders into and frames.capture reads; plans/m2.md D38) | M1 |
 | world.wait | timeoutSeconds | pose (dimension, x, y, z, yaw, pitch), time (the overworld clock), joinedQpcNs; answered once a frame rendered in the world; replaces latest.log polling | M1 |
 | command | text, timeoutSeconds | succeeded, messages, failures (OWNER level) | M1 |
 | ticks.step | n, timeoutSeconds | ticks; answers after n server ticks ran while frozen (`failed` unfrozen) | M1 |
@@ -66,7 +66,7 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
 | shaders.dump | on | dump folder and file list after the next reload | M3 |
 | frames.index | - | frameIndex, sinceReload (= Iris frameCounter), qpcNs | M1 |
 | frames.capture | directory, count, every (frames) or intervalMs, align (cycle, phase on sinceReload), flush + after (frames after the flush), timeoutSeconds | frames (name, sha256, frameIndex, sinceReload, qpcNs, swapQpcNs), dropped, manifest (capture.json's path). The mod aligns, flushes and captures itself | M1 (align M3, flush M5) |
-| window.measure | after (reload, path, now), skipSeconds, seconds (or skipFrames, frames) | start and end frameIndex, sinceReload and qpcNs; seconds are timed on the QPC clock | M2 |
+| window.measure | after (reload, path, now), skipSeconds, seconds (or skipFrames, frames) | start and end, each a frame's HEAD stamp (frameIndex, sinceReload, qpcNs, swapQpcNs); frames (end minus start); seconds; skippedSeconds (the trigger to the start). The skip counts from the last reload's completion inside the mod (`reload`) or the request (`now`), on the QPC clock; the window starts at the first frame past it and ends at the first `seconds` or more after the start; `failed` when a reload, a dimension change, a join, a leave or a falling sinceReload (its wrap aside) comes inside; skipFrames, frames and `path` (M5) answer `unsupported` | M2 |
 | input.block | on | state | M1 |
 | hud.set | hideGui, debugOverlay | state (session start needs it from M1) | M1 |
 | timers.start / .read / .stop | perPass, maxPending, maxFrames | frames with passes (name, depth, gpuNanos) | M2 (cost rows below the CPU floor need them) |
@@ -93,7 +93,7 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
   1. `command /function optilux:view/<id>` (time, weather), `camera.place` (exact), `ticks.step` if the overworld weather changed;
   2. `shaders.reload`;
   3. `window.measure {after: reload, skipSeconds: settle, seconds: window}`;
-  4. the harness keeps PresentMon running and cuts its rows by the window's qpcNs. This replaces ALC's sleeps around a 150 ms PresentMon start.
+  4. the harness keeps PresentMon running and cuts its rows by CPUStartQPCTime between the window's start and end qpcNs: its frames, within one row at each edge. This replaces ALC's sleeps around a 150 ms PresentMon start.
 - Static visual capture, TAA off (M3):
   1. `camera.place`, `shaders.reload`, `ready`;
   2. `frames.capture {align: {cycle, phase}}`: the mod waits for the phase and captures that frame, with no round trip in between.

@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,17 +20,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import optilux.helper.core.Capture;
 import optilux.helper.core.Errors;
+import optilux.helper.core.FrameClock;
 import optilux.helper.core.Json;
 import optilux.helper.core.Protocol;
 import optilux.helper.core.State;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The protocol core against docs/mod-protocol.md#envelope and #errors, with handlers under real
@@ -541,6 +548,131 @@ class ProtocolTest {
         }
         assertFalse(state.anyHeld(), "the capture was never freed");
         one.shutdownNow();
+    }
+
+    @Test
+    void aHelloItsOwnDisconnectAnsweredKeepsTheRelease() throws InterruptedException {
+        // conc2: the second hello's worker reaches the state owner only after its client left
+        // (it waits in the hello facts here); its resume must not cancel the 10 s release.
+        AtomicBoolean released = new AtomicBoolean();
+        state.onInputReleased(() -> released.set(true));
+        AtomicBoolean hold = new AtomicBoolean();
+        CountDownLatch reached = new CountDownLatch(1);
+        CountDownLatch facts = new CountDownLatch(1);
+        protocol = new Protocol(Wire.COMMANDS, TOKEN, handlers, () -> {
+            if (hold.get()) {
+                reached.countDown();
+                boolean interrupted = false;
+                while (true) {
+                    try {
+                        facts.await(); // the disconnect interrupts this worker: wait on
+                        break;
+                    } catch (InterruptedException again) {
+                        interrupted = true;
+                    }
+                }
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return FACTS;
+        }, stamps, state, workers, timers);
+        connect();
+        hello();
+        state.blockInput(true);
+        disconnect();
+        connect();
+        hold.set(true);
+        send("h2", "hello", "{\"token\":\"" + TOKEN + "\"}");
+        assertTrue(reached.await(5, TimeUnit.SECONDS), "the second hello never ran");
+        disconnect(); // answers h2 cancelled, then schedules the release
+        facts.countDown();
+        long began = System.nanoTime();
+        while (!released.get() && System.nanoTime() - began < 5_000_000_000L) {
+            Thread.sleep(10);
+        }
+        assertTrue(released.get(), "a hello after its own disconnect cancelled the release");
+        assertFalse(state.inputBlocked());
+    }
+
+    @Test
+    void aReleaseThatStartsAsAHelloCancelsItLeavesTheBlock() {
+        // The timer's release may already run, waiting on the state owner's lock, when a hello
+        // cancels it (cancel(false) stops no running task): it finds itself no longer pending.
+        List<Runnable> scheduled = new ArrayList<>();
+        ScheduledThreadPoolExecutor captured = new ScheduledThreadPoolExecutor(1) {
+            @Override
+            public ScheduledFuture<?> schedule(Runnable task, long delay, TimeUnit unit) {
+                scheduled.add(task);
+                return super.schedule(() -> { }, 1, TimeUnit.DAYS);
+            }
+        };
+        State owner = new State(captured, Duration.ofMillis(300));
+        AtomicBoolean released = new AtomicBoolean();
+        owner.onInputReleased(() -> released.set(true));
+        owner.blockInput(true);
+        owner.disconnected(List.of());
+        assertNotNull(owner.hello(() -> true));
+        scheduled.get(0).run(); // the release ran late, after the hello's cancel
+        assertTrue(owner.inputBlocked());
+        assertFalse(released.get());
+        owner.disconnected(List.of());
+        scheduled.get(1).run(); // still pending: it releases
+        assertFalse(owner.inputBlocked());
+        assertTrue(released.get());
+        captured.shutdownNow();
+    }
+
+    @Test
+    void aStoppedCaptureHoldsItsResourceUntilItsFramesAreWritten(@TempDir Path temp)
+        throws Exception {
+        // conc5: a capture answered timeout with a frame still pending frees its resource only
+        // once that frame is written, so no mutation or new capture lands beside its writes.
+        Capture capture = new Capture(Capture.attemptFolder(temp), 2, 1, 0);
+        Capture.Frame frame = capture.take(new FrameClock.Stamp(5, 35_000_000L, 34_900_000L), 1L);
+        ExecutorService writers = Executors.newSingleThreadExecutor();
+        CaptureAdapter adapter = new CaptureAdapter(new FrameClock(() -> 0L, 1), () -> 0L,
+            () -> true, writers, (name, data) -> { });
+        handlers.put("frames.capture", request -> adapter.run(capture));
+        protocol = new Protocol(Wire.COMMANDS, TOKEN, handlers, () -> FACTS, stamps, state, workers,
+            timers);
+        connect();
+        hello();
+        send(1, "frames.capture", "{\"directory\":\"d\",\"count\":2,\"timeoutSeconds\":0.2}");
+        assertEquals(Errors.TIMEOUT, code(next()));
+        Thread.sleep(200);
+        assertTrue(state.anyHeld(), "the capture was freed with a frame still pending");
+        send(2, "command", "{\"text\":\"/tick freeze\",\"timeoutSeconds\":5}");
+        assertEquals(Errors.BUSY, code(next()));
+        capture.arrived(frame);
+        Path file = capture.folder().resolve(frame.name());
+        Files.writeString(file, "png");
+        capture.written(frame, Capture.sha256(file));
+        long until = System.nanoTime() + 5_000_000_000L;
+        while (state.anyHeld() && System.nanoTime() < until) {
+            Thread.sleep(5);
+        }
+        assertFalse(state.anyHeld(), "the capture kept its resource after its last frame");
+        String manifest = Files.readString(capture.folder().resolve(Capture.MANIFEST));
+        assertTrue(manifest.contains("\"complete\":false") && manifest.contains(frame.name()),
+            manifest);
+        writers.shutdownNow();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void stateAnswersTheFramebufferSize() throws InterruptedException {
+        handlers.put("state", request -> GameAdapter.stateAnswer(true, "minecraft:overworld",
+            "spectator", null, false, true, 120L, 3840, 2160));
+        protocol = new Protocol(Wire.COMMANDS, TOKEN, handlers, () -> FACTS, stamps, state, workers,
+            timers);
+        connect();
+        hello();
+        send(1, "state", "{}");
+        Map<String, Object> answer = result(next()); // its fields and types: Wire.check
+        Map<String, Object> framebuffer = (Map<String, Object>) answer.get("framebuffer");
+        assertEquals("3840x2160", framebuffer.get("width") + "x" + framebuffer.get("height"));
+        assertEquals(List.of("width", "height"), List.copyOf(framebuffer.keySet()));
     }
 
     @Test

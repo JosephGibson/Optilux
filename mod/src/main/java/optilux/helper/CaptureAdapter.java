@@ -4,9 +4,14 @@ import com.mojang.blaze3d.platform.NativeImage;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
@@ -26,20 +31,26 @@ import org.slf4j.LoggerFactory;
  * {@link #MAX_PENDING} pending frames the render thread waits for a writer (time, not
  * correctness), but only while a writer holds one: a readback in flight arrives through the render
  * thread itself, so readbacks alone may pass the cap (a few frames of fence latency in practice).
- * One capture at a time (the `capture` resource); every mutating command answers busy meanwhile. On a timeout, cancel, disconnect or world leave the capture stops,
- * pending frames are still written and the manifest is marked incomplete.
+ * One capture at a time (the `capture` resource); every mutating command answers busy meanwhile.
+ * On a timeout, cancel, disconnect or world leave the capture stops, pending frames are still
+ * written and the manifest is marked incomplete; the resource is freed after them (a world leave
+ * frees every resource at once).
  */
 final class CaptureAdapter {
     private static final Logger LOG = LoggerFactory.getLogger("optilux-helper");
     /** Pending readbacks at most (docs/mod.md#8-capture: about 530 MB at 4K). */
     static final int MAX_PENDING = 16;
+    /** A stopped capture's wait for its pending frames: 16 4K PNGs on 4 writers take seconds. */
+    static final Duration DRAIN = Duration.ofSeconds(30);
 
     private final FrameClock clock;
     private final LongSupplier sinceReload;
     private final BooleanSupplier inWorld;
     private final ExecutorService writers;
     private final BiConsumer<String, Map<String, Object>> events;
-    private volatile Capture active;
+    // The capture the capture point serves; a world leave frees the resource at once, so an
+    // ending capture clears only its own slot.
+    private final AtomicReference<Capture> active = new AtomicReference<>();
 
     CaptureAdapter(FrameClock clock, LongSupplier sinceReload, BooleanSupplier inWorld,
         ExecutorService writers, BiConsumer<String, Map<String, Object>> events) {
@@ -85,26 +96,65 @@ final class CaptureAdapter {
         return answer;
     }
 
-    /** Run one capture to its end; a stop (timeout, cancel, leave) interrupts the wait. */
+    /**
+     * Run one capture to its end; a stop (timeout, cancel, leave) interrupts the wait, and the
+     * stopped capture's pending frames are written or dropped before this returns (at most
+     * DRAIN), so its resource is freed with them.
+     */
     Map<String, Object> run(Capture capture) throws Exception {
-        active = capture;
+        active.set(capture);
         LOG.info("optilux-helper: capture into {}", capture.folder());
         try {
             return Tasks.unwrap(capture.done());
         } catch (InterruptedException stopped) {
             capture.stop("interrupted: the request was answered first");
+            drain(capture);
             throw stopped;
         } finally {
-            if (active == capture) {
-                active = null;
-            }
+            active.compareAndSet(capture, null);
             capture.stop("ended");
+        }
+    }
+
+    /**
+     * Wait for a stopped capture's manifest, which follows its pending frames: at most DRAIN, an
+     * interrupt ignored (the request's own already ended the wait it was meant for). Readbacks
+     * arrive through the render thread, so a game that stops rendering ends the wait at DRAIN.
+     */
+    static void drain(Capture capture) {
+        long until = System.nanoTime() + DRAIN.toNanos();
+        boolean interrupted = false;
+        try {
+            while (true) {
+                long left = until - System.nanoTime();
+                if (left <= 0) {
+                    LOG.warn("optilux-helper: capture {} still had {} frames pending after {} s",
+                        capture.folder(), capture.pending(), DRAIN.toSeconds());
+                    return;
+                }
+                try {
+                    capture.done().get(left, TimeUnit.NANOSECONDS);
+                    return;
+                } catch (InterruptedException again) {
+                    interrupted = true;
+                } catch (TimeoutException late) {
+                    // the next turn logs it
+                } catch (ExecutionException failed) {
+                    LOG.warn("optilux-helper: stopped capture {}: {}", capture.folder(),
+                        failed.getCause().toString());
+                    return;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
     /** The capture point (render thread): the active capture's next frame, if this is one. */
     void capturePoint() throws InterruptedException {
-        Capture capture = active;
+        Capture capture = active.get();
         if (capture == null) {
             return;
         }

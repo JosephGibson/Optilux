@@ -30,6 +30,7 @@ public final class State {
     private final Map<String, Object> held = new LinkedHashMap<>();
     private boolean inputBlocked;
     private ScheduledFuture<?> pendingRelease;
+    private Object releaseToken; // the pending release's; null once it ran or was cancelled
     private Runnable onInputReleased = () -> { };
     private int hellos;
     private List<Object> lastCancelled = List.of();
@@ -95,8 +96,16 @@ public final class State {
         return true;
     }
 
-    /** A client said hello: the resume facts, and no release pending any more. */
-    public synchronized Resume hello() {
+    /**
+     * A client said hello: the resume facts, and no release pending any more; null, nothing
+     * changed, unless {@code live} holds under this lock. A disconnect answers its requests
+     * before it reaches {@link #disconnected}, so a hello its own disconnect answered never
+     * cancels the release that disconnect schedules.
+     */
+    public synchronized Resume hello(BooleanSupplier live) {
+        if (!live.getAsBoolean()) {
+            return null;
+        }
         Resume resume = new Resume(hellos > 0, lastCancelled);
         hellos++;
         cancelRelease();
@@ -108,7 +117,9 @@ public final class State {
         lastCancelled = List.copyOf(cancelled);
         cancelRelease();
         if (inputBlocked) {
-            pendingRelease = timers.schedule(this::releaseInput, release.toNanos(),
+            Object token = new Object();
+            releaseToken = token;
+            pendingRelease = timers.schedule(() -> releaseInput(token), release.toNanos(),
                 TimeUnit.NANOSECONDS);
         }
     }
@@ -123,7 +134,15 @@ public final class State {
         }
     }
 
-    private synchronized void releaseInput() {
+    /**
+     * The timer's release, only if it is still the pending one: a release that started as a
+     * hello cancelled it waits on this lock, and finds its token gone.
+     */
+    private synchronized void releaseInput(Object token) {
+        if (releaseToken != token) {
+            return;
+        }
+        releaseToken = null;
         pendingRelease = null;
         if (inputBlocked) {
             inputBlocked = false;
@@ -132,6 +151,7 @@ public final class State {
     }
 
     private void cancelRelease() {
+        releaseToken = null;
         if (pendingRelease != null) {
             pendingRelease.cancel(false);
             pendingRelease = null;

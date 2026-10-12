@@ -73,6 +73,7 @@ def initial_game() -> dict:
         "pack": "fake-pack.zip",
         "options": {"FAKE_BOOL": True, "FAKE_VALUE": "2"},
         "reloadFrame": 0,
+        "framebuffer": {"width": 3840, "height": 2160},
         "pose": {"dimension": OVERWORLD, "x": 0.5, "y": 70.0, "z": 0.5, "yaw": 0.0, "pitch": 0.0},
         "gamemode": "spectator",
         "time": 6000,
@@ -510,6 +511,7 @@ class Fake:
                 "paused": False,
                 "focused": game["focused"],
                 "tick": game["tick"],
+                "framebuffer": dict(game["framebuffer"]),
             }
         if name == "world.wait":
             return {"pose": dict(pose), "time": game["time"], "joinedQpcNs": 0}
