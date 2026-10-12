@@ -7,15 +7,7 @@
   "resolution": "3840x2160",
   "why": "bench resolution = play resolution (user, 2026-10-05); keeps every variant GPU-bound (ALC: GPUBusy/FrameTime 0.995-1.005 on 108/108 captures)",
   "window": "exclusive fullscreen",
-  "vsync": false,
-  "fpsLimit": "unlimited",
-  "fov": 90,
-  "viewBobbing": false,
-  "renderDistance": 16,
-  "simulationDistance": 12,
-  "guiScale": 3,
-  "mipmapLevels": 4,
-  "biomeBlend": 2,
+  "windowWhy": "fullscreen:true, exclusiveFullscreen:true (exclusive, at the desktop's own mode: no fullscreenResolution is written, so the game targets 3840x2160@240); vanilla's borderless (exclusiveFullscreen:false) presents OpenGL here as Composed: Copy with GPU GDI, exclusive as Hardware: Independent Flip through DXGI (0.01.13's probe, one variable; measurement.md#validity); Sodium flips exclusiveFullscreen to true once on a fresh sodium-options.json (notifications.has_edited_fullscreen_option), so the harness writes that file first (spike L1, L2)",
   "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
   "sodiumOptionsFile": {
    "quality": {
@@ -46,8 +38,6 @@
     "has_edited_fullscreen_option": true
    }
   },
-  "windowKeys": "fullscreen:true, exclusiveFullscreen:true (exclusive, at the desktop's own mode: no fullscreenResolution is written, so the game targets 3840x2160@240); vanilla's borderless (exclusiveFullscreen:false) presents OpenGL here as Composed: Copy with GPU GDI, exclusive as Hardware: Independent Flip through DXGI (0.01.13's probe, one variable; measurement.md#validity); Sodium flips exclusiveFullscreen to true once on a fresh sodium-options.json (notifications.has_edited_fullscreen_option), so the harness writes that file first (spike L1, L2)",
-  "graphicsPreset": "custom",
   "optionsTxt": {
    "version": "5023",
    "fullscreen": "true",

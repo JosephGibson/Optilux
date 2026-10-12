@@ -1,9 +1,13 @@
-"""The run record (docs/run-record.md, docs/plans/m1.md 0.01.08 and 0.01.09): the tree hash on a
-fixture tree, the run spec's checks on fixtures (every refusal naming its fix), the views file,
-the identity and the record writer against the identity key list, the system facts on a fake
-machine; run's readers: the jcmd outputs and the broken-pack writer on a fixture zip."""
+"""The run record (docs/run-record.md, docs/plans/m1.md 0.01.08 and 0.01.09, docs/plans/m2.md
+M2.P01): the tree hash on a fixture tree, the run spec's checks on fixtures (every refusal naming
+its fix), the views file, the identity and the record writer against the identity key list, the
+system facts on a fake machine and the D3DKMT reader on a fake gdi32, the settings' unwritten
+keys, the measured modules' closure and PresentMon's arguments, the launch held against the
+identity built before it, on a fixture root; run's readers: the jcmd outputs and the
+broken-pack writer on a fixture zip."""
 
 import copy
+import ctypes
 import hashlib
 import json
 import re
@@ -13,7 +17,17 @@ from pathlib import Path
 
 import pytest
 
-from optilux import REPO_ROOT, acceptance, launch, modclient, platform, record, session
+from optilux import (
+    REPO_ROOT,
+    acceptance,
+    launch,
+    modclient,
+    platform,
+    presentmon,
+    record,
+    session,
+)
+from optilux.verbs import run as run_verb
 
 PLAT = platform.load(REPO_ROOT)
 SUITE = json.loads((REPO_ROOT / platform.SUITE).read_text(encoding="utf-8"))
@@ -266,8 +280,13 @@ def test_the_identity_keys_are_the_docs() -> None:
 
 
 class FakeMachine(record.Machine):
-    def __init__(self, width: int = 3840, height: int = 2160) -> None:
+    def __init__(self, width: int = 3840, height: int = 2160, caps: int = 0b1011) -> None:
         self.size = (width, height)
+        self.caps = caps  # P15's reading: supported, enabled, not by default, VSync control
+
+    def hags(self, name: str) -> tuple[int, str]:
+        assert name == "\\\\.\\DISPLAY2"  # the primary's adapter
+        return self.caps, "0x11d94"
 
     def displays(self) -> list[dict]:
         return [
@@ -304,6 +323,38 @@ def test_the_system_facts_come_from_the_primary_display() -> None:
     }
     assert recorded["driver"] == "1.2.3" and recorded["windowsRevision"] == 9457
     assert recorded["display"] == {"name": "\\\\.\\DISPLAY2", "hz": 240, "displays": 2}
+    assert recorded["hags"] == {
+        "caps": 0b1011,
+        "supported": True,
+        "enabledByDefault": False,
+        "adapterLuid": "0x11d94",
+    }
+    assert recorded["hwSchMode"] == 2  # requested, recorded, never matched (id6)
+
+
+def test_hags_is_the_applied_state_and_hwschmode_only_recorded() -> None:
+    """D38: the caps' HwSchEnabled bit, whatever the registry requests; an unset HwSchMode is
+    recorded as None, never read as off, and a failed read as unread, never as unset."""
+
+    class Requested(FakeMachine):
+        def __init__(self, error: OSError, caps: int) -> None:
+            super().__init__(caps=caps)
+            self.error = error
+
+        def registry(self, key: str, value: str):
+            if value == "HwSchMode":
+                raise self.error
+            return super().registry(key, value)
+
+    absent = Requested(FileNotFoundError(2, "absent"), 0b1001)
+    found, recorded = record.system_facts(absent, options(), SUITE["display"])
+    assert found["hags"] is False and recorded["hwSchMode"] is None
+    assert recorded["hags"]["supported"] is True
+    denied = Requested(PermissionError(5, "denied"), 0b1011)
+    found, recorded = record.system_facts(denied, options(), SUITE["display"])
+    assert found["hags"] is True and recorded["hwSchMode"].startswith("unread: ")
+    on, _ = record.system_facts(FakeMachine(caps=0b0011), options(), SUITE["display"])
+    assert on["hags"] is True
 
 
 def test_a_display_or_window_mode_off_the_suite_is_refused() -> None:
@@ -314,32 +365,47 @@ def test_a_display_or_window_mode_off_the_suite_is_refused() -> None:
         record.system_facts(FakeMachine(), windowed, SUITE["display"])
 
 
-def test_the_java_version_must_be_the_running_games(tmp_path: Path) -> None:
-    home = tmp_path / "jdk"
-    home.mkdir()
-    (home / "release").write_text('JAVA_RUNTIME_VERSION="25.0.4.1+1-LTS"\n', encoding="utf-8")
-    profile = json.loads((REPO_ROOT / "config/java/bench.json").read_text(encoding="utf-8"))
-    found = record.java_identity(home, profile, "25.0.4.1+1-LTS")
+RELEASE = b'IMPLEMENTOR="Eclipse Adoptium"\nJAVA_RUNTIME_VERSION="25.0.4.1+1-LTS"\n'
+JAVA_PROFILE = json.loads((REPO_ROOT / "config/java/bench.json").read_text(encoding="utf-8"))
+
+
+def test_the_java_identity_is_read_before_the_launch(tmp_path: Path) -> None:
+    """The release file read and hashed before the launch (id7); the running game's version is
+    held against it after (launch_differences)."""
+    home = tree(tmp_path / "jdk", {"release": RELEASE})
+    found = record.java_identity(home, JAVA_PROFILE)
     assert found["version"] == "25.0.4.1+1-LTS" and found["heap"]["xmx"] == 6144
-    with pytest.raises(record.RecordError, match="fix:"):
-        record.java_identity(home, profile, "21.0.1")
+    assert found["release"] == hashlib.sha256(RELEASE).hexdigest()
+    (home / "release").write_bytes(RELEASE.replace(b"Eclipse", b"Other"))
+    assert record.java_identity(home, JAVA_PROFILE)["release"] != found["release"]
+    (home / "release").write_bytes(b'IMPLEMENTOR="x"\n')
+    with pytest.raises(record.RecordError, match=r"names no JAVA_RUNTIME_VERSION.*install"):
+        record.java_identity(home, JAVA_PROFILE)
+    with pytest.raises(record.RecordError, match=r"no release file.*install"):
+        record.java_identity(tmp_path / "absent", JAVA_PROFILE)
 
 
-def built_identity() -> dict:
+def built_identity(**changes) -> dict:
     system, _ = record.system_facts(FakeMachine(), options(), SUITE["display"])
-    return record.identity(
-        plat=PLAT,
-        tier="bench",
-        spec_path=platform.spec_path(REPO_ROOT, PLAT.id),
-        mods=["b" * 128, "a" * 128],
-        world={"snapshot": "snapshots/provisional", "treeSha256": "c" * 64, "files": 3},
-        views_path=VIEWS,
-        packs=[{"file": "Faithful.zip", "sha512": "d" * 128}],
-        settings={"options": options(), "sodiumOptions": "e" * 64, "token": True},
-        suite=SUITE,
-        java={"runtime": "jdk", "version": "25", "heap": {}, "args": []},
-        system=system,
+    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {})
+    settings = record.settings_identity(
+        launch.settings_facts(pre, True), {"sha256": "e" * 64, "unwritten": {"ao": "true"}}
     )
+    found = {
+        "plat": PLAT,
+        "tier": "bench",
+        "spec_path": platform.spec_path(REPO_ROOT, PLAT.id),
+        "mods": ["b" * 128, "a" * 128],
+        "world": {"snapshot": "snapshots/provisional", "treeSha256": "c" * 64, "files": 3},
+        "views_path": VIEWS,
+        "packs": [{"file": "Faithful.zip", "sha512": "d" * 128}],
+        "settings": settings,
+        "suite": SUITE,
+        "java": {"runtime": "jdk", "version": "25", "heap": {}, "args": []},
+        "system": system,
+        "harness": {"modules": {"optilux/record.py": "f" * 64}, "presentMon": {}},
+    }
+    return record.identity(**{**found, **changes})
 
 
 def test_the_identity_holds_exactly_the_key_list() -> None:
@@ -369,6 +435,233 @@ def test_the_platform_hash_covers_the_loaded_tiers_only() -> None:
     assert record.platform_identity(other, "bench")["sha256"] == base
     other.data["tiers"]["bench"]["purpose"] = "changed"
     assert record.platform_identity(other, "bench")["sha256"] != base
+
+
+def test_the_platform_identity_leaves_out_the_reference_pack_and_world_prep() -> None:
+    """D39: a re-pinned reference pack or a changed prep mod never forces a recalibration."""
+    base = record.platform_identity(PLAT, "bench")
+    other = platform.Platform(PLAT.id, PLAT.path, copy.deepcopy(PLAT.data))
+    other.data["referencePacks"][0]["sha512"] = "0" * 128
+    other.data["worldPrep"]["mods"][0]["version"] = "9.9.9"
+    assert record.platform_identity(other, "bench") == base
+    other.data["gamerules"]["spawnMobs"] = not other.data["gamerules"]["spawnMobs"]
+    assert record.platform_identity(other, "bench") != base
+
+
+# The settings (D37, D39): options.txt's unwritten keys as the game reads them, no shaderPack.
+
+
+def planned_settings(game: Path, pack: str = PACK) -> dict:
+    pre = launch.prelaunch(SUITE["display"], "bench", pack, {})
+    _, options_file = launch.planned_options(game, pre)
+    return record.settings_identity(launch.settings_facts(pre, True), options_file)
+
+
+def test_a_changed_unwritten_key_changes_the_identity_and_the_pack_does_not(
+    tmp_path: Path,
+) -> None:
+    game = tree(tmp_path / "game", {"options.txt": b"version:4892\nao:true\nparticles:0\r\n"})
+    settings = planned_settings(game)
+    assert settings["unwritten"] == {"ao": "true", "particles": "0"}
+    assert "shaderPack" not in settings["iris"] and settings["iris"]["enableShaders"] == "true"
+    assert not (game / "config").exists()  # planned, never written
+    base = built_identity(settings=settings)
+    assert built_identity(settings=planned_settings(game, "Other.zip")) == base
+    (game / "options.txt").write_bytes(b"version:4892\nao:false\nparticles:0\n")
+    moved = built_identity(settings=planned_settings(game))
+    assert moved["settings"]["unwritten"]["ao"] == "false"
+    assert record.sha256_of(moved) != record.sha256_of(base)
+    # A written key's old value never reaches the identity: the harness's value wins.
+    (game / "options.txt").write_bytes(b"ao:false\nparticles:0\nrenderDistance:2\n")
+    assert planned_settings(game)["options"]["renderDistance"] == "16"
+
+
+# The harness (D36).
+
+MEASURED = {
+    "optilux",
+    "optilux.acceptance",
+    "optilux.launch",
+    "optilux.modclient",
+    "optilux.platform",
+    "optilux.presentmon",
+    "optilux.record",
+    "optilux.repo",
+    "optilux.sendinput",
+    "optilux.session",
+    "optilux.verbs",
+    "optilux.verbs.install",
+    "optilux.verbs.run",
+    "optilux.winpipe",
+}
+
+
+def test_the_measured_modules_are_the_runners_import_closure() -> None:
+    """Read with ast from optilux/verbs/run.py: winpipe arrives only through a deferred import
+    inside a function; the CLI's registry and the other verbs are outside."""
+    found = record.module_closure(REPO_ROOT)
+    assert set(found) == MEASURED
+    assert found["optilux.verbs"] == REPO_ROOT / "optilux" / "verbs" / "__init__.py"
+
+
+def test_the_closure_follows_relative_and_deferred_imports(tmp_path: Path) -> None:
+    root = tree(
+        tmp_path,
+        {
+            "optilux/__init__.py": b"",
+            "optilux/a.py": b"import json\n\ndef f():\n    from optilux import b, NAME\n",
+            "optilux/b.py": b"from . import c\nfrom .sub import d\n",
+            "optilux/c.py": b"",
+            "optilux/sub/__init__.py": b"",
+            "optilux/sub/d.py": b"from .. import e\n",
+            "optilux/e.py": b"",
+            "optilux/unread.py": b"",
+        },
+    )
+    found = record.module_closure(root, "optilux.a")
+    assert set(found) == {f"optilux{n}" for n in ("", ".a", ".b", ".c", ".sub", ".sub.d", ".e")}
+    with pytest.raises(record.RecordError, match=r"no module optilux\.absent.*fix:"):
+        record.module_closure(root, "optilux.absent")
+
+
+@pytest.fixture
+def harness_root(tmp_path: Path) -> tuple[Path, Path]:
+    """A copy of the package and a stand-in PresentMon."""
+    shutil.copytree(
+        REPO_ROOT / "optilux", tmp_path / "optilux", ignore=shutil.ignore_patterns("__pycache__")
+    )
+    exe = tree(tmp_path / "runtime" / "tools", {"PresentMon.exe": b"MZ"}) / "PresentMon.exe"
+    return tmp_path, exe
+
+
+def test_a_measured_module_or_presentmon_moves_the_harness_and_status_does_not(
+    harness_root, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, exe = harness_root
+    base = record.harness_identity(root, exe)
+    assert sorted(base["modules"]) == sorted(
+        record.module_path(root, name).relative_to(root).as_posix()  # type: ignore[union-attr]
+        for name in MEASURED
+    )
+    assert base["presentMon"] == {
+        "file": "PresentMon.exe",
+        "sha256": hashlib.sha256(b"MZ").hexdigest(),
+        "arguments": [
+            "--process_id",
+            "<pid>",
+            "--output_file",
+            "<csv>",
+            "--qpc_time_ms",
+            "--v2_metrics",
+            "--session_name",
+            "optilux-<run>",
+            "--stop_existing_session",
+            "--no_console_stats",
+        ],
+    }
+    status = root / "optilux" / "verbs" / "status.py"
+    status.write_bytes(status.read_bytes() + b"\n# an edit outside the measured session\n")
+    assert record.harness_identity(root, exe) == base
+    measured = root / "optilux" / "presentmon.py"
+    measured.write_bytes(measured.read_bytes() + b"\n# an edit inside it\n")
+    moved = record.harness_identity(root, exe)
+    assert moved["modules"]["optilux/presentmon.py"] != base["modules"]["optilux/presentmon.py"]
+    assert record.sha256_of(built_identity(harness=moved)) != record.sha256_of(
+        built_identity(harness=base)
+    )
+    measured.write_bytes(measured.read_bytes()[: -len(b"\n# an edit inside it\n")])
+    assert record.harness_identity(root, exe) == base
+    monkeypatch.setattr(presentmon, "FLAGS", ("--qpc_time_ms",))  # --v2_metrics dropped
+    assert record.harness_identity(root, exe)["presentMon"] != base["presentMon"]
+    monkeypatch.undo()
+    exe.write_bytes(b"MZ2")
+    changed = record.harness_identity(root, exe)["presentMon"]["sha256"]
+    assert changed != base["presentMon"]["sha256"]
+
+
+# HAGS as applied: the D3DKMT reader on a fake gdi32 (D38).
+
+
+class FakeKmt:
+    """gdi32's three D3DKMT calls: the adapter opened by its GDI name, the caps written where
+    the query points, the adapter closed; each call logged, a status given per call."""
+
+    def __init__(self, caps: int = 0b1011, opened: int = 0, queried: int = 0) -> None:
+        self.caps, self.opened, self.queried = caps, opened, queried
+        self.calls: list[tuple] = []
+
+    def D3DKMTOpenAdapterFromGdiDisplayName(self, arg) -> int:
+        found = arg._obj
+        self.calls.append(("open", found.DeviceName))
+        if self.opened:
+            return self.opened
+        found.hAdapter, found.AdapterLuid.LowPart, found.AdapterLuid.HighPart = 7, 0x11D94, 1
+        return 0
+
+    def D3DKMTQueryAdapterInfo(self, arg) -> int:
+        query = arg._obj
+        self.calls.append(("query", query.hAdapter, query.Type, query.PrivateDriverDataSize))
+        if self.queried:
+            return self.queried
+        ctypes.c_uint32.from_address(query.pPrivateDriverData).value = self.caps
+        return 0
+
+    def D3DKMTCloseAdapter(self, arg) -> int:
+        self.calls.append(("close", arg._obj.hAdapter))
+        return 0
+
+
+class UnreadHags(FakeMachine):
+    """A machine whose D3DKMT query fails."""
+
+    def hags(self, name: str) -> tuple[int, str]:
+        return record.wddm27_caps(name, FakeKmt(queried=1))
+
+
+def test_the_d3dkmt_reader_queries_the_wddm_2_7_caps_of_the_displays_adapter() -> None:
+    kmt = FakeKmt()
+    assert record.wddm27_caps("\\\\.\\DISPLAY2", kmt) == (0b1011, "0x100011d94")
+    assert kmt.calls == [("open", "\\\\.\\DISPLAY2"), ("query", 7, 70, 4), ("close", 7)]
+
+
+def test_a_failed_d3dkmt_call_refuses_the_run_and_closes_what_it_opened() -> None:
+    kmt = FakeKmt(queried=-1073741811)  # STATUS_INVALID_PARAMETER
+    with pytest.raises(record.RecordError, match=r"QueryAdapterInfo.*0xc000000d.*D38.*fix:"):
+        record.wddm27_caps("\\\\.\\DISPLAY2", kmt)
+    assert kmt.calls[-1] == ("close", 7)
+    kmt = FakeKmt(opened=-1073741811)
+    with pytest.raises(record.RecordError, match=r"OpenAdapterFromGdiDisplayName.*fix:"):
+        record.wddm27_caps("\\\\.\\DISPLAY9", kmt)
+    assert kmt.calls == [("open", "\\\\.\\DISPLAY9")]  # nothing opened, nothing to close
+    with pytest.raises(record.RecordError, match="HAGS as applied is unread"):
+        record.system_facts(UnreadHags(), options(), SUITE["display"])
+
+
+# The launch held against the identity built before it (id7, id9).
+
+
+def launch_facts(identity: dict, unwritten: dict | None = None) -> dict:
+    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {})
+    return {
+        "hashes": {
+            "packs": [
+                {"file": "Faithful.zip", "kind": "resourcePack", "sha512": "d" * 128},
+                {"file": PACK, "kind": "referencePack", "sha512": "9" * 128},
+            ]
+        },
+        "mods": {"sha512": list(reversed(identity["mods"]))},
+        "settings": launch.settings_facts(pre, True),
+        "optionsFile": {"sha256": "e" * 64, "unwritten": unwritten or {"ao": "true"}},
+    }
+
+
+def test_the_launch_is_held_against_the_identity_built_before_it() -> None:
+    found = built_identity()
+    assert record.launch_differences(found, launch_facts(found)) == []
+    moved = launch_facts(found, {"ao": "false"})
+    moved["mods"]["sha512"] = ["0" * 128]
+    moved["hashes"]["packs"][0]["sha512"] = "1" * 128
+    assert record.launch_differences(found, moved) == ["mods", "resourcePacks", "settings"]
 
 
 def a_record(**changes) -> dict:
@@ -628,3 +921,173 @@ def test_the_presentmon_pin_and_the_spec_file_are_checked_before_a_launch(tmp_pa
     (tmp_path / "bad.json").write_text("{", encoding="utf-8")
     with pytest.raises(record.RecordError, match="JSON"):
         session.load_spec(tmp_path / "bad.json")
+
+
+# `run --check` (plans/m2.md M2.P01): the spec validated, the identity printed, nothing launched.
+
+
+@pytest.fixture
+def check_root(tmp_path: Path) -> tuple[Path, Path]:
+    """A root holding the repo's config and package, the snapshot and its live world, the game's
+    options.txt, stand-ins for the pinned PresentMon and the JDK's release file; and a spec."""
+    root = tmp_path / "root"
+    shutil.copytree(REPO_ROOT / "config", root / "config")
+    shutil.copytree(
+        REPO_ROOT / "optilux", root / "optilux", ignore=shutil.ignore_patterns("__pycache__")
+    )
+    tree(root / record.SNAPSHOTS / "provisional", {"level.dat": b"L"})
+    game = root / "runtime" / PLAT.id / "game"
+    tree(game, {"saves/spike/level.dat": b"L", "options.txt": b"version:4892\nao:true\n"})
+    tree(root / "runtime" / "tools", {"PresentMon.exe": b"MZ"})
+    tools = json.loads((root / "config" / "tools.json").read_text(encoding="utf-8"))
+    tools["presentmon"].update(file="PresentMon.exe", sha256=hashlib.sha256(b"MZ").hexdigest())
+    (root / "config" / "tools.json").write_text(json.dumps(tools), encoding="utf-8")
+    tree(root / "runtime" / "java" / JAVA_PROFILE["runtime"]["build"], {"release": RELEASE})
+    path = tmp_path / "spec.json"
+    path.write_text(json.dumps(spec()), encoding="utf-8")
+    return root, path
+
+
+def listing(root: Path) -> dict[str, bytes]:
+    return {p.relative_to(root).as_posix(): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+
+
+def test_the_identity_is_built_before_the_launch_and_nothing_is_written(check_root) -> None:
+    root, path = check_root
+    before = listing(root)
+    ready = run_verb.prepare(root, path, FakeMachine())
+    assert listing(root) == before
+    found = ready.identity
+    assert tuple(found) == record.IDENTITY_KEYS
+    assert found["world"] == {
+        "snapshot": "snapshots/provisional",
+        "treeSha256": record.tree_hash(root / record.SNAPSHOTS / "provisional")[0],
+        "files": 1,
+    }
+    assert found["settings"]["unwritten"] == {"ao": "true"} and found["settings"]["token"]
+    assert found["mods"] == sorted(p.sha512 for p in PLAT.tier_files("bench") if p.kind == "mod")
+    assert found["java"]["release"] == hashlib.sha256(RELEASE).hexdigest()
+    assert found["system"]["hags"] is True
+    assert set(found["harness"]["modules"]) >= {"optilux/verbs/run.py", "optilux/session.py"}
+    assert ready.recorded["hwSchMode"] == 2
+
+
+PREPARE_REFUSALS = [
+    (lambda root: (root / "config/platforms/mc-26.3.launch.json").unlink(), "launch spec"),
+    (
+        lambda root: tree(
+            root / "runtime" / PLAT.id / "game" / "shaderpacks",
+            {f"{acceptance.A4_PREFIX}x.zip": b"Z"},
+        ),
+        "earlier A4",
+    ),
+    (lambda root: (root / "runtime/tools/PresentMon.exe").write_bytes(b"MZ2"), "its pin"),
+    (
+        lambda root: (
+            root / "runtime" / "java" / JAVA_PROFILE["runtime"]["build"] / "release"
+        ).unlink(),
+        "release file",
+    ),
+]
+
+
+@pytest.mark.parametrize(("change", "says"), PREPARE_REFUSALS)
+def test_each_refusal_before_the_launch_names_its_fix(check_root, change, says: str) -> None:
+    root, path = check_root
+    change(root)
+    with pytest.raises(record.RecordError, match="fix:") as refused:
+        run_verb.prepare(root, path, FakeMachine())
+    assert says in str(refused.value)
+    assert not (root / record.RAW).exists() and not (root / record.RECORDS).exists()
+
+
+# The session's launch held against the identity (perform, launch faked: nothing starts).
+
+
+class Ended:
+    pid = 4242
+
+
+def launched_like(root: Path, facts: dict) -> launch.Launched:
+    game = root / "runtime" / PLAT.id / "game"
+    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {})
+    found = {
+        "gate": {"amd": {}, "java": []},
+        "command": {"arguments": ["java"], "check": "equal"},
+        **facts,
+    }
+    return launch.Launched(Ended(), Ended.pid, "t", game / launch.LOG, game, pre, found)
+
+
+def matching_facts(ready) -> dict:
+    """Launch facts that agree with the identity prepare built on check_root."""
+    packs = ready.identity["resourcePacks"]["packs"]
+    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {})
+    return {
+        "hashes": {"packs": [{**p, "kind": "resourcePack"} for p in packs]},
+        "mods": {"sha512": list(ready.identity["mods"])},
+        "settings": launch.settings_facts(pre, True),
+        "optionsFile": {"sha256": "e" * 64, "unwritten": {"ao": "true"}},
+    }
+
+
+@pytest.fixture
+def faked_launch(check_root, monkeypatch: pytest.MonkeyPatch):
+    """perform on check_root with launch.launch, open_mod and end faked: `then(root)` runs
+    inside the fake launch, `facts(ready)` gives its facts, the ended processes are listed."""
+    root, path = check_root
+    ready = run_verb.prepare(root, path, FakeMachine())
+    ended: list[object] = []
+    plan: dict = {"facts": matching_facts, "then": lambda root: None}
+
+    def fake_launch(*args: object, **kwargs: object) -> launch.Launched:
+        plan["then"](root)
+        return launched_like(root, plan["facts"](ready))
+
+    def no_mod(*args: object, **kwargs: object):
+        raise modclient.ModError("no pipe in a test")
+
+    monkeypatch.setattr(launch, "launch", fake_launch)
+    monkeypatch.setattr(launch, "open_mod", no_mod)
+    monkeypatch.setattr(launch, "end", lambda process, host: ended.append(process) or "killed")
+
+    def quiet(text: str) -> None:
+        pass
+
+    def perform() -> dict:
+        return run_verb.perform(root, path, None, FakeMachine(), quiet, quiet)  # type: ignore[arg-type]
+
+    return ready, plan, ended, perform
+
+
+def test_a_launch_that_contradicts_the_identity_records_none(faked_launch) -> None:
+    _, plan, ended, perform = faked_launch
+    plan["facts"] = lambda ready: {**matching_facts(ready), "mods": {"sha512": ["0" * 128]}}
+    found = perform()
+    assert found["identity"] is None and found["status"] == "failed"
+    assert "the launch's mods differ" in found["reason"] and "fix:" in found["reason"]
+    assert len(ended) == 1  # the game was ended
+
+
+def test_a_config_file_changed_under_the_launch_records_none(faked_launch) -> None:
+    _, plan, ended, perform = faked_launch
+
+    def edit(root: Path) -> None:
+        suite = root / platform.SUITE
+        data = json.loads(suite.read_text(encoding="utf-8"))
+        data["capture"]["gpuWarmupS"] += 1
+        suite.write_text(json.dumps(data), encoding="utf-8")
+
+    plan["then"] = edit
+    found = perform()
+    assert found["identity"] is None and "the launch's suite differ" in found["reason"]
+    assert len(ended) == 1
+
+
+def test_a_failed_launch_records_the_identity_built_before_it(faked_launch) -> None:
+    """id9: the launch agreed with the identity, then the mod's session failed; the record keeps
+    the identity with status failed."""
+    ready, _, ended, perform = faked_launch
+    found = perform()
+    assert found["identity"] == ready.identity and found["status"] == "failed"
+    assert "no pipe in a test" in found["reason"] and len(ended) == 1
