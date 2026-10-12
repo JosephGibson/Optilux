@@ -260,7 +260,13 @@ def perform(
                     ]
                 except (OSError, RunError, subprocess.SubprocessError) as error:
                     session_facts["threads"] = f"unread: {error}"
-            start = session_start(s, pack.file, suite["capture"]["gpuWarmupS"])
+            start = session_start(
+                s,
+                pack.file,
+                suite["capture"]["gpuWarmupS"],
+                system["resolution"],
+                suite["display"]["resolution"],
+            )
             items["A10"] = {
                 "pass": start["selftest"]["pass"] is True,
                 "selftest": start["selftest"],

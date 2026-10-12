@@ -1,13 +1,14 @@
 """The acceptance items' verdicts and the run's status, on fakes: no game, no Windows
 (docs/workflow.md#testing; the QA pass, docs/plans/m1.md#00112-review-and-cleanup)."""
 
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
-from optilux import acceptance, session
+from optilux import acceptance, modclient, modfake, session
 
 # A4's refusal as m1-acceptance-4 to -7 recorded it.
 A4_MESSAGE = (
@@ -166,6 +167,29 @@ def test_settle_view_takes_the_suites_settle_for_its_view() -> None:
     night = {**VIEW, "id": "night"}
     done = session.settle_view(fake_session(FakeClient()), night, "clear", SUITE, "x")
     assert done["settleSeconds"] == 4.0  # the default plus the dimension change's addition
+
+
+def test_the_session_start_refuses_a_framebuffer_off_the_display(tmp_path: Path) -> None:
+    """D38 (plans/m2.md): `state`'s framebuffer, the size the game renders at, must equal the
+    display mode and suite.json's display.resolution; the start ends before selftest when not."""
+    size = {"framebuffer": {"width": 3840, "height": 2160}}
+    assert session.framebuffer_refusal(size, "3840x2160", "3840x2160") is None
+    off_suite = session.framebuffer_refusal(size, "3840x2160", "2560x1440")
+    assert off_suite is not None and "suite.json display.resolution 2560x1440" in off_suite
+    fake = modfake.Fake("T" * 43)
+    fake.game["framebuffer"] = {"width": 2560, "height": 1440}
+    stream, _ = modfake.serve_streams(fake)
+    client = modclient.Client(stream, "T" * 43, tmp_path / "requests.jsonl", os.getpid())
+    client.hello()
+    with pytest.raises(session.RunError, match="the game renders 2560x1440, the display mode is"):
+        session.session_start(fake_session(client), "fake-pack.zip", 0.0, "3840x2160", "3840x2160")
+    assert not any(message.get("cmd") == "selftest" for message in fake.received)
+    # Equal, the start goes on: selftest is asked (and refused here, to stop it).
+    fake.game["framebuffer"] = {"width": 3840, "height": 2160}
+    fake.refusals["selftest"] = ("failed", "stop here")
+    with pytest.raises(modclient.ModRefused, match="selftest: failed: stop here"):
+        session.session_start(fake_session(client), "fake-pack.zip", 0.0, "3840x2160", "3840x2160")
+    client.close()
 
 
 def test_injected_input_needs_the_games_window_in_front(monkeypatch: pytest.MonkeyPatch) -> None:
