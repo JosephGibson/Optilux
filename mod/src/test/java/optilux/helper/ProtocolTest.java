@@ -97,8 +97,10 @@ class ProtocolTest {
             "yInteger", request.integerLiteral("y")), "arrivedSeconds", 0.0));
         handlers.put("command", request -> Map.of("succeeded", true, "messages", List.of(),
             "failures", List.of()));
-        handlers.put("timers.start", request -> Map.of("on", true));
-        handlers.put("timers.stop", request -> Map.of("frames", List.of()));
+        handlers.put("timers.start", request -> Map.of("on", true, "perPass", true,
+            "maxPending", 3, "maxFrames", 1000));
+        handlers.put("timers.stop", request -> Map.of("frames", List.of(), "dropped", Map.of(),
+            "unmatchedPops", 0, "cutPasses", 0));
         handlers.put("selftest", request -> {
             throw new AssertionError("an Error inside a handler");
         });

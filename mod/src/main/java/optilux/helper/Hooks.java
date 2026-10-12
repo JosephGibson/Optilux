@@ -10,14 +10,19 @@ import org.slf4j.LoggerFactory;
 /**
  * The one door from the game's mixins into the mod: the frame clock the entrypoint opens with a
  * valid token, the adapters' per-frame polls, the capture point, the swap's return, Iris's load
- * failure, and the input block the mixins ask about. Without a token no mixin is applied, so
- * nothing here runs.
+ * failure, Iris's debug groups the timers time, and the input block the mixins ask about. Without
+ * a token no mixin is applied, so nothing here runs.
  */
 public final class Hooks {
     private static final Logger LOG = LoggerFactory.getLogger("optilux-helper");
 
     /** One adapter's poll at every frame head, run apart from the others. */
     record Poll(String name, Runnable run) {
+    }
+
+    /** Where Iris's GLDebug group calls go: the timers. */
+    record Groups(Consumer<String> pushed, Runnable popped) {
+        static final Groups NONE = new Groups(name -> { }, () -> { });
     }
 
     // The polls and, render thread only, whether each one's last run failed, so a run of
@@ -31,8 +36,11 @@ public final class Hooks {
     private static volatile Consumer<Exception> irisFailure = error -> { };
     private static volatile BooleanSupplier inputBlocked = () -> false;
     private static volatile Consumer<String> hookError = message -> { };
+    private static volatile Groups groups = Groups.NONE;
     // Render thread only: whether the last capture point failed.
     private static boolean captureFailing;
+    // Whether the last group call failed; a group call off the render thread fails here too.
+    private static volatile boolean groupsFailing;
 
     private Hooks() {
     }
@@ -42,14 +50,16 @@ public final class Hooks {
     }
 
     /**
-     * The adapters: their polls at every frame head, the capture point, Iris's load failure, the
-     * state owner's input block, and where a failed hook is reported (the `hook.error` event).
+     * The adapters: their polls at every frame head, the capture point, Iris's load failure, Iris's
+     * group calls, the state owner's input block, and where a failed hook is reported (the
+     * `hook.error` event).
      */
     static void attach(List<Poll> polls, Runnable capturePoint, Consumer<Exception> onIrisFailure,
-        BooleanSupplier blocked, Consumer<String> onError) {
+        Groups onGroups, BooleanSupplier blocked, Consumer<String> onError) {
         eachFrame = new Polls(List.copyOf(polls), new boolean[polls.size()]);
         capture = capturePoint;
         irisFailure = onIrisFailure;
+        groups = onGroups;
         inputBlocked = blocked;
         hookError = onError;
     }
@@ -112,6 +122,42 @@ public final class Hooks {
     public static void irisFailed(Exception error) {
         if (frames != null) {
             irisFailure.accept(error);
+        }
+    }
+
+    /** GLDebug.pushGroup HEAD: Iris opens a pass's group (render thread). */
+    public static void groupPushed(String name) {
+        FrameClock clock = frames;
+        if (clock == null) {
+            return;
+        }
+        try {
+            groups.pushed().accept(name);
+            groupsFailing = false;
+        } catch (Throwable error) {
+            groupFailed(clock, error);
+        }
+    }
+
+    /** GLDebug.popGroup HEAD: Iris closes the newest group (render thread). */
+    public static void groupPopped() {
+        FrameClock clock = frames;
+        if (clock == null) {
+            return;
+        }
+        try {
+            groups.popped().run();
+            groupsFailing = false;
+        } catch (Throwable error) {
+            groupFailed(clock, error);
+        }
+    }
+
+    /** A group call never breaks Iris's pass; a run of failures reports once. */
+    private static void groupFailed(FrameClock clock, Throwable error) {
+        if (!groupsFailing) {
+            groupsFailing = true;
+            report("timers group", clock.last().frameIndex(), error);
         }
     }
 
