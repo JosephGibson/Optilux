@@ -477,15 +477,23 @@ def store_helper(store: Path) -> Path | None:
     return found[0] if found else None
 
 
+def wanted_mods(base: Path, plat: platform.Platform, tier: str) -> dict[str, str]:
+    """The jars a tier's game/mods/ holds, by name with their sha512: the tier's pins and the
+    store's helper. Read only, so the identity is built from it before a launch."""
+    want = {p.file: p.sha512 for p in plat.tier_files(tier) if p.kind == "mod"}
+    helper = store_helper(base / STORE)
+    if helper is not None:
+        want[helper.name] = platform.sha512(helper)  # pinned at build, not in the platform file
+    return want
+
+
 def place_mods(root: Path, base: Path, plat: platform.Platform, tier: str) -> Mods:
     """Make game/mods/ hold exactly the tier's jars plus the helper, copied from the store: every
     other top-level jar is removed (the folder is harness-owned, P39), a jar whose sha512 is off
     its pin replaced; every placed jar is re-hashed after."""
     store = base / STORE
-    want = {p.file: p.sha512 for p in plat.tier_files(tier) if p.kind == "mod"}
+    want = wanted_mods(base, plat, tier)
     helper = store_helper(store)
-    if helper is not None:
-        want[helper.name] = platform.sha512(helper)  # pinned at build, not in the platform file
     folder = base / GAME / MODS
     folder.mkdir(parents=True, exist_ok=True)
     removed = []
@@ -657,19 +665,38 @@ def prelaunch(display: dict, tier: str, pack: str, overrides: dict[str, str]) ->
     )
 
 
-def write_prelaunch(game: Path, pre: Prelaunch) -> dict:
-    """options.txt (over the game's own lines), sodium-options.json and config/iris.properties
-    written before the launch; the options file as the game will read it: its sha256 and every
-    key the harness does not write, with its value (run-record.md#identity, `recorded`)."""
+def planned_options(game: Path, pre: Prelaunch) -> tuple[str, dict]:
+    """options.txt as launch will write it over the game's own lines, and that file as the game
+    will read it: its sha256 and every key the harness does not write, with its value
+    (run-record.md#identity, `settings`). Read only: `run --check` builds the identity from it."""
     path = game / OPTIONS
     existing = path.read_text(encoding="utf-8") if path.is_file() else None
-    (game / SODIUM).parent.mkdir(parents=True, exist_ok=True)
     text = options_text(existing, pre.options)
-    path.write_bytes(text.encode("utf-8"))
+    unwritten = {k: v for k, v in options_values(text).items() if k not in pre.options}
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return text, {"sha256": digest, "unwritten": unwritten}
+
+
+def write_prelaunch(game: Path, pre: Prelaunch) -> dict:
+    """options.txt (over the game's own lines), sodium-options.json and config/iris.properties
+    written before the launch; the options file's facts as planned_options gives them."""
+    text, found = planned_options(game, pre)
+    (game / SODIUM).parent.mkdir(parents=True, exist_ok=True)
+    (game / OPTIONS).write_bytes(text.encode("utf-8"))
     (game / SODIUM).write_bytes(pre.sodium.encode("utf-8"))
     (game / IRIS).write_bytes(iris_text(pre.iris).encode("utf-8"))
-    unwritten = {k: v for k, v in options_values(text).items() if k not in pre.options}
-    return {"sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(), "unwritten": unwritten}
+    return found
+
+
+def settings_facts(pre: Prelaunch, token: bool) -> dict:
+    """What the run record needs of the pre-launch files, --set and --no-token."""
+    return {
+        "options": pre.options,
+        "overrides": pre.overrides,
+        "token": token,
+        "sodiumOptions": pre.sodium_sha256,
+        "iris": pre.iris,
+    }
 
 
 def read_back(game: Path, pre: Prelaunch) -> dict:
@@ -1309,13 +1336,7 @@ def launch(
             "sha512": mods.sha512,
         },
         "logMods": sorted(logged),
-        "settings": {
-            "options": pre.options,
-            "overrides": pre.overrides,
-            "token": secret is not None,
-            "sodiumOptions": pre.sodium_sha256,
-            "iris": pre.iris,
-        },
+        "settings": settings_facts(pre, secret is not None),
         "optionsFile": options_file,
         "command": {"arguments": redact(command), "check": "equal"},
         "join": {"seconds": round(seconds, 2), "line": line.strip()},

@@ -2,13 +2,16 @@
 the machine's facts, the world's tree hash and the record itself.
 
 `run` (optilux/verbs/run.py) validates a spec here before anything launches, and every refusal
-names its fix. The identity is built from the files the session used and the facts its launch
-read back, matched key by key later (IDENTITY_KEYS, run-record.md#identity); the system facts are
-read from the machine as D22 says: the resolution from the written options and a DPI-aware
-EnumDisplaySettings, never from WMI. A record is written once under its run's name and never
-overwritten; a missing identity value refuses the write instead of passing.
+names its fix. The identity is built before the launch from the files the session will use
+(plans/m2.md M2.P01: a failed launch records it), the launch's facts then held against it, and
+matched key by key later (IDENTITY_KEYS, run-record.md#identity); the system facts are read from
+the machine as D22 says: the resolution from the written options and a DPI-aware
+EnumDisplaySettings, never from WMI; HAGS as applied from D3DKMT's WDDM 2.7 caps (plans/m2.md
+D38), only read. A record is written once under its run's name and never overwritten; a missing
+identity value refuses the write instead of passing.
 """
 
+import ast
 import ctypes
 import hashlib
 import json
@@ -20,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from optilux import platform
+from optilux import platform, presentmon
 
 RECORDS = "results/records"
 RAW = "results/raw"
@@ -67,9 +70,17 @@ IDENTITY_KEYS = (
     "suite",
     "java",
     "system",
+    "harness",
 )
 # The suite sections that are identity, and the note and ALC-context keys stripped from them.
 SUITE_SECTIONS = ("display", "modes", "capture", "validity", "statistics")
+# The platform file's sections no session loads (plans/m2.md D39): the reference pack is a
+# variant's (its sha512 goes into variants and the calibration file), world prep's mods never
+# reach a session.
+PLATFORM_OUT = (platform.REFERENCE_PACKS, "worldPrep")
+# The measured session's entry: `harness` hashes the optilux modules it imports (D36).
+PACKAGE = "optilux"
+RUNNER = "optilux.verbs.run"
 ACCEPTANCE_KEYS = ("item", "pass", "evidence")
 STATUSES = ("ok", "invalid", "failed", "aborted")
 
@@ -338,9 +349,10 @@ def suite_identity(suite: dict) -> dict:
 
 
 def platform_identity(plat: platform.Platform, tier: str) -> dict:
-    """The hash of the platform file's loaded sections: every top-level key, the tiers cut to the
-    tier's chain; and the tier. The whole file's hash is recorded apart, never matched."""
-    loaded = dict(plat.data)
+    """The hash of the platform file's loaded sections: every top-level key but PLATFORM_OUT, the
+    tiers cut to the tier's chain; and the tier. The whole file's hash is recorded apart, never
+    matched."""
+    loaded = {key: value for key, value in plat.data.items() if key not in PLATFORM_OUT}
     loaded["tiers"] = {name: plat.data["tiers"][name] for name in plat.chain(tier)}
     # Notes stripped as the suite's are: a reworded `why` never forces a recalibration.
     stripped = strip_notes(loaded)
@@ -351,31 +363,122 @@ def file_sha256(path: Path) -> str:
     return platform.sha256(path)  # streamed: a world region or the A4 zip is never held whole
 
 
-def java_identity(java_home: Path, java_profile: dict, running: str) -> dict:
-    """The JVM: the runtime build, its version from the JDK's release file, which must equal the
-    version the running game reports (hello), the heap and the profile's flags."""
+def java_identity(java_home: Path, java_profile: dict) -> dict:
+    """The JVM, read before the launch: the runtime build, its version and the sha256 of the
+    JDK's release file, the heap and the profile's flags. `run` holds the version against the
+    one the running game reports (hello)."""
+    path = java_home / "release"
+    if not path.is_file():
+        raise RecordError(f"no release file in {java_home.name}; fix: run `optilux install`")
     release = {}
-    for line in (java_home / "release").read_text(encoding="utf-8").splitlines():
+    for line in path.read_text(encoding="utf-8").splitlines():
         key, sep, value = line.partition("=")
         if sep:
             release[key] = value.strip().strip('"')
     version = release.get("JAVA_RUNTIME_VERSION")
-    if version != running:
+    if not version:
         raise RecordError(
-            f"the game runs Java {running}, {java_home.name}'s release file says {version}; fix: "
-            "run `optilux install`"
+            f"{java_home.name}'s release file names no JAVA_RUNTIME_VERSION; fix: run "
+            "`optilux install`"
         )
     heap = java_profile["heap"]
     return {
         "runtime": java_profile["runtime"]["build"],
         "version": version,
+        "release": file_sha256(path),
         "heap": {"xms": heap["size"], "xmx": heap["size"], "unit": heap["unit"]},
         "args": list(java_profile.get("flags", [])),
     }
 
 
+def settings_identity(settings: dict, options_file: dict) -> dict:
+    """`settings` (plans/m2.md D37, D39): the launch's settings facts (launch.settings_facts) with
+    the options.txt keys the harness does not write, as the game reads them, and the
+    iris.properties keys but shaderPack (the pack is a variant's)."""
+    iris = {key: value for key, value in settings["iris"].items() if key != "shaderPack"}
+    return {**settings, "iris": iris, "unwritten": options_file["unwritten"]}
+
+
+# The harness (plans/m2.md D36).
+
+
+def module_path(root: Path, name: str) -> Path | None:
+    """The file of an optilux module name (a module, or a package's __init__.py); None for a name
+    that is no module, as `from optilux import REPO_ROOT` names an attribute."""
+    base = root.joinpath(*name.split("."))
+    if (base / "__init__.py").is_file():
+        return base / "__init__.py"
+    if base.with_suffix(".py").is_file():
+        return base.with_suffix(".py")
+    return None
+
+
+def imported(tree: ast.Module, name: str, package: bool) -> set[str]:
+    """The optilux names a module imports anywhere in its code (a deferred import inside a
+    function included), each with its parent packages; `from m import n` names m and m.n, m.n
+    kept only where it is a module."""
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:  # relative: from the module's own package up
+                parts = name.split(".") if package else name.split(".")[:-1]
+                parts = parts[: len(parts) - node.level + 1]
+                base = ".".join([*parts, base] if base else parts)
+            names = [base, *(f"{base}.{alias.name}" for alias in node.names)]
+        else:
+            continue
+        for full in names:
+            parts = full.split(".")
+            if parts[0] == PACKAGE:
+                found.update(".".join(parts[:end]) for end in range(1, len(parts) + 1))
+    return found
+
+
+def module_closure(root: Path, start: str = RUNNER) -> dict[str, Path]:
+    """Every optilux module `start` imports, directly or through another, read with ast and never
+    run: `start` itself, its parent packages and each import's module, by module name. A verb
+    the runner does not import (status, cli's registry) is outside it."""
+    if module_path(root, start) is None:
+        raise RecordError(f"no module {start} under {root}; fix: name the runner's module")
+    parts = start.split(".")
+    queue = [".".join(parts[:end]) for end in range(1, len(parts) + 1)]
+    found: dict[str, Path] = {}
+    while queue:
+        name = queue.pop()
+        path = module_path(root, name)
+        if name in found or path is None:
+            continue
+        found[name] = path
+        tree = ast.parse(path.read_bytes(), filename=str(path))
+        queue.extend(imported(tree, name, path.name == "__init__.py") - found.keys())
+    return found
+
+
+def harness_identity(root: Path, presentmon_exe: Path) -> dict:
+    """`harness` (plans/m2.md D36): the sha256 of every module in module_closure, by path, and
+    PresentMon's file, sha256 and arguments (the run's pid, CSV and session as placeholders). The
+    commit and the dirty flag are recorded, never matched: a docs commit would otherwise force a
+    recalibration."""
+    modules = {
+        path.relative_to(root).as_posix(): file_sha256(path)
+        for path in module_closure(root).values()
+    }
+    session = f"{presentmon.SESSION_PREFIX}<run>"
+    return {
+        "modules": dict(sorted(modules.items())),
+        "presentMon": {
+            "file": presentmon_exe.name,
+            "sha256": file_sha256(presentmon_exe),
+            "arguments": presentmon.arguments("<pid>", "<csv>", session),
+        },
+    }
+
+
 def window_mode(options: dict[str, str]) -> str:
-    """The window mode the written options give (suite.json display.windowKeys)."""
+    """The window mode the written options give (suite.json display.windowWhy)."""
     if options.get("fullscreen") != "true":
         return "windowed"
     if options.get("exclusiveFullscreen") == "true":
@@ -396,8 +499,10 @@ def identity(
     suite: dict,
     java: dict,
     system: dict,
+    harness: dict,
 ) -> dict:
-    """The identity of one session, keyed as IDENTITY_KEYS."""
+    """The identity of one session, keyed as IDENTITY_KEYS; the launch spec and the views file
+    hashed when it is built, before the launch."""
     return {
         "platform": platform_identity(plat, tier),
         "launchSpec": {"file": spec_path.name, "sha256": file_sha256(spec_path)},
@@ -409,7 +514,25 @@ def identity(
         "suite": suite_identity(suite),
         "java": java,
         "system": system,
+        "harness": harness,
     }
+
+
+def launch_differences(found: dict, facts: dict) -> list[str]:
+    """The identity keys a started game contradicts: the identity is built before the launch, so
+    the launch's placed jars, resource packs and settings facts (launch.launch's `facts`) are
+    held against it (`run` also holds the Java `hello` reports and the config files re-read)."""
+    packs = [
+        {"file": p["file"], "sha512": p["sha512"]}
+        for p in facts["hashes"]["packs"]
+        if p["kind"] == "resourcePack"
+    ]
+    launched = {
+        "mods": sorted(facts["mods"]["sha512"]),
+        "resourcePacks": {"set": PACK_SET, "packs": packs},
+        "settings": settings_identity(facts["settings"], facts["optionsFile"]),
+    }
+    return [key for key, value in launched.items() if found[key] != value]
 
 
 def check_identity(found: Any) -> None:
@@ -438,8 +561,79 @@ PER_MONITOR_AWARE_V2 = -4
 DISPLAY_CLASS = r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}"
 GRAPHICS_DRIVERS = r"SYSTEM\CurrentControlSet\Control\GraphicsDrivers"
 CURRENT_VERSION = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion"
-# HwSchMode: 2 on, 1 off (P32).
-HAGS_ON = 2
+# HAGS as applied (plans/m2.md D38, P15): KMTQAITYPE_WDDM_2_7_CAPS (d3dkmthk.h) answers
+# D3DKMT_WDDM_2_7_CAPS, whose low bits are HwSchSupported, HwSchEnabled, HwSchEnabledByDefault
+# and IndependentVidPnVSyncControl. HwSchMode in the registry is only the requested state (id6).
+WDDM_2_7_CAPS = 70
+HWSCH_SUPPORTED = 0x1
+HWSCH_ENABLED = 0x2
+HWSCH_ENABLED_BY_DEFAULT = 0x4
+
+
+class Luid(ctypes.Structure):
+    _fields_ = [("LowPart", ctypes.c_uint32), ("HighPart", ctypes.c_int32)]
+
+
+class OpenAdapterFromGdiDisplayName(ctypes.Structure):
+    """D3DKMT_OPENADAPTERFROMGDIDISPLAYNAME."""
+
+    _fields_ = [
+        ("DeviceName", ctypes.c_wchar * 32),
+        ("hAdapter", ctypes.c_uint32),
+        ("AdapterLuid", Luid),
+        ("VidPnSourceId", ctypes.c_uint32),
+    ]
+
+
+class QueryAdapterInfo(ctypes.Structure):
+    """D3DKMT_QUERYADAPTERINFO."""
+
+    _fields_ = [
+        ("hAdapter", ctypes.c_uint32),
+        ("Type", ctypes.c_int),
+        ("pPrivateDriverData", ctypes.c_void_p),
+        ("PrivateDriverDataSize", ctypes.c_uint32),
+    ]
+
+
+class CloseAdapter(ctypes.Structure):
+    """D3DKMT_CLOSEADAPTER."""
+
+    _fields_ = [("hAdapter", ctypes.c_uint32)]
+
+
+def wddm27_caps(name: str, kmt: Any) -> tuple[int, str]:
+    """D3DKMT_WDDM_2_7_CAPS of the adapter behind the GDI display `name`, and the adapter's LUID:
+    the adapter opened by the name, queried, closed. `kmt` holds the three gdi32 calls (the tests
+    pass a fake). Each call only reads; RecordError naming the call and its NTSTATUS, so a failed
+    query refuses the run (D38)."""
+
+    def failed(call: str, status: int) -> RecordError:
+        return RecordError(
+            f"{call} returned NTSTATUS 0x{status & 0xFFFFFFFF:08x}, so HAGS as applied is unread "
+            "(plans/m2.md D38); fix: rerun, and read record.wddm27_caps if it repeats"
+        )
+
+    opened = OpenAdapterFromGdiDisplayName()
+    opened.DeviceName = name
+    status = kmt.D3DKMTOpenAdapterFromGdiDisplayName(ctypes.byref(opened))
+    if status:
+        raise failed(f"D3DKMTOpenAdapterFromGdiDisplayName({name})", status)
+    caps = ctypes.c_uint32()
+    try:
+        query = QueryAdapterInfo(
+            opened.hAdapter,
+            WDDM_2_7_CAPS,
+            ctypes.cast(ctypes.pointer(caps), ctypes.c_void_p),
+            ctypes.sizeof(caps),
+        )
+        status = kmt.D3DKMTQueryAdapterInfo(ctypes.byref(query))
+        if status:
+            raise failed("D3DKMTQueryAdapterInfo(WDDM_2_7_CAPS)", status)
+    finally:
+        kmt.D3DKMTCloseAdapter(ctypes.byref(CloseAdapter(opened.hAdapter)))
+    luid = (opened.AdapterLuid.HighPart << 32) | opened.AdapterLuid.LowPart
+    return caps.value, f"0x{luid:x}"
 
 
 class Machine:
@@ -554,13 +748,27 @@ class Machine:
     def windows_build(self) -> int:
         return sys.getwindowsversion().build  # type: ignore[attr-defined]
 
+    def hags(self, name: str) -> tuple[int, str]:
+        """wddm27_caps through gdi32's D3DKMT calls."""
+        gdi32 = ctypes.WinDLL("gdi32")  # type: ignore[attr-defined]
+        for call in (
+            "D3DKMTOpenAdapterFromGdiDisplayName",
+            "D3DKMTQueryAdapterInfo",
+            "D3DKMTCloseAdapter",
+        ):
+            getattr(gdi32, call).argtypes = [ctypes.c_void_p]
+            getattr(gdi32, call).restype = ctypes.c_long  # NTSTATUS
+        return wddm27_caps(name, gdi32)
+
 
 def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tuple[dict, dict]:
-    """(identity, recorded) of the system: GPU, HAGS, resolution, window mode and Windows build,
-    then the facts recorded but never matched (the driver, the update revision, the display's
-    rate). The resolution is the primary display's mode, which exclusive fullscreen keeps (no
+    """(identity, recorded) of the system: GPU, HAGS as applied (the primary display's adapter's
+    WDDM 2.7 caps), resolution, window mode and Windows build, then the facts recorded but never
+    matched (the driver, the update revision, the display's rate, the caps and the adapter's
+    LUID, HwSchMode as requested: None when unset, "unread: ..." when the read failed). The
+    resolution is the primary display's mode, which exclusive fullscreen keeps (no
     fullscreenResolution is written; D22); RecordError, naming the fix, when it or the window
-    mode is not the suite's display."""
+    mode is not the suite's display, or HAGS is unread."""
     displays = machine.displays()
     primary = [d for d in displays if d["flags"] & PRIMARY]
     if len(primary) != 1:
@@ -585,7 +793,14 @@ def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tu
             f"{display['resolution']}; fix: set the display yourself (the harness never changes "
             "system settings)"
         )
-    hags = machine.registry(GRAPHICS_DRIVERS, "HwSchMode")
+    caps, luid = machine.hags(primary[0]["name"])
+    requested: Any
+    try:
+        requested = machine.registry(GRAPHICS_DRIVERS, "HwSchMode")
+    except FileNotFoundError:  # never set: the driver's default applies, which the caps give
+        requested = None
+    except OSError as error:  # recorded only: unread, never passed off as unset
+        requested = f"unread: {error}"
     driver = machine.driver(primary[0]["adapter"])
     if driver is None:
         raise RecordError(
@@ -595,7 +810,7 @@ def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tu
         )
     found = {
         "gpu": primary[0]["adapter"],
-        "hags": hags == HAGS_ON,
+        "hags": bool(caps & HWSCH_ENABLED),
         "resolution": resolution,
         "windowMode": mode,
         "windowsBuild": machine.windows_build(),
@@ -608,7 +823,13 @@ def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tu
             "hz": screen["hz"],
             "displays": sum(1 for d in displays if d["flags"] & ATTACHED),
         },
-        "hwSchMode": hags,
+        "hags": {
+            "caps": caps,
+            "supported": bool(caps & HWSCH_SUPPORTED),
+            "enabledByDefault": bool(caps & HWSCH_ENABLED_BY_DEFAULT),
+            "adapterLuid": luid,
+        },
+        "hwSchMode": requested,
     }
     return found, recorded
 

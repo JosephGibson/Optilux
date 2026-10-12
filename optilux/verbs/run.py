@@ -1,12 +1,14 @@
-"""`optilux run <spec.json> [--json]` (docs/run-record.md#run-spec, docs/plans/m1.md 0.01.08 and
-0.01.09).
+"""`optilux run <spec.json> [--json]` (docs/run-record.md#run-spec, docs/plans/m1.md
+0.01.08 and 0.01.09, docs/plans/m2.md M2.P01).
 
-An acceptance run: the spec checked (optilux/record.py, every refusal naming its fix), the live
-world hash-checked against its snapshot and the display against the suite, then the announced
-launches. The session launch runs the session start of docs/mod-protocol.md#choreography (A10
-is its selftest). At the first view: A4 (a copy of the reference zip with one program broken,
-selected for one reload that must answer iris-compile-error; the pack restored, reloaded, ready,
-one frame), A7 (SendInput's key and mouse motion with input.block off open a screen and turn the
+An acceptance run: the spec checked (optilux/record.py, every refusal naming its fix), the display
+against the suite and the identity built before anything launches, the live world hash-checked
+against its snapshot,
+then the announced launches; the session's launch facts are held against the identity. The
+session launch runs the session start of docs/mod-protocol.md#choreography (A10 is its
+selftest). At the first view: A4 (a copy of the reference zip with one program broken, selected
+for one reload that must answer iris-compile-error; the pack restored, reloaded, ready, one
+frame), A7 (SendInput's key and mouse motion with input.block off open a screen and turn the
 camera; blocked, they change nothing; unblocked again, the motion turns it), A9 (120 frames
 captured inside one PresentMon run, their stamps matched to its rows by order). Then per view A2
 (a capture with F2 pressed inside it through SendInput; the new screenshot must equal one
@@ -24,6 +26,7 @@ import json
 import shutil
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -67,20 +70,111 @@ from optilux.verbs.install import JAVA_DIR, JAVA_PROFILE, RUNTIME, Say, shown
 PREFIX = "optilux run"
 
 
-def perform(
-    root: Path, spec_path: Path, host: RunHost, machine: record.Machine, say: Say, announce: Say
-) -> dict:
-    """The run: checks, the session launch, A1's launch, the record. Returns the record."""
+@dataclass(frozen=True)
+class Prepared:
+    """A checked spec and its session's identity, built before anything launches or is written:
+    the snapshot as (tree hash, file count, manifest), the system facts recorded beside the
+    identity, the pinned PresentMon."""
+
+    spec: record.Spec
+    plat: platform.Platform
+    suite: dict
+    pack: platform.Pinned
+    views: dict
+    base: Path
+    java_home: Path
+    snapshot: tuple[str, int, str]
+    presentmon: Path
+    identity: dict
+    recorded: dict
+
+
+def prepare(root: Path, spec_path: Path, machine: record.Machine) -> Prepared:
+    """Everything `run` checks before the live world, and the identity (run-record.md#identity)
+    built from what the session will use, nothing launched or written: the
+    spec, the views and the snapshot's tree hash, the display and HAGS, PresentMon's pin, no copy
+    left by an earlier A4, then the launch spec, the views file and the JDK's release file
+    hashed, the jars launch places, the pinned resource packs, the options file as the launch
+    would write it, the measured modules. A failed launch records this identity (id7, id9)."""
     plat = platform.load(root)
     suite = json.loads((root / platform.SUITE).read_text(encoding="utf-8"))
     java_profile = json.loads((root / JAVA_PROFILE).read_text(encoding="utf-8"))
     base = root / RUNTIME / plat.id
-    saves = base / launch.GAME / launch.SAVES
+    game = base / launch.GAME
     pack = launch.reference_pack(plat)
+    saves = game / launch.SAVES
     spec = record.check_spec(root, load_spec(spec_path), plat, suite, saves, pack.file)
     views, views_path = record.load_views(root, spec.views)
-    snapshot = root / record.SNAPSHOTS / spec.views
-    snap_hash, snap_files, manifest = record.tree(snapshot)
+    snapshot = record.tree(root / record.SNAPSHOTS / spec.views)
+    options = launch.written_options(suite["display"], {})
+    system, system_recorded = record.system_facts(machine, options, suite["display"])
+    pm_exe = check_presentmon(root)
+    leftover = broken_copies(game)
+    if leftover:
+        raise record.RecordError(
+            f"shaderpacks/ holds {', '.join(p.name for p in leftover)} from an earlier A4; fix: "
+            "delete it (A4 writes its copy fresh)"
+        )
+    if platform.load_spec(root, plat.id) is None:
+        raise record.RecordError(f"no launch spec for {plat.id}; fix: run `optilux install`")
+    pre = launch.prelaunch(suite["display"], spec.tier, pack.file, {})
+    _, options_file = launch.planned_options(game, pre)
+    java_home = root / JAVA_DIR / java_profile["runtime"]["build"]
+    packs = [p for p in plat.tier_files(spec.tier) if p.kind == "resourcePack"]
+    found = record.identity(
+        plat=plat,
+        tier=spec.tier,
+        spec_path=platform.spec_path(root, plat.id),
+        mods=list(launch.wanted_mods(base, plat, spec.tier).values()),
+        world={
+            "snapshot": f"{record.SNAPSHOTS}/{spec.views}",
+            "treeSha256": snapshot[0],
+            "files": snapshot[1],
+        },
+        views_path=views_path,
+        packs=[{"file": p.file, "sha512": p.sha512} for p in packs],
+        settings=record.settings_identity(launch.settings_facts(pre, True), options_file),
+        suite=suite,
+        java=record.java_identity(java_home, java_profile),
+        system=system,
+        harness=record.harness_identity(root, pm_exe),
+    )
+    record.check_identity(found)
+    recorded = {"platformFile": record.file_sha256(plat.path), **system_recorded}
+    return Prepared(
+        spec, plat, suite, pack, views, base, java_home, snapshot, pm_exe, found, recorded
+    )
+
+
+def reread(root: Path, ready: Prepared) -> list[str]:
+    """The identity keys built from config files alone (platform, launch spec, views, suite,
+    Java), read again once launch has read them: a key that moved since prepare is one the
+    session may not have run with."""
+    spec = ready.spec
+    java_profile = json.loads((root / JAVA_PROFILE).read_text(encoding="utf-8"))
+    kept = ("mods", "world", "settings", "system", "harness")
+    again = record.identity(
+        plat=platform.load(root),
+        tier=spec.tier,
+        spec_path=platform.spec_path(root, ready.plat.id),
+        views_path=root / record.VIEWS / f"{spec.views}.json",
+        packs=ready.identity["resourcePacks"]["packs"],
+        suite=json.loads((root / platform.SUITE).read_text(encoding="utf-8")),
+        java=record.java_identity(ready.java_home, java_profile),
+        **{key: ready.identity[key] for key in kept},
+    )
+    return [key for key in record.IDENTITY_KEYS if again[key] != ready.identity[key]]
+
+
+def perform(
+    root: Path, spec_path: Path, host: RunHost, machine: record.Machine, say: Say, announce: Say
+) -> dict:
+    """The run: prepare's checks and identity, the live world against its snapshot, the session
+    launch held against the identity, A1's launch, the record. Returns the record."""
+    ready = prepare(root, spec_path, machine)
+    spec, suite, pack, views = ready.spec, ready.suite, ready.pack, ready.views
+    snap_hash, snap_files, manifest = ready.snapshot
+    saves = ready.base / launch.GAME / launch.SAVES
     live_hash, live_files = record.tree_hash(saves / spec.world)
     if live_hash != snap_hash:
         raise record.RecordError(
@@ -92,21 +186,13 @@ def perform(
         f"world: saves/{spec.world} equals {record.SNAPSHOTS}/{spec.views}/: {snap_hash} "
         f"({snap_files} files)"
     )
-    options = launch.written_options(suite["display"], {})
-    system, system_recorded = record.system_facts(machine, options, suite["display"])
+    system = ready.identity["system"]
     say(
         f"system: {system['gpu']}, {system['resolution']} {system['windowMode']}, HAGS "
         f"{'on' if system['hags'] else 'off'}, Windows build {system['windowsBuild']}"
     )
-    java_home = root / JAVA_DIR / java_profile["runtime"]["build"]
-    jcmd = java_home / "bin" / "jcmd.exe"
-    pm_exe = check_presentmon(root) if "A9" in spec.items else None
-    leftover = broken_copies(base / launch.GAME)
-    if leftover:
-        raise record.RecordError(
-            f"shaderpacks/ holds {', '.join(p.name for p in leftover)} from an earlier A4; fix: "
-            "delete it (A4 writes its copy fresh)"
-        )
+    jcmd = ready.java_home / "bin" / "jcmd.exe"
+    pm_exe = ready.presentmon if "A9" in spec.items else None
     raw = root / record.RAW / spec.name
     raw.mkdir(parents=True)
     (raw / "world-manifest.txt").write_text(manifest, encoding="utf-8", newline="\n")
@@ -119,14 +205,10 @@ def perform(
     items: dict[str, dict] = {}
     session_facts: dict[str, Any] = {}
     problems: list[str] = []
-    ident = None
+    ident: dict | None = ready.identity  # a failed launch records it (id9)
     table = None
     variants: list[dict] = []
-    recorded: dict[str, Any] = {
-        "platformFile": record.file_sha256(plat.path),
-        **system_recorded,
-        "harness": {"commit": head, "dirty": dirty},
-    }
+    recorded: dict[str, Any] = {**ready.recorded, "harness": {"commit": head, "dirty": dirty}}
     status = "ok"
     try:
         announce(
@@ -139,6 +221,14 @@ def perform(
         recorded["amd"] = launched.facts["gate"]["amd"]
         recorded["java"] = launched.facts["gate"]["java"]  # JVMs beside the game
         try:
+            differ = record.launch_differences(ready.identity, launched.facts)
+            differ += reread(root, ready)
+            if differ:  # the identity is not this session's: none is recorded
+                ident = None
+                raise RunError(
+                    f"the launch's {', '.join(differ)} differ from the identity built before it; "
+                    "fix: rerun with nothing changing config/ or runtime/ beside the run"
+                )
             client, mod = launch.open_mod(launched, root, host, say, raw / REQUESTS)
         except BaseException as error:
             how = launch.end(launched.process, host)
@@ -148,6 +238,13 @@ def perform(
         session_facts["mod"] = mod
         s = Session(root, raw, launched, client, host, say)
         try:
+            running, java = mod["hello"]["versions"]["java"], ready.identity["java"]
+            if running != java["version"]:
+                ident = None
+                raise RunError(
+                    f"the game runs Java {running}, {java['runtime']}'s release file says "
+                    f"{java['version']}; fix: run `optilux install`"
+                )
             if "A1" in spec.items:
                 # A1's positive controls: the detectors A1 relies on, seeing the mod active here.
                 expected = modclient.pipe_name(launched.mod_token()).removeprefix(PIPES)
@@ -253,7 +350,8 @@ def perform(
                 session_facts["logCheck"] = {"tokenAbsent": False, "problem": str(error)}
         session_facts["readBack"] = launch.read_back(launched.game, launched.prelaunch)
         shutil.copyfile(launched.log, raw / "session-latest.log")
-        recorded["optionsTxt"] = launched.facts["optionsFile"]  # as the game read it
+        # As the game read it; its unwritten keys are the identity's settings (D37).
+        recorded["optionsTxt"] = {"sha256": launched.facts["optionsFile"]["sha256"]}
         mods_log = helper_lines(launched.log.read_text(encoding="utf-8", errors="replace"))
         session_facts["helperLog"] = {
             "applied": len(mods_log["applied"]),
@@ -261,26 +359,6 @@ def perform(
             "hookFailures": len(mods_log["hookFailures"]),
             "irisOutsideReload": len(mods_log["irisOutsideReload"]),
         }
-        packs = [p for p in launched.facts["hashes"]["packs"] if p["kind"] == "resourcePack"]
-        settings = dict(launched.facts["settings"])
-        ident = record.identity(
-            plat=plat,
-            tier=spec.tier,
-            spec_path=platform.spec_path(root, plat.id),
-            mods=launched.facts["mods"]["sha512"],
-            world={
-                "snapshot": f"{record.SNAPSHOTS}/{spec.views}",
-                "treeSha256": snap_hash,
-                "files": snap_files,
-                "live": spec.world,
-            },
-            views_path=views_path,
-            packs=[{"file": p["file"], "sha512": p["sha512"]} for p in packs],
-            settings=settings,
-            suite=suite,
-            java=record.java_identity(java_home, java_profile, mod["hello"]["versions"]["java"]),
-            system=system,
-        )
         if "A1" in spec.items:
             control = {
                 "sessionPipeListed": session_facts["pipeListed"],
@@ -328,21 +406,19 @@ def run(args: argparse.Namespace) -> int:
     def announce(text: str) -> None:  # every launch is announced, --json or not
         print(text, file=sys.stderr if args.json else sys.stdout, flush=True)
 
-    try:
-        found = perform(root, Path(args.spec), RunHost(), record.Machine(), say, announce)
-    except OSError as error:  # a file the run reads or writes before its session (a lock)
-        problem = f"{error}; fix: quit whatever holds or removed that file, then rerun"
+    def refuse(problem: str) -> int:
         if args.json:
             print(json.dumps({"ok": False, "problem": problem}))
         else:
             print(f"{PREFIX}: {problem}", file=sys.stderr)
         return 1
+
+    try:
+        found = perform(root, Path(args.spec), RunHost(), record.Machine(), say, announce)
+    except OSError as error:  # a file the run reads or writes before its session (a lock)
+        return refuse(f"{error}; fix: quit whatever holds or removed that file, then rerun")
     except (record.RecordError, platform.PlatformError, launch.LaunchError) as error:
-        if args.json:
-            print(json.dumps({"ok": False, "problem": str(error)}))
-        else:
-            print(f"{PREFIX}: {error}", file=sys.stderr)
-        return 1
+        return refuse(str(error))
     try:
         path = record.write_record(root, found, say)
     except record.RecordError as error:

@@ -93,20 +93,25 @@ class Host:
         time.sleep(seconds)
 
 
-def command(exe: Path, pid: int, output: Path, session: str) -> list[str]:
-    """measurement.md#tools' command line, in its order."""
+def arguments(pid: str, output: str, session: str) -> list[str]:
+    """measurement.md#tools' arguments, in its order; with placeholders for the three run values
+    they are the harness identity's PresentMon flags (plans/m2.md D36)."""
     return [
-        str(exe),
         "--process_id",
-        str(pid),
+        pid,
         "--output_file",
-        str(output),
+        output,
         *FLAGS,
         "--session_name",
         session,
         "--stop_existing_session",
         "--no_console_stats",
     ]
+
+
+def command(exe: Path, pid: int, output: Path, session: str) -> list[str]:
+    """measurement.md#tools' command line."""
+    return [str(exe), *arguments(str(pid), str(output), session)]
 
 
 @dataclass
