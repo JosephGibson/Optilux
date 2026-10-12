@@ -258,22 +258,22 @@
       "exclusiveUntil": "timers.stop",
       "args": {
         "perPass": {"type": "boolean", "default": true},
-        "maxPending": {"type": "integer", "min": 1, "max": 1024},
-        "maxFrames": {"type": "integer", "min": 1, "max": 1000000}
+        "maxPending": {"type": "integer", "default": 3, "min": 1, "max": 16},
+        "maxFrames": {"type": "integer", "default": 1000, "min": 1, "max": 10000}
       },
-      "result": {"on": "boolean"}
+      "result": {"on": "boolean", "perPass": "boolean", "maxPending": "integer", "maxFrames": "integer"}
     },
     {
       "name": "timers.read",
       "phase": "M2",
       "args": {},
-      "result": {"frames": "array"}
+      "result": {"frames": "array", "dropped": "object", "unmatchedPops": "integer", "cutPasses": "integer"}
     },
     {
       "name": "timers.stop",
       "phase": "M2",
       "args": {},
-      "result": {"frames": "array"}
+      "result": {"frames": "array", "dropped": "object", "unmatchedPops": "integer", "cutPasses": "integer"}
     },
     {
       "name": "metrics.read",

@@ -25,6 +25,7 @@ import optilux.helper.core.FrameClock;
 import optilux.helper.core.PipeName;
 import optilux.helper.core.Protocol;
 import optilux.helper.core.State;
+import optilux.helper.core.Timers;
 import optilux.helper.core.Window;
 import optilux.helper.win.PipeServer;
 import optilux.helper.win.Qpc;
@@ -38,8 +39,8 @@ import org.slf4j.LoggerFactory;
  * valid token. hello's facts come from Fabric Loader, `quit` goes through Minecraft.stop on the
  * render thread (what the window's close button does: Window.shouldClose, then stop() in
  * Minecraft.runTick of 26.3); the game, renderer, shader-loader and capture adapters, the window
- * clock and selftest answer the rest, the game adapter owns the world leave, and one poll runs them
- * at each frame, the window clock's first.
+ * clock, the timers and selftest answer the rest, the game adapter owns the world leave, and one
+ * poll runs them at each frame, the window clock's first.
  */
 final class Session {
     private static final Logger LOG = LoggerFactory.getLogger("optilux-helper");
@@ -47,6 +48,8 @@ final class Session {
     /** fabric.mod.json's custom value naming the platform the jar was built for. */
     static final String PLATFORM_KEY = "optilux:platform";
     static final String COMMANDS = "commands.json";
+    /** The timers' resource in commands.json, held from timers.start to timers.stop. */
+    static final String TIMERS = "timers";
     // Workers beyond MAX_RUNNING serve `cancel`, which a full registry must still accept.
     private static final int WORKERS = Protocol.MAX_RUNNING + 8;
     private static final long WORKER_IDLE_SECONDS = 30;
@@ -88,12 +91,22 @@ final class Session {
             writers, events);
         Selftest selftest = new Selftest(clock, game::inWorldNow, state::inputBlocked, renderer,
             iris, capture);
+        Timers gpuTimers = new Timers(new GlQueries(), game::inWorldNow, events);
+        // The timers stop with their resource: timers.stop's answer, a disconnect, a world leave.
+        state.onReleased((resource, owner) -> {
+            if (resource.equals(TIMERS)) {
+                gpuTimers.released(owner);
+            }
+        });
         Map<String, Protocol.Handler> handlers = new LinkedHashMap<>(game.handlers());
         handlers.putAll(renderer.handlers());
         handlers.putAll(iris.handlers());
         handlers.putAll(capture.handlers());
         handlers.putAll(selftest.handlers());
         handlers.put("window.measure", window::measure);
+        handlers.put("timers.start", gpuTimers::start);
+        handlers.put("timers.read", gpuTimers::read);
+        handlers.put("timers.stop", gpuTimers::stop);
         handlers.put("frames.index", request -> Map.of());
         handlers.put("quit", request -> {
             request.afterAnswer(() -> {
@@ -124,15 +137,16 @@ final class Session {
         wired.set(protocol);
         game.listen(protocol);
         Hooks.attach(List.of(new Hooks.Poll("window", () -> window.frame(clock.last(),
-            iris.sinceReload())), new Hooks.Poll("game", game::frame),
+            iris.sinceReload())), new Hooks.Poll("timers", () -> gpuTimers.frame(
+            clock.last().frameIndex())), new Hooks.Poll("game", game::frame),
             new Hooks.Poll("renderer", renderer::frame), new Hooks.Poll("iris", iris::frame)), () -> {
             try {
                 capture.capturePoint();
             } catch (InterruptedException interrupted) {
                 Thread.currentThread().interrupt();
             }
-        }, iris::failed, state::inputBlocked,
-            message -> protocol.event("hook.error", Map.of("message", message)));
+        }, iris::failed, new Hooks.Groups(gpuTimers::pushed, gpuTimers::popped),
+            state::inputBlocked, message -> protocol.event("hook.error", Map.of("message", message)));
         state.onInputReleased(() -> LOG.info("optilux-helper: input.block released by the state owner"));
         String name = PipeName.of(token);
         PipeServer server = new PipeServer(name, protocol, Qpc.kernel32());

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -32,6 +33,7 @@ public final class State {
     private ScheduledFuture<?> pendingRelease;
     private Object releaseToken; // the pending release's; null once it ran or was cancelled
     private Runnable onInputReleased = () -> { };
+    private BiConsumer<String, Object> onReleased = (resource, owner) -> { };
     private int hellos;
     private List<Object> lastCancelled = List.of();
 
@@ -43,6 +45,14 @@ public final class State {
     /** Called when the input block is released by the state (a disconnect or a reset). */
     public synchronized void onInputReleased(Runnable action) {
         onInputReleased = action;
+    }
+
+    /**
+     * Told each resource freed and its holder, under this lock: the timers stop with theirs. The
+     * action takes no lock that is held while this one is taken.
+     */
+    public synchronized void onReleased(BiConsumer<String, Object> action) {
+        onReleased = action;
     }
 
     public synchronized boolean acquire(String resource, Object owner) {
@@ -57,12 +67,16 @@ public final class State {
     public synchronized void release(String resource, Object owner) {
         if (held.containsKey(resource) && held.get(resource).equals(owner)) {
             held.remove(resource);
+            onReleased.accept(resource, owner);
         }
     }
 
     /** Release a resource whoever holds it: the command that ends it ran (timers.stop). */
     public synchronized void release(String resource) {
-        held.remove(resource);
+        Object owner = held.remove(resource);
+        if (owner != null) {
+            onReleased.accept(resource, owner);
+        }
     }
 
     /** The held resources and their owners. */
@@ -126,7 +140,9 @@ public final class State {
 
     /** The world was left: every resource freed and the input released. */
     public synchronized void reset() {
+        Map<String, Object> freed = new LinkedHashMap<>(held);
         held.clear();
+        freed.forEach(onReleased);
         cancelRelease();
         if (inputBlocked) {
             inputBlocked = false;

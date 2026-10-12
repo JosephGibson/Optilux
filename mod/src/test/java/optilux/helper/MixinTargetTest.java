@@ -19,6 +19,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
@@ -104,7 +105,7 @@ class MixinTargetTest {
                 for (AnnotationNode annotation : all(method)) {
                     if (annotation.desc.equals(INJECT)) {
                         for (ClassNode target : targets) {
-                            checkInject(where, annotation, target, problems, checked);
+                            checkInject(where, annotation, method, target, problems, checked);
                         }
                     } else if (annotation.desc.equals(ACCESSOR)) {
                         for (ClassNode target : targets) {
@@ -125,6 +126,9 @@ class MixinTargetTest {
             "GameRendererMixin.optilux$capturePoint: net/minecraft/client/renderer/GameRenderer."
                 + "render()V INVOKE Lnet/minecraft/client/renderer/GameRenderer;applyPostEffects()V"
                 + " shift AFTER",
+            "GLDebugMixin.optilux$groupPushed: net/irisshaders/iris/gl/GLDebug."
+                + "pushGroup(ILjava/lang/String;)V HEAD",
+            "GLDebugMixin.optilux$groupPopped: net/irisshaders/iris/gl/GLDebug.popGroup()V HEAD",
             "IrisMixin.optilux$loadFailed: net/irisshaders/iris/Iris."
                 + "handleException(Ljava/lang/Exception;)V HEAD",
             "KeyboardHandlerMixin.optilux$blockKey: net/minecraft/client/KeyboardHandler."
@@ -163,8 +167,8 @@ class MixinTargetTest {
             checked);
     }
 
-    private static void checkInject(String where, AnnotationNode inject, ClassNode target,
-        List<String> problems, List<String> checked) {
+    private static void checkInject(String where, AnnotationNode inject, MethodNode handler,
+        ClassNode target, List<String> problems, List<String> checked) {
         @SuppressWarnings("unchecked")
         List<String> selectors = (List<String>) value(inject, "method");
         @SuppressWarnings("unchecked")
@@ -185,6 +189,10 @@ class MixinTargetTest {
                 problems.add(where + ": " + target.name + "." + selector + " is not in the jar");
                 continue;
             }
+            // A static target takes a static handler, an instance target an instance one.
+            if (((method.access ^ handler.access) & Opcodes.ACC_STATIC) != 0) {
+                problems.add(where + ": static differs from " + target.name + "." + selector);
+            }
             for (AnnotationNode at : points) {
                 String point = (String) value(at, "value");
                 String seen = target.name + "." + selector + " " + point;
@@ -203,6 +211,58 @@ class MixinTargetTest {
                 }
             }
         }
+    }
+
+    @Test
+    void irisCallsTheTimedGroupsAroundItsPassesInThePinnedJar() {
+        // plans/m2.md P19: the timers see a pass only where Iris calls GLDebug's static group
+        // methods. Read here in the pinned jar: both are static, and each caller P19 names calls
+        // them and asks no debug option first, so the bench tier sees them too.
+        String debug = "net/irisshaders/iris/gl/GLDebug";
+        String debugOption = "Lnet/irisshaders/iris/config/IrisConfig;areDebugOptionsEnabled()Z";
+        ClassNode glDebug = pinnedClass(debug);
+        assertTrue(glDebug != null, debug + " is in no pinned jar");
+        for (String selector : List.of("pushGroup(ILjava/lang/String;)V", "popGroup()V")) {
+            int paren = selector.indexOf('(');
+            MethodNode method = method(glDebug, selector.substring(0, paren),
+                selector.substring(paren));
+            assertTrue(method != null && (method.access & Opcodes.ACC_STATIC) != 0,
+                debug + "." + selector + " is not a static method of the jar");
+        }
+        // The option that picks the debug state (a no-op without it), so its absence below means.
+        MethodNode reload = method(glDebug, "reloadDebugState", "()V");
+        assertTrue(reload != null && invokes(reload, debugOption),
+            "GLDebug.reloadDebugState no longer asks " + debugOption);
+        String push = "L" + debug + ";pushGroup(ILjava/lang/String;)V";
+        String pop = "L" + debug + ";popGroup()V";
+        String pipeline = "net/irisshaders/iris/pipeline/";
+        List<String> problems = new ArrayList<>();
+        for (String[] caller : new String[][] {
+            {pipeline + "IrisRenderingPipeline", "setPhase",
+                "(Lnet/irisshaders/iris/pipeline/WorldRenderingPhase;)V", "push pop"},
+            {pipeline + "IrisRenderingPipeline", "beginLevelRendering", "()V", "push pop"},
+            {pipeline + "IrisRenderingPipeline", "removePhaseIfNeeded", "()V", "pop"},
+            {pipeline + "CompositeRenderer", "renderAll", "()V", "push pop"},
+            {pipeline + "FinalPassRenderer", "renderFinalPass", "()V", "push pop"},
+            {"net/irisshaders/iris/shadows/ShadowRenderer", "renderShadows",
+                "(Lnet/irisshaders/iris/mixin/LevelRendererAccessor;Lnet/minecraft/client/Camera;"
+                    + "Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V", "push pop"}}) {
+            ClassNode owner = pinnedClass(caller[0]);
+            MethodNode method = owner == null ? null : method(owner, caller[1], caller[2]);
+            if (method == null) {
+                problems.add(caller[0] + "." + caller[1] + caller[2] + " is not in the jar");
+                continue;
+            }
+            for (String call : caller[3].split(" ")) {
+                if (!invokes(method, call.equals("push") ? push : pop)) {
+                    problems.add(caller[0] + "." + caller[1] + " makes no " + call);
+                }
+            }
+            if (invokes(method, debugOption)) {
+                problems.add(caller[0] + "." + caller[1] + " asks for the debug options");
+            }
+        }
+        assertEquals(List.of(), problems);
     }
 
     /** An accessor's field: in the target by the annotation's name, of the method's return type. */
