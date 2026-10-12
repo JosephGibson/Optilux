@@ -18,7 +18,7 @@ config/suite.json is the source of every value below.
 - Display: suite.json display, whose optionsTxt block holds every key the harness writes: the spike's, read back (M1 set exclusiveFullscreen true), and M1's inactivityFpsLimit (platform.md#install-and-launch).
 
 ## Session
-1. Restore the world snapshot and hash-check it. One session per run name; run names are single-use.
+1. Restore the world snapshot and hash-check it: `run` makes the live world equal to snapshots/<id>/ in place (files that differ copied back, files it lacks deleted, the tree re-hashed equal; plans/m2.md D44), as `world restore <id>` does; `world snapshot <id>` takes one (copy, manifest, tree hash, the player's uuid). One session per run name; run names are single-use.
 2. Launch (announced). `optilux-helper` blocks game input; pauseOnLostFocus false. Start on the user's go or when the machine is idle.
 3. `ready`, then the start-of-run reload and a 30 s GPU warm-up (mod-protocol.md#choreography).
 4. Warm-up pass over all views; kept only if M2 shows pass 1 differs from pass 2.
