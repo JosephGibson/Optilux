@@ -58,6 +58,8 @@ POSE_KEYS = ("x", "y", "z", "yaw", "pitch")
 # A capture's manifest beside its frames, and each frame's fields (docs/mod.md#8-capture).
 MANIFEST = "capture.json"
 FRAME_KEYS = ("name", "sha256", "frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
+# A measurement window's start and end: frame-hook HEAD stamps (docs/mod.md#6-time-and-determinism).
+MARK_KEYS = ("frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
 PNG_SIGNATURE = bytes([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
 
 
@@ -487,6 +489,30 @@ class Client:
     def selftest(self, timeout: float) -> dict:
         """Each capability tried in the game (A10); the answer, pass or not."""
         return self.answer("selftest", {"timeoutSeconds": timeout})
+
+    def window_measure(self, after: str, skip_seconds: float, seconds: float) -> dict:
+        """A window the mod times on the QPC clock (docs/mod.md#6-time-and-determinism): the
+        skip from the last reload's completion (`after` reload) or from now (`now`), then
+        `seconds` from the first frame past it; answered at its end with both HEAD stamps and the
+        frames between them. The wait is the skip and the window from now, the longest they take,
+        plus MARGIN; ModError when a mark lacks a stamp or the frames are not end minus start."""
+        args = {"after": after, "skipSeconds": skip_seconds, "seconds": seconds}
+        result = self.answer("window.measure", args, wait=skip_seconds + seconds + MARGIN)
+        for edge in ("start", "end"):
+            mark = result[edge]
+            bad = [
+                key
+                for key in MARK_KEYS
+                if not isinstance(mark, dict)
+                or isinstance(mark.get(key), bool)
+                or not isinstance(mark.get(key), int)
+            ]
+            if bad:
+                raise ModError(f"window.measure: its {edge} lacks {', '.join(bad)}")
+        span = result["end"]["frameIndex"] - result["start"]["frameIndex"]
+        if result["frames"] != span:
+            raise ModError(f"window.measure: frames {result['frames']}, its marks span {span}")
+        return result
 
     def next_event(self, timeout: float) -> dict | None:
         try:

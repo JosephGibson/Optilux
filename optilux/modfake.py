@@ -14,8 +14,12 @@ without tpSemantics, a pitch outside -90..90 are refused, as the mod does); the 
 pose as given. `ready` answers at once; shaders.reload restarts sinceReload at the current frame,
 answers framesAfter + 1 frames later and pushes reload.done; shaders.options reads the model's
 options; frames.capture writes `count` small PNGs and capture.json into a new attempt folder under
-an absolute directory, as the mod does; selftest passes. Like the mod
-it answers busy for the exclusive resources and the running cap, a request's own timeoutSeconds
+an absolute directory, as the mod does; window.measure times its window on 7 ms frames from the
+last reload's frame (none after a dimension change: not-ready) or from now, pushes window.start
+and window.end and moves the frames to its end; state reports the model's framebuffer; selftest
+passes. Like the mod
+it answers busy for the exclusive resources (a window and a capture each other's too, and any of
+them while a delayed mutating request runs) and the running cap, a request's own timeoutSeconds
 with `timeout`, an unbuilt command with unsupported, and keeps one resume per connection. Tests
 steer it: `delays` holds a command's answer back (answers out of order, timeouts), `refusals`
 makes a command answer an error code, `built` limits the commands it answers. PipeService serves
@@ -73,6 +77,7 @@ def initial_game() -> dict:
         "pack": "fake-pack.zip",
         "options": {"FAKE_BOOL": True, "FAKE_VALUE": "2"},
         "reloadFrame": 0,
+        "reloaded": False,
         "framebuffer": {"width": 3840, "height": 2160},
         "pose": {"dimension": OVERWORLD, "x": 0.5, "y": 70.0, "z": 0.5, "yaw": 0.0, "pitch": 0.0},
         "gamemode": "spectator",
@@ -97,11 +102,21 @@ GAME_COMMANDS = (
     "input.block",
     "hud.set",
 )
-# The renderer and shader-loader commands, capture and selftest, answered from the model.
-RENDER_COMMANDS = ("ready", "shaders.reload", "shaders.options", "frames.capture", "selftest")
+# The renderer and shader-loader commands, capture, the window and selftest, from the model.
+RENDER_COMMANDS = (
+    "ready",
+    "shaders.reload",
+    "shaders.options",
+    "frames.capture",
+    "window.measure",
+    "selftest",
+)
 SELFTEST_CHECKS = ("frameClock", "renderer", "reload", "capture", "input")
 # The fake's captured frames: tiny RGBA PNGs.
 FRAME_SIZE = 2
+# The fake's frame time: frame n's HEAD stamp at n x 7 ms; a window's swap stamps 0.1 ms before.
+FRAME_NS = 7_000_000
+SWAP_LEAD_NS = 100_000
 
 
 def png(width: int, height: int, rgba: bytes) -> bytes:
@@ -176,6 +191,9 @@ class Fake:
         self._said_hello = False
         self._last_cancelled: list = []
         self._running: dict[Any, threading.Event] = {}
+        # Delayed mutating requests whose answer is not done: no exclusive request starts over
+        # one, its early answer notwithstanding (the mod's Protocol.mutations).
+        self._mutations: set[Any] = set()
         self._held: dict[str, Any] = {}
         self.quit = threading.Event()
         self.game = initial_game()
@@ -312,12 +330,25 @@ class Fake:
             if command.get("mutating") and self._held:
                 return self._error(request_id, "busy", f"{', '.join(self._held)} active")
             resource = command.get("exclusive")
+            if resource is not None and self._mutations:
+                return self._error(
+                    request_id, "busy", "a mutation is running: no measurement starts over it"
+                )
+            for other in command.get("excludes", []):
+                if other in self._held:
+                    return self._error(
+                        request_id,
+                        "busy",
+                        f"{other} is in use: a window and a capture never overlap",
+                    )
             if resource is not None:
                 if resource in self._held:
                     return self._error(request_id, "busy", f"{resource} is in use")
                 self._held[resource] = request_id
         if name in self.refusals:
             self._free(name, request_id, ok=False)
+            if name == "shaders.reload":
+                self.game["reloaded"] = False  # a failed reload drops the anchor, as the mod's
             code, text = self.refusals[name]
             return self._error(request_id, code, text)
         delay = self.delays.get(name)
@@ -328,6 +359,8 @@ class Fake:
         stop = threading.Event()
         with self._lock:
             self._running[request_id] = stop
+            if command.get("mutating"):
+                self._mutations.add(request_id)
         threading.Thread(
             target=self._later, args=(request_id, name, args, delay, stop), daemon=True
         ).start()
@@ -351,7 +384,14 @@ class Fake:
 
     def _later(self, request_id: Any, name: str, args: dict, delay: float, stop: threading.Event):
         """A delayed answer; the request's own timeoutSeconds answers `timeout` first, as the
-        mod's timer does."""
+        mod's timer does. A mutating one keeps exclusive requests out until it is done."""
+        try:
+            self._delayed(request_id, name, args, delay, stop)
+        finally:
+            with self._lock:
+                self._mutations.discard(request_id)
+
+    def _delayed(self, request_id: Any, name: str, args: dict, delay: float, stop: threading.Event):
         own = args.get("timeoutSeconds")
         timed_out = own is not None and own < delay
         if stop.wait(own if timed_out else delay):
@@ -435,6 +475,7 @@ class Fake:
         if name == "shaders.reload":
             # Answered once the new pipeline rendered framesAfter frames, as the mod does.
             game["reloadFrame"] = self._frame
+            game["reloaded"] = True
             self._frame += args["framesAfter"] + 1
             self._frames = itertools.count(self._frame + FRAMES_PER_CALL, FRAMES_PER_CALL)
             self.emit("reload.done", {"pack": game["pack"], "pipeline": "Fake", "seconds": 0.0})
@@ -448,8 +489,56 @@ class Fake:
         if name == "shaders.options":
             return {"pack": game["pack"], "values": dict(game["options"])}
         if name == "selftest":
+            game["reloadFrame"] = self._frame  # its reload check reloads, as the mod's does
+            game["reloaded"] = True
             return {"pass": True, "checks": {check: {"pass": True} for check in SELFTEST_CHECKS}}
+        if name == "window.measure":
+            return self._window(args)
         return self._capture(args)
+
+    def _window(self, args: dict) -> dict:
+        """window.measure as the mod times it, on the fake's frame clock: the skip from the last
+        reload's frame or from now, the window from the first later frame past it, both marks
+        pushed as window.start and window.end; the clock then stands at its end."""
+        for name in ("skipFrames", "frames"):
+            if name in args:
+                raise Refusal("unsupported", f"window.measure.{name} is not built in this mod")
+        if args["after"] == "path":
+            raise Refusal("unsupported", "window.measure.after path waits for camera.path (M5)")
+        for name in ("skipSeconds", "seconds"):
+            if name not in args:
+                raise Refusal("bad-request", f"window.measure: missing argument {name}")
+        game = self.game
+        if args["after"] == "reload" and not game["reloaded"]:
+            raise Refusal(
+                "not-ready",
+                "no shader reload since the last pipeline creation; fix: shaders.reload first",
+            )
+        anchor = (game["reloadFrame"] if args["after"] == "reload" else self._frame) * FRAME_NS
+        skip_ns = round(args["skipSeconds"] * 1e9)
+        start = max(self._frame + 1, -(-(anchor + skip_ns) // FRAME_NS))
+        end = start + -(-round(args["seconds"] * 1e9) // FRAME_NS)
+
+        def mark(n: int) -> dict:
+            return {
+                "frameIndex": n,
+                "sinceReload": n - game["reloadFrame"],
+                "qpcNs": n * FRAME_NS,
+                "swapQpcNs": n * FRAME_NS - SWAP_LEAD_NS,
+            }
+
+        self._frame = start  # each event is stamped at its own mark's frame, as the mod sends it
+        self.emit("window.start", mark(start))
+        self._frame = end
+        self.emit("window.end", {**mark(end), "frames": end - start})
+        self._frames = itertools.count(end + FRAMES_PER_CALL, FRAMES_PER_CALL)
+        return {
+            "start": mark(start),
+            "end": mark(end),
+            "frames": end - start,
+            "seconds": (end - start) * FRAME_NS / 1e9,
+            "skippedSeconds": (start * FRAME_NS - anchor) / 1e9,
+        }
 
     def _capture(self, args: dict) -> dict:
         """frames.capture as the mod writes it: PNGs and capture.json in a new attempt folder."""
@@ -532,6 +621,9 @@ class Fake:
             if not args["tpSemantics"] and not -90 <= args["pitch"] <= 90:
                 raise Refusal("bad-request", f"camera.place.pitch {args['pitch']} lies outside")
             if target != pose["dimension"]:
+                # A new pipeline: sinceReload restarts and after: reload has no anchor.
+                game["reloadFrame"] = self._frame
+                game["reloaded"] = False
                 self.emit("dimension.changed", {"from": pose["dimension"], "to": target})
             game["pose"] = {"dimension": target, **{k: args[k] for k in modclient.POSE_KEYS}}
             return {"pose": dict(game["pose"]), "arrivedSeconds": 0.0}

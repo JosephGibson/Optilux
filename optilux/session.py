@@ -301,17 +301,50 @@ def record_status(
     return status, acceptance
 
 
-def session_start(s: Session, pack: str, warmup: float) -> dict:
-    """mod-protocol.md#choreography's session start after hello: world.wait, state, selftest
-    (A10), input.block on, hideGui, /tick freeze, ready, the start-of-run reload, the GPU warm-up,
-    then the pack's effective options (the variant fields)."""
+def framebuffer_size(state: dict) -> str:
+    """`state`'s framebuffer, the main render target, as WIDTHxHEIGHT."""
+    size = state.get("framebuffer")
+    if not isinstance(size, dict):
+        return repr(size)
+    return f"{size.get('width')}x{size.get('height')}"
+
+
+def framebuffer_refusal(state: dict, mode: str, resolution: str) -> str | None:
+    """The render target against the display (plans/m2.md D38): `state`'s framebuffer, the size
+    the game renders at, must equal the display mode the identity holds and suite.json's
+    display.resolution; the refusal naming its fix, None when the three agree."""
+    found = framebuffer_size(state)
+    if found == mode == resolution:
+        return None
+    return (
+        f"the game renders {found}, the display mode is {mode} and suite.json display.resolution "
+        f"{resolution}; fix: the game exclusive fullscreen at the display's own mode (suite.json "
+        "display.optionsTxt, no fullscreenResolution), the display set by you"
+    )
+
+
+def session_start(s: Session, pack: str, warmup: float, mode: str, resolution: str) -> dict:
+    """mod-protocol.md#choreography's session start after hello: world.wait, state (its
+    framebuffer refused unless equal to the display mode and suite.json's display.resolution,
+    D38), selftest (A10), input.block on, hideGui, /tick freeze, ready, the start-of-run reload,
+    the GPU warm-up, then the pack's effective options (the variant fields)."""
     c = s.client
     joined = s.step(
         "world.wait",
         lambda: c.world_wait(WORLD_TIMEOUT),
         lambda a: f"{a['pose']['dimension']} at frame {a['frameIndex']}",
     )
-    s.step("state", c.state, lambda a: f"{a['dimension']}, {a['gamemode']}, focused {a['focused']}")
+    state = s.step(
+        "state",
+        c.state,
+        lambda a: (
+            f"{a['dimension']}, {a['gamemode']}, focused {a['focused']}, framebuffer "
+            f"{framebuffer_size(a)}"
+        ),
+    )
+    problem = framebuffer_refusal(state, mode, resolution)
+    if problem is not None:
+        raise RunError(f"state: {problem}")
     selftest = s.step(
         "selftest", lambda: c.selftest(SELFTEST_TIMEOUT), lambda a: f"pass {a['pass']}"
     )

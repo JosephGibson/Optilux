@@ -144,6 +144,8 @@ def test_the_fake_answers_every_command_typed_from_commands_json(tmp_path: Path)
         args = minimal_args(command)
         if command["name"] == "frames.capture":
             args["directory"] = str(tmp_path / "captures")  # the mod takes an absolute folder
+        if command["name"] == "window.measure":  # seconds or frames, and frames are not built
+            args = {"after": "now", "skipSeconds": 0, "seconds": 0.1}
         result = client.request(command["name"], args)
         assert set(result) == set(command["result"]) | common, command["name"]
     client.request("quit")
@@ -272,6 +274,7 @@ def test_the_game_helpers_against_the_fake(tmp_path: Path) -> None:
     assert joined["pose"]["dimension"] == "minecraft:overworld" and joined["time"] == 6000
     state = client.state()
     assert state["inWorld"] and state["gamemode"] == "spectator" and state["focused"]
+    assert state["framebuffer"] == {"width": 3840, "height": 2160}
     assert client.command("/tick freeze")["messages"] == ["fake: tick freeze"]
     assert fake.game["frozen"]
     assert client.ticks_step(20, 5)["ticks"] == 20
@@ -329,6 +332,144 @@ def test_the_render_helpers_against_the_fake(tmp_path: Path) -> None:
         client.frames_capture(Path("relative"), 1, 30)
     result = client.selftest(60)
     assert result["pass"] is True and set(result["checks"]) == set(modfake.SELFTEST_CHECKS)
+    client.close()
+
+
+def test_the_window_against_the_fake(tmp_path: Path) -> None:
+    """window.measure: `after: reload` needs a reload since the last pipeline creation; the skip
+    counts from it and the window from the first frame past it; frames are end minus start, and
+    window.start and window.end carry the answer's marks; the unbuilt arguments are refused."""
+    client, _ = session(tmp_path)
+    client.hello()
+    with pytest.raises(modclient.ModRefused) as refused:
+        client.window_measure("reload", 1.5, 2.5)
+    assert refused.value.code == "not-ready"
+    reloaded = client.shaders_reload(30)
+    assert client.next_event(5)["event"] == "reload.done"
+    window = client.window_measure("reload", 1.5, 2.5)
+    start, end = window["start"], window["end"]
+    assert start["qpcNs"] >= reloaded["reloadFrame"] * modfake.FRAME_NS + 1_500_000_000
+    assert window["frames"] == end["frameIndex"] - start["frameIndex"] > 0
+    assert window["seconds"] >= 2.5 and window["skippedSeconds"] >= 1.5
+    assert start["sinceReload"] == start["frameIndex"] - reloaded["reloadFrame"]
+    events = [client.next_event(5) for _ in range(2)]
+    assert [e["event"] for e in events] == ["window.start", "window.end"]
+    assert events[0]["data"] == start
+    assert events[1]["data"] == {**end, "frames": window["frames"]}
+    assert client.window_measure("now", 0, 0.1)["start"]["frameIndex"] > end["frameIndex"]
+    # A dimension change makes a new pipeline: no anchor until the next reload.
+    nether = {"dimension": "minecraft:the_nether", "x": 0.5, "y": 70.0, "z": 0.5, "yaw": 0.0}
+    client.camera_place({**nether, "pitch": 0.0}, 30)
+    with pytest.raises(modclient.ModRefused, match="not-ready"):
+        client.window_measure("reload", 0, 1)
+    for args, code in (
+        ({"after": "now", "skipFrames": 3, "frames": 10}, "unsupported"),
+        ({"after": "path", "skipSeconds": 1, "seconds": 1}, "unsupported"),
+        ({"after": "now", "seconds": 1}, "bad-request"),
+    ):
+        with pytest.raises(modclient.ModRefused) as refused:
+            client.request("window.measure", args)
+        assert refused.value.code == code, args
+    client.close()
+
+
+@pytest.mark.parametrize(
+    ("change", "message"),
+    [
+        (lambda found: {**found, "frames": found["frames"] + 1}, r"frames \d+, its marks span \d+"),
+        (
+            lambda found: {**found, "start": {**found["start"], "swapQpcNs": None}},
+            "its start lacks swapQpcNs",
+        ),
+        (
+            lambda found: {**found, "end": {k: v for k, v in found["end"].items() if k != "qpcNs"}},
+            "its end lacks qpcNs",
+        ),
+        (lambda found: {**found, "end": [1]}, "its end lacks frameIndex"),
+    ],
+)
+def test_the_window_helper_refuses_an_answer_whose_marks_disagree(
+    tmp_path: Path, change, message: str
+) -> None:
+    class Off(modfake.Fake):
+        def _window(self, args: dict) -> dict:
+            return change(super()._window(args))
+
+    client, _ = session(tmp_path, Off(TOKEN))
+    client.hello()
+    with pytest.raises(modclient.ModError, match=message):
+        client.window_measure("now", 0, 0.1)
+    client.close()
+
+
+def test_the_window_waits_for_its_skip_and_length(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """window.measure has no timeoutSeconds: the client's wait covers the skip and the window
+    from now, plus MARGIN, so a 4 s settle and a 2.5 s window outlast DEFAULT_WAIT's 10 s."""
+    client, _ = session(tmp_path)
+    client.hello()
+    waits = []
+    answer = client.answer
+    monkeypatch.setattr(
+        client, "answer", lambda c, a=None, wait=None: waits.append(wait) or answer(c, a, wait)
+    )
+    client.window_measure("now", 4.0, 2.5)
+    assert waits == [4.0 + 2.5 + modclient.MARGIN]
+    client.close()
+
+
+def test_the_fake_keeps_a_window_out_while_a_mutation_runs(tmp_path: Path) -> None:
+    """As the mod's Protocol.dispatch: an exclusive request answers busy while a mutating one's
+    handler runs, its early `timeout` notwithstanding."""
+    client, fake = session(tmp_path)
+    client.hello()
+    fake.delays["shaders.reload"] = 0.8
+    with pytest.raises(modclient.ModRefused) as refused:
+        client.request("shaders.reload", {"timeoutSeconds": 0.2})
+    assert refused.value.code == "timeout"
+    with pytest.raises(modclient.ModRefused, match="busy: a mutation is running"):
+        client.window_measure("now", 0, 0.1)
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        try:
+            client.window_measure("now", 0, 0.1)
+            break
+        except modclient.ModRefused as error:
+            assert error.code == "busy"
+            time.sleep(0.05)
+    else:
+        pytest.fail("the window stayed busy after the reload's handler ended")
+    # A steered failed reload drops the anchor, as the mod's does.
+    del fake.delays["shaders.reload"]
+    client.shaders_reload(30)
+    fake.refusals["shaders.reload"] = ("iris-compile-error", "broken")
+    with pytest.raises(modclient.ModRefused, match="iris-compile-error"):
+        client.shaders_reload(30)
+    with pytest.raises(modclient.ModRefused, match="not-ready"):
+        client.window_measure("reload", 0, 0.1)
+    client.close()
+
+
+def test_the_fake_keeps_a_window_and_a_capture_apart(tmp_path: Path) -> None:
+    """commands.json `excludes`, as the mod reads it: each answers busy beside the other."""
+    client, fake = session(tmp_path)
+    client.hello()
+    fake.delays["frames.capture"] = 0.5
+    capture = {"directory": str(tmp_path / "d"), "count": 1, "timeoutSeconds": 5}
+    worker = threading.Thread(target=lambda: client.request("frames.capture", capture))
+    worker.start()
+    time.sleep(0.1)
+    with pytest.raises(modclient.ModRefused, match="busy: capture is in use"):
+        client.window_measure("now", 0, 0.1)
+    worker.join(5)
+    fake.delays["window.measure"] = 0.5
+    worker = threading.Thread(target=lambda: client.window_measure("now", 0, 0.1))
+    worker.start()
+    time.sleep(0.1)
+    with pytest.raises(modclient.ModRefused, match="busy: window is in use"):
+        client.request("frames.capture", capture)
+    worker.join(5)
     client.close()
 
 
