@@ -3,8 +3,8 @@ M2.P01): the tree hash on a fixture tree, the run spec's checks on fixtures (eve
 its fix), the views file, the identity and the record writer against the identity key list, the
 system facts on a fake machine and the D3DKMT reader on a fake gdi32, the settings' unwritten
 keys, the measured modules' closure and PresentMon's arguments, the launch held against the
-identity built before it, on a fixture root; run's readers: the jcmd outputs and the
-broken-pack writer on a fixture zip."""
+identity built before it; `run --check` on a fixture root; run's readers: the jcmd outputs and
+the broken-pack writer on a fixture zip."""
 
 import copy
 import ctypes
@@ -20,6 +20,7 @@ import pytest
 from optilux import (
     REPO_ROOT,
     acceptance,
+    cli,
     launch,
     modclient,
     platform,
@@ -998,6 +999,36 @@ def test_each_refusal_before_the_launch_names_its_fix(check_root, change, says: 
     with pytest.raises(record.RecordError, match="fix:") as refused:
         run_verb.prepare(root, path, FakeMachine())
     assert says in str(refused.value)
+    assert not (root / record.RAW).exists() and not (root / record.RECORDS).exists()
+
+
+def test_run_check_prints_the_identity_and_launches_nothing(
+    check_root, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    root, path = check_root
+
+    def launched(*args: object, **kwargs: object) -> None:
+        raise AssertionError("--check reached a launch")
+
+    monkeypatch.setattr(run_verb, "REPO_ROOT", root)
+    monkeypatch.setattr(record, "Machine", FakeMachine)
+    monkeypatch.setattr(run_verb, "perform", launched)
+    monkeypatch.setattr(launch, "launch", launched)
+    assert cli.main(["run", str(path), "--check", "--json"]) == 0
+    found = json.loads(capsys.readouterr().out)
+    assert (found["ok"], found["launched"], found["name"]) == (True, False, "m1-acceptance-test")
+    assert tuple(found["identity"]) == record.IDENTITY_KEYS
+    assert found["identity"]["system"]["hags"] is True
+    assert found["identity"]["harness"]["presentMon"]["file"] == "PresentMon.exe"
+    assert cli.main(["run", str(path), "--check"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert "nothing launched" in lines[0]
+    assert [line.split(":", 1)[0] for line in lines[1:]] == list(record.IDENTITY_KEYS)
+    monkeypatch.setattr(record, "Machine", UnreadHags)
+    assert cli.main(["run", str(path), "--check", "--json"]) == 1
+    refused = json.loads(capsys.readouterr().out)
+    assert refused["ok"] is False and "HAGS as applied is unread" in refused["problem"]
+    assert "fix:" in refused["problem"]
     assert not (root / record.RAW).exists() and not (root / record.RECORDS).exists()
 
 
