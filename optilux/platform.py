@@ -25,6 +25,9 @@ CHUNK = 1 << 20
 # of that kind goes to (None: mods are placed by `launch` per tier, docs/platform.md#mod-tiers).
 LISTS = {"mods": "mod", "resourcePacks": "resourcePack"}
 REFERENCE_PACKS = "referencePacks"
+# The world prep set (platform.md#mod-tiers): not a tier, never in a session; install and launch
+# take it as they take a tier, for `world prep` alone.
+WORLD_PREP = "worldPrep"
 GAME_FOLDERS = {"resourcePack": "game/resourcepacks", "referencePack": "game/shaderpacks"}
 # Modrinth publishes sha512 and the platform file pins it (pinSource); 128 hex digits.
 SHA512_DIGITS = 128
@@ -100,18 +103,30 @@ class Platform:
     def tiers(self) -> list[str]:
         return list(self.data["tiers"])
 
+    @property
+    def sets(self) -> list[str]:
+        """What install and launch take: the tiers, then the world prep set when pinned."""
+        return self.tiers + ([WORLD_PREP] if WORLD_PREP in self.data else [])
+
+    def entry(self, name: str) -> dict:
+        """A tier's entry, or the world prep set's."""
+        if name in self.data["tiers"]:
+            return self.data["tiers"][name]
+        if name == WORLD_PREP and WORLD_PREP in self.data:
+            return self.data[WORLD_PREP]
+        fix = f"one of {', '.join(self.sets)}"
+        raise PlatformError(f"tier {name!r} is not in {self.path.name}; fix: {fix}")
+
     def chain(self, tier: str) -> list[str]:
-        """The tiers a tier is made of, the root (bench) first."""
+        """The tiers a tier (or the world prep set) is made of, the root (bench) first."""
         found: list[str] = []
         name: str | None = tier
         while name is not None:
-            if name not in self.data["tiers"]:
-                fix = f"one of {', '.join(self.tiers)}"
-                raise PlatformError(f"tier {name!r} is not in {self.path.name}; fix: {fix}")
+            entry = self.entry(name)
             if name in found:
                 raise PlatformError(f"tier {name!r} extends itself in {self.path.name}; fix: cut")
             found.append(name)
-            name = self.data["tiers"][name].get("extends")
+            name = entry.get("extends")
         found.reverse()
         return found
 
@@ -122,7 +137,7 @@ class Platform:
             self._pinned(entry, kind, name)
             for name in self.chain(tier)
             for key, kind in LISTS.items()
-            for entry in self.data["tiers"][name].get(key, [])
+            for entry in self.entry(name).get(key, [])
             if "file" in entry
         ]
         files += [
@@ -142,7 +157,7 @@ class Platform:
         return [
             f"{entry['slug']}: {entry.get('why', entry.get('status', ''))}"
             for name in self.chain(tier)
-            for entry in self.data["tiers"][name].get("mods", [])
+            for entry in self.entry(name).get("mods", [])
             if "file" not in entry
         ]
 

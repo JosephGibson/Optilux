@@ -42,7 +42,7 @@ Data: config/platforms/mc-26.3.json (version, file, Modrinth id, sha512; the pla
 | lod | voxy (pending a 26.3 build) | Voxy compatibility |
 | jvm | chunky; lithium and c2me-fabric as axes | post-1.0 JVM track |
 
-- World prep set (not a tier, never in a session): the platform file's `worldPrep`, bench + Chunky 1.5.3 (ALC typed the prep commands in chat).
+- World prep set (not a tier, never in a session): the platform file's `worldPrep`, bench + Chunky 1.5.3; `install` and `launch` take it as `--tier worldPrep`, for `world prep`.
 - Shader perf evidence only on bench, with one declared exception, its tier in the identity: Viewfinder's per-pass timers on the dev tier after E5's overhead check and A11 (design.md#8-open-decisions). The JVM track's S4 runs on the played tier as JVM evidence (jvm.md#scenarios). ALC's reason for the rule: each extra mod changes the measured set (ModernFix startup, MoreCulling leaf geometry, ImmediatelyFast overlay cost, Voxy distant terrain).
 - Dev tier: `enableDebugOptions=true` creates a KHR_debug context and, on a fresh sodium-options.json, a modal Iris dialog over Sodium's `use_no_error_g_l_context` (L2): write it false first. The dev quit's exit -8 after the save (L2 quit) is accepted as known, no shutdown step (user, 2026-10-06).
 - ScalableLux and C2ME are alpha builds; re-pin when stable builds land.
