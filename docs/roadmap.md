@@ -44,7 +44,7 @@ Change, exit and estimate per phase; files and tests are in plans/m2.md section 
 ### M2.P03 Per-pass timers
 - Change (mod): GL_TIMESTAMP queries at Iris's GLDebug group calls on the bench tier, read without stalling the render thread; `timers.start`, `timers.read`, `timers.stop` (D34; plans/m2.md D53).
 - Exit: one launch with Unbound: 120 frames, each with every pipeline stage, none dropped at maxPending 3, the median top-level pass sum below the span's median GPUBusy.
-- Estimate: 3 h; machine: 1 launch.
+- Estimate: 3.5 h; machine: 1 launch.
 
 ### M2.P04 World verbs and bench_263's preparation
 - Change: `world snapshot` (F8); `world restore`, before every run (F15; plans/m2.md D44); `world prep`: the gamerules, Chunky's pre-generation (D45), the kill, the torch, the view functions and the reference frames (F16).
@@ -54,7 +54,7 @@ Change, exit and estimate per phase; files and tests are in plans/m2.md section 
 ### M2.P05 The measured session
 - Change: one runner for acceptance and measured runs (F22); the measurement and calibration kinds (plans/m2.md D40); one PresentMon session cut by each window's stamps (F1); the summaries and validity flags; A8 and A11 admitted for M2.P10; the startup call recorded (F10); the machine to itself (F19; D42), orphans (F20; D41), the time split (F17, F18; D48) and the GUI per view (D49).
 - Exit: a quick-mode run of the baseline and its twin ends ok, every capture valid, its rows matching its frames; a run killed in a test leaves an aborted record.
-- Estimate: 3 h; machine: 1-2 launches. Attended: the machine left alone while it runs.
+- Estimate: 3.5 h; machine: 1-2 launches. Attended: the machine left alone while it runs.
 
 ### M2.P06 Reload budget
 - Change: F14's controlled pair as measured sessions; the heap, capture.reloadCap and the calibration's twins and sessions by plans/m2.md D43 (F4, F14).
@@ -64,7 +64,7 @@ Change, exit and estimate per phase; files and tests are in plans/m2.md section 
 ### M2.P07 compare, report, calibrate, verify records
 - Change: the statistics (thresholds, verdicts, the twin monitor, A8's and A11's verdicts); `compare`, `report` (plans/m2.md D50), `calibrate` with its resume, `verify records` (F13; D51); one critique of the measuring path (D52).
 - Exit: tests green; `verify records` passes; `compare` refuses an uncalibrated record, naming `calibrate`; each critique finding handled.
-- Estimate: 3 h; machine: none. Attended: the critique's permission prompt (D52), unless allowed.
+- Estimate: 3.5 h; machine: none. Attended: the critique's permission prompt (D52), unless allowed.
 
 ### M2.P08 The final views: GPU-bound, CPU floor, A2 and A3
 - Change: P17's fallback path read in the pinned Iris jar; a full-mode survey of the baseline, its twin and the passthrough pack (plans/m2.md D46, D47); the CPU floor per view with GPULatency (F10) into measurement.md; then A2, A3 and A10 on the eleven views.
@@ -155,5 +155,5 @@ Owner: who decides. Recommendation: what an unattended run takes. The user's dec
 ## Estimates
 - M0: 0.3 + 1 + 1 + 1.5 + 1.5 + 1 + 1.5 = 7.8 h agent, no machine time. Basis: ALC's phases took about 1 h each (workflow.md#git); the spike estimated 4 h and took 2.5 h; ALC's run estimates of 4-6 h took about 1.2 h (workflow.md#running-a-milestone), so these are expected to run short rather than long.
 - M1: 28 h agent from plans/m1.md (2, 2, 2, 3, 3, 3, 2.5, 2, 1.5, 2, 3, 2; 25 h before the QA pass became two phases, D27; the mod phases carry 3 h each: ALC's mod ran 3x its line estimate, lessons.md#mod).
-- M2: 23.5 h agent from plans/m2.md (2, 2.5, 3, 3, 3, 1.5, 3, 1.5, 1.5, 1, 1.5; its section 8 has the basis); machine time apart: 26-31 launches, M2.P09's calibration sessions 3-5 h. M3, rough until its plan is approved: 10 h.
-- Tripwire baseline: M0-M3 summed 69.3 h (7.8 + 28 + 23.5 + 10); the trip is at 138.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass).
+- M2: 25 h agent from plans/m2.md (2, 2.5, 3.5, 3, 3.5, 1.5, 3.5, 1.5, 1.5, 1, 1.5, P03, P05 and P07 raised from 3 h on 2026-10-12 to size XL, Opus 5.5 Max; its section 8 has the basis); machine time apart: 26-31 launches, M2.P09's calibration sessions 3-5 h. M3, rough until its plan is approved: 10 h.
+- Tripwire baseline: M0-M3 summed 70.8 h (7.8 + 28 + 25 + 10); the trip is at 141.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass).
