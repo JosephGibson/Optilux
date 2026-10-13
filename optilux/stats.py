@@ -437,13 +437,24 @@ def judge(
 # Calibration.
 
 
-def nulls_of(captures: list[dict], views: list[str], rounds: int, session: str) -> dict:
+def nulls_of(
+    captures: list[dict],
+    views: list[str],
+    rounds: int,
+    session: str,
+    expected: list[dict] | None = None,
+    twins_wanted: int | None = None,
+) -> dict:
     """A calibration session's null candidates: each twin's ratio per view over every view of the
-    mode; or the problems that keep the session from counting (a twin unjudged on a view)."""
-    _, twins = session_variants(captures)
+    mode, the twins the record's variants (`expected`) when given, so a twin never measured is a
+    problem rather than left out; or the problems that keep the session from counting (a twin
+    unjudged on a view, fewer or more twins than `twins_wanted`)."""
+    _, twins = session_variants(captures, expected)
     nulls, problems = [], []
     if not twins:
         problems.append("no twin was measured")
+    if twins_wanted is not None and len(twins) != twins_wanted:
+        problems.append(f"{len(twins)} twins, the calibration takes {twins_wanted} a session")
     for twin in twins:
         ratios = {}
         for view in views:

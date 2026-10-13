@@ -132,7 +132,8 @@ def session_state(root: Path, p: Plan, name: str) -> dict:
         problems.append(f"a {found.get('kind')} run of mode {found.get('mode')}")
     if not problems:
         captures = record.session_captures(root, found)
-        nulls = stats.nulls_of(captures, p.views, p.rounds, name)
+        expected = found.get("variants") or []
+        nulls = stats.nulls_of(captures, p.views, p.rounds, name, expected, p.twins)
         problems += nulls["problems"]
         if not problems:
             return {"state": "whole", "nulls": nulls["nulls"]}
