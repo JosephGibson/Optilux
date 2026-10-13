@@ -150,6 +150,17 @@ def line_of(rows: list[dict]) -> presentmon.Timeline:
     return presentmon.timeline(rows, 4242)
 
 
+def test_a11s_residual_is_unjudged_when_a_timer_frame_has_no_gpubusy() -> None:
+    """The critique's finding 4: frame start's row lies outside the cut at a [1, 1] edge, so its
+    NA escapes `notNumbers`; the residual is none rather than a median of fewer frames."""
+    rows = [row(n) for n in range(20)]
+    by_frame = {5: 6_850_000, 6: 6_850_000, 7: 6_800_000}
+    assert measure.residual_ms(line_of(rows), {"frameRow": 5}, 5, by_frame) == pytest.approx(0.05)
+    rows[5] = row(5, GPUBusy="NA")
+    assert measure.residual_ms(line_of(rows), {"frameRow": 5}, 5, by_frame) is None
+    assert measure.residual_ms(line_of(rows[:6]), {"frameRow": 5}, 5, by_frame) is None
+
+
 # The summaries and each validity flag.
 
 
