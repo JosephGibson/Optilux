@@ -1,12 +1,14 @@
 """The statistics (optilux/stats.py) on fixed numbers: the bracketing, the order statistic, the
 thresholds per view and per view set, the verdicts and their inconclusive cases, the twin monitor,
-and A8's and A11's verdicts as plans/m2.md M2.P10 states them, on fixture captures."""
+A8's and A11's verdicts as plans/m2.md M2.P10 states them, and the survey's readings (M2.P08), on
+fixture captures and records."""
 
+import json
 import math
 
 import pytest
 
-from optilux import stats
+from optilux import record, stats
 
 
 def capture(index, view, variant, role, rnd, busy, flags=(), timers=None, pass_no=2) -> dict:
@@ -446,3 +448,165 @@ def test_a_calibration_twin_never_measured_keeps_its_session_from_counting() -> 
     assert found["nulls"] == [] and "twin-2 at v1: round 1 was not measured" in found["problems"]
     short = stats.nulls_of(seq, ["v1", "v2"], 1, "cal-quick-1", expected[:2], 2)
     assert short["nulls"] == [] and "1 twins, the calibration takes 2" in short["problems"][0]
+
+
+# The survey (plans/m2.md M2.P08, D46, D47).
+
+VIEWS = ["v1", "v2"]
+
+
+def surveyed(view: str, start: int, busy: list, ratio: list, floor: tuple, settle: float) -> list:
+    """One view of the survey as its part records it: the warm-up pass's baseline (pass 1), then
+    A, the passthrough, A, the twin, A at R 1. `busy` and `ratio` give the four baselines' GPUBusy
+    and GPUBusy over FrameTime in order; `floor` the passthrough's FrameTime, GPULatency and
+    GPUBusy, its capture left GPU-bound (valid); `settle` the measured pass's first capture's
+    (the warm-up's is 1.5 s)."""
+    warm = capture(start, view, "baseline", "baseline", 0, busy[0], pass_no=1)
+    others = [("passthrough", "candidate", [floor[2]]), ("twin", "twin", [busy[1]])]
+    seq = [warm, *view_captures(view, busy[1:], others, 1, start + 1)]
+    for c, r in zip([c for c in seq if c["role"] == "baseline"], ratio, strict=True):
+        c["gpuBusyOverFrameTime"] = r
+    for c in seq:
+        c["settleS"] = settle if c["index"] == start + 1 else 1.5
+    through = next(c for c in seq if c["variant"] == "passthrough")
+    through.update(
+        frameTimeMs=floor[0],
+        gpuLatencyMs=floor[1],
+        gpuBusyOverFrameTime=floor[2] / floor[0],
+        flags=["leftGpuBound"],
+    )
+    return seq
+
+
+def survey() -> list[dict]:
+    """Two views: v1's warm-up capture 0.4 % over its first measured baseline (whose mean and
+    median are 10.1, so a pair against either reads -0.59 %), v2's 0.375 % under, its measured
+    pass reached across a dimension (settle 4.0 s)."""
+    v1 = surveyed(
+        "v1", 1, [10.04, 10.0, 10.2, 10.1], [0.99, 0.995, 0.98, 0.97], (3.5, 1.2, 1.0), 1.5
+    )
+    v2 = surveyed("v2", 7, [7.97, 8.0, 8.0, 8.0], [0.9, 0.96, 0.99, 0.99], (3.0, 0.9, 0.8), 4.0)
+    return v1 + v2
+
+
+def test_every_baseline_capture_of_a_view_must_be_gpu_bound() -> None:
+    """measurement.md#validity: GPUBusy over FrameTime at or above 0.9 (0.9 itself bound) on every
+    baseline capture of both passes, and each valid; a view under it, without the ratio or never
+    measured is named, never left out."""
+    found = stats.gpu_bound(survey(), VIEWS, 0.9)
+    assert found["views"]["v1"] == {
+        "captures": 4,
+        "lowest": 0.97,
+        "median": 0.9850,
+        "below": [],
+        "invalid": "",
+        "bound": True,
+        "valid": True,
+    }
+    assert found["views"]["v2"]["lowest"] == 0.9 and found["views"]["v2"]["bound"] is True
+    assert (found["bound"], found["valid"]) == (True, True)
+    low = [
+        {**c, "gpuBusyOverFrameTime": 0.89, "flags": ["cpuLimited"], "valid": False}
+        if c["index"] == 7  # the warm-up pass's
+        else {**c, "gpuBusyOverFrameTime": None}
+        if c["index"] == 12
+        else c
+        for c in survey()
+    ]
+    found = stats.gpu_bound(low, VIEWS, 0.9)
+    v2 = found["views"]["v2"]
+    assert (v2["below"], v2["invalid"], v2["lowest"]) == ([7, 12], "#7 (cpuLimited)", 0.89)
+    assert (v2["bound"], v2["valid"], found["bound"], found["valid"]) == (
+        False,
+        False,
+        False,
+        False,
+    )
+    assert found["views"]["v1"]["bound"] is True
+    unmeasured = stats.gpu_bound(survey(), [*VIEWS, "v3"], 0.9)
+    assert unmeasured["views"]["v3"]["captures"] == 0 and unmeasured["bound"] is False
+
+
+def test_the_cpu_floor_is_the_passthroughs_median_frame_time_beside_its_gpu_latency() -> None:
+    """plans/m2.md D46 and roadmap.md F10: a left GPU-bound capture stays valid for its floor."""
+    found = stats.cpu_floors(survey(), VIEWS, "passthrough")
+    assert found["views"]["v1"] == {
+        "captures": [3],
+        "floorMs": 3.5,
+        "gpuLatencyMs": 1.2,
+        "gpuLatencyFrames": round(1.2 / 3.5, 4),
+        "gpuBusyMs": 1.0,
+        "gpuBusyOverFrameTime": round(1.0 / 3.5, 4),
+        "problem": None,
+    }
+    assert found["views"]["v2"]["floorMs"] == 3.0 and found["complete"] is True
+
+
+def test_a_view_without_a_valid_cpu_limited_passthrough_capture_has_no_floor() -> None:
+    seq = survey()
+    halves = [{**c, "valid": False, "flags": ["halves"]} if c["index"] == 3 else c for c in seq]
+    found = stats.cpu_floors(halves, VIEWS, "passthrough")
+    assert found["views"]["v1"] == {
+        "captures": [3],
+        "floorMs": None,
+        "problem": "capture #3 (halves) invalid",
+    }
+    assert found["complete"] is False
+    missing = [c for c in seq if not (c["view"] == "v2" and c["variant"] == "passthrough")]
+    found = stats.cpu_floors(missing, VIEWS, "passthrough")
+    assert "was not measured" in found["views"]["v2"]["problem"]
+    bare = [{**c, "gpuLatencyMs": None} if c["index"] == 9 else c for c in seq]
+    found = stats.cpu_floors(bare, VIEWS, "passthrough")
+    assert "lacks a number" in found["views"]["v2"]["problem"]
+    gpu = [{**c, "flags": []} if c["index"] == 9 else c for c in seq]  # the passthrough GPU-bound
+    v2 = stats.cpu_floors(gpu, VIEWS, "passthrough")["views"]["v2"]
+    assert (v2["floorMs"], v2["upperBoundMs"]) == (None, 3.0)
+    assert v2["problem"] == "capture [9] GPU-bound: its FrameTime bounds the floor from above"
+    assert stats.cpu_floors(seq, [*VIEWS, "v3"], "passthrough")["complete"] is False
+
+
+def test_d47_drops_the_warm_up_pass_only_when_every_view_agrees_within_half_a_percent() -> None:
+    """The warm-up capture against the measured pass's first baseline capture (never the mean or
+    median of the measured baselines), in % of the latter; their settles and the measured
+    baselines' spread beside it."""
+    found = stats.warmup_agreement(survey(), VIEWS)
+    v1, v2 = found["views"]["v1"], found["views"]["v2"]
+    assert (v1["warmup"], v1["measured"], v1["within"], v1["sameSettle"]) == (1, 2, True, True)
+    assert v1["deltaPct"] == pytest.approx(0.4) and v1["spreadPct"] == pytest.approx(
+        20 / 10.1, abs=1e-4
+    )
+    assert (v2["warmupSettleS"], v2["measuredSettleS"], v2["sameSettle"]) == (1.5, 4.0, False)
+    assert v2["deltaPct"] == pytest.approx(-0.375) and found["drop"] is True
+    beyond = [{**c, "gpuBusyMs": 9.94} if c["index"] == 1 else c for c in survey()]
+    found = stats.warmup_agreement(beyond, VIEWS)
+    assert found["views"]["v1"]["within"] is False and found["drop"] is False
+
+
+def test_d47_is_undecided_without_a_valid_pair_never_dropped() -> None:
+    seq = survey()
+    halves = [{**c, "valid": False, "flags": ["halves"]} if c["index"] == 7 else c for c in seq]
+    found = stats.warmup_agreement(halves, VIEWS)
+    assert found["drop"] is None and "#7 (halves)" in found["views"]["v2"]["problem"]
+    parts = [c for c in seq if not (c["view"] == "v2" and c["pass"] == 1)]  # no warm-up pass
+    found = stats.warmup_agreement(parts, VIEWS)
+    assert found["drop"] is None
+    assert found["views"]["v2"]["problem"] == "0 warm-up and 3 measured baselines"
+    assert stats.warmup_agreement(seq, [*VIEWS, "v3"])["drop"] is None  # v3 never measured
+
+
+def test_the_survey_reads_a_split_sessions_parts(tmp_path) -> None:
+    """The readings as functions of a record: a session record's captures joined from its parts
+    (record.session_captures), each part's indices its own."""
+    seq = survey()
+    parts = {
+        "s-p1": [c for c in seq if c["view"] == "v1"],
+        "s-p2": [{**c, "index": c["index"] - 6} for c in seq if c["view"] == "v2"],
+    }
+    folder = tmp_path / record.RECORDS
+    folder.mkdir(parents=True)
+    for name, captures in parts.items():
+        (folder / f"{name}.json").write_text(json.dumps({"name": name, "captures": captures}))
+    joined = record.session_captures(tmp_path, {"name": "s", "parts": list(parts)})
+    assert stats.cpu_floors(joined, VIEWS, "passthrough")["views"]["v2"]["captures"] == [3]
+    assert stats.gpu_bound(joined, VIEWS, 0.9)["bound"] is True
+    assert stats.warmup_agreement(joined, VIEWS)["drop"] is True

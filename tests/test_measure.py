@@ -7,6 +7,7 @@ mid-session leaving an aborted record through the next run's orphan finisher (D4
 
 import copy
 import hashlib
+import io
 import json
 import os
 import re
@@ -310,6 +311,61 @@ def test_the_twins_are_byte_copies_checked_by_sha512(tmp_path: Path) -> None:
     assert sorted(p.name for p in packs.iterdir()) == [PACK]
 
 
+PASS = {"id": "passthrough", "pack": record.PASSTHROUGH, "profile": None}
+ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
+
+
+def test_the_passthrough_zip_is_a_shaders_folder_and_an_empty_properties_file() -> None:
+    """plans/m2.md D46: two entries, stored and empty, at the zip epoch with Unix attributes (a
+    directory with the MS-DOS directory bit, a file rw-r--r--), so every build writes these 242
+    bytes; Iris takes a zip whose tree holds a `shaders` directory."""
+    data = measure.passthrough_zip()
+    assert data == measure.passthrough_zip() and len(data) == 242
+    assert hashlib.sha256(data).hexdigest() == (
+        "834e06b82a6026d575b9c08f0a827a3d56717c19a7b2b8f3b3c848456c457517"
+    )
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        assert archive.testzip() is None
+        entries = [
+            (
+                i.filename,
+                i.file_size,
+                i.compress_type,
+                i.date_time,
+                i.create_system,
+                i.external_attr,
+            )
+            for i in archive.infolist()
+        ]
+        assert zipfile.Path(archive, "shaders/").is_dir()
+    assert entries == [
+        ("shaders/", 0, zipfile.ZIP_STORED, ZIP_EPOCH, 3, (0o40755 << 16) | 0x10),
+        ("shaders/shaders.properties", 0, zipfile.ZIP_STORED, ZIP_EPOCH, 3, 0o100644 << 16),
+    ]
+
+
+def test_the_passthrough_pack_is_written_and_owned_before_the_launch(tmp_path: Path) -> None:
+    packs = tmp_path / "shaderpacks"
+    packs.mkdir()
+    base = variant("baseline", "baseline")
+    through = measure.Variant(
+        "passthrough", "candidate", record.PASSTHROUGH, record.PASSTHROUGH, None, {}, False
+    )
+    assert measure.make_passthrough(tmp_path, [base], print) is None  # no variant runs it
+    owned: list[Path] = []
+    made = measure.make_passthrough(tmp_path, [base, through], owned.append)
+    digest = hashlib.sha512(measure.passthrough_zip()).hexdigest()
+    assert made == {"file": record.PASSTHROUGH, "sha512": digest}
+    assert owned == [packs / record.PASSTHROUGH]  # taken before it is written
+    assert (packs / record.PASSTHROUGH).read_bytes() == measure.passthrough_zip()
+    assert measure.variant_sha512(through, "ref") == digest
+    assert measure.variant_sha512(base, "ref") == "ref"
+    again: list[Path] = []
+    with pytest.raises(session.RunError, match="exists in shaderpacks"):
+        measure.make_passthrough(tmp_path, [base, through], again.append)
+    assert again == []  # a file already there is not this run's: never taken, never deleted
+
+
 def test_the_effective_options_must_equal_the_written_ones() -> None:
     base = variant("baseline", "baseline")
     values = {**PLAYED, "SHADOW_QUALITY": "2"}
@@ -496,6 +552,22 @@ def test_the_survey_keeps_each_launchs_warm_up_pass_at_r_1(bench_root) -> None:
     assert plain.warmup is False and [len(g) for g in plain.groups] == [3, 3, 3, 2]
 
 
+def test_the_survey_measures_the_passthrough_pack_as_a_candidate(bench_root) -> None:
+    """M2.P08's survey (plans/m2.md D46): the baseline, the passthrough pack and the twin of the
+    baseline's zip, 3 views a launch at R 1 with the warm-up pass."""
+    root, saves = bench_root
+    survey = measured(mode="full", variants=[BASE, PASS], rounds=1, warmup=True)
+    spec = record.check_spec(root, survey, PLAT, SUITE, saves, PACK)
+    assert [len(g) for g in spec.groups] == [3, 3, 3, 2] and spec.warmup is True
+    assert spec.variants[1] == {**PASS, "options": {}, "timers": False}
+    found = measure.variants(spec, SUITE)
+    assert [(v.id, v.role, v.pack, v.source) for v in found] == [
+        ("baseline", "baseline", PACK, PACK),
+        ("passthrough", "candidate", record.PASSTHROUGH, record.PASSTHROUGH),
+        ("twin", "twin", f"optilux-twin1-{PACK}", PACK),
+    ]
+
+
 def test_a_split_sessions_name_leaves_room_for_its_parts(bench_root) -> None:
     root, saves = bench_root
     pair = measured(mode="full", variants=[BASE, SHADOWS])
@@ -527,6 +599,14 @@ SPEC_REFUSALS = [
     (dict(treatment="mods"), "JVM track"),
     (dict(variants=[]), "lists none"),
     (dict(variants=[{**BASE, "pack": "other.zip"}]), "the reference pack"),
+    (dict(variants=[PASS]), "the passthrough after it in a measurement run"),
+    (dict(variants=[BASE, {**PASS, "profile": "played"}]), "profile null, no options"),
+    (dict(variants=[BASE, {**PASS, "options": {"SHADOW_QUALITY": "-1"}}]), "no options"),
+    (dict(variants=[BASE, {**PASS, "timers": True}]), "timers false"),
+    (
+        dict(mode="full", kind="acceptance", items=["A8"], variants=[BASE, TIMED, PASS]),
+        "as a measurement run's candidate",
+    ),
     (dict(variants=[{**BASE, "id": "twin"}]), "starts with twin"),
     (dict(variants=[BASE, BASE]), "listed twice"),
     (dict(variants=[{**BASE, "profile": "fancy"}]), "profile 'fancy'"),
@@ -1021,6 +1101,31 @@ def test_a_quick_run_measures_the_baseline_and_its_twin(fake_run, capsys) -> Non
     packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
     assert sorted(p.name for p in packs.iterdir()) == [PACK]  # twin and settings files gone
     assert len((root / record.RECORDS / "m2-quick-test.json").read_bytes()) < 200_000
+
+
+def test_a_run_writes_the_passthrough_pack_measures_it_and_deletes_it(fake_run) -> None:
+    """D46 on the fake: the passthrough written before the launch, loaded at its reloads with no
+    options, recorded with its own sha512 and whole (empty) option map, deleted after the quit."""
+    root, spec_path, _, _ = fake_run
+    spec_path.write_text(json.dumps(measured(variants=[BASE, PASS])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    found = json.loads((root / record.RECORDS / "m2-quick-test.json").read_text(encoding="utf-8"))
+    assert found["status"] == "ok"
+    base, through, twin = found["variants"]
+    assert (through["id"], through["role"], through["pack"], through["profile"]) == (
+        "passthrough",
+        "candidate",
+        record.PASSTHROUGH,
+        None,
+    )
+    digest = hashlib.sha512(measure.passthrough_zip()).hexdigest()
+    assert through["sha512"] == digest and twin["sha512"] == base["sha512"] != digest
+    assert through["effective"] == {"sha256": record.sha256_of({}), "count": 0, "values": {}}
+    assert found["session"]["passthrough"] == {"file": record.PASSTHROUGH, "sha512": digest}
+    measured_through = [c for c in found["captures"] if c["variant"] == "passthrough"]
+    assert [c["view"] for c in measured_through] == ["forest_noon", "nether_crimson", "end_dragon"]
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert sorted(p.name for p in packs.iterdir()) == [PACK]  # passthrough and settings gone
 
 
 def test_the_entities_view_shows_the_gui_in_creative_and_puts_both_back(fake_run) -> None:

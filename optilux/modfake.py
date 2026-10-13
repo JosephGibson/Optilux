@@ -46,7 +46,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from optilux import launch, modclient
+from optilux import launch, modclient, record
 
 PROTOCOL = 1
 # A fake value per result type; `|null` types answer null.
@@ -589,12 +589,13 @@ class Fake:
         return self._capture(args)
 
     def _switch(self, game_dir: Path) -> None:
-        """The pack and its options as Iris loads them at a reload (platform.md R4)."""
+        """The pack and its options as Iris loads them at a reload (platform.md R4); the
+        passthrough pack defines none (plans/m2.md D46)."""
         iris = (game_dir / "config" / "iris.properties").read_text(encoding="utf-8")
         pack = launch.properties_values(iris).get("shaderPack", "")
         if not (game_dir / "shaderpacks" / pack).is_file():
             raise Refusal("failed", f"no shader pack {pack} in shaderpacks/")
-        values = dict(self.defaults)
+        values = {} if pack == record.PASSTHROUGH else dict(self.defaults)
         settings = game_dir / "shaderpacks" / f"{pack}.txt"
         written = settings.read_text(encoding="utf-8") if settings.is_file() else ""
         for name, value in launch.properties_values(written).items():

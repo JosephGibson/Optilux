@@ -20,6 +20,9 @@ nothing is read or written here.
 - The twin monitor: more than maxExceed of the last `window` twins beyond the geo-mean threshold
   under one calibration means recalibrating.
 - A8 and A11 as plans/m2.md M2.P10 states them (a8_verdict, a11_verdict).
+- The survey's readings (plans/m2.md M2.P08): each view's baseline GPU-bound (gpu_bound), its CPU
+  floor from the passthrough pack (cpu_floors, D46) and D47's warm-up pass against the measured
+  pass (warmup_agreement).
 """
 
 import math
@@ -30,6 +33,10 @@ from typing import Any
 
 # The measured pass; pass 1 is the warm-up pass, never judged (measurement.md#session step 4).
 MEASURED_PASS = 2
+WARMUP_PASS = 1
+# plans/m2.md D47: the warm-up pass is dropped when every view's warm-up capture lies within this
+# of the measured pass's first baseline capture, in % of the latter's median GPUBusy.
+WARMUP_WITHIN_PCT = 0.5
 BASELINE = "baseline"
 TWIN = "twin"
 CANDIDATE = "candidate"
@@ -71,6 +78,11 @@ def finite(value: Any) -> bool:
 
 def positive(value: Any) -> bool:
     return finite(value) and value > 0
+
+
+def number(value: Any) -> float | None:
+    """A finite number as a float, else None."""
+    return float(value) if finite(value) else None
 
 
 def delta_pct(ratio: float) -> float:
@@ -611,6 +623,143 @@ def a11_verdict(
         why = "no candidate's GPUBusy moved beyond a view's threshold: no effect for the timers"
         return {"pass": None, **evidence, "pending": why}
     return {"pass": True, **evidence, "why": "every residual and timers delta inside"}
+
+
+def invalid_named(captures: list[dict]) -> str:
+    return ", ".join(
+        f"#{c['index']} ({', '.join(c.get('flags') or ['no numbers'])})" for c in captures
+    )
+
+
+def gpu_bound(captures: list[dict], views: list[str], minimum: float) -> dict:
+    """measurement.md#validity on the baseline, per view of `views` (the mode's: one never
+    measured is named, never left out) over both passes: each baseline capture's GPUBusy over
+    FrameTime (median over median) against `minimum` (suite.json validity.gpuBoundMin), the
+    lowest and the median; `bound` when none is under it or without the ratio, `valid` when every
+    one is valid (the invalid named with their flags); a view without a baseline capture is
+    neither. Over all views: `bound` and `valid` when every view's is."""
+    rows = {}
+    for view in views:
+        base = sorted(
+            (c for c in captures if c["view"] == view and c.get("role") == BASELINE),
+            key=lambda c: c["index"],
+        )
+        ratios = [number(c.get("gpuBusyOverFrameTime")) for c in base]
+        known = [r for r in ratios if r is not None]
+        below = [c["index"] for c, r in zip(base, ratios, strict=True) if r is None or r < minimum]
+        bad = [c for c in base if c.get("valid") is not True]
+        rows[view] = {
+            "captures": len(base),
+            "lowest": round(min(known), PLACES) if known else None,
+            "median": round(statistics.median(known), PLACES) if known else None,
+            "below": below,
+            "invalid": invalid_named(bad),
+            "bound": bool(base) and not below,
+            "valid": bool(base) and not bad,
+        }
+    every = bool(rows)
+    return {
+        "minimum": minimum,
+        "views": rows,
+        "bound": every and all(r["bound"] for r in rows.values()),
+        "valid": every and all(r["valid"] for r in rows.values()),
+    }
+
+
+def cpu_floors(captures: list[dict], views: list[str], variant: str) -> dict:
+    """The CPU floor per view of `views` (measurement.md#validity, plans/m2.md D46): over the
+    passthrough variant's measured-pass captures at the view, all valid and all left GPU-bound
+    (CPU-limited: a GPU-bound one's FrameTime only bounds the floor from above, kept as
+    `upperBoundMs`), the median FrameTime (ms), beside the median GPULatency in ms and in frames
+    (over the FrameTime; roadmap.md F10), GPUBusy and GPUBusy over FrameTime. A view where it is
+    missing, invalid, without its numbers or GPU-bound has no floor and names why; `complete` when
+    every view has one."""
+    keys = ("frameTimeMs", "gpuLatencyMs", "gpuBusyMs", "gpuBusyOverFrameTime")
+    rows: dict[str, dict] = {}
+    for view in views:
+        mine = [c for c in view_sequence(captures, view) if c.get("variant") == variant]
+        bad = [c for c in mine if c.get("valid") is not True]
+        given = {key: [number(c.get(key)) for c in mine] for key in keys}
+        values = {
+            key: [v for v in found if v is not None and v > 0] for key, found in given.items()
+        }
+        row: dict = {"captures": [c["index"] for c in mine], "floorMs": None}
+        rows[view] = row
+        if not mine:
+            row["problem"] = f"{variant} was not measured in the measured pass"
+            continue
+        if bad:
+            row["problem"] = f"capture {invalid_named(bad)} invalid"
+            continue
+        if any(len(found) != len(mine) for found in values.values()):
+            row["problem"] = f"a capture of {variant} lacks a number"
+            continue
+        median = {key: statistics.median(found) for key, found in values.items()}
+        bound = [c["index"] for c in mine if LEFT_GPU_BOUND not in (c.get("flags") or [])]
+        row.update(
+            gpuLatencyMs=round(median["gpuLatencyMs"], PLACES),
+            gpuLatencyFrames=round(median["gpuLatencyMs"] / median["frameTimeMs"], PLACES),
+            gpuBusyMs=round(median["gpuBusyMs"], PLACES),
+            gpuBusyOverFrameTime=round(median["gpuBusyOverFrameTime"], PLACES),
+            problem=None,
+        )
+        if bound:
+            row["upperBoundMs"] = round(median["frameTimeMs"], PLACES)
+            row["problem"] = f"capture {bound} GPU-bound: its FrameTime bounds the floor from above"
+        else:
+            row["floorMs"] = round(median["frameTimeMs"], PLACES)
+    complete = bool(rows) and all(r["problem"] is None for r in rows.values())
+    return {"variant": variant, "views": rows, "complete": complete}
+
+
+def warmup_agreement(
+    captures: list[dict], views: list[str], within_pct: float = WARMUP_WITHIN_PCT
+) -> dict:
+    """plans/m2.md D47, per view of `views`: the warm-up pass's baseline capture against the
+    measured pass's first baseline capture, the same place in a visit (the view reached, the
+    baseline reloaded); the delta of their median GPUBusy in % of the measured one's, beside the
+    measured pass's baseline spread (largest less smallest over their mean, in %), the noise it
+    meets. Both settles are kept: at a launch's first view the two passes can arrive from
+    different dimensions, so `sameSettle` false names a pair that differs in its settle and its
+    dimension change too, judged all the same. `drop` true when every view's |delta| lies within
+    `within_pct`, false when one lies beyond it, None when a view lacks either capture valid with
+    its number (undecided, never dropped)."""
+    rows: dict[str, dict] = {}
+    for view in views:
+        warm = [
+            c
+            for c in captures
+            if c["view"] == view and c.get("pass") == WARMUP_PASS and c.get("role") == BASELINE
+        ]
+        measured = [c for c in view_sequence(captures, view) if c.get("role") == BASELINE]
+        if len(warm) != 1 or not measured:
+            rows[view] = {"problem": f"{len(warm)} warm-up and {len(measured)} measured baselines"}
+            continue
+        pair = (warm[0], measured[0])
+        bad = [c for c in pair if c.get("valid") is not True or not positive(busy(c))]
+        if bad:
+            rows[view] = {"problem": f"capture {invalid_named(bad)} invalid or without GPUBusy"}
+            continue
+        usable = [busy(c) for c in measured if c.get("valid") is True and positive(busy(c))]
+        delta = delta_pct(busy(pair[0]) / busy(pair[1]))
+        rows[view] = {
+            "warmup": pair[0]["index"],
+            "measured": pair[1]["index"],
+            "warmupMs": busy(pair[0]),
+            "measuredMs": busy(pair[1]),
+            "warmupSettleS": pair[0].get("settleS"),
+            "measuredSettleS": pair[1].get("settleS"),
+            "sameSettle": pair[0].get("settleS") == pair[1].get("settleS"),
+            "deltaPct": round(delta, PLACES),
+            "spreadPct": round(
+                100 * (max(usable) - min(usable)) / statistics.fmean(usable), PLACES
+            ),
+            "within": abs(delta) <= within_pct,
+            "problem": None,
+        }
+    undecided = not rows or any(r["problem"] is not None for r in rows.values())
+    drop = None if undecided else all(r["within"] for r in rows.values())
+    return {"withinPct": within_pct, "views": rows, "drop": drop}
 
 
 def judge_items(

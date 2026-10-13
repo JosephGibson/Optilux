@@ -5,7 +5,8 @@ run finishes (D41).
 
 - Variants: the spec's (record.check_variants) and the twins the runner adds, a measurement run's
   one A/A twin, a calibration run's statistics.calibration.twinsPerSession, each a byte copy of the
-  baseline's zip under shaderpacks/ with the baseline's settings (D35). Before every reload the
+  baseline's zip under shaderpacks/ with the baseline's settings (D35); a measurement run's
+  passthrough candidate, a zip built here and written beside them (D46). Before every reload the
   variant's files are written: iris.properties naming its pack and the pack's settings file
   shaderpacks/<pack>.txt with its option values (Iris re-reads both at a reload, spike R4). After
   the reload its pack and every written option's effective value are checked, and the variant's
@@ -38,6 +39,7 @@ import re
 import shutil
 import statistics
 import time
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -72,6 +74,19 @@ from optilux.verbs.install import RUNTIME, Say, shown
 INDEPENDENT_FLIP = "Hardware: Independent Flip"
 # A twin's file under shaderpacks/: optilux-twin<n>-<the baseline's zip>.
 TWIN_PREFIX = "optilux-twin"
+# The passthrough pack (plans/m2.md D46), record.PASSTHROUGH under shaderpacks/: a `shaders`
+# directory, which Iris looks for in a zip, and an empty shaders.properties. The pinned Iris jar
+# (P17, read with javap in M2.P08) draws every program the pack lacks with its fallback into
+# colortex0, makes no shadow targets and so no shadow pass (the pack neither enables shadows nor
+# samples them), and with no final program copies colortex0 to the screen.
+PASSTHROUGH_ENTRIES = ("shaders/", "shaders/shaders.properties")
+# As `pack build` writes its zip (plans/m0.md D14): the zip format's epoch and Unix attributes,
+# so every machine writes the same bytes; a directory drwxr-xr-x with the MS-DOS directory bit,
+# a file rw-r--r--.
+ZIP_TIME = (1980, 1, 1, 0, 0, 0)
+ZIP_SYSTEM = 3
+ZIP_FOLDER = (0o40755 << 16) | 0x10
+ZIP_FILE = 0o100644 << 16
 # The pack's settings file Iris reads at a reload, beside the pack in shaderpacks/.
 SETTINGS = "{pack}.txt"
 # The view functions world prep writes (world.py: optilux:view/<id>, ending in `return 1`).
@@ -247,6 +262,46 @@ def make_twins(
             raise RunError(f"{target.name} hashes {digest[:12]}..., its source {sha512[:12]}...")
         made.append({"file": twin.pack, "sha512": digest})
     return made
+
+
+def passthrough_zip() -> bytes:
+    """The passthrough pack's bytes (D46): PASSTHROUGH_ENTRIES in order, each empty and stored."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_STORED) as archive:
+        for name in PASSTHROUGH_ENTRIES:
+            info = zipfile.ZipInfo(name, date_time=ZIP_TIME)
+            info.create_system = ZIP_SYSTEM
+            info.external_attr = ZIP_FOLDER if name.endswith("/") else ZIP_FILE
+            archive.writestr(info, b"")
+    return buffer.getvalue()
+
+
+def variant_sha512(variant: Variant, reference: str) -> str:
+    """The sha512 of the zip a variant loads: the passthrough's own, else the pinned reference
+    pack's `reference` (a twin's is its source's)."""
+    if variant.source == record.PASSTHROUGH:
+        return hashlib.sha512(passthrough_zip()).hexdigest()
+    return reference
+
+
+def make_passthrough(game: Path, found: list[Variant], own: Callable[[Path], None]) -> dict | None:
+    """The passthrough pack under shaderpacks/ when a variant runs it (D46), written through a
+    part name and checked by sha512; RunError for a file already there (an orphan's: `run`
+    finishes orphans first). `own` takes it before it is written, as make_twins does."""
+    if not any(v.source == record.PASSTHROUGH for v in found):
+        return None
+    target = game / launch.SHADER_PACKS / record.PASSTHROUGH
+    if target.exists():
+        raise RunError(f"{target.name} exists in shaderpacks/; fix: delete it, then rerun")
+    own(target)
+    data = passthrough_zip()
+    part = target.with_name(target.name + ".part")
+    part.write_bytes(data)
+    part.replace(target)
+    digest, wanted = platform.sha512(target), hashlib.sha512(data).hexdigest()
+    if digest != wanted:
+        raise RunError(f"{target.name} hashes {digest[:12]}..., written {wanted[:12]}...")
+    return {"file": record.PASSTHROUGH, "sha512": digest}
 
 
 def remove_files(paths: list[Path]) -> dict:
@@ -1064,10 +1119,11 @@ def unsummarized(entry: dict, why: str) -> dict:
 
 
 def variant_records(m: Measured, sha512: str) -> list[dict]:
-    """The record's variants (run-record.md#fields): id, role, pack and the zip's sha512, profile,
-    the written options, timers, and the effective options read back after the reload: the
-    baseline's whole map, each other variant's sha256 and the values that differ from the
-    baseline's."""
+    """The record's variants (run-record.md#fields): id, role, pack and the zip's sha512 (the
+    reference pack's `sha512`, the passthrough's own), profile, the written options, timers, and
+    the effective options read back after the reload: the whole map of the baseline and of a
+    variant of another pack (the passthrough's), each other variant's sha256 and the values that
+    differ from the baseline's."""
     base = m.effective.get(m.found[0].id)
     found = []
     for v in m.found:
@@ -1075,7 +1131,7 @@ def variant_records(m: Measured, sha512: str) -> list[dict]:
             "id": v.id,
             "role": v.role,
             "pack": v.pack,
-            "sha512": sha512,
+            "sha512": variant_sha512(v, sha512),
             "profile": v.profile,
             "options": v.options,
             "timers": v.timers,
@@ -1083,7 +1139,7 @@ def variant_records(m: Measured, sha512: str) -> list[dict]:
         mine = m.effective.get(v.id)
         if mine is None:
             entry["effective"] = None
-        elif v.role == "baseline" or base is None:
+        elif v.role == "baseline" or base is None or v.source != m.found[0].source:
             entry["effective"] = {
                 "sha256": mine["sha256"],
                 "count": len(mine["values"]),
