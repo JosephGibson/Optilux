@@ -539,11 +539,13 @@ def a11_verdict(
     baseline's median GPUBusy); the residual (GPUBusy less the pass sum) of each variant,
     bracketed against the baseline's (the baseline's at 0), moves less than it between any two
     variants; each candidate's (shadows off's) delta from the timers' top-level sum matches its
-    GPUBusy delta within it, both bracketed in ms. `pass` False on a failure measured on valid
-    captures; None while the verdict waits (the session inconclusive on its twin, or a view
-    unjudged)."""
+    GPUBusy delta within it, both bracketed in ms; and the known positive shows: a candidate's
+    GPUBusy delta at or beyond the threshold at some view (else nothing was there for the timers
+    to match: identical variants, or timers reading zero, would agree). `pass` False on a failure
+    measured on valid captures; None while the verdict waits (the session inconclusive on its
+    twin, a view unjudged, no measured effect)."""
     candidates, twins = session_variants(captures, expected)
-    rows, unjudged, failed = [], [], []
+    rows, unjudged, failed, effect = [], [], [], []
     for view in views:
         level = found["perView"][view]
         base = baseline_ms(captures, view)
@@ -571,6 +573,8 @@ def a11_verdict(
                 unjudged.append(f"{view}: {variant}: {timed['problem'] or gpu['problem']}")
                 continue
             gap = timed["ms"] - gpu["ms"]
+            if abs(gpu["ms"]) >= limit:
+                effect.append(f"{view}: {variant}")
             matched[variant] = {
                 "timersMs": round(timed["ms"], PLACES),
                 "gpuBusyMs": round(gpu["ms"], PLACES),
@@ -585,13 +589,16 @@ def a11_verdict(
                 failed.append(f"{view}: the residual spreads {spread:.4f} ms ({named})")
         row["residualMovesMs"] = {v: round(ms, PLACES) for v, ms in moved.items()}
         row["deltaFromTimers"] = matched
-    evidence = {"views": rows, "failed": failed, "unjudged": unjudged}
+    evidence = {"views": rows, "failed": failed, "unjudged": unjudged, "effect": effect}
     if twin["inside"] is not True:
         return {"pass": None, **evidence, "pending": twin_failure(twin)}
     if failed:
         return {"pass": False, **evidence, "why": "; ".join(failed)}
     if unjudged:
         return {"pass": None, **evidence, "pending": "unjudged: " + "; ".join(unjudged)}
+    if not effect:
+        why = "no candidate's GPUBusy moved beyond a view's threshold: no effect for the timers"
+        return {"pass": None, **evidence, "pending": why}
     return {"pass": True, **evidence, "why": "every residual and timers delta inside"}
 
 

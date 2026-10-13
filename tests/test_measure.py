@@ -529,6 +529,10 @@ SPEC_REFUSALS = [
     (dict(kind="acceptance", items=[]), "some of A8, A11"),
     (dict(kind="acceptance", items=["A8"]), "A8 compares the baseline"),
     (dict(kind="acceptance", items=["A11"], variants=[BASE, TIMED]), "A11 times every variant"),
+    (
+        dict(kind="acceptance", items=["A11"], variants=[{**BASE, "timers": True}, TIMED]),
+        "a candidate unlike the baseline",
+    ),
     (dict(kind="acceptance", items=["A2"]), "takes A8, A11"),
     (dict(kind="calibration", rounds=1), "a calibration-null measurement run's"),
     (dict(kind="calibration", warmup=True), "a calibration-null measurement run's"),

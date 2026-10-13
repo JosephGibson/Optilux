@@ -412,3 +412,20 @@ def test_a_variant_the_record_names_but_never_measured_is_unjudged_not_left_out(
     assert late["variant"] == "late" and late["verdict"] == "inconclusive"
     assert late["unjudged"] == ["v1", "v2"] and "round 1 was not measured" in late["why"]
     assert len(stats.judge(session({"v1": 9.0, "v2": 9.0}), FLOORED, "full")["candidates"]) == 1
+
+
+def test_a11_waits_without_a_measured_effect_for_the_timers_to_match() -> None:
+    """The critique's finding 2: identical variants, or timers reading zero, agree with GPUBusy
+    trivially; A11 needs a candidate's GPUBusy delta beyond a view's threshold."""
+    same = a11((10.0, 9.0, 1.0))
+    assert same["pass"] is None and "no effect for the timers" in same["pending"]
+    zero = []
+    for view in ("v1", "v2"):
+        others = [
+            ("shadows", "candidate", [(10.0, (), (0.0, 10.0))]),
+            ("twin", "twin", [(10.0, (), (0.0, 10.0))]),
+        ]
+        zero += view_captures(view, [(10.0, (), (0.0, 10.0))] * 3, others, 1, len(zero) + 1)
+    entry = stats.judge_items(zero, FLOORED, ["A11"], None)[0]
+    assert entry["pass"] is None and "no effect" in entry["evidence"]["pending"]
+    assert a11((8.0, 7.0, 1.0))["effect"] == ["v1: shadows", "v2: shadows"]
