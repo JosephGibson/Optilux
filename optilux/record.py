@@ -38,23 +38,24 @@ SPEC_REQUIRED = ("name", "kind", "views", "world", "variants", "tier", "resource
 # items: an acceptance run's; mode: a measured schedule's (measurement and calibration runs, and
 # acceptance runs of A8 and A11); calibration: the calibration a measurement run is judged by,
 # null before one exists (plans/m2.md D40); heap: the heap read every RELOAD_EVERY reloads
-# (M2.P06); rounds and dimensions: a budget run's R and its mode's views cut to those dimensions
-# (BUDGET); treatment: declared treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
+# (M2.P06); rounds, dimensions, keepViews, alone and windows: a budget run's (BUDGET); treatment:
+# declared treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
 SPEC_OPTIONAL = (
     "items",
     "notes",
     "mode",
     "calibration",
     "heap",
-    "rounds",
-    "dimensions",
+    *("rounds", "dimensions", "keepViews", "alone", "windows"),
     "treatment",
     "reloads",
 )
-# A budget run (plans/m2.md M2.P06, F14's controlled pair): a measurement run with heap true may
-# set its rounds and keep only some dimensions' views; its heap table sets the budget, no
-# verdict reads its captures (calibration null).
-BUDGET = ("rounds", "dimensions")
+# A budget run (plans/m2.md M2.P06, F14's controlled pair and its diagnosis): a measurement run
+# with heap true may set its rounds, keep only some dimensions' views or some views by id, reload
+# the baseline alone in every slot (no pack switch, no twin) and leave out its windows (each
+# capture's reload and options check alone); its heap table sets the budget, no verdict reads its
+# captures (calibration null).
+BUDGET = ("rounds", "dimensions", "keepViews", "alone", "windows")
 KINDS = ("measurement", "calibration", "acceptance")
 MODES = ("quick", "full")
 ITEMS = tuple(f"A{number}" for number in range(1, 13))
@@ -239,6 +240,8 @@ class Spec:
     view_ids: tuple[str, ...] = ()
     planned: int = 0
     rounds: int = 0
+    alone: bool = False
+    windows: bool = True
 
 
 def candidates(kind: str, variants: tuple[dict, ...] | list[dict], suite: dict) -> int:
@@ -513,7 +516,9 @@ def check_spec(
     order = tuple(item for item in MEASURED_ITEMS if item in items)
     check_measured_items(order, variants)
     ids = mode_views(suite, mode, views_file)
-    rounds, ids = check_budget(data, kind, heap, suite["modes"][mode]["rounds"], ids, views_file)
+    rounds, ids, alone, windows = check_budget(
+        data, kind, heap, suite["modes"][mode]["rounds"], ids, views_file, variants
+    )
     planned = planned_reloads(len(ids), candidates(kind, variants, suite), rounds)
     if planned > cap:
         raise RecordError(
@@ -538,15 +543,24 @@ def check_spec(
         view_ids=ids,
         planned=planned,
         rounds=rounds,
+        alone=alone,
+        windows=windows,
     )
 
 
 def check_budget(
-    data: dict, kind: str, heap: bool, rounds: int, ids: tuple[str, ...], views: dict
-) -> tuple[int, tuple[str, ...]]:
-    """A budget run's rounds and views (BUDGET): the spec's rounds, a positive count, else the
-    mode's; the mode's views in the spec's dimensions, else all of them. Each refused outside a
-    measurement run with heap true."""
+    data: dict,
+    kind: str,
+    heap: bool,
+    rounds: int,
+    ids: tuple[str, ...],
+    views: dict,
+    variants: tuple[dict, ...],
+) -> tuple[int, tuple[str, ...], bool, bool]:
+    """A budget run's rounds, views, `alone` and `windows` (BUDGET): the spec's rounds, a
+    positive count, else the mode's; the mode's views in the spec's dimensions, else all of them,
+    then those `keepViews` names; `alone` (the baseline in every slot) only without candidates;
+    `windows` false only without timers. Each refused outside a measurement run with heap true."""
     given = [key for key in BUDGET if data.get(key) is not None]
     if given and (kind != "measurement" or not heap):
         raise RecordError(
@@ -574,7 +588,33 @@ def check_budget(
             raise RecordError(
                 f"dimensions {dims}: none of the mode's views lies there; fix: another dimension"
             )
-    return rounds, ids
+    kept = data.get("keepViews")
+    if kept is not None:
+        if (
+            not isinstance(kept, list)
+            or not kept
+            or len(set(kept)) != len(kept)
+            or any(vid not in ids for vid in kept)
+        ):
+            raise RecordError(
+                f"keepViews {kept!r}; fix: some of the mode's views here ({', '.join(ids)}), "
+                "each once"
+            )
+        ids = tuple(vid for vid in ids if vid in kept)
+    alone, windows = data.get("alone", False), data.get("windows", True)
+    for key, value in (("alone", alone), ("windows", windows)):
+        if not isinstance(value, bool):
+            raise RecordError(f"{key} {value!r}; fix: true or false, or leave it out")
+    if alone and len(variants) > 1:
+        raise RecordError(
+            "alone reloads the baseline in every slot, so no candidate is measured; fix: list "
+            "the baseline only"
+        )
+    if not windows and any(v["timers"] for v in variants):
+        raise RecordError(
+            "windows false measures no window for the timers to read; fix: timers false"
+        )
+    return rounds, ids, alone, windows
 
 
 def check_acceptance_spec(

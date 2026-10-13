@@ -521,9 +521,12 @@ def measured_plan(run: Runner) -> str:
     spec = run.spec
     ids = ", ".join(v.id for v in run.found)
     return (
-        f"a {spec.mode}-mode {spec.kind} run of {ids} on {len(spec.view_ids)} views, "
-        f"{spec.rounds} round(s), {spec.planned} reloads, PresentMon recording throughout"
-        + (", the heap read every 10 reloads" if spec.heap else "")
+        f"a {spec.mode}-mode {spec.kind} run of {ids}"
+        + (" alone in every slot" if spec.alone else "")
+        + f" on {len(spec.view_ids)} views, {spec.rounds} round(s), {spec.planned} reloads"
+        + (", no windows" if not spec.windows else "")
+        + ", PresentMon recording throughout"
+        + (", the heap read every 10 reloads and the GPU memory after each" if spec.heap else "")
     )
 
 
@@ -565,6 +568,7 @@ def measured_body(run: Runner, s: Session) -> None:
         jcmd=ready.java_home / "bin" / "jcmd.exe",
         display_mode=ready.identity["system"]["resolution"],
         own=run.own,
+        luid=ready.recorded["hags"]["adapterLuid"],
         marks=run.marks,
     )
     measure.body(run.m)
@@ -580,7 +584,8 @@ def measured_fields(run: Runner) -> dict:
     if m is not None:
         captures, problems = measure.summarize(m, pid)
         run.problems += problems
-    planned = len(spec.view_ids) * (1 + len(measure.schedule(run.found, spec.rounds)))
+    per_view = len(measure.schedule(run.found, spec.rounds, spec.alone))
+    planned = len(spec.view_ids) * (1 + per_view)
     run.problems += measure.measured_problems(
         captures, planned, run.status == "ok" and not run.problems
     )

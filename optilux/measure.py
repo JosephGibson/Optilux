@@ -20,8 +20,10 @@ run finishes (D41).
   the camera at the view. Per capture: the variant's files,
   shaders.reload and the options read back, timers.start for a timers-on variant,
   window.measure {after: reload} with the largest settle that applies, timers.stop; the heap read
-  every record.RELOAD_EVERY reloads when the spec asks (M2.P06). PresentMon stops once a row past
-  the last window is written.
+  every record.RELOAD_EVERY reloads when the spec asks (M2.P06), and then after every reload the
+  game's and the adapter's GPU memory (typeperf, only read). A budget run may reload the baseline
+  in every slot (`alone`) or leave out the windows (`windows` false: M2.P06's diagnosis).
+  PresentMon stops once a row past the last window is written.
 - After the session: each window cut from the complete CSV between its HEAD stamps
   (presentmon.cut_window), its summaries and measurement.md#validity's flags, the invalidating
   events inside it among them; a capture without them is never passed.
@@ -44,7 +46,7 @@ from typing import Any
 import psutil
 
 from optilux import launch, modclient, platform, presentmon, record, world
-from optilux.acceptance import memory_row
+from optilux.acceptance import F4_MIN_AVAILABLE, memory_row
 from optilux.session import (
     CLOSED,
     COMMAND_TIMEOUT,
@@ -124,6 +126,15 @@ ENGINE = re.compile(
     r"_eng_\d+_engtype_3D\)"
 )
 PDH_HEADER = "(PDH-CSV 4.0)"
+# M2.P06's diagnosis: the game's and the display adapter's GPU memory, in bytes (typeperf).
+PROCESS_MEMORY = re.compile(
+    r"GPU Process Memory\(pid_(?P<pid>\d+)_luid_0x(?P<high>[0-9A-Fa-f]+)_0x(?P<low>[0-9A-Fa-f]+)"
+    r"_phys_\d+\)\\(?P<kind>Dedicated|Shared) Usage$"
+)
+ADAPTER_MEMORY = re.compile(
+    r"GPU Adapter Memory\(luid_0x(?P<high>[0-9A-Fa-f]+)_0x(?P<low>[0-9A-Fa-f]+)_phys_\d+\)"
+    r"\\(?P<kind>Dedicated|Shared) Usage$"
+)
 
 # D41: an orphan's game and PresentMon ended within these.
 ORPHAN_STOP_TIMEOUT = presentmon.STOP_TIMEOUT
@@ -175,6 +186,8 @@ def variants(spec: record.Spec, suite: dict) -> list[Variant]:
         )
         for v in others
     ]
+    if spec.alone:  # a budget run's baseline in every slot: no twin (record.BUDGET)
+        return found
     twins = record.candidates(spec.kind, spec.variants, suite) - len(others)
     for n in range(1, twins + 1):
         found.append(
@@ -269,10 +282,11 @@ def values_sha256(values: dict) -> str:
 # The schedule and the laps.
 
 
-def schedule(found: list[Variant], rounds: int) -> list[tuple[Variant, int]]:
+def schedule(found: list[Variant], rounds: int, alone: bool = False) -> list[tuple[Variant, int]]:
     """One view's captures (measurement.md#session, suite.json statistics.schedule): A, then
-    (Ci, A) for each candidate in order, R rounds; each with its round."""
-    base, others = found[0], found[1:]
+    (Ci, A) for each candidate in order, R rounds; each with its round. `alone`: the baseline
+    takes the twin's slot too (a budget run's, record.BUDGET)."""
+    base, others = found[0], ([found[0]] if alone else found[1:])
     order = [(base, 1)]
     for r in range(1, rounds + 1):
         for variant in others:
@@ -401,17 +415,28 @@ def flags_of(role: str, summary: dict, cut: dict, events: list[dict], validity: 
 def captured(entry: dict, line: presentmon.Timeline, events: list[dict], validity: dict) -> dict:
     """A journaled capture as the record holds it: its place in the session, the cut's rows and
     edges, the summaries, the flags and whether it is valid; with timers, its timer rows and A11's
-    residual. The window's marks and the cut's problems stay in raw/."""
+    residual. The window's marks and the cut's problems stay in raw/. A budget run's capture
+    without a window (record.BUDGET) keeps its place, reload and GPU memory, no numbers, never
+    valid."""
     window = entry["window"]
+    place = {k: entry[k] for k in ("index", "pass", "view", "variant", "role", "round", "settleS")}
+    if window is None:
+        return {
+            **place,
+            "reloadS": entry["reload"]["seconds"],
+            "noWindow": True,
+            "gpuMemory": entry.get("gpuMemory"),
+            "flags": [],
+            "valid": False,
+            "problems": [],
+        }
     start, end = window["start"], window["end"]
     cut = presentmon.cut_window(line, start, end, window["frames"])
     summary = presentmon.summary(cut["rows"])
     inside = window_events(events, start["frameIndex"], end["frameIndex"])
     flags = flags_of(entry["role"], summary, cut, inside, validity)
     modes = summary["presentModes"]
-    found: dict[str, Any] = {
-        key: entry[key] for key in ("index", "pass", "view", "variant", "role", "round", "settleS")
-    }
+    found: dict[str, Any] = dict(place)
     found.update(
         frames=window["frames"],
         rows=summary["frames"],
@@ -433,6 +458,8 @@ def captured(entry: dict, line: presentmon.Timeline, events: list[dict], validit
             **{k: v for k, v in timers.items() if k != "byFrame"},
             "residualMs": residual_ms(line, cut, start["frameIndex"], timers["byFrame"]),
         }
+    if "gpuMemory" in entry:
+        found["gpuMemory"] = entry["gpuMemory"]
     found["flags"] = flags
     found["valid"] = not any(flag in INVALIDATING_FLAGS for flag in flags)
     found["problems"] = cut["problems"] + [
@@ -595,6 +622,7 @@ class Measured:
     jcmd: Path
     display_mode: str
     own: Callable[[Path], None]
+    luid: str = ""
     facts: dict = field(default_factory=dict)
     entries: list[dict] = field(default_factory=list)
     effective: dict = field(default_factory=dict)
@@ -702,7 +730,7 @@ def body(m: Measured) -> None:
         m.facts["laps"] = laps
         for view in order:
             switch = arrive(m, view)
-            for slot, (variant, r) in enumerate(schedule(m.found, m.spec.rounds)):
+            for slot, (variant, r) in enumerate(schedule(m.found, m.spec.rounds, m.spec.alone)):
                 settle = settle_for(m.suite["capture"], slot == 0, switch and slot == 0)
                 capture(m, view, variant, r, 2, settle)
         if m.gui:
@@ -807,10 +835,20 @@ def arrive(m: Measured, view: dict) -> bool:
 def capture(m: Measured, view: dict, variant: Variant, rnd: int, pass_no: int, settle: float):
     """One capture (measurement.md#session steps 6 and 8): the variant's files, shaders.reload
     and its pack, the options read back, the timers on a timers-on variant, window.measure
-    {after: reload} with `settle` as its skip, then the journal and the heap row when due."""
+    {after: reload} with `settle` as its skip, then the journal and the heap row when due. A
+    budget run stops before a reload with less than F4's 2 GiB of physical memory available, reads
+    the GPU memory after each capture, and without windows keeps the reload and its options."""
     s, c = m.s, m.c
     m.index += 1
     label = f"{m.index:03d} {view['id']} {variant.id}"
+    if m.spec.heap:
+        available = s.host.available_memory()
+        if available < F4_MIN_AVAILABLE:
+            raise RunError(
+                f"{label}: {available / 1024**3:.1f} GiB of physical memory available, under "
+                f"{F4_MIN_AVAILABLE / 1024**3:.0f} GiB: the budget run stops before the machine "
+                "pages (F4's guard)"
+            )
     m.write_files(variant)
     m.reloads += 1
     reload = s.step(
@@ -824,6 +862,9 @@ def capture(m: Measured, view: dict, variant: Variant, rnd: int, pass_no: int, s
         keep=lambda a: {"pack": a["pack"], "values": len(a["values"])},
     )
     m.check_options(variant, options)
+    if not m.spec.windows:
+        bare(m, view, variant, rnd, pass_no, settle, label, reload)
+        return
     if variant.timers:
         s.step(f"{label}: timers.start", lambda: c.timers_start(**timer_args()))
     window = s.step(
@@ -857,9 +898,93 @@ def capture(m: Measured, view: dict, variant: Variant, rnd: int, pass_no: int, s
         raise RunError(f"{label}: the camera left the view during the capture: {moved}")
     entry["events"] = window_events(s.events, first, last)
     m.last_end = window["end"]["qpcNs"]
+    if m.spec.heap:
+        entry["gpuMemory"] = gpu_memory_of(m)
     m.entries.append(entry)
     m.journal.append("captures", entry)
     heap_row(m)
+
+
+def bare(
+    m: Measured,
+    view: dict,
+    variant: Variant,
+    rnd: int,
+    pass_no: int,
+    settle: float,
+    label: str,
+    reload: dict,
+) -> None:
+    """A budget run's capture without its window (record.BUDGET `windows` false): the reload,
+    its 2 frames and its options alone, the pose checked, the GPU memory read, no frames
+    measured."""
+    held = m.s.step(f"{label}: camera.get", m.c.camera_get)
+    moved = modclient.pose_differences(view_pose(view), held["pose"])
+    if moved:
+        raise RunError(f"{label}: the camera left the view: {moved}")
+    entry: dict[str, Any] = {
+        "index": m.index,
+        "pass": pass_no,
+        "view": view["id"],
+        "variant": variant.id,
+        "role": variant.role,
+        "round": rnd,
+        "settleS": settle,
+        "reload": {k: reload[k] for k in ("seconds", "reloadFrame", "pack")},
+        "window": None,
+        "events": [],
+        "gpuMemory": gpu_memory_of(m),
+    }
+    m.entries.append(entry)
+    m.journal.append("captures", entry)
+    heap_row(m)
+
+
+def gpu_memory(text: str, pid: int, luid: str) -> dict:
+    """The game's dedicated and shared GPU memory and the adapter's, in MiB, on the adapter
+    `luid` (0x...) from typeperf's one-sample CSV (M2.P06's diagnosis). RecordError when the
+    text holds no counter table or no column of the game or the adapter."""
+    rows = [row for row in csv.reader(io.StringIO(text)) if row]
+    try:
+        top = next(i for i, row in enumerate(rows) if row[0] == PDH_HEADER)
+    except StopIteration:
+        raise record.RecordError(
+            f"typeperf printed no counter table: {text.strip()[-200:]!r}"
+        ) from None
+    header = rows[top]
+    sample = next((row for row in rows[top + 1 :] if len(row) == len(header)), None)
+    if sample is None:
+        raise record.RecordError("typeperf printed no sample")
+    found: dict[str, float] = {}
+    for column, path in enumerate(header[1:], start=1):
+        process = PROCESS_MEMORY.search(path)
+        match = process or ADAPTER_MEMORY.search(path)
+        if not match or (process and int(process["pid"]) != pid):
+            continue
+        adapter = (int(match["high"], 16) << 32) | int(match["low"], 16)
+        if f"0x{adapter:x}" != luid.lower():
+            continue
+        try:
+            value = float(sample[column])
+        except ValueError:
+            continue
+        key = f"{'process' if process else 'adapter'}{match['kind']}MiB"
+        found[key] = found.get(key, 0.0) + value
+    keys = [f"{who}{kind}MiB" for who in ("process", "adapter") for kind in ("Dedicated", "Shared")]
+    missing = [key for key in keys if key not in found]
+    if missing:
+        raise record.RecordError(
+            f"typeperf read no {', '.join(missing)} for pid {pid} on the adapter {luid}"
+        )
+    return {key: round(found[key] / 1024**2, 1) for key in keys}
+
+
+def gpu_memory_of(m: Measured) -> dict:
+    """The GPU memory now (gpu_memory), or the problem that left it unread: never a number."""
+    try:
+        return gpu_memory(m.s.host.gpu_memory(), m.s.launched.pid, m.luid)
+    except (OSError, record.RecordError) as error:
+        return {"problem": str(error)}
 
 
 def timer_args() -> dict:
@@ -881,6 +1006,7 @@ def heap_row(m: Measured) -> None:
     folder = m.s.raw / "heap"
     folder.mkdir(exist_ok=True)
     row = memory_row(m.s, m.jcmd, m.reloads, folder)
+    row["gpu"] = gpu_memory_of(m)
     m.heap.append(row)
     m.s.say(
         f"heap: after {m.reloads} reloads {row['heapUsedMiB']} MiB, private {row['privateMiB']} MiB"
@@ -889,7 +1015,8 @@ def heap_row(m: Measured) -> None:
 
 def heap_table(rows: list[dict], physical: int) -> dict | None:
     """The heap rows with the growth per reload from the first to the last and the machine's
-    physical memory in bytes (plans/m2.md D43's rule reads them)."""
+    physical memory in bytes (plans/m2.md D43's rule reads them); the game's dedicated GPU memory
+    likewise when both rows read it."""
     if not rows:
         return None
     first, last = rows[0], rows[-1]
@@ -902,6 +1029,9 @@ def heap_table(rows: list[dict], physical: int) -> dict | None:
         if count
         else None,
     }
+    gpu = [(row.get("gpu") or {}).get("processDedicatedMiB") for row in (first, last)]
+    if count and gpu[0] is not None and gpu[1] is not None:
+        per["gpuDedicatedMiB"] = round((gpu[1] - gpu[0]) / count, 1)
     return {
         "every": record.RELOAD_EVERY,
         "physicalMiB": round(physical / 1024**2),
@@ -933,7 +1063,8 @@ def summarize(m: Measured, pid: int) -> tuple[list[dict], list[str]]:
 def unsummarized(entry: dict, why: str) -> dict:
     """A capture whose rows could not be read: its place and the reason, never a number."""
     found = {k: entry[k] for k in ("index", "pass", "view", "variant", "role", "round", "settleS")}
-    return {**found, "frames": entry["window"]["frames"], "valid": False, "unsummarized": why}
+    frames = entry["window"]["frames"] if entry["window"] else None
+    return {**found, "frames": frames, "valid": False, "unsummarized": why}
 
 
 def variant_records(m: Measured, sha512: str) -> list[dict]:
