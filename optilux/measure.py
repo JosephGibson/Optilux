@@ -342,17 +342,20 @@ def timers_summary(answer: dict, start: int, end: int) -> dict:
 def residual_ms(line: presentmon.Timeline, cut: dict, start: int, by_frame: dict) -> float | None:
     """A11's residual on one window (mod.md#12-acceptance): the median over its frames of the
     frame's GPUBusy less its top-level pass sum, frame k's row found by the swap mapping
-    (cut_window's frameRow + k - start)."""
+    (cut_window's frameRow + k - start). None when a timer frame has no row or no GPUBusy there
+    (the cut's edge can leave frame start's row outside the rows `notNumbers` reads): the residual
+    is unjudged, never a median of fewer frames."""
     first = cut.get("frameRow")
     if first is None:
         return None
     found = []
     for index, nanos in by_frame.items():
         at = first + (int(index) - start)
-        if 0 <= at < len(line.rows):
-            busy = presentmon.number(line.rows[at].get(presentmon.GPU_BUSY))
-            if busy is not None:
-                found.append(busy - nanos / 1e6)
+        row = line.rows[at] if 0 <= at < len(line.rows) else {}
+        busy = presentmon.number(row.get(presentmon.GPU_BUSY))
+        if busy is None:
+            return None
+        found.append(busy - nanos / 1e6)
     return round(statistics.median(found), 4) if found else None
 
 
