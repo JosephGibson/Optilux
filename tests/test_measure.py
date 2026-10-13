@@ -2089,6 +2089,32 @@ def test_a_session_record_checks_its_parts_identity_and_groups() -> None:
     assert run_verb.session_mismatch([one], (("v1",), ("v2",))) == "1 parts for 2 groups"
 
 
+def test_a_split_sessions_parts_must_share_their_variants() -> None:
+    """The critique's finding 1: a profile edited between launches leaves the spec and the
+    identity as they were, so the parts' variants (options written, read back) are compared."""
+    variant = {
+        "id": "shadows-off",
+        "role": "candidate",
+        "pack": "pack.zip",
+        "sha512": "a",
+        "profile": "played",
+        "options": {"SHADOW_QUALITY": "-1", "CLOUD_QUALITY": "2"},
+        "timers": False,
+        "effective": {"sha256": "e1"},
+    }
+    one = {"name": "s-p1", "identity": {}, "split": {"part": 1, "views": ["v1"]}}
+    two = {"name": "s-p2", "identity": {}, "split": {"part": 2, "views": ["v2"]}}
+    groups = (("v1",), ("v2",))
+    parts = [{**one, "variants": [variant]}, {**two, "variants": [variant]}]
+    assert run_verb.session_mismatch(parts, groups) is None
+    edited = {**variant, "options": {**variant["options"], "CLOUD_QUALITY": "3"}}
+    parts[1] = {**two, "variants": [edited]}
+    assert run_verb.session_mismatch(parts, groups) == "s-p2's variants differ from s-p1's"
+    read_back = {**variant, "effective": {"sha256": "e2"}}
+    parts[1] = {**two, "variants": [read_back]}
+    assert run_verb.session_mismatch(parts, groups) == "s-p2's variants differ from s-p1's"
+
+
 def test_a_part_keeps_its_split_when_its_analysis_breaks(fake_run, monkeypatch) -> None:
     root, spec_path, fake, host = fake_run
     set_suite(root, capture__reloadCap=8)
