@@ -43,6 +43,8 @@ jobs:
       # 0.01.12); the local default stays parallel (optilux/verbs/test.py has its timing).
       - run: uv run optilux test --serial
       - run: uv run optilux verify docs
+      # Every committed record parses against its kind, within its budget (plans/m2.md D51).
+      - run: uv run optilux verify records
       # The rules release.yml applies after the merge (docs/workflow.md#release), before it:
       # VERSION newer than origin/main's and no tag v<VERSION> elsewhere, both read with git.
       # --no-remote skips only the GitHub release lookup: gh has no login here.

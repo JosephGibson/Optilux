@@ -334,14 +334,28 @@ def version_findings(root: Path) -> list[str]:
     return []
 
 
+def record_findings(root: Path) -> list[str]:
+    """`verify records` over the tree's records (plans/m2.md D51)."""
+    from optilux.verbs import verify  # the verb's checks, kept out of the runner's closure
+
+    ledger = verify.check_records(root)
+    fix = "fix: a record is written once by `run`; restore it, or rerun under a new name"
+    return [f"{violation}; {fix}" for violation in ledger.violations]
+
+
 def pre_commit(root: Path) -> list[str]:
-    """ruff on the staged .py files, the doc rules when a .md is staged, the handoff's
-    `Last phase:` line and VERSION against origin/main's; empty when clean."""
+    """ruff on the staged .py files, the doc rules when a .md is staged, `verify records` when a
+    record is staged, the handoff's `Last phase:` line and VERSION against origin/main's; empty
+    when clean."""
     files = staged(root)
     sources = [root / name for name in files if name.endswith(".py")]
     findings = ruff(sources, root) if sources else []
     if any(name.endswith(".md") for name in files):
         findings += doc_findings(root)
+    from optilux import record  # deferred like verify's: only the hook needs it
+
+    if any(name.startswith(f"{record.RECORDS}/") for name in files):
+        findings += record_findings(root)
     if prompts.HANDOFF in files:
         findings += handoff_findings(root)
     return findings + version_findings(root)
