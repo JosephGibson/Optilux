@@ -1,0 +1,3520 @@
+{
+ "schema": 1,
+ "name": "m2-budget-full-1",
+ "kind": "measurement",
+ "spec": {
+  "name": "m2-budget-full-1",
+  "kind": "measurement",
+  "mode": "full",
+  "views": "bench_263",
+  "world": "bench_263",
+  "variants": [
+   {
+    "id": "baseline",
+    "pack": "ComplementaryUnbound_r5.9.3.zip",
+    "profile": "played"
+   },
+   {
+    "id": "shadows-off",
+    "pack": "ComplementaryUnbound_r5.9.3.zip",
+    "profile": "played",
+    "options": {
+     "SHADOW_QUALITY": "-1"
+    }
+   }
+  ],
+  "tier": "bench",
+  "resourcePacks": "standard",
+  "calibration": null,
+  "heap": true,
+  "rounds": 1,
+  "notes": "F14's controlled pair, its first half (plans/m2.md M2.P06, D43): full mode at R 1 over all three dimensions, the baseline (D35), shadows off (SHADOW_QUALITY -1) and the twin, calibration null (D40), the heap read every 10 reloads at bench.json's 6144 MiB"
+ },
+ "notes": "F14's controlled pair, its first half (plans/m2.md M2.P06, D43): full mode at R 1 over all three dimensions, the baseline (D35), shadows off (SHADOW_QUALITY -1) and the twin, calibration null (D40), the heap read every 10 reloads at bench.json's 6144 MiB",
+ "status": "ok",
+ "reason": null,
+ "startedAt": "2026-10-13T02:31:47+00:00",
+ "endedAt": "2026-10-13T02:38:23+00:00",
+ "identity": {
+  "platform": {
+   "sha256": "3bc69860cc84a5ac20feb2d34887c1768a1572c0a232d2ab52fd38def6aab20c",
+   "tier": "bench",
+   "tiers": [
+    "bench"
+   ]
+  },
+  "launchSpec": {
+   "file": "mc-26.3.launch.json",
+   "sha256": "9bd33805f28ad63e53add6f0af88fb409f33ffd13a4542cbb7b161f71d0de2d3"
+  },
+  "mods": [
+   "8654d88f0e087333cc9f851812352e20aa96a9791e4e686996e13d656fd1257b0993ad51d21c7b9456f222ba5fe3dd8e2607fa8a962a14595525a7b025bd913b",
+   "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+   "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+   "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+  ],
+  "world": {
+   "snapshot": "snapshots/bench_263",
+   "treeSha256": "65e7ae7326dda8a6e8d95c8812ca5ddaabd9dc7ca261d22bb8d93e91df5e22f9",
+   "files": 116
+  },
+  "views": {
+   "file": "bench_263.json",
+   "sha256": "9b05721e710c2a12191f7a9d4316753482a2317faa4613cfd99b1241f9d1675c"
+  },
+  "resourcePacks": {
+   "set": "standard",
+   "packs": [
+    {
+     "file": "Faithful 64x - Release 15.zip",
+     "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+    }
+   ]
+  },
+  "settings": {
+   "options": {
+    "version": "5023",
+    "fullscreen": "true",
+    "exclusiveFullscreen": "true",
+    "enableVsync": "false",
+    "maxFps": "260",
+    "renderDistance": "16",
+    "simulationDistance": "12",
+    "fov": "0.5",
+    "bobView": "false",
+    "guiScale": "3",
+    "mipmapLevels": "4",
+    "biomeBlendRadius": "2",
+    "graphicsPreset": "\"custom\"",
+    "preferredGraphicsBackend": "\"opengl\"",
+    "improvedTransparency": "false",
+    "pauseOnLostFocus": "false",
+    "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+    "onboardAccessibility": "false",
+    "skipMultiplayerWarning": "true",
+    "joinedFirstServer": "true",
+    "telemetryOptInExtra": "false",
+    "realmsNotifications": "false",
+    "narrator": "0",
+    "inactivityFpsLimit": "\"minimized\""
+   },
+   "overrides": {},
+   "token": true,
+   "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+   "iris": {
+    "enableShaders": "true",
+    "enableDebugOptions": "false",
+    "disableUpdateMessage": "true",
+    "maxShadowRenderDistance": "32"
+   },
+   "unwritten": {
+    "ao": "true",
+    "chunkSectionFadeInTime": "0.75",
+    "cutoutLeaves": "true",
+    "entityDistanceScaling": "1.0",
+    "entityShadows": "true",
+    "forceUnicodeFont": "false",
+    "japaneseGlyphVariants": "false",
+    "fovEffectScale": "1.0",
+    "darknessEffectScale": "1.0",
+    "glintSpeed": "0.5",
+    "glintStrength": "0.75",
+    "prioritizeChunkUpdates": "1",
+    "macFullscreenMenuVisibility": "false",
+    "gamma": "0.5",
+    "debugGuiScale": "0",
+    "maxAnisotropyBit": "1",
+    "textureFiltering": "1",
+    "particles": "0",
+    "reducedDebugInfo": "false",
+    "renderClouds": "\"true\"",
+    "cloudRange": "64",
+    "screenEffectScale": "1.0",
+    "soundDevice": "\"\"",
+    "vignette": "true",
+    "weatherRadius": "10",
+    "autoJump": "false",
+    "rotateWithMinecart": "false",
+    "operatorItemsTab": "false",
+    "autoSuggestions": "true",
+    "chatColors": "true",
+    "chatLinks": "true",
+    "chatLinksPrompt": "true",
+    "discrete_mouse_scroll": "false",
+    "invertXMouse": "false",
+    "invertYMouse": "false",
+    "showSubtitles": "false",
+    "directionalAudio": "false",
+    "toggleCrouch": "false",
+    "toggleSprint": "false",
+    "toggleAttack": "false",
+    "toggleUse": "false",
+    "sprintWindow": "7",
+    "darkMojangStudiosBackground": "false",
+    "hideLightningFlashes": "false",
+    "hideSplashTexts": "false",
+    "mouseSensitivity": "0.5",
+    "damageTiltStrength": "1.0",
+    "highContrast": "false",
+    "highContrastBlockOutline": "false",
+    "narratorHotkey": "true",
+    "incompatibleResourcePacks": "[]",
+    "lastServer": "",
+    "lang": "en_us",
+    "chatVisibility": "0",
+    "chatOpacity": "1.0",
+    "chatLineSpacing": "0.0",
+    "textBackgroundOpacity": "0.5",
+    "backgroundForChatOnly": "true",
+    "hideServerAddress": "false",
+    "advancedItemTooltips": "false",
+    "overrideWidth": "0",
+    "overrideHeight": "0",
+    "chatHeightFocused": "1.0",
+    "chatDelay": "0.0",
+    "chatHeightUnfocused": "0.4375",
+    "chatScale": "1.0",
+    "chatWidth": "1.0",
+    "notificationDisplayTime": "1.0",
+    "useNativeTransport": "true",
+    "mainHand": "\"right\"",
+    "attackIndicator": "1",
+    "tutorialStep": "none",
+    "mouseWheelSensitivity": "1.0",
+    "allowCursorChanges": "true",
+    "quitShortcuts": "true",
+    "ctrlClickEmulatesRightClick": "false",
+    "glDebugVerbosity": "1",
+    "hideMatchedNames": "true",
+    "syncChunkWrites": "true",
+    "showAutosaveIndicator": "true",
+    "allowServerListing": "true",
+    "inGameNotification": "false",
+    "sharePresence": "\"all\"",
+    "onlyShowSecureChat": "false",
+    "saveChatDrafts": "false",
+    "panoramaScrollSpeed": "1.0",
+    "menuBackgroundBlurriness": "5",
+    "startedCleanly": "true",
+    "musicToast": "\"never\"",
+    "musicFrequency": "\"DEFAULT\"",
+    "key_key.attack": "key.mouse.left",
+    "key_key.use": "key.mouse.right",
+    "key_key.forward": "key.keyboard.w",
+    "key_key.left": "key.keyboard.a",
+    "key_key.back": "key.keyboard.s",
+    "key_key.right": "key.keyboard.d",
+    "key_key.jump": "key.keyboard.space",
+    "key_key.sneak": "key.keyboard.left.shift",
+    "key_key.sprint": "key.keyboard.left.control",
+    "key_key.drop": "key.keyboard.q",
+    "key_key.inventory": "key.keyboard.e",
+    "key_key.chat": "key.keyboard.t",
+    "key_key.playerlist": "key.keyboard.tab",
+    "key_key.pickItem": "key.mouse.middle",
+    "key_key.command": "key.keyboard.slash",
+    "key_key.friends": "key.keyboard.o",
+    "key_key.socialInteractions": "key.keyboard.p",
+    "key_key.toggleGui": "key.keyboard.f1",
+    "key_key.toggleSpectatorShaderEffects": "key.keyboard.f4",
+    "key_key.screenshot": "key.keyboard.f2",
+    "key_key.togglePerspective": "key.keyboard.f5",
+    "key_key.smoothCamera": "key.keyboard.unknown",
+    "key_key.fullscreen": "key.keyboard.f11",
+    "key_key.spectatorOutlines": "key.keyboard.unknown",
+    "key_key.spectatorHotbar": "key.mouse.middle",
+    "key_key.swapOffhand": "key.keyboard.f",
+    "key_key.saveToolbarActivator": "key.keyboard.c",
+    "key_key.loadToolbarActivator": "key.keyboard.x",
+    "key_key.advancements": "key.keyboard.l",
+    "key_key.quickActions": "key.keyboard.g",
+    "key_key.debug.overlay": "key.keyboard.f3",
+    "key_key.debug.modifier": "key.keyboard.f3",
+    "key_key.hotbar.1": "key.keyboard.1",
+    "key_key.hotbar.2": "key.keyboard.2",
+    "key_key.hotbar.3": "key.keyboard.3",
+    "key_key.hotbar.4": "key.keyboard.4",
+    "key_key.hotbar.5": "key.keyboard.5",
+    "key_key.hotbar.6": "key.keyboard.6",
+    "key_key.hotbar.7": "key.keyboard.7",
+    "key_key.hotbar.8": "key.keyboard.8",
+    "key_key.hotbar.9": "key.keyboard.9",
+    "key_key.debug.reloadChunk": "key.keyboard.a",
+    "key_key.debug.showHitboxes": "key.keyboard.b",
+    "key_key.debug.clearChat": "key.keyboard.d",
+    "key_key.debug.crash": "key.keyboard.c",
+    "key_key.debug.showChunkBorders": "key.keyboard.g",
+    "key_key.debug.showAdvancedTooltips": "key.keyboard.h",
+    "key_key.debug.copyRecreateCommand": "key.keyboard.i",
+    "key_key.debug.spectate": "key.keyboard.n",
+    "key_key.debug.switchGameMode": "key.keyboard.f4",
+    "key_key.debug.debugOptions": "key.keyboard.f6",
+    "key_key.debug.focusPause": "key.keyboard.p",
+    "key_key.debug.dumpDynamicTextures": "key.keyboard.s",
+    "key_key.debug.reloadResourcePacks": "key.keyboard.t",
+    "key_key.debug.profiling": "key.keyboard.l",
+    "key_key.debug.copyLocation": "key.keyboard.c",
+    "key_key.debug.dumpVersion": "key.keyboard.v",
+    "key_key.debug.profilingChart": "key.keyboard.1",
+    "key_key.debug.fpsCharts": "key.keyboard.2",
+    "key_key.debug.networkCharts": "key.keyboard.3",
+    "key_key.debug.lightmapTexture": "key.keyboard.4",
+    "key_key.debug.improvedTransparency": "key.keyboard.x",
+    "key_iris.keybind.reload": "key.keyboard.r",
+    "key_iris.keybind.toggleShaders": "key.keyboard.k",
+    "key_iris.keybind.shaderPackSelection": "key.keyboard.i",
+    "key_iris.keybind.wireframe": "key.keyboard.unknown",
+    "soundCategory_master": "0.0",
+    "soundCategory_music": "1.0",
+    "soundCategory_record": "1.0",
+    "soundCategory_weather": "1.0",
+    "soundCategory_block": "1.0",
+    "soundCategory_hostile": "1.0",
+    "soundCategory_neutral": "1.0",
+    "soundCategory_player": "1.0",
+    "soundCategory_ambient": "1.0",
+    "soundCategory_voice": "1.0",
+    "soundCategory_ui": "1.0",
+    "modelPart_cape": "true",
+    "modelPart_jacket": "true",
+    "modelPart_left_sleeve": "true",
+    "modelPart_right_sleeve": "true",
+    "modelPart_left_pants_leg": "true",
+    "modelPart_right_pants_leg": "true",
+    "modelPart_hat": "true"
+   }
+  },
+  "suite": {
+   "sha256": "04f351048d45965d120f0b91faca88a431760bb7c459c3ee91718eaa3ebce78f",
+   "sections": [
+    "display",
+    "modes",
+    "capture",
+    "validity",
+    "statistics"
+   ]
+  },
+  "java": {
+   "runtime": "jdk-25.0.4.1+1",
+   "version": "25.0.4.1+1-LTS",
+   "release": "86e5e51658bb2b9cf064b3957d81ac39abdb346b2cac19867c1625dd19d440d9",
+   "heap": {
+    "xms": 6144,
+    "xmx": 6144,
+    "unit": "MiB"
+   },
+   "args": []
+  },
+  "system": {
+   "gpu": "AMD Radeon RX 7800 XT",
+   "hags": true,
+   "resolution": "3840x2160",
+   "windowMode": "exclusive fullscreen",
+   "windowsBuild": 26200
+  },
+  "harness": {
+   "modules": {
+    "optilux/__init__.py": "17e3ccb977899bc7d0e5bf9ce25e4cbec753f5ddc5753a49cf23a482a9ceca7b",
+    "optilux/acceptance.py": "68975e834c33206c956d8d477d879f5a96d08d071d757976d56c2f509749012f",
+    "optilux/launch.py": "7c5bfd553c815c9eb0f273edee02ac8b9b430a2a5c61663c04db7234a6972c63",
+    "optilux/measure.py": "c95e74967c6b4a404cb0a54f2f9374e290c31ab16d7afe9509c6476bc1298433",
+    "optilux/modclient.py": "27bc1781c128bb0e90082779b22e86d9caf12a61cdc0c2217113035ef9166b66",
+    "optilux/platform.py": "8f516532ed3b012b06a7b8c71b25f6a1f0c2dedb680aaf53ef7749baa52e9b22",
+    "optilux/presentmon.py": "6424faf4d8e41ad699d25d3730b6d6d059fe914b2b3e2c6a0187882281e09269",
+    "optilux/record.py": "59ba486b0da42d52d2a408929ebe2421add2e4a170a38c8a4e64e3f6f6b63cd1",
+    "optilux/repo.py": "d22eef770a60566986bedbbca6783713dedec5cae344ee5bd1547ee237dfc394",
+    "optilux/sendinput.py": "0fccc5785ce28aa44f9775172470a1e0ae856ae3526bd382882d3d7b74fa9aff",
+    "optilux/session.py": "a0f0c0c5166cb30e2221917cee5200ab3623a1e46c23ee010de9e5769d18f6c9",
+    "optilux/verbs/__init__.py": "6fb856fb4a359a394bd83e135caf220ad6b0b1a224139a9380dfbe4e1da5859d",
+    "optilux/verbs/install.py": "0ca1553b5f75774e9fedd39b16e584ec835e9f92e781985b1e5e48a1ac5c6de4",
+    "optilux/verbs/run.py": "83313dc9030c358ea7749b6b4962c9ff73c124bde5d7127c58fd9820c9efc5b7",
+    "optilux/winpipe.py": "f716a6c15d8548841ab87277f32e9341f0ca968d6b70e02afd36ef28c4b68106",
+    "optilux/world.py": "eee2a2d6db7c4878b63872bc3b5e4867f52c571716ecbe8543715ccbdc45def3"
+   },
+   "presentMon": {
+    "file": "PresentMon-2.6.0-x64.exe",
+    "sha256": "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af",
+    "arguments": [
+     "--process_id",
+     "<pid>",
+     "--output_file",
+     "<csv>",
+     "--qpc_time_ms",
+     "--v2_metrics",
+     "--session_name",
+     "optilux-<run>",
+     "--stop_existing_session",
+     "--no_console_stats"
+    ]
+   }
+  }
+ },
+ "recorded": {
+  "platformFile": "b414c80c3c84593524550987abddf83ded7d1c8dc4f19bb3dfca53ff7b4abc4e",
+  "driver": "32.0.31041.3013",
+  "windowsRevision": 9457,
+  "display": {
+   "name": "\\\\.\\DISPLAY1",
+   "hz": 240,
+   "displays": 2
+  },
+  "hags": {
+   "caps": 11,
+   "supported": true,
+   "enabledByDefault": false,
+   "adapterLuid": "0x11d82"
+  },
+  "hwSchMode": 2,
+  "harness": {
+   "commit": "70a0c8ea75b75019f676e1e4d59e92309d671e43",
+   "dirty": false
+  },
+  "amd": {
+   "presentMon": [
+    {
+     "pid": 12096,
+     "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+     "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+    }
+   ],
+   "rsxTraceSession": true
+  },
+  "java": [
+   {
+    "pid": 8796,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64\\bin\\java.exe",
+    "role": "gradle daemon"
+   },
+   {
+    "pid": 11736,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64\\bin\\java.exe",
+    "role": "other"
+   },
+   {
+    "pid": 11844,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64\\bin\\java.exe",
+    "role": "gradle daemon"
+   },
+   {
+    "pid": 11988,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64\\bin\\java.exe",
+    "role": "gradle daemon"
+   }
+  ],
+  "connectionsAtJoin": [],
+  "optionsTxt": {
+   "sha256": "64b740acde26627dacf91c4ba594867184754424bf4010752479ff69c4e2ff6e"
+  }
+ },
+ "mode": "full",
+ "calibration": null,
+ "variants": [
+  {
+   "id": "baseline",
+   "role": "baseline",
+   "pack": "ComplementaryUnbound_r5.9.3.zip",
+   "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c",
+   "profile": "played",
+   "options": {
+    "ANISOTROPIC_FILTER": "4",
+    "ATM_FOG_MULT": "0.50",
+    "BLOCK_REFLECT_QUALITY": "1",
+    "BORDER_FOG": false,
+    "CAVE_FOG": false,
+    "ENTITY_SHADOW": "-1",
+    "FXAA_DEFINE": "-1",
+    "LIGHTSHAFT_QUALI_DEFINE": "0",
+    "RAIN_STYLE": "2",
+    "RP_MODE": "0",
+    "WATER_REFLECT_QUALITY": "1",
+    "shadowDistance": "96.0",
+    "SHADER_STYLE": "4"
+   },
+   "timers": false,
+   "effective": {
+    "sha256": "bf947fef702d53a40e76c823cb6e1a41b97556d0a55a5f5c8546dc908691c4b7",
+    "count": 398,
+    "values": {
+     "ACT_CORNER_LEAK_FIX": true,
+     "ACT_CORNER_LEAK_FIX_FOR_WSR": true,
+     "ACT_FIRE_COLOR_WARMNESS": "100",
+     "AMBIENT_MULT": "100",
+     "ANISOTROPIC_FILTER": "4",
+     "ANY_ERROR_MESSAGE": true,
+     "ATMOSPHERIC_FOG": true,
+     "ATM_COLOR_MULTS": false,
+     "ATM_END_B": "1.00",
+     "ATM_END_G": "1.00",
+     "ATM_END_I": "1.00",
+     "ATM_END_R": "1.00",
+     "ATM_FOG_ALTITUDE": "63",
+     "ATM_FOG_DISTANCE": "100",
+     "ATM_FOG_MULT": "0.50",
+     "ATM_MORNING_B": "1.00",
+     "ATM_MORNING_G": "1.00",
+     "ATM_MORNING_I": "1.00",
+     "ATM_MORNING_R": "1.00",
+     "ATM_NETHER_B": "1.00",
+     "ATM_NETHER_G": "1.00",
+     "ATM_NETHER_I": "1.00",
+     "ATM_NETHER_R": "1.00",
+     "ATM_NIGHT_B": "1.00",
+     "ATM_NIGHT_G": "1.00",
+     "ATM_NIGHT_I": "1.00",
+     "ATM_NIGHT_R": "1.00",
+     "ATM_NOON_B": "1.00",
+     "ATM_NOON_G": "1.00",
+     "ATM_NOON_I": "1.00",
+     "ATM_NOON_R": "1.00",
+     "ATM_RAIN_B": "1.00",
+     "ATM_RAIN_G": "1.00",
+     "ATM_RAIN_I": "1.00",
+     "ATM_RAIN_R": "1.00",
+     "AURORA_CONDITION": "3",
+     "AURORA_STYLE_DEFINE": "-1",
+     "BLOCKLIGHT_FLICKERING": "0",
+     "BLOCK_REFLECT_QUALITY": "1",
+     "BLOOM_ENABLED": "1",
+     "BLOOM_FOG": true,
+     "BLOOM_FOG_COMPOSITE1": true,
+     "BLOOM_FOG_COMPOSITE3": true,
+     "BLOOM_STRENGTH": "0.12",
+     "BORDER_FOG": false,
+     "BRIGHT_CAVE_WATER": true,
+     "CAVE_FOG": false,
+     "CAVE_LIGHTING": "100",
+     "CHROMA_ABERRATION": "0",
+     "CLOUDS_REIMAGINED": true,
+     "CLOUDS_UNBOUND": true,
+     "CLOUD_ALT1": "192",
+     "CLOUD_ALT2": "288",
+     "CLOUD_B": "100",
+     "CLOUD_CLOSED_AREA_CHECK": true,
+     "CLOUD_G": "100",
+     "CLOUD_QUALITY": "2",
+     "CLOUD_R": "100",
+     "CLOUD_SHADOWS": false,
+     "CLOUD_SPEED_MULT": "100",
+     "CLOUD_STYLE_DEFINE": "-1",
+     "CLOUD_UNBOUND_AMOUNT": "1.00",
+     "CLOUD_UNBOUND_RAIN_ADD": "0.40",
+     "CLOUD_UNBOUND_SIZE_MULT": "100",
+     "COATED_TEXTURES": false,
+     "COATED_TEXTURE_MULT": "100",
+     "COLORED_CANDLE_LIGHT": false,
+     "COLORED_LIGHTING": "0",
+     "COLORED_LIGHT_FOG": true,
+     "COLORED_LIGHT_FOG_I": "0.65",
+     "COLORED_LIGHT_SATURATION": "100",
+     "COLORGRADING": false,
+     "COLOR_CODED_PROGRAMS": false,
+     "COMPOSITE": true,
+     "COMPOSITE1": true,
+     "CONNECTED_GLASS_CORNER_FIX": true,
+     "CONNECTED_GLASS_EFFECT": true,
+     "COORDINATES_ACT_ERROR": true,
+     "CUSTOM_EMISSION_INTENSITY": "100",
+     "CUSTOM_PBR": true,
+     "DARK_OUTLINE": false,
+     "DARK_OUTLINE_THICKNESS": "1",
+     "DEFERRED1": true,
+     "DETAIL_QUALITY": "2",
+     "DH_BLENDING": true,
+     "DIRECTIONAL_BLOCKLIGHT": "0",
+     "DIRECTIONAL_SHADING": true,
+     "DISTANT_LIGHT_BOKEH": true,
+     "DOUBLE_REIM_CLOUDS": false,
+     "DO_IPBR_LIGHTS": true,
+     "DO_MORE_FOLIAGE_WAVING": true,
+     "DO_PIXELATION_EFFECTS": true,
+     "DURING_WORLDSPACE_REF": true,
+     "EMISSIVE_LAPIS_BLOCK": false,
+     "EMISSIVE_REDSTONE_BLOCK": false,
+     "END": true,
+     "END_BEAM_CENTER_ALT": "68",
+     "END_BEAM_HEIGHT": "1.00",
+     "END_BEAM_INTENSITY": "1.00",
+     "END_FLASHES": true,
+     "END_STAR_INTENSITY": "1.00",
+     "ENTITY_GN_AND_CT": true,
+     "ENTITY_SHADOW": "-1",
+     "ENTITY_TAA_NOISY_CLOUD_FIX": true,
+     "FANCY_GLASS": true,
+     "FIX_AMD_REFLECTION_CRASH": true,
+     "FLICKERING_FIX": true,
+     "FOLIAGE_ALT_SUBSURFACE": false,
+     "FRAGMENT_SHADER": true,
+     "FXAA_DEFINE": "-1",
+     "FXAA_STRENGTH": "75",
+     "FXAA_TAA_INTERACTION": "10",
+     "GBUFFERS_BLOCK": true,
+     "GBUFFERS_BLOCK_TRANSLUCENT": true,
+     "GBUFFERS_ENTITIES": true,
+     "GBUFFERS_ENTITIES_GLOWING": true,
+     "GBUFFERS_ENTITIES_TRANSLUCENT": true,
+     "GBUFFERS_HAND": true,
+     "GBUFFERS_LIGHTNING": true,
+     "GBUFFERS_LINE": true,
+     "GBUFFERS_TERRAIN": true,
+     "GBUFFERS_TEXTURED": true,
+     "GBUFFERS_WATER": true,
+     "GENERATED_NORMALS": false,
+     "GENERATED_NORMAL_MULT": "100",
+     "GENERATED_NORMAL_RES": "128",
+     "GLOWING_AMETHYST": "1",
+     "GLOWING_ARMOR_TRIM": false,
+     "GLOWING_COLORED_PARTICLES": false,
+     "GLOWING_ENTITY_FIX": true,
+     "GLOWING_LICHEN": "1",
+     "GLOWING_ORE_ANCIENTDEBRIS": true,
+     "GLOWING_ORE_COPPER": true,
+     "GLOWING_ORE_DIAMOND": true,
+     "GLOWING_ORE_EMERALD": true,
+     "GLOWING_ORE_GILDEDBLACKSTONE": true,
+     "GLOWING_ORE_GOLD": true,
+     "GLOWING_ORE_IRON": true,
+     "GLOWING_ORE_LAPIS": true,
+     "GLOWING_ORE_MASTER": "1",
+     "GLOWING_ORE_MODDED": true,
+     "GLOWING_ORE_MULT": "1.00",
+     "GLOWING_ORE_NETHERGOLD": true,
+     "GLOWING_ORE_NETHERQUARTZ": true,
+     "GLOWING_ORE_REDSTONE": true,
+     "GREEN_SCREEN_LIME": false,
+     "GR_BB": "100",
+     "GR_BC": "1.00",
+     "GR_BG": "0",
+     "GR_BR": "0",
+     "GR_GB": "0",
+     "GR_GC": "1.00",
+     "GR_GG": "100",
+     "GR_GR": "0",
+     "GR_RB": "0",
+     "GR_RC": "1.00",
+     "GR_RG": "0",
+     "GR_RR": "100",
+     "HAND_SWAYING": "0",
+     "HELD_LIGHTING_MODE": "2",
+     "HIDE_ARMOR": "0",
+     "HQ_NIGHT_NEBULA": true,
+     "IMAGE_SHARPENING": "5",
+     "IMPROVED_RAIN": true,
+     "IMPROVED_RAIN_DEFINE": "1",
+     "INCLUDE_CAVE_FACTOR": true,
+     "INCLUDE_CLOUD_COORD": true,
+     "INCLUDE_CLOUD_SHADOWS": true,
+     "INCLUDE_CUSTOM_EMISSION": true,
+     "INCLUDE_DFDX_DFDY": true,
+     "INCLUDE_DITHER": true,
+     "INCLUDE_ENDER_BEAMS": true,
+     "INCLUDE_LIGHT_AND_AMBIENT_COLORS": true,
+     "INCLUDE_LIGHT_AND_AMBIENT_MULTIPLIERS": true,
+     "INCLUDE_MOON_PHASE_INF": true,
+     "INCLUDE_SKY": true,
+     "INCLUDE_SKY_COLORS": true,
+     "INCLUDE_VOXELIZATION": true,
+     "INCLUDE_WATER_FOG": true,
+     "IPBR": true,
+     "IPBR_COMPAT_MODE": true,
+     "IPBR_COMPAT_MODE_DEFINE": false,
+     "IPBR_EMISSIVE_MODE": "1",
+     "IPBR_PARTICLE_FEATURES": true,
+     "LEAF_SHADOW_OPTIMISATION": true,
+     "LEAF_SHADOW_OPTIMISATION_DEFINE": "-1",
+     "LENSFLARE_I": "1.00",
+     "LENSFLARE_MODE": "0",
+     "LESS_LAVA_FOG": false,
+     "LIGHTSHAFTS_ACTIVE": true,
+     "LIGHTSHAFT_BEHAVIOUR": "1",
+     "LIGHTSHAFT_NIGHT_I": "100",
+     "LIGHTSHAFT_NOON_I": "100",
+     "LIGHTSHAFT_QUALI_DEFINE": "0",
+     "LIGHTSHAFT_RAIN_I": "100",
+     "LIGHTSHAFT_SMOKE": false,
+     "LIGHTSHAFT_SUNSET_I": "100",
+     "LIGHTSHAFT_SUNSET_SATURATION": "0.25",
+     "LIGHT_COLOR_MULTS": false,
+     "LIGHT_END_B": "1.00",
+     "LIGHT_END_G": "1.00",
+     "LIGHT_END_I": "1.00",
+     "LIGHT_END_R": "1.00",
+     "LIGHT_HIGHLIGHT": true,
+     "LIGHT_MORNING_B": "1.00",
+     "LIGHT_MORNING_G": "1.00",
+     "LIGHT_MORNING_I": "1.00",
+     "LIGHT_MORNING_R": "1.00",
+     "LIGHT_NETHER_B": "1.00",
+     "LIGHT_NETHER_G": "1.00",
+     "LIGHT_NETHER_I": "1.00",
+     "LIGHT_NETHER_R": "1.00",
+     "LIGHT_NIGHT_B": "1.00",
+     "LIGHT_NIGHT_G": "1.00",
+     "LIGHT_NIGHT_I": "1.00",
+     "LIGHT_NIGHT_R": "1.00",
+     "LIGHT_NOON_B": "1.00",
+     "LIGHT_NOON_G": "1.00",
+     "LIGHT_NOON_I": "1.00",
+     "LIGHT_NOON_R": "1.00",
+     "LIGHT_RAIN_B": "1.00",
+     "LIGHT_RAIN_G": "1.00",
+     "LIGHT_RAIN_I": "1.00",
+     "LIGHT_RAIN_R": "1.00",
+     "LOW_QUALITY_MOTION_BLUR": true,
+     "LOW_QUALITY_NETHER_STORM": true,
+     "MIRROR_TINTED_GLASS": "0",
+     "MOON_PHASE_DARK": "0.60",
+     "MOON_PHASE_FULL": "1.00",
+     "MOON_PHASE_INF_ATMOSPHERE": false,
+     "MOON_PHASE_INF_LIGHT": false,
+     "MOON_PHASE_INF_REFLECTION": true,
+     "MOON_PHASE_PARTIAL": "0.85",
+     "MORE_REFLECTIVE_DISTANT_GLASS": true,
+     "MOTION_BLURRING_STRENGTH": "1.00",
+     "MOTION_BLUR_BLOOM_FOG_FIX": true,
+     "MOTION_BLUR_EFFECT": "-1",
+     "MULTIPLE_LOD_MODS_ERROR": true,
+     "NETHER": true,
+     "NETHER_COLOR_MODE": "3",
+     "NETHER_STORM": true,
+     "NETHER_STORM_HEIGHT": "200",
+     "NETHER_STORM_I": "0.40",
+     "NETHER_STORM_LOWER_ALT": "28",
+     "NETHER_VIEW_LIMIT": "256.0",
+     "NIGHT_NEBULAE": "-1",
+     "NIGHT_NEBULA_I": "100",
+     "NIGHT_STAR_AMOUNT": "2",
+     "NORMAL_MAP_STRENGTH": "100",
+     "NO_WAVING_INDOORS": true,
+     "OPTIMIZATION_ACT_BEHIND_PLAYER": true,
+     "OPTIMIZATION_ACT_HALF_RATE_SPREADING": true,
+     "OPTIMIZATION_ACT_HALF_RATE_VOXELS": false,
+     "OPTIMIZATION_ACT_SHARED_MEMORY": false,
+     "OVERWORLD": true,
+     "PBR_REFLECTIONS": true,
+     "PERPENDICULAR_TWEAKS": true,
+     "PIXELATED_AO": false,
+     "PIXELATED_BLOCKLIGHT": false,
+     "PIXELATED_SHADOWS": false,
+     "PIXEL_SCALE": "1",
+     "PLAYER_SHADOW": "1",
+     "POM": true,
+     "POM_ALLOW_CUTOUT": false,
+     "POM_DEPTH": "0.80",
+     "POM_DISTANCE": "32",
+     "POM_LIGHTING_MODE": "2",
+     "POM_QUALITY": "128",
+     "PORTAL_EDGE_EFFECT": true,
+     "PORTAL_REDUCE_CLOSEUP": true,
+     "PUDDLE_VOXELIZATION": true,
+     "RAINBOWS": "1",
+     "RAINBOW_DIAMETER": "1.00",
+     "RAINBOW_STYLE_DEFINE": "-1",
+     "RAIN_PUDDLES": "0",
+     "RAIN_STYLE": "2",
+     "REDUCE_CLOSE_PARTICLES": false,
+     "REFLECTION_BLUR_DEPTH_CHECK": true,
+     "REFLECTION_RES": "0.5",
+     "RP_MODE": "0",
+     "SAFER_GENERATED_NORMALS": false,
+     "SELECT_OUTLINE": "1",
+     "SELECT_OUTLINE_AUTO_HIDE": false,
+     "SELECT_OUTLINE_B": "1.75",
+     "SELECT_OUTLINE_G": "0.35",
+     "SELECT_OUTLINE_I": "1.00",
+     "SELECT_OUTLINE_R": "1.35",
+     "SHADER_STYLE": "4",
+     "SHADOW": true,
+     "SHADOWCOMP": true,
+     "SHADOWDISTANCE_ACT_ERROR": true,
+     "SHADOW_FILTERING": true,
+     "SHADOW_QUALITY": "2",
+     "SHADOW_SMOOTHING": "4",
+     "SHOW_LIGHT_LEVEL": "0",
+     "SIDE_SHADOWING": true,
+     "SKY_EFFECT_REFLECTION_DEFINE": "-1",
+     "SKY_EFFECT_REFLECTION_OPAQUE": true,
+     "SKY_EFFECT_REFLECTION_TRANSLUCENT": true,
+     "SMOOTHNESS_AFFECTED_REF_BLUR": true,
+     "SNOWY_WORLD": false,
+     "SPECIAL_BIOME_WEATHER": true,
+     "SPECIAL_PALE_GARDEN_LIGHTSHAFTS": true,
+     "SPECIAL_PORTAL_EFFECTS": true,
+     "SSAO_I": "100",
+     "SSAO_QUALI_DEFINE": "2",
+     "SULFUR_CAVE_FOG": true,
+     "SUN_ANGLE": "-1",
+     "SUN_MOON_DURING_RAIN": true,
+     "SUN_MOON_HORIZON": true,
+     "SUN_MOON_STYLE_DEFINE": "-1",
+     "TAA": true,
+     "TAA_DEFINE": "-1",
+     "TAA_JITTER": "1",
+     "TAA_MOVEMENT_IMPROVEMENT_FILTER": "1",
+     "TAA_SMOOTHING": "3",
+     "TM_CONTRAST": "1.05",
+     "TM_DARK_DESATURATION": "0.25",
+     "TM_EXPOSURE": "1.00",
+     "TM_WHITE_PATH": "1.00",
+     "T_SATURATION": "1.00",
+     "T_VIBRANCE": "1.00",
+     "UNDERWATERCOLOR_B": "100",
+     "UNDERWATERCOLOR_CHANGED": true,
+     "UNDERWATERCOLOR_G": "100",
+     "UNDERWATERCOLOR_R": "100",
+     "UNDERWATER_DISTORTION": true,
+     "VANILLAAO_I": "100",
+     "VERTEX_SHADER": true,
+     "VIGNETTE_R": true,
+     "VL_CLOUDS_ACTIVE": true,
+     "WATERCOLOR_B": "100",
+     "WATERCOLOR_CHANGED": true,
+     "WATERCOLOR_G": "100",
+     "WATERCOLOR_MODE": "3",
+     "WATERCOLOR_R": "100",
+     "WATER_ALPHA_MULT": "100",
+     "WATER_BUMPINESS": "1.25",
+     "WATER_BUMP_BIG": "2.00",
+     "WATER_BUMP_MED": "1.70",
+     "WATER_BUMP_SMALL": "0.75",
+     "WATER_CAUSTIC_STYLE_DEFINE": "-1",
+     "WATER_FOAM_I": "100",
+     "WATER_FOG_MULT": "100",
+     "WATER_REFLECT_QUALITY": "1",
+     "WATER_REFRACTION": true,
+     "WATER_REFRACTION_INTENSITY": "2.0",
+     "WATER_SIZE_MULT": "100",
+     "WATER_SPEED_MULT": "1.10",
+     "WATER_STYLE_DEFINE": "-1",
+     "WAVING_ANYTHING_TERRAIN": true,
+     "WAVING_FOLIAGE": true,
+     "WAVING_I": "1.00",
+     "WAVING_I_RAIN_MULT": "100",
+     "WAVING_LAVA": true,
+     "WAVING_LEAVES": true,
+     "WAVING_LILY_PAD": false,
+     "WAVING_RAIN": true,
+     "WAVING_SPEED": "1.00",
+     "WAVING_WATER_VERTEX": true,
+     "WB_ANAMORPHIC": false,
+     "WB_CHROMATIC": false,
+     "WB_DB_DAY_I": "64.0",
+     "WB_DB_END_I": "64.0",
+     "WB_DB_NETHER_I": "64.0",
+     "WB_DB_NIGHT_I": "64.0",
+     "WB_DB_RAIN_I": "64.0",
+     "WB_DB_WATER_I": "64.0",
+     "WB_DOF_FOCUS": "0",
+     "WB_DOF_I": "64.0",
+     "WB_FOV_SCALED": false,
+     "WEATHER_TEX_OPACITY": "100",
+     "WORLD_BLUR": "0",
+     "WORLD_OUTLINE": false,
+     "WORLD_OUTLINE_I": "1.50",
+     "WORLD_OUTLINE_ON_ENTITIES": true,
+     "WORLD_OUTLINE_SCALED": false,
+     "WORLD_OUTLINE_THICKNESS": "1",
+     "WORLD_SPACE_PLAYER_REF": "-1",
+     "WORLD_SPACE_REFLECTIONS": "-1",
+     "WORLD_SPACE_REF_MODE": "2",
+     "XLIGHT_B": "1.00",
+     "XLIGHT_CURVE": "1.00",
+     "XLIGHT_G": "1.00",
+     "XLIGHT_I": "1.00",
+     "XLIGHT_R": "1.00",
+     "info0": "0",
+     "info1": "0",
+     "info10": "0",
+     "info2": "0",
+     "info3": "0",
+     "info4": "0",
+     "info5": "0",
+     "info6": "0",
+     "info7": "0",
+     "info8": "0",
+     "info9": "0",
+     "shadowDistance": "96.0"
+    }
+   }
+  },
+  {
+   "id": "shadows-off",
+   "role": "candidate",
+   "pack": "ComplementaryUnbound_r5.9.3.zip",
+   "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c",
+   "profile": "played",
+   "options": {
+    "ANISOTROPIC_FILTER": "4",
+    "ATM_FOG_MULT": "0.50",
+    "BLOCK_REFLECT_QUALITY": "1",
+    "BORDER_FOG": false,
+    "CAVE_FOG": false,
+    "ENTITY_SHADOW": "-1",
+    "FXAA_DEFINE": "-1",
+    "LIGHTSHAFT_QUALI_DEFINE": "0",
+    "RAIN_STYLE": "2",
+    "RP_MODE": "0",
+    "WATER_REFLECT_QUALITY": "1",
+    "shadowDistance": "96.0",
+    "SHADER_STYLE": "4",
+    "SHADOW_QUALITY": "-1"
+   },
+   "timers": false,
+   "effective": {
+    "sha256": "72a8bbb730d26037f448e65fd0c37e5df1d781715ab66849d3929ff899eef5bb",
+    "count": 398,
+    "fromBaseline": {
+     "SHADOW_QUALITY": "-1"
+    }
+   }
+  },
+  {
+   "id": "twin",
+   "role": "twin",
+   "pack": "optilux-twin1-ComplementaryUnbound_r5.9.3.zip",
+   "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c",
+   "profile": "played",
+   "options": {
+    "ANISOTROPIC_FILTER": "4",
+    "ATM_FOG_MULT": "0.50",
+    "BLOCK_REFLECT_QUALITY": "1",
+    "BORDER_FOG": false,
+    "CAVE_FOG": false,
+    "ENTITY_SHADOW": "-1",
+    "FXAA_DEFINE": "-1",
+    "LIGHTSHAFT_QUALI_DEFINE": "0",
+    "RAIN_STYLE": "2",
+    "RP_MODE": "0",
+    "WATER_REFLECT_QUALITY": "1",
+    "shadowDistance": "96.0",
+    "SHADER_STYLE": "4"
+   },
+   "timers": false,
+   "effective": {
+    "sha256": "bf947fef702d53a40e76c823cb6e1a41b97556d0a55a5f5c8546dc908691c4b7",
+    "count": 398,
+    "fromBaseline": {}
+   }
+  }
+ ],
+ "captures": [
+  {
+   "index": 1,
+   "pass": 1,
+   "view": "forest_noon",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 318,
+   "rows": 318,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.8483,
+   "frameTimeMs": 7.854,
+   "frameTimeP95Ms": 7.9827,
+   "gpuLatencyMs": 8.1873,
+   "gpuBusyOverFrameTime": 0.9993,
+   "halvesGpuBusyMs": [
+    7.8586,
+    7.8405
+   ],
+   "halvesPct": 0.231,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 2,
+   "pass": 1,
+   "view": "ocean_sunset",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 353,
+   "rows": 352,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 7.0881,
+   "frameTimeMs": 7.0884,
+   "frameTimeP95Ms": 7.2395,
+   "gpuLatencyMs": 7.3922,
+   "gpuBusyOverFrameTime": 1.0,
+   "halvesGpuBusyMs": [
+    7.0881,
+    7.0892
+   ],
+   "halvesPct": 0.016,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 3,
+   "pass": 1,
+   "view": "cave",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 481,
+   "rows": 481,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 5.1862,
+   "frameTimeMs": 5.1889,
+   "frameTimeP95Ms": 5.3247,
+   "gpuLatencyMs": 5.4656,
+   "gpuBusyOverFrameTime": 0.9995,
+   "halvesGpuBusyMs": [
+    5.1837,
+    5.189
+   ],
+   "halvesPct": 0.101,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 4,
+   "pass": 1,
+   "view": "night",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 473,
+   "rows": 473,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 5.2858,
+   "frameTimeMs": 5.2879,
+   "frameTimeP95Ms": 5.432,
+   "gpuLatencyMs": 5.8452,
+   "gpuBusyOverFrameTime": 0.9996,
+   "halvesGpuBusyMs": [
+    5.2851,
+    5.2877
+   ],
+   "halvesPct": 0.05,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 5,
+   "pass": 1,
+   "view": "underwater",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 352,
+   "rows": 352,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.104,
+   "frameTimeMs": 7.1029,
+   "frameTimeP95Ms": 7.2423,
+   "gpuLatencyMs": 7.3639,
+   "gpuBusyOverFrameTime": 1.0002,
+   "halvesGpuBusyMs": [
+    7.1071,
+    7.0998
+   ],
+   "halvesPct": 0.102,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 6,
+   "pass": 1,
+   "view": "entities",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 487,
+   "rows": 487,
+   "edges": [
+    1,
+    1
+   ],
+   "gpuBusyMs": 5.1321,
+   "frameTimeMs": 5.135,
+   "frameTimeP95Ms": 5.267,
+   "gpuLatencyMs": 5.673,
+   "gpuBusyOverFrameTime": 0.9994,
+   "halvesGpuBusyMs": [
+    5.1335,
+    5.1294
+   ],
+   "halvesPct": 0.081,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 7,
+   "pass": 1,
+   "view": "rain",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 346,
+   "rows": 346,
+   "edges": [
+    1,
+    1
+   ],
+   "gpuBusyMs": 7.2251,
+   "frameTimeMs": 7.2314,
+   "frameTimeP95Ms": 7.3896,
+   "gpuLatencyMs": 7.4847,
+   "gpuBusyOverFrameTime": 0.9991,
+   "halvesGpuBusyMs": [
+    7.252,
+    7.2019
+   ],
+   "halvesPct": 0.693,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 8,
+   "pass": 1,
+   "view": "nether_crimson",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 4.0,
+   "frames": 439,
+   "rows": 440,
+   "edges": [
+    0,
+    1
+   ],
+   "gpuBusyMs": 5.6818,
+   "frameTimeMs": 5.6833,
+   "frameTimeP95Ms": 5.8174,
+   "gpuLatencyMs": 6.0747,
+   "gpuBusyOverFrameTime": 0.9997,
+   "halvesGpuBusyMs": [
+    5.6818,
+    5.6817
+   ],
+   "halvesPct": 0.002,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 9,
+   "pass": 1,
+   "view": "nether_soul",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 401,
+   "rows": 401,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 6.2319,
+   "frameTimeMs": 6.2337,
+   "frameTimeP95Ms": 6.3608,
+   "gpuLatencyMs": 6.497,
+   "gpuBusyOverFrameTime": 0.9997,
+   "halvesGpuBusyMs": [
+    6.2345,
+    6.2277
+   ],
+   "halvesPct": 0.109,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 10,
+   "pass": 1,
+   "view": "end_dragon",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 4.0,
+   "frames": 322,
+   "rows": 322,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.7525,
+   "frameTimeMs": 7.766,
+   "frameTimeP95Ms": 7.8954,
+   "gpuLatencyMs": 8.2235,
+   "gpuBusyOverFrameTime": 0.9983,
+   "halvesGpuBusyMs": [
+    7.7558,
+    7.7511
+   ],
+   "halvesPct": 0.061,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 11,
+   "pass": 1,
+   "view": "end_city",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 0,
+   "settleS": 1.5,
+   "frames": 321,
+   "rows": 321,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.786,
+   "frameTimeMs": 7.7922,
+   "frameTimeP95Ms": 7.94,
+   "gpuLatencyMs": 8.2527,
+   "gpuBusyOverFrameTime": 0.9992,
+   "halvesGpuBusyMs": [
+    7.7956,
+    7.7752
+   ],
+   "halvesPct": 0.261,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 12,
+   "pass": 2,
+   "view": "rain",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 4.0,
+   "frames": 349,
+   "rows": 349,
+   "edges": [
+    1,
+    1
+   ],
+   "gpuBusyMs": 7.1614,
+   "frameTimeMs": 7.1639,
+   "frameTimeP95Ms": 7.2997,
+   "gpuLatencyMs": 7.4161,
+   "gpuBusyOverFrameTime": 0.9997,
+   "halvesGpuBusyMs": [
+    7.1615,
+    7.1612
+   ],
+   "halvesPct": 0.003,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 13,
+   "pass": 2,
+   "view": "rain",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 406,
+   "rows": 406,
+   "edges": [
+    1,
+    1
+   ],
+   "gpuBusyMs": 6.1335,
+   "frameTimeMs": 6.1506,
+   "frameTimeP95Ms": 6.312,
+   "gpuLatencyMs": 6.7857,
+   "gpuBusyOverFrameTime": 0.9972,
+   "halvesGpuBusyMs": [
+    6.1632,
+    6.1112
+   ],
+   "halvesPct": 0.847,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 14,
+   "pass": 2,
+   "view": "rain",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 346,
+   "rows": 346,
+   "edges": [
+    1,
+    1
+   ],
+   "gpuBusyMs": 7.2154,
+   "frameTimeMs": 7.2189,
+   "frameTimeP95Ms": 7.3901,
+   "gpuLatencyMs": 7.4771,
+   "gpuBusyOverFrameTime": 0.9995,
+   "halvesGpuBusyMs": [
+    7.2408,
+    7.2012
+   ],
+   "halvesPct": 0.548,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 15,
+   "pass": 2,
+   "view": "rain",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 345,
+   "rows": 345,
+   "edges": [
+    1,
+    1
+   ],
+   "gpuBusyMs": 7.2178,
+   "frameTimeMs": 7.2266,
+   "frameTimeP95Ms": 7.3661,
+   "gpuLatencyMs": 7.4615,
+   "gpuBusyOverFrameTime": 0.9988,
+   "halvesGpuBusyMs": [
+    7.2485,
+    7.1973
+   ],
+   "halvesPct": 0.71,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 16,
+   "pass": 2,
+   "view": "rain",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 346,
+   "rows": 346,
+   "edges": [
+    1,
+    1
+   ],
+   "gpuBusyMs": 7.2162,
+   "frameTimeMs": 7.224,
+   "frameTimeP95Ms": 7.3799,
+   "gpuLatencyMs": 7.4836,
+   "gpuBusyOverFrameTime": 0.9989,
+   "halvesGpuBusyMs": [
+    7.2425,
+    7.1982
+   ],
+   "halvesPct": 0.614,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 17,
+   "pass": 2,
+   "view": "forest_noon",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 319,
+   "rows": 319,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.8314,
+   "frameTimeMs": 7.8322,
+   "frameTimeP95Ms": 7.9697,
+   "gpuLatencyMs": 8.1651,
+   "gpuBusyOverFrameTime": 0.9999,
+   "halvesGpuBusyMs": [
+    7.8294,
+    7.833
+   ],
+   "halvesPct": 0.045,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 18,
+   "pass": 2,
+   "view": "forest_noon",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 381,
+   "rows": 381,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 6.5504,
+   "frameTimeMs": 6.565,
+   "frameTimeP95Ms": 6.7013,
+   "gpuLatencyMs": 7.0763,
+   "gpuBusyOverFrameTime": 0.9978,
+   "halvesGpuBusyMs": [
+    6.5571,
+    6.5439
+   ],
+   "halvesPct": 0.202,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 19,
+   "pass": 2,
+   "view": "forest_noon",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 319,
+   "rows": 319,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.8221,
+   "frameTimeMs": 7.8272,
+   "frameTimeP95Ms": 7.9575,
+   "gpuLatencyMs": 8.158,
+   "gpuBusyOverFrameTime": 0.9993,
+   "halvesGpuBusyMs": [
+    7.8221,
+    7.8223
+   ],
+   "halvesPct": 0.003,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 20,
+   "pass": 2,
+   "view": "forest_noon",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 319,
+   "rows": 319,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.8401,
+   "frameTimeMs": 7.844,
+   "frameTimeP95Ms": 7.9703,
+   "gpuLatencyMs": 8.1746,
+   "gpuBusyOverFrameTime": 0.9995,
+   "halvesGpuBusyMs": [
+    7.8451,
+    7.8372
+   ],
+   "halvesPct": 0.101,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 21,
+   "pass": 2,
+   "view": "forest_noon",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 281,
+   "rows": 281,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 8.8892,
+   "frameTimeMs": 8.8967,
+   "frameTimeP95Ms": 9.0464,
+   "gpuLatencyMs": 9.1353,
+   "gpuBusyOverFrameTime": 0.9992,
+   "halvesGpuBusyMs": [
+    8.8931,
+    8.8864
+   ],
+   "halvesPct": 0.075,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 22,
+   "pass": 2,
+   "view": "ocean_sunset",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 249,
+   "rows": 248,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 9.9948,
+   "frameTimeMs": 10.0008,
+   "frameTimeP95Ms": 10.5173,
+   "gpuLatencyMs": 10.3258,
+   "gpuBusyOverFrameTime": 0.9994,
+   "halvesGpuBusyMs": [
+    10.0527,
+    9.9294
+   ],
+   "halvesPct": 1.234,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 23,
+   "pass": 2,
+   "view": "ocean_sunset",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 306,
+   "rows": 305,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 8.0724,
+   "frameTimeMs": 8.1,
+   "frameTimeP95Ms": 8.3282,
+   "gpuLatencyMs": 8.9683,
+   "gpuBusyOverFrameTime": 0.9966,
+   "halvesGpuBusyMs": [
+    8.1108,
+    8.0332
+   ],
+   "halvesPct": 0.962,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 24,
+   "pass": 2,
+   "view": "ocean_sunset",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 251,
+   "rows": 251,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 9.9288,
+   "frameTimeMs": 9.9393,
+   "frameTimeP95Ms": 10.1588,
+   "gpuLatencyMs": 10.274,
+   "gpuBusyOverFrameTime": 0.9989,
+   "halvesGpuBusyMs": [
+    9.9401,
+    9.9186
+   ],
+   "halvesPct": 0.216,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 25,
+   "pass": 2,
+   "view": "ocean_sunset",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 249,
+   "rows": 249,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 9.9852,
+   "frameTimeMs": 9.9959,
+   "frameTimeP95Ms": 10.3678,
+   "gpuLatencyMs": 10.3411,
+   "gpuBusyOverFrameTime": 0.9989,
+   "halvesGpuBusyMs": [
+    10.0625,
+    9.9316
+   ],
+   "halvesPct": 1.309,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 26,
+   "pass": 2,
+   "view": "ocean_sunset",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 247,
+   "rows": 246,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 10.0369,
+   "frameTimeMs": 10.0431,
+   "frameTimeP95Ms": 10.6676,
+   "gpuLatencyMs": 10.3862,
+   "gpuBusyOverFrameTime": 0.9994,
+   "halvesGpuBusyMs": [
+    10.1133,
+    9.944
+   ],
+   "halvesPct": 1.688,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 27,
+   "pass": 2,
+   "view": "cave",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 343,
+   "rows": 343,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.2662,
+   "frameTimeMs": 7.2737,
+   "frameTimeP95Ms": 7.5394,
+   "gpuLatencyMs": 7.6368,
+   "gpuBusyOverFrameTime": 0.999,
+   "halvesGpuBusyMs": [
+    7.2972,
+    7.2468
+   ],
+   "halvesPct": 0.694,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 28,
+   "pass": 2,
+   "view": "cave",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 423,
+   "rows": 423,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 5.847,
+   "frameTimeMs": 5.8599,
+   "frameTimeP95Ms": 6.1082,
+   "gpuLatencyMs": 6.7982,
+   "gpuBusyOverFrameTime": 0.9978,
+   "halvesGpuBusyMs": [
+    5.8601,
+    5.8355
+   ],
+   "halvesPct": 0.42,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 29,
+   "pass": 2,
+   "view": "cave",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 342,
+   "rows": 342,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 7.2647,
+   "frameTimeMs": 7.2706,
+   "frameTimeP95Ms": 7.5412,
+   "gpuLatencyMs": 7.6308,
+   "gpuBusyOverFrameTime": 0.9992,
+   "halvesGpuBusyMs": [
+    7.2986,
+    7.24
+   ],
+   "halvesPct": 0.806,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 30,
+   "pass": 2,
+   "view": "cave",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 269,
+   "rows": 269,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 9.2508,
+   "frameTimeMs": 9.2639,
+   "frameTimeP95Ms": 9.6317,
+   "gpuLatencyMs": 9.5975,
+   "gpuBusyOverFrameTime": 0.9986,
+   "halvesGpuBusyMs": [
+    9.3015,
+    9.208
+   ],
+   "halvesPct": 1.01,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 31,
+   "pass": 2,
+   "view": "cave",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 273,
+   "rows": 273,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 9.0997,
+   "frameTimeMs": 9.1018,
+   "frameTimeP95Ms": 9.5006,
+   "gpuLatencyMs": 9.4505,
+   "gpuBusyOverFrameTime": 0.9998,
+   "halvesGpuBusyMs": [
+    9.1208,
+    9.0811
+   ],
+   "halvesPct": 0.436,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 32,
+   "pass": 2,
+   "view": "night",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 201,
+   "rows": 200,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 12.3585,
+   "frameTimeMs": 12.3617,
+   "frameTimeP95Ms": 13.0968,
+   "gpuLatencyMs": 12.7052,
+   "gpuBusyOverFrameTime": 0.9997,
+   "halvesGpuBusyMs": [
+    12.4237,
+    12.2859
+   ],
+   "halvesPct": 1.115,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 33,
+   "pass": 2,
+   "view": "night",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 204,
+   "rows": 204,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 12.127,
+   "frameTimeMs": 12.1626,
+   "frameTimeP95Ms": 12.6522,
+   "gpuLatencyMs": 12.5003,
+   "gpuBusyOverFrameTime": 0.9971,
+   "halvesGpuBusyMs": [
+    12.1513,
+    12.1136
+   ],
+   "halvesPct": 0.311,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 34,
+   "pass": 2,
+   "view": "night",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 285,
+   "rows": 285,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 8.734,
+   "frameTimeMs": 8.7439,
+   "frameTimeP95Ms": 8.9353,
+   "gpuLatencyMs": 9.0932,
+   "gpuBusyOverFrameTime": 0.9989,
+   "halvesGpuBusyMs": [
+    8.7561,
+    8.7146
+   ],
+   "halvesPct": 0.475,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 35,
+   "pass": 2,
+   "view": "night",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 170,
+   "rows": 170,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 14.653,
+   "frameTimeMs": 14.6983,
+   "frameTimeP95Ms": 15.4824,
+   "gpuLatencyMs": 15.1174,
+   "gpuBusyOverFrameTime": 0.9969,
+   "halvesGpuBusyMs": [
+    14.731,
+    14.6295
+   ],
+   "halvesPct": 0.691,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 36,
+   "pass": 2,
+   "view": "night",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 147,
+   "rows": 147,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 16.7182,
+   "frameTimeMs": 16.7464,
+   "frameTimeP95Ms": 17.6814,
+   "gpuLatencyMs": 17.0765,
+   "gpuBusyOverFrameTime": 0.9983,
+   "halvesGpuBusyMs": [
+    16.8806,
+    16.6957
+   ],
+   "halvesPct": 1.102,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 37,
+   "pass": 2,
+   "view": "underwater",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 138,
+   "rows": 137,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 18.0684,
+   "frameTimeMs": 18.0856,
+   "frameTimeP95Ms": 18.598,
+   "gpuLatencyMs": 18.4151,
+   "gpuBusyOverFrameTime": 0.999,
+   "halvesGpuBusyMs": [
+    18.1399,
+    18.0465
+   ],
+   "halvesPct": 0.516,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 38,
+   "pass": 2,
+   "view": "underwater",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 209,
+   "rows": 209,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 11.8733,
+   "frameTimeMs": 11.9054,
+   "frameTimeP95Ms": 12.7382,
+   "gpuLatencyMs": 12.7898,
+   "gpuBusyOverFrameTime": 0.9973,
+   "halvesGpuBusyMs": [
+    12.0581,
+    11.8055
+   ],
+   "halvesPct": 2.117,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 39,
+   "pass": 2,
+   "view": "underwater",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 96,
+   "rows": 95,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 24.1993,
+   "frameTimeMs": 24.2123,
+   "frameTimeP95Ms": 25.7747,
+   "gpuLatencyMs": 24.482,
+   "gpuBusyOverFrameTime": 0.9995,
+   "halvesGpuBusyMs": [
+    24.2554,
+    24.1549
+   ],
+   "halvesPct": 0.415,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 40,
+   "pass": 2,
+   "view": "underwater",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 88,
+   "rows": 87,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 26.8651,
+   "frameTimeMs": 26.7117,
+   "frameTimeP95Ms": 28.1402,
+   "gpuLatencyMs": 27.2084,
+   "gpuBusyOverFrameTime": 1.0057,
+   "halvesGpuBusyMs": [
+    26.9569,
+    26.6737
+   ],
+   "halvesPct": 1.056,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 41,
+   "pass": 2,
+   "view": "underwater",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 98,
+   "rows": 97,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 24.9256,
+   "frameTimeMs": 24.9091,
+   "frameTimeP95Ms": 26.3586,
+   "gpuLatencyMs": 25.3433,
+   "gpuBusyOverFrameTime": 1.0007,
+   "halvesGpuBusyMs": [
+    25.0193,
+    24.8947
+   ],
+   "halvesPct": 0.499,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 42,
+   "pass": 2,
+   "view": "entities",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 78,
+   "rows": 77,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 29.4452,
+   "frameTimeMs": 29.4297,
+   "frameTimeP95Ms": 32.9792,
+   "gpuLatencyMs": 30.5406,
+   "gpuBusyOverFrameTime": 1.0005,
+   "halvesGpuBusyMs": [
+    29.4695,
+    29.4157
+   ],
+   "halvesPct": 0.183,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 43,
+   "pass": 2,
+   "view": "entities",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 138,
+   "rows": 139,
+   "edges": [
+    0,
+    1
+   ],
+   "gpuBusyMs": 18.2071,
+   "frameTimeMs": 18.2496,
+   "frameTimeP95Ms": 18.482,
+   "gpuLatencyMs": 18.6988,
+   "gpuBusyOverFrameTime": 0.9977,
+   "halvesGpuBusyMs": [
+    18.21,
+    18.2001
+   ],
+   "halvesPct": 0.055,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 44,
+   "pass": 2,
+   "view": "entities",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 122,
+   "rows": 122,
+   "edges": [
+    1,
+    1
+   ],
+   "gpuBusyMs": 20.4903,
+   "frameTimeMs": 20.4779,
+   "frameTimeP95Ms": 20.9749,
+   "gpuLatencyMs": 20.7924,
+   "gpuBusyOverFrameTime": 1.0006,
+   "halvesGpuBusyMs": [
+    20.4339,
+    20.533
+   ],
+   "halvesPct": 0.484,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 45,
+   "pass": 2,
+   "view": "entities",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 104,
+   "rows": 103,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 23.9965,
+   "frameTimeMs": 24.0766,
+   "frameTimeP95Ms": 24.5411,
+   "gpuLatencyMs": 25.2602,
+   "gpuBusyOverFrameTime": 0.9967,
+   "halvesGpuBusyMs": [
+    23.958,
+    24.1653
+   ],
+   "halvesPct": 0.862,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 46,
+   "pass": 2,
+   "view": "entities",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 108,
+   "rows": 108,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 23.1658,
+   "frameTimeMs": 23.1993,
+   "frameTimeP95Ms": 23.5833,
+   "gpuLatencyMs": 23.6889,
+   "gpuBusyOverFrameTime": 0.9986,
+   "halvesGpuBusyMs": [
+    23.1204,
+    23.2649
+   ],
+   "halvesPct": 0.623,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 47,
+   "pass": 2,
+   "view": "nether_crimson",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 4.0,
+   "frames": 89,
+   "rows": 89,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 28.2161,
+   "frameTimeMs": 28.1111,
+   "frameTimeP95Ms": 28.6341,
+   "gpuLatencyMs": 29.7917,
+   "gpuBusyOverFrameTime": 1.0037,
+   "halvesGpuBusyMs": [
+    28.3375,
+    27.8625
+   ],
+   "halvesPct": 1.69,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 48,
+   "pass": 2,
+   "view": "nether_crimson",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 89,
+   "rows": 88,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 28.0914,
+   "frameTimeMs": 28.1044,
+   "frameTimeP95Ms": 28.6994,
+   "gpuLatencyMs": 29.0763,
+   "gpuBusyOverFrameTime": 0.9995,
+   "halvesGpuBusyMs": [
+    28.3936,
+    27.8206
+   ],
+   "halvesPct": 2.039,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 49,
+   "pass": 2,
+   "view": "nether_crimson",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 131,
+   "rows": 131,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 19.3264,
+   "frameTimeMs": 19.1177,
+   "frameTimeP95Ms": 19.8401,
+   "gpuLatencyMs": 19.6914,
+   "gpuBusyOverFrameTime": 1.0109,
+   "halvesGpuBusyMs": [
+    19.4401,
+    18.9278
+   ],
+   "halvesPct": 2.67,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 50,
+   "pass": 2,
+   "view": "nether_crimson",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 112,
+   "rows": 113,
+   "edges": [
+    0,
+    1
+   ],
+   "gpuBusyMs": 22.5327,
+   "frameTimeMs": 22.3005,
+   "frameTimeP95Ms": 23.0995,
+   "gpuLatencyMs": 22.8704,
+   "gpuBusyOverFrameTime": 1.0104,
+   "halvesGpuBusyMs": [
+    22.5704,
+    22.5152
+   ],
+   "halvesPct": 0.245,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 51,
+   "pass": 2,
+   "view": "nether_crimson",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 110,
+   "rows": 111,
+   "edges": [
+    0,
+    1
+   ],
+   "gpuBusyMs": 22.6217,
+   "frameTimeMs": 22.6425,
+   "frameTimeP95Ms": 23.4016,
+   "gpuLatencyMs": 23.0171,
+   "gpuBusyOverFrameTime": 0.9991,
+   "halvesGpuBusyMs": [
+    22.7459,
+    22.5528
+   ],
+   "halvesPct": 0.853,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 52,
+   "pass": 2,
+   "view": "nether_soul",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 97,
+   "rows": 96,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 25.9746,
+   "frameTimeMs": 25.9057,
+   "frameTimeP95Ms": 26.3319,
+   "gpuLatencyMs": 26.4528,
+   "gpuBusyOverFrameTime": 1.0027,
+   "halvesGpuBusyMs": [
+    26.0368,
+    25.9633
+   ],
+   "halvesPct": 0.283,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 53,
+   "pass": 2,
+   "view": "nether_soul",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 102,
+   "rows": 101,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 24.4123,
+   "frameTimeMs": 24.3998,
+   "frameTimeP95Ms": 28.9144,
+   "gpuLatencyMs": 26.004,
+   "gpuBusyOverFrameTime": 1.0005,
+   "halvesGpuBusyMs": [
+    24.1171,
+    24.6163
+   ],
+   "halvesPct": 2.048,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 54,
+   "pass": 2,
+   "view": "nether_soul",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 111,
+   "rows": 110,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 22.5864,
+   "frameTimeMs": 22.5121,
+   "frameTimeP95Ms": 22.8085,
+   "gpuLatencyMs": 23.4125,
+   "gpuBusyOverFrameTime": 1.0033,
+   "halvesGpuBusyMs": [
+    22.5891,
+    22.5837
+   ],
+   "halvesPct": 0.024,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 55,
+   "pass": 2,
+   "view": "nether_soul",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 144,
+   "rows": 144,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 17.368,
+   "frameTimeMs": 17.3698,
+   "frameTimeP95Ms": 17.7974,
+   "gpuLatencyMs": 18.0204,
+   "gpuBusyOverFrameTime": 0.9999,
+   "halvesGpuBusyMs": [
+    17.314,
+    17.4414
+   ],
+   "halvesPct": 0.733,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 56,
+   "pass": 2,
+   "view": "nether_soul",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 134,
+   "rows": 133,
+   "edges": [
+    1,
+    0
+   ],
+   "gpuBusyMs": 18.7289,
+   "frameTimeMs": 18.8054,
+   "frameTimeP95Ms": 19.02,
+   "gpuLatencyMs": 19.1727,
+   "gpuBusyOverFrameTime": 0.9959,
+   "halvesGpuBusyMs": [
+    18.7328,
+    18.7289
+   ],
+   "halvesPct": 0.021,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 57,
+   "pass": 2,
+   "view": "end_dragon",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 4.0,
+   "frames": 209,
+   "rows": 209,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 11.9056,
+   "frameTimeMs": 11.9276,
+   "frameTimeP95Ms": 12.1029,
+   "gpuLatencyMs": 12.3773,
+   "gpuBusyOverFrameTime": 0.9982,
+   "halvesGpuBusyMs": [
+    11.9191,
+    11.9009
+   ],
+   "halvesPct": 0.153,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 58,
+   "pass": 2,
+   "view": "end_dragon",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 142,
+   "rows": 142,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 17.495,
+   "frameTimeMs": 17.5827,
+   "frameTimeP95Ms": 17.8778,
+   "gpuLatencyMs": 17.9233,
+   "gpuBusyOverFrameTime": 0.995,
+   "halvesGpuBusyMs": [
+    17.4879,
+    17.5046
+   ],
+   "halvesPct": 0.095,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 59,
+   "pass": 2,
+   "view": "end_dragon",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 118,
+   "rows": 118,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 21.2733,
+   "frameTimeMs": 21.2325,
+   "frameTimeP95Ms": 21.4014,
+   "gpuLatencyMs": 21.6167,
+   "gpuBusyOverFrameTime": 1.0019,
+   "halvesGpuBusyMs": [
+    21.2666,
+    21.28
+   ],
+   "halvesPct": 0.063,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 60,
+   "pass": 2,
+   "view": "end_dragon",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 111,
+   "rows": 111,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 22.4566,
+   "frameTimeMs": 22.3822,
+   "frameTimeP95Ms": 22.5617,
+   "gpuLatencyMs": 23.2798,
+   "gpuBusyOverFrameTime": 1.0033,
+   "halvesGpuBusyMs": [
+    22.4597,
+    22.3819
+   ],
+   "halvesPct": 0.347,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 61,
+   "pass": 2,
+   "view": "end_dragon",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 128,
+   "rows": 128,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 19.53,
+   "frameTimeMs": 19.5327,
+   "frameTimeP95Ms": 19.8885,
+   "gpuLatencyMs": 19.9732,
+   "gpuBusyOverFrameTime": 0.9999,
+   "halvesGpuBusyMs": [
+    19.5391,
+    19.5153
+   ],
+   "halvesPct": 0.122,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 62,
+   "pass": 2,
+   "view": "end_city",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 97,
+   "rows": 97,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 25.884,
+   "frameTimeMs": 25.8464,
+   "frameTimeP95Ms": 26.1697,
+   "gpuLatencyMs": 26.4675,
+   "gpuBusyOverFrameTime": 1.0015,
+   "halvesGpuBusyMs": [
+    25.8754,
+    25.8937
+   ],
+   "halvesPct": 0.071,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 63,
+   "pass": 2,
+   "view": "end_city",
+   "variant": "shadows-off",
+   "role": "candidate",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 101,
+   "rows": 101,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 24.5478,
+   "frameTimeMs": 24.5365,
+   "frameTimeP95Ms": 24.9323,
+   "gpuLatencyMs": 27.462,
+   "gpuBusyOverFrameTime": 1.0005,
+   "halvesGpuBusyMs": [
+    24.5679,
+    24.5391
+   ],
+   "halvesPct": 0.117,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 64,
+   "pass": 2,
+   "view": "end_city",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 70,
+   "rows": 70,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 35.641,
+   "frameTimeMs": 35.6243,
+   "frameTimeP95Ms": 36.5256,
+   "gpuLatencyMs": 36.7673,
+   "gpuBusyOverFrameTime": 1.0005,
+   "halvesGpuBusyMs": [
+    35.7261,
+    35.5612
+   ],
+   "halvesPct": 0.463,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 65,
+   "pass": 2,
+   "view": "end_city",
+   "variant": "twin",
+   "role": "twin",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 72,
+   "rows": 72,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 35.1752,
+   "frameTimeMs": 35.1668,
+   "frameTimeP95Ms": 35.6313,
+   "gpuLatencyMs": 36.2799,
+   "gpuBusyOverFrameTime": 1.0002,
+   "halvesGpuBusyMs": [
+    35.215,
+    35.1052
+   ],
+   "halvesPct": 0.312,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  },
+  {
+   "index": 66,
+   "pass": 2,
+   "view": "end_city",
+   "variant": "baseline",
+   "role": "baseline",
+   "round": 1,
+   "settleS": 1.5,
+   "frames": 73,
+   "rows": 73,
+   "edges": [
+    0,
+    0
+   ],
+   "gpuBusyMs": 34.4677,
+   "frameTimeMs": 34.42,
+   "frameTimeP95Ms": 35.1977,
+   "gpuLatencyMs": 35.5518,
+   "gpuBusyOverFrameTime": 1.0014,
+   "halvesGpuBusyMs": [
+    34.4857,
+    34.4496
+   ],
+   "halvesPct": 0.105,
+   "presentMode": "Hardware: Independent Flip",
+   "flags": [
+    "fewFrames"
+   ],
+   "valid": false
+  }
+ ],
+ "heapTable": {
+  "every": 10,
+  "physicalMiB": 32691,
+  "rows": [
+   {
+    "reloads": 2,
+    "heapUsedMiB": 589.6,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 11739.7,
+    "availableMiB": 12087,
+    "heapUsedKiB": 603783,
+    "privateBytes": 12309962752
+   },
+   {
+    "reloads": 10,
+    "heapUsedMiB": 843.7,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 15910.7,
+    "availableMiB": 11872,
+    "heapUsedKiB": 863984,
+    "privateBytes": 16683548672
+   },
+   {
+    "reloads": 20,
+    "heapUsedMiB": 1189.6,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 20923.9,
+    "availableMiB": 11466,
+    "heapUsedKiB": 1218189,
+    "privateBytes": 21940330496
+   },
+   {
+    "reloads": 30,
+    "heapUsedMiB": 1409.6,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 25500.0,
+    "availableMiB": 7672,
+    "heapUsedKiB": 1443444,
+    "privateBytes": 26738737152
+   },
+   {
+    "reloads": 40,
+    "heapUsedMiB": 1612.8,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 29396.8,
+    "availableMiB": 3991,
+    "heapUsedKiB": 1651458,
+    "privateBytes": 30824816640
+   },
+   {
+    "reloads": 50,
+    "heapUsedMiB": 1919.6,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 33835.2,
+    "availableMiB": 364,
+    "heapUsedKiB": 1965654,
+    "privateBytes": 35478810624
+   },
+   {
+    "reloads": 60,
+    "heapUsedMiB": 2255.4,
+    "heapCommittedMiB": 6144.0,
+    "privateMiB": 36121.5,
+    "availableMiB": 446,
+    "heapUsedKiB": 2309498,
+    "privateBytes": 37876183040
+   }
+  ],
+  "perReload": {
+   "heapMiB": 28.72,
+   "privateMiB": 420.4
+  }
+ },
+ "session": {
+  "restore": {
+   "treeSha256": "65e7ae7326dda8a6e8d95c8812ca5ddaabd9dc7ca261d22bb8d93e91df5e22f9",
+   "files": 116,
+   "copied": 37,
+   "deleted": 0,
+   "kept": 79,
+   "checkedAgainstFacts": true
+  },
+  "machine": {
+   "idleSeconds": 33.2,
+   "highestGpuPct": [
+    {
+     "pid": 1180,
+     "pct": 0.3
+    },
+    {
+     "pid": 3692,
+     "pct": 0.28
+    },
+    {
+     "pid": 10936,
+     "pct": 0.0
+    }
+   ],
+   "checks": 11,
+   "waitedSeconds": 293.9
+  },
+  "twins": [
+   {
+    "file": "optilux-twin1-ComplementaryUnbound_r5.9.3.zip",
+    "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c"
+   }
+  ],
+  "launch": {
+   "platform": "mc-26.3",
+   "tier": "bench",
+   "world": "bench_263",
+   "pid": 13592,
+   "log": "runtime/mc-26.3/game/logs/latest.log",
+   "stdout": "runtime/mc-26.3/game/logs/stdout.log",
+   "uuid": {
+    "value": "51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79",
+    "from": "players/data/51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79.dat"
+   },
+   "gate": {
+    "games": [],
+    "sessions": [],
+    "amd": {
+     "presentMon": [
+      {
+       "pid": 12096,
+       "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+       "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+      }
+     ],
+     "rsxTraceSession": true
+    },
+    "java": [
+     {
+      "pid": 8796,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64\\bin\\java.exe",
+      "role": "gradle daemon"
+     },
+     {
+      "pid": 11736,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64\\bin\\java.exe",
+      "role": "other"
+     },
+     {
+      "pid": 11844,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64\\bin\\java.exe",
+      "role": "gradle daemon"
+     },
+     {
+      "pid": 11988,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.56.0-win32-x64\\jre\\21.0.12.1-win32-x86_64\\bin\\java.exe",
+      "role": "gradle daemon"
+     }
+    ]
+   },
+   "amdAfterJoin": {
+    "presentMon": [
+     {
+      "pid": 12096,
+      "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+      "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+     }
+    ],
+    "rsxTraceSession": true
+   },
+   "hashes": {
+    "classpathJars": 82,
+    "assetIndex": "34",
+    "versionJson": "702fe59163c6ee6578607daa85811d9bc9c7cc40",
+    "packs": [
+     {
+      "file": "Faithful 64x - Release 15.zip",
+      "kind": "resourcePack",
+      "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+     },
+     {
+      "file": "ComplementaryUnbound_r5.9.3.zip",
+      "kind": "referencePack",
+      "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c"
+     }
+    ]
+   },
+   "mods": {
+    "placed": [
+     {
+      "file": "fabric-api-0.161.0+26.3.jar",
+      "sha512": "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+      "state": "kept"
+     },
+     {
+      "file": "sodium-fabric-0.9.2+mc26.3.jar",
+      "sha512": "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93",
+      "state": "kept"
+     },
+     {
+      "file": "iris-fabric-1.11.7+mc26.3.jar",
+      "sha512": "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+      "state": "kept"
+     },
+     {
+      "file": "optilux-helper-0.1.0.jar",
+      "sha512": "8654d88f0e087333cc9f851812352e20aa96a9791e4e686996e13d656fd1257b0993ad51d21c7b9456f222ba5fe3dd8e2607fa8a962a14595525a7b025bd913b",
+      "state": "kept"
+     }
+    ],
+    "removed": [],
+    "helper": "optilux-helper-0.1.0.jar",
+    "sha512": [
+     "8654d88f0e087333cc9f851812352e20aa96a9791e4e686996e13d656fd1257b0993ad51d21c7b9456f222ba5fe3dd8e2607fa8a962a14595525a7b025bd913b",
+     "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+     "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+     "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+    ]
+   },
+   "logMods": [
+    "fabric-api",
+    "fabricloader",
+    "iris",
+    "java",
+    "minecraft",
+    "optilux-helper",
+    "sodium"
+   ],
+   "settings": {
+    "options": {
+     "version": "5023",
+     "fullscreen": "true",
+     "exclusiveFullscreen": "true",
+     "enableVsync": "false",
+     "maxFps": "260",
+     "renderDistance": "16",
+     "simulationDistance": "12",
+     "fov": "0.5",
+     "bobView": "false",
+     "guiScale": "3",
+     "mipmapLevels": "4",
+     "biomeBlendRadius": "2",
+     "graphicsPreset": "\"custom\"",
+     "preferredGraphicsBackend": "\"opengl\"",
+     "improvedTransparency": "false",
+     "pauseOnLostFocus": "false",
+     "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+     "onboardAccessibility": "false",
+     "skipMultiplayerWarning": "true",
+     "joinedFirstServer": "true",
+     "telemetryOptInExtra": "false",
+     "realmsNotifications": "false",
+     "narrator": "0",
+     "inactivityFpsLimit": "\"minimized\""
+    },
+    "overrides": {},
+    "token": true,
+    "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+    "iris": {
+     "shaderPack": "ComplementaryUnbound_r5.9.3.zip",
+     "enableShaders": "true",
+     "enableDebugOptions": "false",
+     "disableUpdateMessage": "true",
+     "maxShadowRenderDistance": "32"
+    }
+   },
+   "optionsFile": {
+    "sha256": "64b740acde26627dacf91c4ba594867184754424bf4010752479ff69c4e2ff6e",
+    "unwritten": {
+     "ao": "true",
+     "chunkSectionFadeInTime": "0.75",
+     "cutoutLeaves": "true",
+     "entityDistanceScaling": "1.0",
+     "entityShadows": "true",
+     "forceUnicodeFont": "false",
+     "japaneseGlyphVariants": "false",
+     "fovEffectScale": "1.0",
+     "darknessEffectScale": "1.0",
+     "glintSpeed": "0.5",
+     "glintStrength": "0.75",
+     "prioritizeChunkUpdates": "1",
+     "macFullscreenMenuVisibility": "false",
+     "gamma": "0.5",
+     "debugGuiScale": "0",
+     "maxAnisotropyBit": "1",
+     "textureFiltering": "1",
+     "particles": "0",
+     "reducedDebugInfo": "false",
+     "renderClouds": "\"true\"",
+     "cloudRange": "64",
+     "screenEffectScale": "1.0",
+     "soundDevice": "\"\"",
+     "vignette": "true",
+     "weatherRadius": "10",
+     "autoJump": "false",
+     "rotateWithMinecart": "false",
+     "operatorItemsTab": "false",
+     "autoSuggestions": "true",
+     "chatColors": "true",
+     "chatLinks": "true",
+     "chatLinksPrompt": "true",
+     "discrete_mouse_scroll": "false",
+     "invertXMouse": "false",
+     "invertYMouse": "false",
+     "showSubtitles": "false",
+     "directionalAudio": "false",
+     "toggleCrouch": "false",
+     "toggleSprint": "false",
+     "toggleAttack": "false",
+     "toggleUse": "false",
+     "sprintWindow": "7",
+     "darkMojangStudiosBackground": "false",
+     "hideLightningFlashes": "false",
+     "hideSplashTexts": "false",
+     "mouseSensitivity": "0.5",
+     "damageTiltStrength": "1.0",
+     "highContrast": "false",
+     "highContrastBlockOutline": "false",
+     "narratorHotkey": "true",
+     "incompatibleResourcePacks": "[]",
+     "lastServer": "",
+     "lang": "en_us",
+     "chatVisibility": "0",
+     "chatOpacity": "1.0",
+     "chatLineSpacing": "0.0",
+     "textBackgroundOpacity": "0.5",
+     "backgroundForChatOnly": "true",
+     "hideServerAddress": "false",
+     "advancedItemTooltips": "false",
+     "overrideWidth": "0",
+     "overrideHeight": "0",
+     "chatHeightFocused": "1.0",
+     "chatDelay": "0.0",
+     "chatHeightUnfocused": "0.4375",
+     "chatScale": "1.0",
+     "chatWidth": "1.0",
+     "notificationDisplayTime": "1.0",
+     "useNativeTransport": "true",
+     "mainHand": "\"right\"",
+     "attackIndicator": "1",
+     "tutorialStep": "none",
+     "mouseWheelSensitivity": "1.0",
+     "allowCursorChanges": "true",
+     "quitShortcuts": "true",
+     "ctrlClickEmulatesRightClick": "false",
+     "glDebugVerbosity": "1",
+     "hideMatchedNames": "true",
+     "syncChunkWrites": "true",
+     "showAutosaveIndicator": "true",
+     "allowServerListing": "true",
+     "inGameNotification": "false",
+     "sharePresence": "\"all\"",
+     "onlyShowSecureChat": "false",
+     "saveChatDrafts": "false",
+     "panoramaScrollSpeed": "1.0",
+     "menuBackgroundBlurriness": "5",
+     "startedCleanly": "true",
+     "musicToast": "\"never\"",
+     "musicFrequency": "\"DEFAULT\"",
+     "key_key.attack": "key.mouse.left",
+     "key_key.use": "key.mouse.right",
+     "key_key.forward": "key.keyboard.w",
+     "key_key.left": "key.keyboard.a",
+     "key_key.back": "key.keyboard.s",
+     "key_key.right": "key.keyboard.d",
+     "key_key.jump": "key.keyboard.space",
+     "key_key.sneak": "key.keyboard.left.shift",
+     "key_key.sprint": "key.keyboard.left.control",
+     "key_key.drop": "key.keyboard.q",
+     "key_key.inventory": "key.keyboard.e",
+     "key_key.chat": "key.keyboard.t",
+     "key_key.playerlist": "key.keyboard.tab",
+     "key_key.pickItem": "key.mouse.middle",
+     "key_key.command": "key.keyboard.slash",
+     "key_key.friends": "key.keyboard.o",
+     "key_key.socialInteractions": "key.keyboard.p",
+     "key_key.toggleGui": "key.keyboard.f1",
+     "key_key.toggleSpectatorShaderEffects": "key.keyboard.f4",
+     "key_key.screenshot": "key.keyboard.f2",
+     "key_key.togglePerspective": "key.keyboard.f5",
+     "key_key.smoothCamera": "key.keyboard.unknown",
+     "key_key.fullscreen": "key.keyboard.f11",
+     "key_key.spectatorOutlines": "key.keyboard.unknown",
+     "key_key.spectatorHotbar": "key.mouse.middle",
+     "key_key.swapOffhand": "key.keyboard.f",
+     "key_key.saveToolbarActivator": "key.keyboard.c",
+     "key_key.loadToolbarActivator": "key.keyboard.x",
+     "key_key.advancements": "key.keyboard.l",
+     "key_key.quickActions": "key.keyboard.g",
+     "key_key.debug.overlay": "key.keyboard.f3",
+     "key_key.debug.modifier": "key.keyboard.f3",
+     "key_key.hotbar.1": "key.keyboard.1",
+     "key_key.hotbar.2": "key.keyboard.2",
+     "key_key.hotbar.3": "key.keyboard.3",
+     "key_key.hotbar.4": "key.keyboard.4",
+     "key_key.hotbar.5": "key.keyboard.5",
+     "key_key.hotbar.6": "key.keyboard.6",
+     "key_key.hotbar.7": "key.keyboard.7",
+     "key_key.hotbar.8": "key.keyboard.8",
+     "key_key.hotbar.9": "key.keyboard.9",
+     "key_key.debug.reloadChunk": "key.keyboard.a",
+     "key_key.debug.showHitboxes": "key.keyboard.b",
+     "key_key.debug.clearChat": "key.keyboard.d",
+     "key_key.debug.crash": "key.keyboard.c",
+     "key_key.debug.showChunkBorders": "key.keyboard.g",
+     "key_key.debug.showAdvancedTooltips": "key.keyboard.h",
+     "key_key.debug.copyRecreateCommand": "key.keyboard.i",
+     "key_key.debug.spectate": "key.keyboard.n",
+     "key_key.debug.switchGameMode": "key.keyboard.f4",
+     "key_key.debug.debugOptions": "key.keyboard.f6",
+     "key_key.debug.focusPause": "key.keyboard.p",
+     "key_key.debug.dumpDynamicTextures": "key.keyboard.s",
+     "key_key.debug.reloadResourcePacks": "key.keyboard.t",
+     "key_key.debug.profiling": "key.keyboard.l",
+     "key_key.debug.copyLocation": "key.keyboard.c",
+     "key_key.debug.dumpVersion": "key.keyboard.v",
+     "key_key.debug.profilingChart": "key.keyboard.1",
+     "key_key.debug.fpsCharts": "key.keyboard.2",
+     "key_key.debug.networkCharts": "key.keyboard.3",
+     "key_key.debug.lightmapTexture": "key.keyboard.4",
+     "key_key.debug.improvedTransparency": "key.keyboard.x",
+     "key_iris.keybind.reload": "key.keyboard.r",
+     "key_iris.keybind.toggleShaders": "key.keyboard.k",
+     "key_iris.keybind.shaderPackSelection": "key.keyboard.i",
+     "key_iris.keybind.wireframe": "key.keyboard.unknown",
+     "soundCategory_master": "0.0",
+     "soundCategory_music": "1.0",
+     "soundCategory_record": "1.0",
+     "soundCategory_weather": "1.0",
+     "soundCategory_block": "1.0",
+     "soundCategory_hostile": "1.0",
+     "soundCategory_neutral": "1.0",
+     "soundCategory_player": "1.0",
+     "soundCategory_ambient": "1.0",
+     "soundCategory_voice": "1.0",
+     "soundCategory_ui": "1.0",
+     "modelPart_cape": "true",
+     "modelPart_jacket": "true",
+     "modelPart_left_sleeve": "true",
+     "modelPart_right_sleeve": "true",
+     "modelPart_left_pants_leg": "true",
+     "modelPart_right_pants_leg": "true",
+     "modelPart_hat": "true"
+    }
+   },
+   "join": {
+    "seconds": 13.59,
+    "line": "[23:32:00] [Server thread/INFO]: optilux[local:E:6689e073] logged in with entity id 1 at (22.6, 102.8, 533.0)"
+   },
+   "timings": {
+    "prepareSeconds": 0.27,
+    "joinSeconds": 13.59
+   },
+   "command": {
+    "check": "equal",
+    "arguments": 38
+   }
+  },
+  "mod": {
+   "pipe": {
+    "serverPid": 13592,
+    "dacl": "D:(A;;FA;;;S-1-5-21-3689793171-124209945-1107482691-1000)",
+    "secondInstanceError": 231
+   },
+   "hello": {
+    "protocol": 1,
+    "mod": {
+     "id": "optilux-helper",
+     "version": "0.1.0"
+    },
+    "platform": "mc-26.3",
+    "versions": {
+     "minecraft": "26.3",
+     "loader": "0.19.5",
+     "iris": "1.11.7+mc26.3",
+     "sodium": "0.9.2+mc26.3",
+     "java": "25.0.4.1+1-LTS"
+    },
+    "capabilities": [
+     "hello",
+     "selftest",
+     "state",
+     "world.wait",
+     "command",
+     "ticks.step",
+     "ready",
+     "camera.place",
+     "camera.get",
+     "shaders.reload",
+     "shaders.options",
+     "frames.index",
+     "frames.capture",
+     "window.measure",
+     "input.block",
+     "hud.set",
+     "timers.start",
+     "timers.read",
+     "timers.stop",
+     "cancel",
+     "quit"
+    ],
+    "pid": 13592,
+    "resumed": false,
+    "cancelled": [],
+    "frameIndex": 116,
+    "sinceReload": 0,
+    "qpcNs": 33365890496200
+   },
+   "frames": {
+    "first": {
+     "frameIndex": 116,
+     "sinceReload": 0,
+     "qpcNs": 33365892563700
+    },
+    "advanced": {
+     "frameIndex": 125,
+     "sinceReload": 9,
+     "qpcNs": 33369407084300
+    },
+    "seconds": 3.51
+   },
+   "requestLog": "results/raw/m2-budget-full-1/requests.jsonl"
+  },
+  "quit": {
+   "how": "quit",
+   "exitCode": 0,
+   "seconds": 3.202999999994063
+  },
+  "stray": [],
+  "filesCleanup": {
+   "removed": [
+    "optilux-twin1-ComplementaryUnbound_r5.9.3.zip",
+    "ComplementaryUnbound_r5.9.3.zip.txt",
+    "optilux-twin1-ComplementaryUnbound_r5.9.3.zip.txt"
+   ],
+   "kept": []
+  },
+  "logCheck": {
+   "lines": 905,
+   "bytes": 849688,
+   "tokenAbsent": true
+  },
+  "readBack": {
+   "ok": true,
+   "options": {
+    "keys": 24,
+    "moved": {}
+   },
+   "iris": {
+    "keys": 5,
+    "moved": {}
+   },
+   "sodium": {
+    "flagsMoved": {},
+    "sameText": true
+   }
+  },
+  "helperLog": {
+   "applied": 10,
+   "active": 1,
+   "hookFailures": 0,
+   "irisOutsideReload": 0
+  },
+  "steps": {
+   "count": 334,
+   "file": "results/raw/m2-budget-full-1/steps.json"
+  },
+  "events": {
+   "counts": {
+    "world.joined": 1,
+    "reload.done": 68,
+    "capture.frame": 1,
+    "window.start": 66,
+    "window.end": 66,
+    "dimension.changed": 5,
+    "screen.opened": 7,
+    "world.left": 1
+   },
+   "file": "results/raw/m2-budget-full-1/events.json"
+  },
+  "presentmon": {
+   "session": "optilux-m2-budget-full-1",
+   "csv": "results/raw/m2-budget-full-1/presentmon.csv",
+   "firstRows": -1,
+   "cover": -1,
+   "stop": {
+    "how": "CTRL_BREAK_EVENT",
+    "sent": true,
+    "exitCode": 0,
+    "seconds": 0.047,
+    "recordedSeconds": 374.875
+   },
+   "file": {
+    "rows": 32666,
+    "gameRows": 32666,
+    "columns": 23,
+    "sha256": "fadeac18ad2de576d9662a1f77b2718f2b287d8d3259d6185b298dbc77d7670c",
+    "bytes": 5802259
+   }
+  },
+  "start": {
+   "joined": {
+    "pose": {
+     "dimension": "minecraft:overworld",
+     "x": 22.6,
+     "y": 102.8,
+     "z": 533.0,
+     "yaw": -136.0,
+     "pitch": 37.20000076293945
+    },
+    "time": 6000,
+    "joinedQpcNs": 33368914810700,
+    "frameIndex": 126,
+    "sinceReload": 10,
+    "qpcNs": 33369596692900
+   },
+   "selftest": {
+    "pass": true,
+    "checks": {
+     "frameClock": {
+      "pass": true,
+      "first": {
+       "frameIndex": 127,
+       "qpcNs": 33369609703300,
+       "swapQpcNs": 33369596099600
+      },
+      "later": {
+       "frameIndex": 130,
+       "qpcNs": 33369655593700,
+       "swapQpcNs": 33369652844300
+      }
+     },
+     "renderer": {
+      "pass": true,
+      "reading": {
+       "inWorld": true,
+       "noScreen": true,
+       "sections": 22104,
+       "queuedJobs": 5,
+       "busyThreads": 10,
+       "buildResults": 6,
+       "runningJobs": 21,
+       "taskLists": 838,
+       "submittedTasks": 1,
+       "graphClean": false,
+       "rendererCheck": false,
+       "failing": "buildQueue"
+      }
+     },
+     "reload": {
+      "pass": true,
+      "pack": "ComplementaryUnbound_r5.9.3.zip",
+      "pipeline": "IrisRenderingPipeline",
+      "seconds": 0.4138978,
+      "reloadFrame": 131,
+      "frameIndex": 135,
+      "sinceReload": 4
+     },
+     "capture": {
+      "pass": true,
+      "frameIndex": 137,
+      "size": "3840x2160",
+      "target": "3840x2160"
+     },
+     "input": {
+      "pass": true,
+      "mixins": [
+       "KeyboardHandlerMixin",
+       "MouseHandlerMixin",
+       "MinecraftMixin"
+      ],
+      "blocked": false
+     }
+    },
+    "frameIndex": 358,
+    "sinceReload": 227,
+    "qpcNs": 33372670592900
+   },
+   "reload": {
+    "pack": "ComplementaryUnbound_r5.9.3.zip",
+    "pipeline": "IrisRenderingPipeline",
+    "seconds": 1.2770411,
+    "framesAfter": 2,
+    "reloadFrame": 441,
+    "frameIndex": 444,
+    "sinceReload": 3,
+    "qpcNs": 33375009690500
+   }
+  },
+  "weatherTicks": [
+   {
+    "view": "forest_noon",
+    "ticks": 120
+   },
+   {
+    "view": "rain",
+    "ticks": 120
+   },
+   {
+    "view": "forest_noon",
+    "ticks": 120
+   }
+  ],
+  "laps": [
+   [
+    "forest_noon",
+    "ocean_sunset",
+    "cave",
+    "night",
+    "underwater",
+    "entities",
+    "rain",
+    "nether_crimson",
+    "nether_soul",
+    "end_dragon",
+    "end_city"
+   ],
+   [
+    "rain",
+    "forest_noon",
+    "ocean_sunset",
+    "cave",
+    "night",
+    "underwater",
+    "entities",
+    "nether_crimson",
+    "nether_soul",
+    "end_dragon",
+    "end_city"
+   ]
+  ],
+  "timeSplit": {
+   "prepare": 0.3,
+   "restore": 1.0,
+   "machine": 294.0,
+   "launch": 14.2,
+   "mod": 3.5,
+   "presentmon": 0.0,
+   "start": 35.9,
+   "warmupPass": 72.7,
+   "measuredPass": 264.9,
+   "presentmonStop": 1.4,
+   "quit": 3.2,
+   "after": 0.2
+  }
+ },
+ "raw": "results/raw/m2-budget-full-1"
+}
