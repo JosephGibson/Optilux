@@ -22,8 +22,9 @@ gathered so far go into the record. The journal raw/<name>/partial.json follows 
   list holds no optilux- pipe, latest.log no applied mixin and no active line, the JVM's thread
   dump no optilux- thread; WM_CLOSE ends it.
 - A measured run (measurement, calibration, or acceptance of A8 and A11 on a mode's schedule):
-  optilux/measure.py's session, the twins copied before the launch, the variants' files and the
-  twins deleted after the quit, every window cut from the run's one PresentMon CSV. A run that
+  optilux/measure.py's session, the twins copied and the passthrough pack written before the
+  launch, the variants' files, the twins and the passthrough deleted after the quit, every window
+  cut from the run's one PresentMon CSV. A run that
   names its calibration is refused unless the calibration's identity equals its own key by key,
   and its record holds the verdicts (optilux/stats.py: each candidate's, the twin's check and the
   twin monitor over the calibration's judged twins) or A8's and A11's judged entries.
@@ -615,7 +616,8 @@ def measured_plan(run: Runner) -> str:
 
 
 def measured_before(run: Runner) -> None:
-    """The twins' zips copied before the launch, the run's files journaled first (D41)."""
+    """The twins' zips copied and the passthrough pack written before the launch, the run's files
+    journaled first (D41)."""
     ready = run.ready
     game = ready.base / launch.GAME
     run.journal.set(
@@ -625,7 +627,7 @@ def measured_before(run: Runner) -> None:
                 "id": v.id,
                 "role": v.role,
                 "pack": v.pack,
-                "sha512": ready.pack.sha512,
+                "sha512": measure.variant_sha512(v, ready.pack.sha512),
                 "profile": v.profile,
                 "options": v.options,
                 "timers": v.timers,
@@ -636,6 +638,9 @@ def measured_before(run: Runner) -> None:
     run.journal.set("validity", ready.suite["validity"])  # an orphan's flags use its own suite
     source = game / launch.SHADER_PACKS / ready.pack.file
     run.facts["twins"] = measure.make_twins(game, run.found, source, ready.pack.sha512, run.own)
+    passthrough = measure.make_passthrough(game, run.found, run.own)
+    if passthrough is not None:
+        run.facts["passthrough"] = passthrough
 
 
 def measured_body(run: Runner, s: Session) -> None:

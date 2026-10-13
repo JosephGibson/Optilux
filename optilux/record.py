@@ -83,6 +83,10 @@ A4_RELOADS = 2
 VARIANT_REQUIRED = ("id", "pack", "profile")
 VARIANT_OPTIONAL = ("options", "timers")
 TWIN = "twin"
+# The passthrough pack (plans/m2.md D46): a measurement run's candidate, never its baseline, with
+# no profile, options or timers; the harness builds it (measure.passthrough_zip) and its median
+# FrameTime is a view's CPU floor (measurement.md#validity).
+PASSTHROUGH = "optilux-passthrough.zip"
 PROFILES = "config/profiles"
 OPTION_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
 # F4's table (roadmap.md#findings-assigned): heap after GC and private bytes every RELOAD_EVERY
@@ -383,10 +387,10 @@ def check_options(where: str, options: Any) -> dict[str, str | bool]:
 
 def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict, ...]:
     """A measured run's variants: objects of id, pack, profile and optionally options and timers;
-    the first the baseline, ids unique and never a twin's; each pack the reference pack `pack`
-    (the passthrough pack comes with M2.P08); a calibration run holds the baseline alone, as the
-    runner adds its twins. Each checked variant's options: the profile's with the spec's over
-    them."""
+    the first the baseline, ids unique and never a twin's; each pack the reference pack `pack`, or
+    a measurement run's candidate the passthrough pack with no profile, options or timers (D46); a
+    calibration run holds the baseline alone, as the runner adds its twins. Each checked
+    variant's options: the profile's with the spec's over them."""
     variants = data["variants"]
     kind = data["kind"]
     if not isinstance(variants, list) or not variants:
@@ -416,10 +420,22 @@ def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict
             )
         if vid in (v["id"] for v in found):
             raise RecordError(f"{where}: id {vid} is listed twice; fix: rename one")
-        if variant["pack"] != pack:
+        if variant["pack"] == PASSTHROUGH:
+            if index == 0 or kind != "measurement":
+                raise RecordError(
+                    f"{where}: the passthrough pack measures a view's CPU floor as a measurement "
+                    f"run's candidate (plans/m2.md D46); fix: the reference pack {pack} first, the "
+                    "passthrough after it in a measurement run"
+                )
+            if variant["profile"] is not None or variant.get("options") or variant.get("timers"):
+                raise RecordError(
+                    f"{where}: the passthrough pack has no options, and timers would add their "
+                    "cost to its floor; fix: profile null, no options, timers false"
+                )
+        elif variant["pack"] != pack:
             raise RecordError(
-                f"{where}: pack {variant['pack']!r}; fix: the reference pack {pack} (the "
-                "passthrough pack comes with M2.P08)"
+                f"{where}: pack {variant['pack']!r}; fix: the reference pack {pack}, or the "
+                f"passthrough pack {PASSTHROUGH} as a measurement run's candidate"
             )
         profile = variant["profile"]
         if profile is not None and not isinstance(profile, str):
@@ -435,7 +451,13 @@ def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict
                 "(plans/m2.md section 2); fix: timers false"
             )
         found.append(
-            {"id": vid, "pack": pack, "profile": profile, "options": options, "timers": timers}
+            {
+                "id": vid,
+                "pack": variant["pack"],
+                "profile": profile,
+                "options": options,
+                "timers": timers,
+            }
         )
     return tuple(found)
 
