@@ -260,6 +260,33 @@ def test_pre_commit_hook_end_to_end(repo: Path) -> None:
         assert accepted.returncode == 0, accepted.stderr
 
 
+def test_pre_commit_runs_verify_records_when_a_record_is_staged(repo: Path) -> None:
+    """plans/m2.md D51: a staged record that does not parse against its kind is refused."""
+    folder = repo / "results" / "records"
+    folder.mkdir(parents=True)
+    good = {
+        "schema": 1,
+        "name": "m2-x-1",
+        "kind": "acceptance",
+        "spec": {},
+        "status": "failed",
+        "reason": "the session broke",
+        "startedAt": "2026-10-13T00:00:00+00:00",
+        "identity": None,
+        "variants": [],
+        "acceptance": [{"item": "A1", "pass": False, "evidence": {}}],
+    }
+    (folder / "m2-x-1.json").write_text(json.dumps({**good, "kind": "bench"}), encoding="utf-8")
+    git(repo, "add", "results")
+    refused = commit(repo, "test: add a record")
+    assert refused.returncode != 0
+    assert "pre-commit: results/records/m2-x-1.json: kind 'bench'; fix:" in refused.stderr
+    (folder / "m2-x-1.json").write_text(json.dumps(good), encoding="utf-8")
+    git(repo, "add", "results")
+    accepted = commit(repo, "test: add a record")
+    assert accepted.returncode == 0, accepted.stderr
+
+
 def test_claude_settings_wire_the_hooks() -> None:
     settings = json.loads((REPO_ROOT / ".claude" / "settings.json").read_bytes())
     pre, post = settings["hooks"]["PreToolUse"][0], settings["hooks"]["PostToolUse"][0]
