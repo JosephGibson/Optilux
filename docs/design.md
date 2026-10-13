@@ -63,8 +63,8 @@ user / Claude Code --skills--> optilux CLI (Python)
   | run | validate a run spec, run the session, write the run record | M1 |
   | mod build / test | Gradle through the pinned wrapper, no daemon left | M1 |
   | world prep / snapshot / restore | prepare a bench world (Chunky's pre-generation, the kill, the view functions, reference frames) and retake its snapshot; copy, manifest and tree hash; restore in place | M2 |
-  | calibrate | null sessions per mode -> config/calibrations/ | M2 |
-  | compare / report | verdicts, cost rows, tiers; one page per run | M2 |
+  | calibrate | the current identity's null sessions per mode, resumed after a stop -> config/calibrations/<mode>-<identity sha256>.json | M2 |
+  | compare / report | a record re-judged against a calibration, another identity refused by key: verdicts and per-view cost rows (tiers M3); one static page per run | M2 |
   | check L0..L4 | offline levels (offline.md) | M3 (L0-L2), M4 (L3-L4) |
   | verify docs / similarity / records | static checks | M0 (similarity M3, records M2) |
   | pack build / release | the shader zip | M0 |

@@ -23,7 +23,10 @@ gathered so far go into the record. The journal raw/<name>/partial.json follows 
   dump no optilux- thread; WM_CLOSE ends it.
 - A measured run (measurement, calibration, or acceptance of A8 and A11 on a mode's schedule):
   optilux/measure.py's session, the twins copied before the launch, the variants' files and the
-  twins deleted after the quit, every window cut from the run's one PresentMon CSV.
+  twins deleted after the quit, every window cut from the run's one PresentMon CSV. A run that
+  names its calibration is refused unless the calibration's identity equals its own key by key,
+  and its record holds the verdicts (optilux/stats.py: each candidate's, the twin's check and the
+  twin monitor over the calibration's judged twins) or A8's and A11's judged entries.
 
 The record goes to results/records/<name>.json, the request log and the raw artifacts to
 results/raw/<name>/. Exit 0 when the status is ok.
@@ -43,7 +46,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from optilux import REPO_ROOT, launch, measure, modclient, platform, presentmon, record, repo, world
+from optilux import (
+    REPO_ROOT,
+    launch,
+    measure,
+    modclient,
+    platform,
+    presentmon,
+    record,
+    repo,
+    stats,
+    world,
+)
 from optilux.acceptance import (
     MOD_THREAD,
     a1,
@@ -111,13 +125,17 @@ class Prepared:
     recorded: dict
 
 
-def prepare(root: Path, spec_path: Path, machine: record.Machine) -> Prepared:
+def prepare(
+    root: Path, spec_in: Path | dict, machine: record.Machine, fresh: bool = True
+) -> Prepared:
     """Everything `run` checks before the live world, and the identity (run-record.md#identity)
     built from what the session will use, nothing launched or written (`--check` stops here): the
-    spec, the views and the snapshot's tree hash, the display and HAGS, PresentMon's pin, no copy
-    left by an earlier A4, then the launch spec, the views file and the JDK's release file
-    hashed, the jars launch places, the pinned resource packs, the options file as the launch
-    would write it, the measured modules. A failed launch records this identity (id7, id9)."""
+    spec (a file, or its data from `calibrate`), the views and the snapshot's tree hash, the
+    display and HAGS, PresentMon's pin, no copy left by an earlier A4, then the launch spec, the
+    views file and the JDK's release file hashed, the jars launch places, the pinned resource
+    packs, the options file as the launch would write it, the measured modules; a calibration the
+    spec names matched key by key on that identity. A failed launch records this identity (id7,
+    id9). `fresh` False: the spec's name may be taken (record.check_spec)."""
     plat = platform.load(root)
     suite = json.loads((root / platform.SUITE).read_text(encoding="utf-8"))
     java_profile = json.loads((root / JAVA_PROFILE).read_text(encoding="utf-8"))
@@ -125,7 +143,8 @@ def prepare(root: Path, spec_path: Path, machine: record.Machine) -> Prepared:
     game = base / launch.GAME
     pack = launch.reference_pack(plat)
     saves = game / launch.SAVES
-    spec = record.check_spec(root, load_spec(spec_path), plat, suite, saves, pack.file)
+    data = load_spec(spec_in) if isinstance(spec_in, Path) else spec_in
+    spec = record.check_spec(root, data, plat, suite, saves, pack.file, fresh)
     views, views_path = record.load_views(root, spec.views)
     stale = measure.stale_functions(root, views) if spec.mode is not None else []
     if stale:
@@ -168,6 +187,14 @@ def prepare(root: Path, spec_path: Path, machine: record.Machine) -> Prepared:
         harness=record.harness_identity(root, pm_exe),
     )
     record.check_identity(found)
+    if spec.cal is not None:  # measurement.md#calibration: matched key by key
+        differ = record.identity_differences(found, spec.cal["identity"])
+        if differ:
+            raise record.RecordError(
+                f"calibration {spec.cal['id'][:24]}... was measured under another identity: "
+                f"{', '.join(differ)} differ; fix: `optilux calibrate --mode {spec.mode}` for "
+                "this identity, then name its id"
+            )
     recorded = {"platformFile": record.file_sha256(plat.path), **system_recorded}
     return Prepared(
         spec, plat, suite, pack, views, base, java_home, snapshot, pm_exe, found, recorded
@@ -595,13 +622,57 @@ def measured_fields(run: Runner) -> dict:
         "variants": measure.variant_records(m, run.ready.pack.sha512) if m else [],
         "captures": [{k: v for k, v in c.items() if k != "problems"} for c in captures],
     }
+    if spec.cal is not None and spec.kind == "measurement":
+        try:
+            monitor = run.ready.suite["statistics"]["twinMonitor"]
+            found["verdicts"] = verdicts(run.root, captures, spec.cal, spec.cal["mode"], monitor)
+        except stats.StatsError as error:
+            run.problems.append(f"the verdicts: {error}")
     if spec.kind == "acceptance":
-        found["acceptance"] = measure.items_evidence(spec.items, captures)
+        found["acceptance"] = item_entries(spec, captures)
     if spec.heap:
         found["heapTable"] = measure.heap_table(m.heap if m else [], run.host.physical_memory())
     full = {"captures": captures, "entries": m.entries if m else []}
     (run.raw / CAPTURES).write_text(json.dumps(full, indent=1, default=str) + "\n", "utf-8")
     return found
+
+
+def verdicts(root: Path, captures: list[dict], cal: dict, mode: str, monitor: dict) -> dict:
+    """A judged run's verdicts (stats.judge) and the twin monitor over the twins judged under its
+    calibration before it, then its own (measurement.md#calibration)."""
+    found = stats.judge(captures, cal, mode)
+    history = record.judged_twins(root, cal["id"])
+    if found["twin"]["inside"] is not None:
+        history.append(not found["twin"]["inside"])
+    found["twinMonitor"] = stats.twin_monitor(history, monitor["window"], monitor["maxExceed"])
+    return found
+
+
+def timed_variant(spec: record.Spec) -> str | None:
+    """A8's candidate: the first equal to the baseline but with timers on (record's check)."""
+    base = spec.variants[0]
+    same = (base["profile"], base["options"])
+    return next(
+        (
+            v["id"]
+            for v in spec.variants[1:]
+            if v["timers"] and (v["profile"], v["options"]) == same
+        ),
+        None,
+    )
+
+
+def item_entries(spec: record.Spec, captures: list[dict]) -> list[dict]:
+    """A8's and A11's entries judged by the spec's calibration (stats.judge_items); a session
+    whose captures cannot be judged leaves them waiting, never passed."""
+    if spec.cal is None:
+        why = "no calibration named"
+        return [{"item": i, "pass": None, "evidence": {"pending": why}} for i in spec.items]
+    try:
+        return stats.judge_items(captures, spec.cal, spec.items, timed_variant(spec), spec.first)
+    except stats.StatsError as error:
+        why = f"unjudged: {error}"
+        return [{"item": i, "pass": None, "evidence": {"pending": why}} for i in spec.items]
 
 
 def measured_status(run: Runner) -> str:
@@ -667,13 +738,18 @@ def measured_session_facts(run: Runner) -> None:
 
 
 def perform(
-    root: Path, spec_path: Path, host: RunHost, machine: record.Machine, say: Say, announce: Say
+    root: Path,
+    spec_in: Path | dict,
+    host: RunHost,
+    machine: record.Machine,
+    say: Say,
+    announce: Say,
 ) -> dict:
     """The run: orphans finished (D41), prepare's checks and identity, the live world restored to
     its snapshot, D42's check for a measured run, the session, the record. Returns the record."""
     marks: dict[str, float] = {"prepare": time.monotonic()}
     orphans = measure.finish_orphans(root, host, say)
-    ready = prepare(root, spec_path, machine)
+    ready = prepare(root, spec_in, machine)
     spec = ready.spec
     snap_hash, snap_files, _ = ready.snapshot
     marks["restore"] = time.monotonic()
@@ -753,8 +829,8 @@ def perform(
             found.update(measured_fields(run))
         except Exception as error:  # noqa: BLE001 the record is written whatever the cut met
             run.problems.append(f"the captures' analysis: {type(error).__name__}: {error}")
-        failed = [e["item"] for e in found.get("acceptance", []) if not e["pass"]]
-        if failed:  # A8 and A11 unjudged until M2.P07: an item never passes unjudged
+        failed = [e["item"] for e in found.get("acceptance", []) if e["pass"] is False]
+        if failed:  # an item waiting (pass null) has not failed, and never passes
             run.problems.append(f"items failed: {', '.join(failed)}")
         status = measured_status(run)
         try:
@@ -785,14 +861,17 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 
 def check(ready: Prepared, as_json: bool) -> int:
-    """`--check`: the identity `run` would record, key by key; nothing launched or written."""
+    """`--check`: the identity `run` would record, key by key, and the calibration that matched
+    it; nothing launched or written."""
+    cid = ready.spec.calibration
     if as_json:
-        found = {"ok": True, "name": ready.spec.name, "launched": False}
+        found = {"ok": True, "name": ready.spec.name, "launched": False, "calibration": cid}
         print(json.dumps({**found, "identity": ready.identity}))
         return 0
+    judged = f"; calibration {cid[:24]}... matches it key by key" if cid else ""
     print(
-        f"{PREFIX} --check: {ready.spec.name} ({ready.spec.kind} on {ready.spec.views}) holds; "
-        "nothing launched, the live world left to the run; the identity:"
+        f"{PREFIX} --check: {ready.spec.name} ({ready.spec.kind} on {ready.spec.views}) holds"
+        f"{judged}; nothing launched, the live world left to the run; the identity:"
     )
     for key, value in ready.identity.items():
         print(f"{key}: {json.dumps(value)}")  # ASCII: a piped stdout may be cp1252
@@ -800,13 +879,52 @@ def check(ready: Prepared, as_json: bool) -> int:
 
 
 def summary_line(found: dict) -> str:
-    """The run's outcome in one line: an acceptance run's items, a measured run's captures."""
+    """The run's outcome in one line: a measured run's captures and verdicts, an acceptance run's
+    items."""
+    parts = []
     if "captures" in found:
         captures = found["captures"]
         valid = sum(1 for c in captures if c.get("valid"))
-        return f"{valid} of {len(captures)} captures valid"
-    passed = {entry["item"]: entry["pass"] for entry in found["acceptance"]}
-    return ", ".join(f"{k} {'pass' if v else 'FAIL'}" for k, v in passed.items())
+        parts.append(f"{valid} of {len(captures)} captures valid")
+    judged = found.get("verdicts")
+    if judged:
+        parts += [f"{c['variant']} {c['verdict']}" for c in judged["candidates"]]
+        twin = {True: "inside", False: "beyond", None: "unmeasured"}[judged["twin"]["inside"]]
+        parts.append(f"twin {twin}")
+    shown_pass = {True: "pass", False: "FAIL", None: "waits"}
+    parts += [f"{e['item']} {shown_pass[e['pass']]}" for e in found.get("acceptance") or []]
+    return ", ".join(parts)
+
+
+def write_launch(root: Path, found: dict, say: Say) -> Path:
+    """A launch's record written and its journal closed (the record's content dumped beside the
+    journal when the write is refused: RecordError naming the dump)."""
+    raw = root / found["raw"]
+    try:
+        path = record.write_record(root, found, say)
+    except record.RecordError as error:
+        dump = raw / "record-unwritten.json"
+        dump.write_text(json.dumps(found, indent=1, default=str) + "\n", encoding="utf-8")
+        close_journal(raw)  # ended, its content kept: no orphan for the next run to finish
+        raise record.RecordError(
+            f"{error}; the record's content is in {shown(dump, root)}"
+        ) from None
+    close_journal(raw)
+    return path
+
+
+def run_session(
+    root: Path,
+    spec_in: Path | dict,
+    host: RunHost,
+    machine: record.Machine,
+    say: Say,
+    announce: Say,
+) -> tuple[dict, Path]:
+    """One session through the runner (`run`'s and `calibrate`'s): its record written. The
+    record and its path."""
+    found = perform(root, spec_in, host, machine, say, announce)
+    return found, write_launch(root, found, say)
 
 
 def run(args: argparse.Namespace) -> int:
@@ -826,7 +944,7 @@ def run(args: argparse.Namespace) -> int:
     try:
         if args.check:
             return check(prepare(root, Path(args.spec), record.Machine()), args.json)
-        found = perform(root, Path(args.spec), RunHost(), record.Machine(), say, announce)
+        found, path = run_session(root, Path(args.spec), RunHost(), record.Machine(), say, announce)
     except OSError as error:  # a file the run reads or writes before its session (a lock)
         return refuse(f"{error}; fix: quit whatever holds or removed that file, then rerun")
     except (
@@ -836,17 +954,6 @@ def run(args: argparse.Namespace) -> int:
         world.WorldError,
     ) as error:
         return refuse(str(error))
-    raw = root / found["raw"]
-    try:
-        path = record.write_record(root, found, say)
-    except record.RecordError as error:
-        dump = raw / "record-unwritten.json"
-        dump.write_text(json.dumps(found, indent=1, default=str) + "\n", encoding="utf-8")
-        close_journal(raw)  # ended, its content kept: no orphan for the next run to finish
-        message = f"{error}; the record's content is in {shown(dump, root)}"
-        print(f"{PREFIX}: {message}", file=sys.stderr)
-        return 1
-    close_journal(raw)
     if args.json:
         print(
             json.dumps(

@@ -21,7 +21,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - .github/: workflows/ci.yml (push and pull_request) and release.yml (push to main), both windows-latest (docs/workflow.md#release).
 - mod/: optilux-helper (Fabric), a Gradle project (Loom, wrapper pinned by sha256); `mod build` puts its jar into runtime/<platform>/files/, `mod test` runs its JUnit tests.
 - shader/: the pack, zipped by `pack build` and released by `pack release` (docs/workflow.md#release). M0's placeholder stays until M3's hello pack.
-- config/: platforms (+ launch specs), suite, profiles, java, tools, views; pipeline and calibrations planned.
+- config/: platforms (+ launch specs), suite, profiles, java, tools, views, calibrations; pipeline planned.
 - snapshots/<world>/: world copies, tree-hashed; results/: records/<run>.json and raw/<run>/.
 - docs/.
 - VERSION: the release version (docs/workflow.md#release). Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/, .coverage.

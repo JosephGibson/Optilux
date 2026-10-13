@@ -1131,25 +1131,6 @@ def measured_problems(found: list[dict], planned: int, laps_done: bool) -> list[
     return problems
 
 
-def items_evidence(items: tuple[str, ...], found: list[dict]) -> list[dict]:
-    """A8's and A11's entries on a measured acceptance run (plans/m2.md M2.P10): their captures'
-    counts as evidence and no pass until M2.P07's statistics judge them; an unjudged item never
-    passes."""
-    timed = [c for c in found if "timers" in c]
-    return [
-        {
-            "item": item,
-            "pass": False,
-            "evidence": {
-                "captures": len(found),
-                "timedCaptures": len(timed),
-                "unjudged": "A8's and A11's verdicts come with stats.py (plans/m2.md M2.P07)",
-            },
-        }
-        for item in items
-    ]
-
-
 def time_split(marks: dict, ended: float) -> dict:
     """Seconds per phase from the marks' monotonic times, in their order, the last to `ended`."""
     order = sorted(marks.items(), key=lambda item: item[1])
