@@ -316,6 +316,7 @@ def judge_variant(
         "inside": None,
         "bare": None,
         "exact": None,
+        "exactThreshold": found["geoMean"],
     }
     if not unjudged:
         delta = delta_pct(geo_mean(ratios))
@@ -329,8 +330,8 @@ def judge_variant(
 
 
 def public(judged: dict) -> dict:
-    """A judgment as a record holds it: without the bare verdict and the unrounded delta."""
-    return {k: v for k, v in judged.items() if k not in ("bare", "exact")}
+    """A judgment as a record holds it: without the bare verdict and the unrounded numbers."""
+    return {k: v for k, v in judged.items() if k not in ("bare", "exact", "exactThreshold")}
 
 
 def unjudged_text(judged: dict) -> str:
@@ -363,30 +364,43 @@ def candidate_verdict(judged: dict, twin: dict, mode: str) -> dict:
         "inconclusive": "inside the geo-mean threshold"
         + (": inconclusive, run full" if mode == "quick" else ""),
     }[bare]
-    confirm = bare == "accept" and abs(judged["exact"]) < 2 * judged["geoMeanThreshold"]
+    confirm = bare == "accept" and abs(judged["exact"]) <= 2 * judged["exactThreshold"]
     if confirm:
         why += "; within twice the threshold: re-measure in a second session before it ships"
     return {**found, "verdict": bare, "why": why, "confirm": confirm}
 
 
-def session_variants(captures: list[dict]) -> tuple[list[str], list[str]]:
-    """The measured pass's candidates and twins by id, in the order first measured."""
+def session_variants(
+    captures: list[dict], expected: list[dict] | None = None
+) -> tuple[list[str], list[str]]:
+    """A session's candidates and twins by id: the record's variants (`expected`, each with its
+    id and role) when given, so a variant never measured is judged unjudged rather than left
+    out; else those the measured pass holds, in the order first measured."""
     candidates: list[str] = []
     twins: list[str] = []
-    for c in sorted(captures, key=lambda c: c["index"]):
-        if c.get("pass") != MEASURED_PASS:
-            continue
-        kind = {CANDIDATE: candidates, TWIN: twins}.get(str(c.get("role")))
-        if kind is not None and c["variant"] not in kind:
-            kind.append(c["variant"])
+    if expected is not None:
+        found = [(v["id"], v["role"]) for v in expected]
+    else:
+        ordered = sorted(captures, key=lambda c: c["index"])
+        found = [(c["variant"], c.get("role")) for c in ordered if c.get("pass") == MEASURED_PASS]
+    for vid, role in found:
+        kind = {CANDIDATE: candidates, TWIN: twins}.get(str(role))
+        if kind is not None and vid not in kind:
+            kind.append(vid)
     return candidates, twins
 
 
-def session_twin(captures: list[dict], views: list[str], rounds: int, found: dict) -> dict:
+def session_twin(
+    captures: list[dict],
+    views: list[str],
+    rounds: int,
+    found: dict,
+    expected: list[dict] | None = None,
+) -> dict:
     """The session's one A/A twin judged: `inside` True when its geo-mean delta lies inside the
     threshold, False at or beyond it, None when a view could not be measured (missing = fail).
     StatsError for no twin or more than one."""
-    _, twins = session_variants(captures)
+    _, twins = session_variants(captures, expected)
     if len(twins) != 1:
         raise StatsError(
             f"a judged session holds one A/A twin, this one {len(twins)}; fix: judge a "
@@ -395,14 +409,16 @@ def session_twin(captures: list[dict], views: list[str], rounds: int, found: dic
     return public(judge_variant(captures, twins[0], views, rounds, found))
 
 
-def judge(captures: list[dict], calibration: dict, mode: str) -> dict:
+def judge(
+    captures: list[dict], calibration: dict, mode: str, expected: list[dict] | None = None
+) -> dict:
     """A measured session's verdicts (run-record.md#fields) over the calibration's views, with
     its thresholds for exactly them: the twin's check, the session's state, each candidate's
-    verdict."""
+    verdict; the variants the record's (`expected`) when given."""
     views, rounds = list(calibration["views"]), calibration["rounds"]
     found = calibration_thresholds(calibration)
-    twin = session_twin(captures, views, rounds, found)
-    candidates, _ = session_variants(captures)
+    twin = session_twin(captures, views, rounds, found, expected)
+    candidates, _ = session_variants(captures, expected)
     return {
         "calibration": calibration["id"],
         "views": views,
@@ -510,14 +526,23 @@ def a8_verdict(judged: dict, twin: dict, first: dict | None = None) -> dict:
     }
 
 
-def a11_verdict(captures: list[dict], views: list[str], rounds: int, found: dict, twin: dict):
+def a11_verdict(
+    captures: list[dict],
+    views: list[str],
+    rounds: int,
+    found: dict,
+    twin: dict,
+    expected: list[dict] | None = None,
+):
     """A11 (plans/m2.md M2.P10, mod.md#12-acceptance), every variant timed, on GPU-bound captures
     whose timers kept every frame: per view the threshold in ms (the view's threshold x the
-    baseline's median GPUBusy); each other variant's residual (GPUBusy less the pass sum),
-    bracketed against the baseline's, moves less than it; each candidate's (shadows off's) delta
-    from the timers' top-level sum matches its GPUBusy delta within it, both bracketed in ms.
-    `pass` None while the verdict waits (a view unjudged, or the session inconclusive on its
-    twin)."""
+    baseline's median GPUBusy); the residual (GPUBusy less the pass sum) of each variant,
+    bracketed against the baseline's (the baseline's at 0), moves less than it between any two
+    variants; each candidate's (shadows off's) delta from the timers' top-level sum matches its
+    GPUBusy delta within it, both bracketed in ms. `pass` False on a failure measured on valid
+    captures; None while the verdict waits (the session inconclusive on its twin, or a view
+    unjudged)."""
+    candidates, twins = session_variants(captures, expected)
     rows, unjudged, failed = [], [], []
     for view in views:
         level = found["perView"][view]
@@ -530,15 +555,15 @@ def a11_verdict(captures: list[dict], views: list[str], rounds: int, found: dict
         limit = level / 100 * base
         row["thresholdMs"] = round(limit, PLACES)
         moved, matched = {}, {}
-        for variant, triples in brackets(captures, view).items():
+        held = brackets(captures, view)
+        for variant in [*candidates, *twins]:
+            triples = held.get(variant, {})
             res = bracketed_difference(triples, rounds, residual)
             if res["problem"]:
                 unjudged.append(f"{view}: {variant}: {res['problem']}")
                 continue
-            moved[variant] = round(res["ms"], PLACES)
-            if abs(res["ms"]) >= limit:
-                failed.append(f"{view}: {variant}'s residual moves {res['ms']:+.4f} ms")
-            if next(iter(triples.values()))[0].get("role") != CANDIDATE:
+            moved[variant] = res["ms"]
+            if variant not in candidates:
                 continue
             timed = bracketed_difference(triples, rounds, top_level)
             gpu = bracketed_difference(triples, rounds, busy)
@@ -553,15 +578,20 @@ def a11_verdict(captures: list[dict], views: list[str], rounds: int, found: dict
             }
             if abs(gap) >= limit:
                 failed.append(f"{view}: {variant}'s timers delta is {gap:+.4f} ms off GPUBusy's")
-        row["residualMovesMs"] = moved
+        if moved:  # every pair of variants, the baseline's residual at 0
+            spread = max(0.0, *moved.values()) - min(0.0, *moved.values())
+            if spread >= limit:
+                named = ", ".join(f"{v} {ms:+.4f}" for v, ms in moved.items())
+                failed.append(f"{view}: the residual spreads {spread:.4f} ms ({named})")
+        row["residualMovesMs"] = {v: round(ms, PLACES) for v, ms in moved.items()}
         row["deltaFromTimers"] = matched
     evidence = {"views": rows, "failed": failed, "unjudged": unjudged}
-    if unjudged:
-        return {"pass": None, **evidence, "pending": "unjudged: " + "; ".join(unjudged)}
     if twin["inside"] is not True:
         return {"pass": None, **evidence, "pending": twin_failure(twin)}
     if failed:
         return {"pass": False, **evidence, "why": "; ".join(failed)}
+    if unjudged:
+        return {"pass": None, **evidence, "pending": "unjudged: " + "; ".join(unjudged)}
     return {"pass": True, **evidence, "why": "every residual and timers delta inside"}
 
 
@@ -571,13 +601,14 @@ def judge_items(
     items: Iterable[str],
     timed: str | None,
     first: dict | None = None,
+    expected: list[dict] | None = None,
 ) -> list[dict]:
     """A measured acceptance run's entries (item, pass, evidence) judged by the calibration: A8
     on the timers-on candidate `timed` (its re-measured first session's evidence `first`), A11
-    on every variant."""
+    on every variant (the record's, `expected`, when given)."""
     views, rounds = list(calibration["views"]), calibration["rounds"]
     found = calibration_thresholds(calibration)
-    twin = session_twin(captures, views, rounds, found)
+    twin = session_twin(captures, views, rounds, found, expected)
     entries = []
     for item in items:
         if item == "A8":
@@ -586,7 +617,7 @@ def judge_items(
             judged = judge_variant(captures, timed, views, rounds, found)
             result = a8_verdict(judged, twin, first)
         else:
-            result = a11_verdict(captures, views, rounds, found, twin)
+            result = a11_verdict(captures, views, rounds, found, twin, expected)
         passed = result.pop("pass")
         entries.append(
             {
