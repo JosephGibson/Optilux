@@ -1093,8 +1093,25 @@ def run_split(
     return write_session(root, data, spec, done, "ok", None, say)
 
 
+# A variant as its parts must agree on it: its file and pin, the options written (a profile's
+# read afresh each launch, never identity) and read back, the timers.
+VARIANT_KEYS = ("id", "role", "pack", "sha512", "profile", "options", "timers")
+
+
+def variants_held(found: dict) -> list[dict]:
+    """A record's variants as one split session's parts must share them."""
+    return [
+        {
+            **{k: v.get(k) for k in VARIANT_KEYS},
+            "effective": (v.get("effective") or {}).get("sha256"),
+        }
+        for v in found.get("variants") or []
+    ]
+
+
 def session_mismatch(parts: list[dict], groups: tuple[tuple[str, ...], ...]) -> str | None:
-    """Why ok parts do not make one session: an identity other than the first part's, or a part
+    """Why ok parts do not make one session: an identity or variants other than the first part's
+    (a profile edited between launches leaves the spec and the identity as they were), or a part
     whose `split` is not the session's group of that number."""
     if len(parts) != len(groups):
         return f"{len(parts)} parts for {len(groups)} groups"
@@ -1104,6 +1121,8 @@ def session_mismatch(parts: list[dict], groups: tuple[tuple[str, ...], ...]) -> 
             return (
                 f"{part['name']}'s identity differs from {parts[0]['name']}'s: {', '.join(differ)}"
             )
+        if variants_held(part) != variants_held(parts[0]):
+            return f"{part['name']}'s variants differ from {parts[0]['name']}'s"
         split = part.get("split") or {}
         if (split.get("part"), split.get("views")) != (n, list(views)):
             held = f"{split.get('views')} as part {split.get('part')}"
