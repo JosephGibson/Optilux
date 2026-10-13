@@ -140,17 +140,21 @@ REFUSALS = [
     (put("seed", 1), "unknown seed"),
     (put("name", "Bad Name"), "is not"),
     (put("name", "x" * 41), "is not"),
-    (put("kind", "measurement"), "acceptance runs only"),
+    (put("kind", "measurement"), "measures a mode's schedule"),
     (put("kind", "smoke"), "one of measurement"),
-    (put("mode", "quick"), "mode is for measurement"),
-    (put("treatment", "mods"), "treatment is for measurement"),
+    (put("mode", "quick"), "takes A8, A11, each once"),
+    (put("mode", "slow"), "one of quick, full"),
+    (put("calibration", None), "calibration is for measured runs"),
+    (put("heap", True), "heap is for measured runs"),
+    (put("treatment", "mods"), "declared treatments come with the JVM track"),
     (put("tier", "dev"), "bench tier"),
     (put("views", "final"), "no views file"),
     (put("views", "../x"), "names no views file"),
     (put("world", "absent"), "no folder"),
     (put("world", "../spike"), "no folder"),
     (put("variants", [{"pack": "other.zip", "profile": None}]), "one variant"),
-    (put("variants", [{"pack": PACK, "profile": "played"}]), "profiles come with M2"),
+    (put("variants", [{"pack": PACK, "profile": "played"}]), "without a mode has one variant"),
+    (put("items", ["A8"]), "runs on a measured schedule"),
     (put("resourcePacks", "deterministic"), "standard set only"),
     (put("items", []), "no acceptance item"),
     (put("items", ["A1", "A1"]), "twice"),
@@ -483,6 +487,7 @@ MEASURED = {
     "optilux",
     "optilux.acceptance",
     "optilux.launch",
+    "optilux.measure",
     "optilux.modclient",
     "optilux.platform",
     "optilux.presentmon",
@@ -1064,10 +1069,14 @@ def matching_facts(ready) -> dict:
 
 
 class NoGames:
-    """The host as world.restore asks it before a run: no game running."""
+    """The host as world.restore and the runner ask it before a launch: no game running, no
+    process to journal."""
 
     def processes(self) -> list:
         return []
+
+    def process_facts(self, pid: int) -> None:
+        return None
 
 
 @pytest.fixture

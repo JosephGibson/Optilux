@@ -1054,7 +1054,7 @@ def test_the_cli_runs_the_mod_session_and_quits_through_it(
     assert mod[2].startswith("mod: frames.index 100 -> 103 after 0.5 s (qpcNs ")
     assert mod[3] == "quit: the mod's quit, exit code 0 in 0.0 s"
     assert mod[4].startswith("request log: results/raw/launch-") and mod[4].endswith(
-        "/requests.jsonl, 9 lines, the token absent"
+        "/requests.jsonl, 12 lines, the token absent"  # the quit's world.left and two screens
     )
     logs = list((root / "results" / "raw").glob("launch-*/requests.jsonl"))
     assert len(logs) == 1

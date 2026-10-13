@@ -34,20 +34,34 @@ SCHEMA = 1
 
 # The run spec (run-record.md#run-spec).
 NAME = re.compile(r"[a-z0-9-]{1,40}")
-SPEC_REQUIRED = ("name", "kind", "views", "world", "variants", "tier", "resourcePacks", "items")
-# mode and treatment belong to measurement runs (M2) and must be absent or null before then;
-# reloads is F4's reload table (docs/plans/m1.md 0.01.09).
-SPEC_OPTIONAL = ("notes", "mode", "treatment", "reloads")
+SPEC_REQUIRED = ("name", "kind", "views", "world", "variants", "tier", "resourcePacks")
+# items: an acceptance run's; mode: a measured schedule's (measurement and calibration runs, and
+# acceptance runs of A8 and A11); calibration: the calibration a measurement run is judged by,
+# null before one exists (plans/m2.md D40); heap: the heap read every RELOAD_EVERY reloads
+# (M2.P06); treatment: declared treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
+SPEC_OPTIONAL = ("items", "notes", "mode", "calibration", "heap", "treatment", "reloads")
 KINDS = ("measurement", "calibration", "acceptance")
+MODES = ("quick", "full")
 ITEMS = tuple(f"A{number}" for number in range(1, 13))
 # The items `run` performs in M1 (docs/plans/m1.md 0.01.08 and 0.01.09), in the record's order.
 RUNNABLE = ("A1", "A2", "A3", "A4", "A7", "A9", "A10")
+# The items a measured schedule carries (plans/m2.md M2.P05, M2.P10): the timers' overhead and
+# their agreement with GPUBusy, judged by M2.P07's statistics.
+MEASURED_ITEMS = ("A8", "A11")
 # The resource-pack set launch writes (suite.json resourcePacks; M3 adds the deterministic one).
 PACK_SET = "standard"
 # An acceptance session reloads twice: selftest's reload and the start-of-run reload; A4 twice
-# more (the broken copy, then the recovery).
+# more (the broken copy, then the recovery). A measured session starts with the same two.
 ACCEPTANCE_RELOADS = 2
 A4_RELOADS = 2
+# A measured run's variants (plans/m2.md M2.P05): an id, the pack, a profile of
+# config/profiles/ or null, option values over it, the per-pass timers on or off. The twins'
+# ids are the runner's (measure.py), never a spec's.
+VARIANT_REQUIRED = ("id", "pack", "profile")
+VARIANT_OPTIONAL = ("options", "timers")
+TWIN = "twin"
+PROFILES = "config/profiles"
+OPTION_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
 # F4's table (roadmap.md#findings-assigned): heap after GC and private bytes every RELOAD_EVERY
 # reloads.
 RELOAD_EVERY = 10
@@ -188,7 +202,9 @@ def load_views(root: Path, world_id: str) -> tuple[dict, Path]:
 
 @dataclass(frozen=True)
 class Spec:
-    """A checked run spec (run-record.md#run-spec)."""
+    """A checked run spec (run-record.md#run-spec). A measured run (`mode` set: measurement and
+    calibration runs, acceptance runs of A8 and A11) carries its variants as checked, the
+    mode's views in the views file's order and its planned reloads."""
 
     name: str
     kind: str
@@ -201,16 +217,177 @@ class Spec:
     notes: str | None
     data: dict
     reloads: int = 0
+    mode: str | None = None
+    calibration: str | None = None
+    heap: bool = False
+    variants: tuple[dict, ...] = ()
+    view_ids: tuple[str, ...] = ()
+    planned: int = 0
+
+
+def candidates(kind: str, variants: tuple[dict, ...] | list[dict], suite: dict) -> int:
+    """Ci, the candidates per round beside the baseline (measurement.md#session): a calibration
+    session's twins (statistics.calibration.twinsPerSession), else the spec's candidates and the
+    A/A twin."""
+    if kind == "calibration":
+        return suite["statistics"]["calibration"]["twinsPerSession"]
+    return len(variants)  # the candidates after the baseline, and the twin
+
+
+def planned_reloads(views: int, ci: int, rounds: int, warmup: bool = True) -> int:
+    """A measured session's reloads (measurement.md#session, plans/m2.md P12): selftest's and the
+    start-of-run reload, the warm-up pass's one per view, then per view the schedule's
+    1 + 2 x R x Ci."""
+    return ACCEPTANCE_RELOADS + (views if warmup else 0) + views * (1 + 2 * rounds * ci)
+
+
+def mode_views(suite: dict, mode: str, views: dict) -> tuple[str, ...]:
+    """The mode's views (suite.json modes.<mode>.views, "all" for every view) in the views file's
+    order; RecordError for a view the file lacks."""
+    listed = [view["id"] for view in views["views"]]
+    wanted = suite["modes"][mode]["views"]
+    if wanted == "all":
+        return tuple(listed)
+    unknown = [vid for vid in wanted if vid not in listed]
+    if unknown:
+        raise RecordError(
+            f"suite.json modes.{mode}.views names {', '.join(unknown)}, which {VIEWS}/"
+            f"{views['id']}.json lacks; fix: the mode's views or the views file"
+        )
+    return tuple(vid for vid in listed if vid in wanted)
+
+
+def profile_options(root: Path, suite: dict, name: str) -> dict[str, str | bool]:
+    """A profile's option values (config/profiles/<reference pack>-<name>.json, its `options`), as
+    the pack's settings file takes them: a number keeps its text in the file ("0.50" stays
+    "0.50", the value the pack's option lists; Iris ignores a value outside them), a boolean
+    stays a boolean. RecordError naming the fix."""
+    known = suite["reference"]["profiles"]
+    if name not in known:
+        raise RecordError(f"profile {name!r}; fix: one of {', '.join(known)} (suite.json)")
+    path = root / PROFILES / f"{suite['reference']['pack']}-{name}.json"
+    shown_path = f"{PROFILES}/{path.name}"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"), parse_float=str, parse_int=str)
+    except OSError:
+        raise RecordError(f"no profile file {shown_path}; fix: add it") from None
+    except ValueError as error:
+        raise RecordError(f"{shown_path} is not JSON ({error}); fix: repair it") from None
+    options = data.get("options") if isinstance(data, dict) else None
+    if not isinstance(data, dict) or data.get("id") != name or not isinstance(options, dict):
+        raise RecordError(
+            f"{shown_path} is no profile {name} with an options object; fix: give id and options"
+        )
+    return check_options(shown_path, options)
+
+
+def check_options(where: str, options: Any) -> dict[str, str | bool]:
+    """Option values as a settings file holds them: names a pack can define, each value a text of
+    one printable line without a backslash, or a boolean."""
+    if not isinstance(options, dict):
+        raise RecordError(f"{where}: options is no object; fix: give name-value pairs")
+    for key, value in options.items():
+        if not OPTION_NAME.fullmatch(key):
+            raise RecordError(f"{where}: option {key!r} is no option name; fix: the pack's name")
+        if isinstance(value, bool):
+            continue
+        if not isinstance(value, str) or not value.isprintable() or "\\" in value or not value:
+            raise RecordError(
+                f"{where}: {key} is {value!r}; fix: write the value as the pack's own text, e.g. "
+                '"-1" or "0.50" (a JSON number would lose "0.50"\'s zero), or true or false'
+            )
+    return dict(options)
+
+
+def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict, ...]:
+    """A measured run's variants: objects of id, pack, profile and optionally options and timers;
+    the first the baseline, ids unique and never a twin's; each pack the reference pack `pack`
+    (the passthrough pack comes with M2.P08); a calibration run holds the baseline alone, as the
+    runner adds its twins. Each checked variant's options: the profile's with the spec's over
+    them."""
+    variants = data["variants"]
+    kind = data["kind"]
+    if not isinstance(variants, list) or not variants:
+        raise RecordError("variants lists none; fix: the baseline first, then the candidates")
+    if kind == "calibration" and len(variants) != 1:
+        raise RecordError(
+            f"a calibration run measures the baseline against its twins, and lists {len(variants)} "
+            "variants; fix: the baseline alone (the runner adds the twins)"
+        )
+    found = []
+    for index, variant in enumerate(variants):
+        where = f"variant {index + 1}"
+        if not isinstance(variant, dict):
+            raise RecordError(f"{where} is no object; fix: give id, pack and profile")
+        missing = [key for key in VARIANT_REQUIRED if key not in variant]
+        extra = [key for key in variant if key not in (*VARIANT_REQUIRED, *VARIANT_OPTIONAL)]
+        if missing or extra:
+            known = ", ".join((*VARIANT_REQUIRED, *VARIANT_OPTIONAL))
+            raise RecordError(
+                f"{where}: missing {missing or 'none'}, unknown {extra or 'none'}; fix: use {known}"
+            )
+        vid = variant["id"]
+        if not isinstance(vid, str) or not NAME.fullmatch(vid) or vid.startswith(TWIN):
+            raise RecordError(
+                f"{where}: id {vid!r} is not [a-z0-9-]{{1,40}} or starts with {TWIN} (the runner's "
+                "twins); fix: rename it"
+            )
+        if vid in (v["id"] for v in found):
+            raise RecordError(f"{where}: id {vid} is listed twice; fix: rename one")
+        if variant["pack"] != pack:
+            raise RecordError(
+                f"{where}: pack {variant['pack']!r}; fix: the reference pack {pack} (the "
+                "passthrough pack comes with M2.P08)"
+            )
+        profile = variant["profile"]
+        if profile is not None and not isinstance(profile, str):
+            raise RecordError(f"{where}: profile {profile!r}; fix: a profile's name, or null")
+        options = profile_options(root, suite, profile) if profile is not None else {}
+        options.update(check_options(where, variant.get("options", {})))
+        timers = variant.get("timers", False)
+        if not isinstance(timers, bool):
+            raise RecordError(f"{where}: timers {timers!r}; fix: true or false")
+        if timers and kind == "calibration":
+            raise RecordError(
+                f"{where}: timers on in a calibration run would calibrate timer twins, M4's "
+                "(plans/m2.md section 2); fix: timers false"
+            )
+        found.append(
+            {"id": vid, "pack": pack, "profile": profile, "options": options, "timers": timers}
+        )
+    return tuple(found)
+
+
+def check_measured_items(items: tuple[str, ...], variants: tuple[dict, ...]) -> None:
+    """A8 and A11's variants (plans/m2.md M2.P10): A8 a baseline without timers and a candidate
+    equal to it with them; A11 every variant with timers on."""
+    base = variants[0]
+    if "A8" in items:
+        same = [
+            v
+            for v in variants[1:]
+            if v["timers"] and (v["profile"], v["options"]) == (base["profile"], base["options"])
+        ]
+        if base["timers"] or not same:
+            raise RecordError(
+                "A8 compares the baseline with timers off against itself with them on; fix: the "
+                "baseline without timers, a candidate equal to it with timers true"
+            )
+    if "A11" in items and not all(v["timers"] for v in variants):
+        raise RecordError("A11 times every variant; fix: timers true on each one")
 
 
 def check_spec(
     root: Path, data: Any, plat: platform.Platform, suite: dict, saves: Path, pack: str
 ) -> Spec:
     """A run spec checked before anything launches (run-record.md#run-spec): its fields, a
-    single-use name, an acceptance kind (M2 brings the others), the bench tier, the views file and
-    its snapshot, the world under `saves`, one variant of the reference pack `pack` at its
-    defaults, the standard resource-pack set, items `run` performs, F4's reload count (`reloads`,
-    a multiple of RELOAD_EVERY) and the session's reload budget. Each refusal names its fix."""
+    single-use name, the kind, the bench tier, the views file and its snapshot, the world under
+    `saves`, the standard resource-pack set and the session's reload budget. An acceptance run
+    without a mode: one variant of the reference pack `pack` at its defaults, items `run`
+    performs, F4's reload count (`reloads`, a multiple of RELOAD_EVERY). A measured run (`mode`
+    quick or full; measurement, calibration, or acceptance of A8 and A11): its variants
+    (check_variants), `calibration` written null (plans/m2.md D40: M2.P07 brings calibrations),
+    `heap` true or false, no treatment and no reloads. Each refusal names its fix."""
     if not isinstance(data, dict):
         raise RecordError("the spec is no JSON object; fix: give its fields as an object")
     missing = [key for key in SPEC_REQUIRED if key not in data]
@@ -232,20 +409,25 @@ def check_spec(
     kind = data["kind"]
     if kind not in KINDS:
         raise RecordError(f"kind {kind!r}; fix: one of {', '.join(KINDS)}")
-    if kind != "acceptance":
-        raise RecordError(f"kind {kind}: `run` takes acceptance runs only; fix: wait for M2")
-    for key in ("mode", "treatment"):
-        if data.get(key) is not None:
-            raise RecordError(f"{key} is for measurement runs; fix: drop it from an acceptance run")
+    mode = data.get("mode")
+    if kind != "acceptance" and mode is None:
+        raise RecordError(f"a {kind} run measures a mode's schedule; fix: mode quick or full")
+    if mode is not None and mode not in MODES:
+        raise RecordError(f"mode {mode!r}; fix: one of {', '.join(MODES)}")
+    if data.get("treatment") is not None:
+        raise RecordError(
+            "treatment: declared treatments come with the JVM track (run-record.md#comparison); "
+            "fix: drop it"
+        )
     if data["tier"] != "bench":
         raise RecordError(
-            f"tier {data['tier']!r}: acceptance runs on the bench tier, the one every measurement "
-            "uses; fix: set tier bench"
+            f"tier {data['tier']!r}: runs use the bench tier, the one every measurement uses; "
+            "fix: set tier bench"
         )
     views = data["views"]
     if not isinstance(views, str) or not VIEW_ID.fullmatch(views):
         raise RecordError(f"views {views!r} names no views file; fix: a config/views/ stem")
-    load_views(root, views)
+    views_file, _ = load_views(root, views)
     if not (root / SNAPSHOTS / views).is_dir():
         raise RecordError(
             f"no snapshot {SNAPSHOTS}/{views}/; fix: copy the world there and hash it (D23)"
@@ -261,13 +443,6 @@ def check_spec(
             f"world {world!r} is no folder of {saves.as_posix()}/ with a level.dat; fix: name the "
             "snapshot's live copy"
         )
-    variants = data["variants"]
-    wanted = [{"pack": pack, "profile": None}]
-    if variants != wanted:
-        raise RecordError(
-            f"variants {json.dumps(variants)}: an M1 acceptance run has one variant, the reference "
-            f"pack at its defaults; fix: {json.dumps(wanted)} (profiles come with M2)"
-        )
     sets = suite.get("resourcePacks", {})
     if data["resourcePacks"] != PACK_SET:
         known = ", ".join(key for key, value in sets.items() if isinstance(value, list))
@@ -275,7 +450,101 @@ def check_spec(
             f"resourcePacks {data['resourcePacks']!r}: launch writes the {PACK_SET} set only "
             f"(of {known}); fix: set {PACK_SET} (M3 adds the deterministic set)"
         )
-    items = data["items"]
+    notes = data.get("notes")
+    if notes is not None and not isinstance(notes, str):
+        raise RecordError("notes must be text; fix: write them as one string")
+    items = data.get("items", [] if mode is not None else None)
+    cap = suite["capture"]["reloadCap"]
+    if mode is None:
+        return check_acceptance_spec(data, suite, pack, views, world, notes, items, cap)
+    allowed = MEASURED_ITEMS if kind == "acceptance" else ()
+    if not isinstance(items, list) or (kind == "acceptance" and not items):
+        raise RecordError(
+            f"items {items!r}: a measured {kind} run takes "
+            + (f"some of {', '.join(allowed)}" if allowed else "none")
+            + "; fix: "
+            + (f"name some of {', '.join(allowed)}" if allowed else "drop items or write []")
+        )
+    if len(set(items)) != len(items) or any(item not in allowed for item in items):
+        raise RecordError(
+            f"items {items}: a measured {kind} run takes "
+            + (f"{', '.join(allowed)}, each once" if allowed else "none")
+            + "; fix: drop the others (M1's items run without a mode)"
+        )
+    for key in ("reloads",):
+        if data.get(key) is not None:
+            raise RecordError(f"{key} is F4's acceptance table; fix: heap true reads the heap")
+    if "calibration" not in data:
+        raise RecordError(
+            "the spec does not name its calibration; fix: write calibration null (plans/m2.md "
+            "D40: no verdicts, and `compare` refuses the record) until `calibrate` writes one"
+        )
+    if data["calibration"] is not None:
+        raise RecordError(
+            f"calibration {data['calibration']!r}: no calibration exists before M2.P07's "
+            "`calibrate`; fix: calibration null (D40)"
+        )
+    heap = data.get("heap", False)
+    if not isinstance(heap, bool):
+        raise RecordError(f"heap {heap!r}; fix: true or false")
+    if heap and kind == "calibration":
+        raise RecordError(
+            "heap true runs a GC every 10 reloads, which no measured run it would judge runs; "
+            "fix: heap false (the budget runs read it, plans/m2.md M2.P06)"
+        )
+    variants = check_variants(root, data, suite, pack)
+    order = tuple(item for item in MEASURED_ITEMS if item in items)
+    check_measured_items(order, variants)
+    ids = mode_views(suite, mode, views_file)
+    planned = planned_reloads(
+        len(ids), candidates(kind, variants, suite), suite["modes"][mode]["rounds"]
+    )
+    if planned > cap:
+        raise RecordError(
+            f"the session plans {planned} reloads (selftest's and the start-of-run, the warm-up "
+            f"pass, {len(ids)} views x the schedule), over capture.reloadCap {cap}; fix: fewer "
+            "candidates or quick mode"
+        )
+    return Spec(
+        name,
+        kind,
+        views,
+        world,
+        pack,
+        "bench",
+        PACK_SET,
+        order,
+        notes,
+        data,
+        mode=mode,
+        heap=heap,
+        variants=variants,
+        view_ids=ids,
+        planned=planned,
+    )
+
+
+def check_acceptance_spec(
+    data: dict,
+    suite: dict,
+    pack: str,
+    views: str,
+    world: str,
+    notes: str | None,
+    items: Any,
+    cap: int,
+) -> Spec:
+    """An acceptance run without a mode (M1's items): one variant, items, F4's reloads."""
+    for key in ("calibration", "heap"):
+        if key in data:
+            raise RecordError(f"{key} is for measured runs; fix: drop it from an acceptance run")
+    variants = data["variants"]
+    wanted = [{"pack": pack, "profile": None}]
+    if variants != wanted:
+        raise RecordError(
+            f"variants {json.dumps(variants)}: an acceptance run without a mode has one variant, "
+            f"the reference pack at its defaults; fix: {json.dumps(wanted)}"
+        )
     runnable = ", ".join(RUNNABLE)
     if not isinstance(items, list) or not items:
         raise RecordError(f"items lists no acceptance item; fix: name some of {runnable}")
@@ -284,6 +553,8 @@ def check_spec(
     for item in items:
         if item not in ITEMS:
             raise RecordError(f"item {item!r} is no acceptance item; fix: one of A1..A12")
+        if item in MEASURED_ITEMS:
+            raise RecordError(f"item {item} runs on a measured schedule; fix: give a mode")
         if item not in RUNNABLE:
             raise RecordError(f"item {item} comes in a later milestone; fix: drop it")
     reloads = data.get("reloads", 0)
@@ -298,17 +569,26 @@ def check_spec(
             "(the table's row step), or leave it out"
         )
     planned = ACCEPTANCE_RELOADS + (A4_RELOADS if "A4" in items else 0) + reloads
-    cap = suite["capture"]["reloadCap"]
     if planned > cap:
         raise RecordError(
             f"the session plans {planned} reloads, over capture.reloadCap {cap}; fix: fewer "
             "reloads, or raise the cap from F4's table"
         )
-    notes = data.get("notes")
-    if notes is not None and not isinstance(notes, str):
-        raise RecordError("notes must be text; fix: write them as one string")
     order = tuple(item for item in RUNNABLE if item in items)
-    return Spec(name, kind, views, world, pack, "bench", PACK_SET, order, notes, data, reloads)
+    return Spec(
+        data["name"],
+        data["kind"],
+        views,
+        world,
+        pack,
+        "bench",
+        PACK_SET,
+        order,
+        notes,
+        data,
+        reloads,
+        planned=planned,
+    )
 
 
 # The identity.
@@ -865,8 +1145,17 @@ def write_record(root: Path, record: dict, say: Callable[[str], None] | None = N
         raise RecordError(f"{RECORDS}/{path.name} exists; fix: records are never overwritten")
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(record, indent=1, ensure_ascii=False, allow_nan=False) + "\n"
-    with path.open("x", encoding="utf-8", newline="\n") as out:
-        out.write(text)
+    # Written whole beside it, then renamed: a run killed mid-write leaves no short record, and
+    # the rename refuses a record that appeared meanwhile.
+    part = path.with_name(f".{path.name}.part")
+    part.write_bytes(text.encode("utf-8"))
+    try:
+        part.rename(path)
+    except FileExistsError:
+        part.unlink()
+        raise RecordError(
+            f"{RECORDS}/{path.name} exists; fix: records are never overwritten"
+        ) from None
     if say is not None:
         say(f"record: {RECORDS}/{path.name}, {len(text.encode('utf-8')):,} bytes")
     return path
