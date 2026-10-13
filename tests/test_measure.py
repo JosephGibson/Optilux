@@ -478,6 +478,8 @@ SPEC_REFUSALS = [
     (dict(heap=True, keepViews=[]), "each once"),
     (dict(heap=True, keepViews=["forest_noon"] * 2), "each once"),
     (dict(heap=True, keepViews=["night"]), "some of the mode's views here"),
+    (dict(heap=True, keepViews=[["forest_noon"]]), "each once"),
+    (dict(heap=True, dimensions=[{"dim": "x"}]), "each once"),
     (dict(heap=True, alone="yes"), "true or false"),
     (dict(heap=True, windows=0), "true or false"),
     (dict(heap=True, alone=True, variants=[BASE, {**BASE, "id": "other"}]), "the baseline only"),
@@ -1102,7 +1104,7 @@ def test_the_heap_is_read_at_the_start_and_every_tenth_reload(fake_run, monkeypa
     table = found["heapTable"]
     assert [r["reloads"] for r in table["rows"]] == [2, 10]  # the start's two, then the tenth
     assert asked == ["GC.run", "GC.heap_info"] * 2
-    assert table["perReload"] == {"heapMiB": 0.0, "privateMiB": 0.0, "gpuDedicatedMiB": 64.0}
+    assert table["perReload"] == {"heapMiB": 0.0, "privateMiB": 0.0, "gpuMiB": 64.0}
     assert table["physicalMiB"] == 32768
     assert table["rows"][0]["gpu"] == {
         "processDedicatedMiB": 1088.0,  # 1 GiB and the start-of-run reload's 64 MiB
@@ -1207,7 +1209,8 @@ def test_the_diagnosis_runs_the_switches_without_windows(fake_run, monkeypatch) 
         "twin",
         "baseline",
     ]
-    assert all(c["noWindow"] and not c["valid"] and "gpuBusyMs" not in c for c in captures)
+    assert all(c["flags"] == ["noWindow"] and not c["valid"] for c in captures)
+    assert all("gpuBusyMs" not in c and c["settleS"] is None for c in captures)
     assert all(c["gpuMemory"]["adapterDedicatedMiB"] == 4096.0 for c in captures)
     assert reloads(fake) + 1 == 2 + 1 + 5
     assert not [m for m in fake.received if m.get("cmd") == "window.measure"]
@@ -1247,6 +1250,9 @@ def test_gpu_memory_reads_the_game_and_its_adapter_on_the_luid() -> None:
         measure.gpu_memory(text, 4242, "0x108fa")
     with pytest.raises(record.RecordError, match="no counter table"):
         measure.gpu_memory("Error: no such counter\n", 2020, "0x108fa")
+    unread = text.replace('"1043030016.000000"', '" "')  # pid 2020's dedicated on 0x108fa
+    with pytest.raises(record.RecordError, match="reads ' ', no number"):
+        measure.gpu_memory(unread, 2020, "0x108fa")
 
 
 def test_a_snapshot_whose_view_functions_left_the_views_file_is_refused(fake_run) -> None:

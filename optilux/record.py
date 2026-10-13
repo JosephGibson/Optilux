@@ -576,6 +576,7 @@ def check_budget(
         if (
             not isinstance(dims, list)
             or not dims
+            or any(not isinstance(dim, str) for dim in dims)
             or len(set(dims)) != len(dims)
             or any(dim not in DIMENSIONS for dim in dims)
         ):
@@ -593,6 +594,7 @@ def check_budget(
         if (
             not isinstance(kept, list)
             or not kept
+            or any(not isinstance(vid, str) for vid in kept)
             or len(set(kept)) != len(kept)
             or any(vid not in ids for vid in kept)
         ):

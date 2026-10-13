@@ -99,6 +99,7 @@ INVALIDATING_FLAGS = (
     "presentMode",
     "cpuLimited",
     "event",
+    "noWindow",
 )
 # The events that end a measured session (D42).
 ENDING = ("focus.lost", "screen.opened")
@@ -424,9 +425,8 @@ def captured(entry: dict, line: presentmon.Timeline, events: list[dict], validit
         return {
             **place,
             "reloadS": entry["reload"]["seconds"],
-            "noWindow": True,
             "gpuMemory": entry.get("gpuMemory"),
-            "flags": [],
+            "flags": ["noWindow"],
             "valid": False,
             "problems": [],
         }
@@ -917,7 +917,7 @@ def bare(
 ) -> None:
     """A budget run's capture without its window (record.BUDGET `windows` false): the reload,
     its 2 frames and its options alone, the pose checked, the GPU memory read, no frames
-    measured."""
+    measured and no settle waited."""
     held = m.s.step(f"{label}: camera.get", m.c.camera_get)
     moved = modclient.pose_differences(view_pose(view), held["pose"])
     if moved:
@@ -929,7 +929,7 @@ def bare(
         "variant": variant.id,
         "role": variant.role,
         "round": rnd,
-        "settleS": settle,
+        "settleS": None,  # no window, so no settle waited
         "reload": {k: reload[k] for k in ("seconds", "reloadFrame", "pack")},
         "window": None,
         "events": [],
@@ -966,8 +966,10 @@ def gpu_memory(text: str, pid: int, luid: str) -> dict:
             continue
         try:
             value = float(sample[column])
-        except ValueError:
-            continue
+        except ValueError:  # one unread instance would make the sum silently low
+            raise record.RecordError(
+                f"typeperf's {path} reads {sample[column]!r}, no number"
+            ) from None
         key = f"{'process' if process else 'adapter'}{match['kind']}MiB"
         found[key] = found.get(key, 0.0) + value
     keys = [f"{who}{kind}MiB" for who in ("process", "adapter") for kind in ("Dedicated", "Shared")]
@@ -1015,8 +1017,9 @@ def heap_row(m: Measured) -> None:
 
 def heap_table(rows: list[dict], physical: int) -> dict | None:
     """The heap rows with the growth per reload from the first to the last and the machine's
-    physical memory in bytes (plans/m2.md D43's rule reads them); the game's dedicated GPU memory
-    likewise when both rows read it."""
+    physical memory in bytes (plans/m2.md D43's rule reads them); the game's GPU memory,
+    dedicated and shared (dedicated alone stops at the card's size), likewise when both rows read
+    it."""
     if not rows:
         return None
     first, last = rows[0], rows[-1]
@@ -1029,15 +1032,21 @@ def heap_table(rows: list[dict], physical: int) -> dict | None:
         if count
         else None,
     }
-    gpu = [(row.get("gpu") or {}).get("processDedicatedMiB") for row in (first, last)]
+    gpu = [game_gpu(row.get("gpu") or {}) for row in (first, last)]
     if count and gpu[0] is not None and gpu[1] is not None:
-        per["gpuDedicatedMiB"] = round((gpu[1] - gpu[0]) / count, 1)
+        per["gpuMiB"] = round((gpu[1] - gpu[0]) / count, 1)
     return {
         "every": record.RELOAD_EVERY,
         "physicalMiB": round(physical / 1024**2),
         "rows": rows,
         "perReload": per,
     }
+
+
+def game_gpu(reading: dict) -> float | None:
+    """The game's dedicated plus shared GPU memory of one reading, None when it was not read."""
+    dedicated, shared = reading.get("processDedicatedMiB"), reading.get("processSharedMiB")
+    return None if dedicated is None or shared is None else dedicated + shared
 
 
 # After the session.
