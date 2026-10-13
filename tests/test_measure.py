@@ -421,21 +421,35 @@ def test_a_measured_spec_carries_its_variants_views_and_reloads(bench_root) -> N
         "profile": "played",
         "options": {"SHADOW_QUALITY": "-1"},
     }
-    full = record.check_spec(
-        root,
-        measured(mode="full", variants=[measured()["variants"][0], shadows]),
-        PLAT,
-        SUITE,
-        saves,
-        PACK,
-    )
+    with_shadows = measured(mode="full", variants=[measured()["variants"][0], shadows])
+    wide = copy.deepcopy(SUITE)
+    wide["capture"]["reloadCap"] = 288  # the planning, before plans/m2.md D43's cap of 20
+    full = record.check_spec(root, with_shadows, PLAT, wide, saves, PACK)
     assert full.planned == record.planned_reloads(11, 2, 2) and len(full.view_ids) == 11
     assert (spec.rounds, full.rounds) == (1, 2)  # the modes' own R
     assert full.variants[1]["options"] == {**PLAYED, "SHADOW_QUALITY": "-1"}
     calibration = record.check_spec(root, measured(kind="calibration"), PLAT, SUITE, saves, PACK)
     twins = measure.variants(calibration, SUITE)
-    assert [v.id for v in twins] == ["baseline", "twin-1", "twin-2", "twin-3", "twin-4", "twin-5"]
-    assert calibration.planned == 38
+    assert [v.id for v in twins] == ["baseline", "twin-1", "twin-2"]  # twinsPerSession 2
+    assert calibration.planned == 20  # 2 + 3 + 3 x (1 + 2 x 1 x 2): the cap exactly
+
+
+def test_the_cap_of_20_holds_quick_mode_and_refuses_full_mode_until_its_split(bench_root):
+    """plans/m2.md D43 (suite.json capture.reloadCap 20): quick mode's twin and one candidate
+    plan 20 and pass, one reload over a cap of 19 is refused, full mode's 112 is refused naming
+    the split; a budget run (heap true) passes the cap."""
+    root, saves = bench_root
+    assert SUITE["capture"]["reloadCap"] == 20
+    pair = measured(variants=[BASE, SHADOWS])
+    assert record.check_spec(root, pair, PLAT, SUITE, saves, PACK).planned == 20
+    tight = copy.deepcopy(SUITE)
+    tight["capture"]["reloadCap"] = 19
+    with pytest.raises(record.RecordError, match=r"plans 20 reloads.*over capture\.reloadCap 19"):
+        record.check_spec(root, pair, PLAT, tight, saves, PACK)
+    with pytest.raises(record.RecordError, match="splits into launches of views"):
+        record.check_spec(root, {**pair, "mode": "full"}, PLAT, SUITE, saves, PACK)
+    budget = {**pair, "mode": "full", "heap": True}
+    assert record.check_spec(root, budget, PLAT, SUITE, saves, PACK).planned == 112
 
 
 BASE = {"id": "baseline", "pack": PACK, "profile": "played"}

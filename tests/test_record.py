@@ -163,7 +163,7 @@ REFUSALS = [
     (put("reloads", 15), "multiple of 10"),
     (put("reloads", -10), "multiple of 10"),
     (put("reloads", True), "multiple of 10"),
-    (put("reloads", 290), "over capture.reloadCap 288"),
+    (put("reloads", 290), "over capture.reloadCap 20"),
     (put("notes", 3), "notes must be text"),
 ]
 
@@ -210,11 +210,14 @@ def test_the_reload_budget_is_checked(fixture_root) -> None:
 def test_the_0_01_09_items_and_f4s_reloads_are_taken(fixture_root) -> None:
     root, saves = fixture_root
     data = {**spec(), "items": ["A9", "A10", "A7", "A4"], "reloads": 50}
-    found = check(root, saves, data)
+    # The session's reloads: two at the start, A4's two, F4's fifty; over plans/m2.md D43's 20.
+    with pytest.raises(record.RecordError, match=r"plans 54 reloads, over capture\.reloadCap 20"):
+        check(root, saves, data)
+    suite = copy.deepcopy(SUITE)
+    suite["capture"]["reloadCap"] = 54
+    found = record.check_spec(root, data, PLAT, suite, saves, PACK)
     assert found.items == ("A4", "A7", "A9", "A10") and found.reloads == 50
     assert check(root, saves, spec()).reloads == 0
-    # The session's reloads: two at the start, A4's two, F4's fifty.
-    suite = copy.deepcopy(SUITE)
     suite["capture"]["reloadCap"] = 53
     with pytest.raises(record.RecordError, match="plans 54 reloads"):
         record.check_spec(root, data, PLAT, suite, saves, PACK)
