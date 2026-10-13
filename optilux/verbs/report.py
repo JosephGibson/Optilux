@@ -138,6 +138,8 @@ def page(found: dict, captures: list[dict]) -> str:
         + (f": {e(found['reason'])}" if found.get("reason") else "")
         + "</p>",
     ]
+    if found.get("parts"):
+        out.append(f"<p>A split session: {e(', '.join(found['parts']))}.</p>")
     if found.get("mode") is not None and found.get("calibration") is None:
         out.append("<p>Calibration null (plans/m2.md D40): no verdicts.</p>")
     if found.get("verdicts"):
@@ -170,13 +172,13 @@ def page(found: dict, captures: list[dict]) -> str:
         headings = ["variant", "role", "profile", "timers", "options off the baseline's"]
         out.append("<h2>Variants</h2>" + table(headings, rows))
     if captures:
+        columns = [*COLUMNS, ("part", "part")] if any("part" in c for c in captures) else COLUMNS
         rows, classes = [], []
         for c in captures:
-            rows.append(
-                [number(c.get(key)) for _, key in COLUMNS] + [e(", ".join(c.get("flags") or []))]
-            )
+            flags = e(", ".join(c.get("flags") or []))
+            rows.append([number(c.get(key)) for _, key in columns] + [flags])
             classes.append("" if c.get("valid") else "invalid")
-        headings = [h for h, _ in COLUMNS] + ["flags"]
+        headings = [h for h, _ in columns] + ["flags"]
         valid = sum(1 for c in captures if c.get("valid"))
         out.append(f"<h2>Captures</h2><p>{valid} of {len(captures)} valid.</p>")
         out.append(table(headings, rows, classes))
@@ -199,7 +201,13 @@ def page(found: dict, captures: list[dict]) -> str:
 def report(root: Path, name: str) -> Path:
     """results/raw/<name>/report.html written from the record; its path."""
     found = record.read_record(root, name)
-    text = page(found, found.get("captures") or [])
+    split = found.get("split")
+    if split:
+        raise ReportError(
+            f"{name} is part {split['part']} of session {split['session']}; fix: `optilux report "
+            f"{split['session']}` (its session record joins the parts)"
+        )
+    text = page(found, record.session_captures(root, found))
     folder = root / record.RAW / name
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / PAGE

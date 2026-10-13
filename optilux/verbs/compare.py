@@ -25,16 +25,17 @@ class CompareError(RuntimeError):
     """A record `compare` refuses; the message names the field and the fix."""
 
 
-def captures_of(root: Path, found: dict) -> list[dict]:
-    """The captures a record's verdicts read."""
-    return found.get("captures") or []
-
-
 def compare(root: Path, name: str, cid: str | None) -> dict:
     """The record `name` re-judged by the calibration `cid` (else its own): the refusals in
     order, identity key by key, kind, mode; then the verdicts, the twin monitor and A8's and A11's
     entries, and whether the record's own verdicts agree."""
     found = record.read_record(root, name)
+    split = found.get("split")
+    if split:
+        raise CompareError(
+            f"{name} is part {split['part']} of session {split['session']}; fix: `optilux compare "
+            f"{split['session']}` (its session record joins the parts)"
+        )
     cid = cid or found.get("calibration")
     if cid is None:
         mode = found.get("mode") or "quick"
@@ -62,7 +63,7 @@ def compare(root: Path, name: str, cid: str | None) -> dict:
             f"{name}'s mode is {mode}, calibration {cid[:24]}... is {cal['mode']} mode's; fix: "
             f"the {mode} calibration"
         )
-    captures = captures_of(root, found)
+    captures = record.session_captures(root, found)
     suite = json.loads((root / SUITE).read_text(encoding="utf-8"))
     monitor = suite["statistics"]["twinMonitor"]
     judged = stats.judge(captures, cal, mode)
