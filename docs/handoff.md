@@ -1,5 +1,5 @@
 # Handoff
-Status: the latest stop: M2.P06, the reload budget, done: heap 6144 MiB and a cap of 20 reloads a launch (user, 2026-10-13: the driver kept, sessions over the cap split); the split needs a re-plan before M2.P07.
+Status: the latest stop: M2.P06, the reload budget, done: heap 6144 MiB and a cap of 20 reloads a launch (user, 2026-10-13: the driver kept, sessions over the cap split); the split re-planned into M2.P07 (user, 2026-10-13).
 
 ## Contents
 Outcome · What changed · Checks · Review · Open questions · Left alone · Weak points · Commits and time · Next
@@ -30,11 +30,7 @@ Last phase: M2.P06
 - m2-diag-alone-1 and -switches-1 keep `gpuDedicatedMiB` (about half the growth) and switches' noWindow true with flags []: records are append-only.
 
 ## Open questions
-- For the re-plan (the user's approval), before M2.P07, recommendations first:
-  - The split's phase: M2.P07, which already brings `calibrate` and `compare`: `run` and `calibrate` launch a session's view groups, `compare` joins a session's records; its estimate rises. A new phase renumbers the prompts.
-  - "Session": AGENTS.md says one launch, while a split full-mode session spans 6 launches; minSessionsPerMode counts the whole split session (2 nulls over all 11 views), and the term follows.
-  - The warm-up pass: D43 drops it in split launches, while D47 keeps it pending M2.P08's survey, which plans it in full mode (a 2-view launch with it is 22): the survey at R 1 (2 + 3 + 3 x 5 = 20 a 3-view launch) keeps D47's comparison.
-  - Sizes: plans/m2.md section 8 (M2.P09 about 70 launches, not 15), roadmap.md#estimates, suite.json's estMinutesPer5Variants 19 (no 5-variant launch fits 20).
+- Re-planned (user, 2026-10-13, all five items as recommended): M2.P07 builds D43's split (3.5 to 5 h) as run-record.md#split-sessions specifies (groups, parts and their names, resume, a part's identity, the session record with the verdicts and A8's and A11's entries, the survey's `warmup`); a split full-mode session counts as one session; M2.P08's survey at R 1 in 3-view launches keeps each launch's warm-up pass for D47, and D47 keeping it stops M2.P08 (full mode's split drops it, D43); sizes in plans/m2.md sections 5 and 8, roadmap.md and the prompts (104-113 launches, M2.P09 about 77 over about 4 h, 26.5 h agent, the trip at 144.6 h); D41, D42, D44 and D45 cite measurement.md as built to fit the plan's cap. The reviewer read the re-plan: 16 findings (1 high: the split's verdicts had no record), each read at its source and folded in. Left to M2.P07: AGENTS.md's session term, suite.json's estMinutes notes.
 - The driver: kept (user, 2026-10-13). Records note its version; a driver change moves the leak, and nothing checks it before a measured launch.
 - Carried: D47; nxplayer.bin's GPU share (3.2-3.3 % before the first diagnosis launch); orphans of a join or of A9; the baseline's profile unenforced; stepped thunder's debris; the views file's end_city `why`; world.py in `harness`; unmatched pops; the residual (M2.P10); the display's rate and count; machine state; window 1's start frame.
 
@@ -45,12 +41,12 @@ Last phase: M2.P06
 ## Weak points
 - One run per diagnosis cell; the driver lead compares M1's records with M2's, between which the jar, the world and the runner's reload path changed too.
 - The validity flags passed captures past the drift onset: they judge a window, not a session's drift; the cap keeps sessions before it.
-- The plan has 6 bytes left: the re-plan cuts text or splits the milestone.
+- The plan has 15 bytes left and the prompts 64: a further amendment cuts duplicated text first, or splits the milestone.
 
 ## Commits and time
-- 62f63a9, 0cda0e7, 8717b2f, acd5aaa, 365646b, 1f2a6eb, 1671fae, 79b2531, e24925e docs: split sessions over the reload cap into launches of views; 02bc5a5 feat: cap a launch at 20 reloads and calibrate 2 twins a session; this handoff.
-- M2.P06 this session: 04:32-04:45, about 10:15-11:15 and 13:38-14:15 ADT (the rest waiting on the user's answers): about 1.8 h against 1.5 h, 2.4 h with the first stop's 0.6 h.
-- Tripwire: M0-M3 summed 70.8 h, the trip at 141.6 h; actuals about 35.4 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 2.4).
+- 62f63a9, 0cda0e7, 8717b2f, acd5aaa, 365646b, 1f2a6eb, 1671fae, 79b2531, e24925e docs: split sessions over the reload cap into launches of views; 02bc5a5 feat: cap a launch at 20 reloads and calibrate 2 twins a session; 6afc263 docs: hand off the reload budget with a 20-reload cap per launch; the re-plan with this handoff.
+- M2.P06 this session: 04:32-04:45, about 10:15-11:15 and 13:38-14:15 ADT (the rest waiting on the user's answers): about 1.8 h against 1.5 h, 2.4 h with the first stop's 0.6 h; the re-plan 14:40 to about 15:00, about 0.35 h.
+- Tripwire: M0-M3 summed 72.3 h, the trip at 144.6 h; actuals about 35.8 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 2.4, the re-plan 0.35).
 
 ## Next
-The re-plan of M2.P07 to M2.P10 for D43's split (Open questions), plans/m2.md and docs/prompts/m2.md amended with the user's approval; then /optilux-next prints M2.P07's prompt.
+/optilux-next prints M2.P07's prompt (5 h, XL: the statistics, the verbs and D43's split).
