@@ -163,6 +163,10 @@ class RunHost(launch.Host):
     def available_memory(self) -> int:
         return psutil.virtual_memory().available
 
+    def physical_memory(self) -> int:
+        """The machine's physical memory in bytes (plans/m2.md D43's private-bytes limit)."""
+        return psutil.virtual_memory().total
+
     def key_press(self, vk: int, scan: int) -> int:
         return sendinput.key_press(vk, scan=scan)
 

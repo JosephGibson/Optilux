@@ -520,10 +520,10 @@ def acceptance_after(run: Runner) -> None:
 def measured_plan(run: Runner) -> str:
     spec = run.spec
     ids = ", ".join(v.id for v in run.found)
-    rounds = run.ready.suite["modes"][spec.mode]["rounds"]
     return (
-        f"a {spec.mode}-mode {spec.kind} run of {ids} on {len(spec.view_ids)} views, {rounds} "
-        f"round(s), {spec.planned} reloads, PresentMon recording throughout"
+        f"a {spec.mode}-mode {spec.kind} run of {ids} on {len(spec.view_ids)} views, "
+        f"{spec.rounds} round(s), {spec.planned} reloads, PresentMon recording throughout"
+        + (", the heap read every 10 reloads" if spec.heap else "")
     )
 
 
@@ -580,8 +580,7 @@ def measured_fields(run: Runner) -> dict:
     if m is not None:
         captures, problems = measure.summarize(m, pid)
         run.problems += problems
-    rounds = run.ready.suite["modes"][spec.mode]["rounds"]
-    planned = len(spec.view_ids) * (1 + len(measure.schedule(run.found, rounds)))
+    planned = len(spec.view_ids) * (1 + len(measure.schedule(run.found, spec.rounds)))
     run.problems += measure.measured_problems(
         captures, planned, run.status == "ok" and not run.problems
     )
@@ -594,7 +593,7 @@ def measured_fields(run: Runner) -> dict:
     if spec.kind == "acceptance":
         found["acceptance"] = measure.items_evidence(spec.items, captures)
     if spec.heap:
-        found["heapTable"] = measure.heap_table(m.heap if m else [])
+        found["heapTable"] = measure.heap_table(m.heap if m else [], run.host.physical_memory())
     full = {"captures": captures, "entries": m.entries if m else []}
     (run.raw / CAPTURES).write_text(json.dumps(full, indent=1, default=str) + "\n", "utf-8")
     return found

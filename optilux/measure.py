@@ -13,10 +13,11 @@ run finishes (D41).
 - The session: PresentMon started on the game (one ETW session per run, P5); the session start,
   the baseline's files written before the start-of-run reload; the warm-up pass, one baseline
   window per view; the measured pass, per view the schedule A, then (Ci, A) for each candidate, R
-  rounds. Each pass is a lap over the mode's views, ordered for the fewest weather and dimension
-  changes (D48). At a view: its function (time, weather), camera.place, the GUI and game mode
-  (D49: entities alone shows the GUI, in creative with prep's torch), then the stepped ticks when
-  the overworld's weather changed, with the camera at the view. Per capture: the variant's files,
+  rounds (the mode's, or a budget run's own: record.BUDGET). Each pass is a lap over the mode's
+  views, ordered for the fewest weather and dimension changes (D48). At a view: its function
+  (time, weather), camera.place, the GUI and game mode (D49: entities alone shows the GUI, in
+  creative with prep's torch), then the stepped ticks when the overworld's weather changed, with
+  the camera at the view. Per capture: the variant's files,
   shaders.reload and the options read back, timers.start for a timers-on variant,
   window.measure {after: reload} with the largest settle that applies, timers.stop; the heap read
   every record.RELOAD_EVERY reloads when the spec asks (M2.P06). PresentMon stops once a row past
@@ -699,10 +700,9 @@ def body(m: Measured) -> None:
         order = lap(m.views, m.ramped)
         laps.append([v["id"] for v in order])
         m.facts["laps"] = laps
-        rounds = m.suite["modes"][m.spec.mode]["rounds"]
         for view in order:
             switch = arrive(m, view)
-            for slot, (variant, r) in enumerate(schedule(m.found, rounds)):
+            for slot, (variant, r) in enumerate(schedule(m.found, m.spec.rounds)):
                 settle = settle_for(m.suite["capture"], slot == 0, switch and slot == 0)
                 capture(m, view, variant, r, 2, settle)
         if m.gui:
@@ -887,8 +887,9 @@ def heap_row(m: Measured) -> None:
     )
 
 
-def heap_table(rows: list[dict]) -> dict | None:
-    """The heap rows with the growth per reload from the first to the last (M2.P06 reads them)."""
+def heap_table(rows: list[dict], physical: int) -> dict | None:
+    """The heap rows with the growth per reload from the first to the last and the machine's
+    physical memory in bytes (plans/m2.md D43's rule reads them)."""
     if not rows:
         return None
     first, last = rows[0], rows[-1]
@@ -901,7 +902,12 @@ def heap_table(rows: list[dict]) -> dict | None:
         if count
         else None,
     }
-    return {"every": record.RELOAD_EVERY, "rows": rows, "perReload": per}
+    return {
+        "every": record.RELOAD_EVERY,
+        "physicalMiB": round(physical / 1024**2),
+        "rows": rows,
+        "perReload": per,
+    }
 
 
 # After the session.
