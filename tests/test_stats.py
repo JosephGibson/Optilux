@@ -341,7 +341,10 @@ def test_a11_passes_when_residuals_hold_and_the_timers_agree() -> None:
 
 def test_a11_fails_on_a_moving_residual_or_timers_off_gpubusy() -> None:
     moved = a11((8.0, 7.0, 1.2))
-    assert moved["pass"] is False and "shadows's residual moves +0.2000 ms" in moved["why"]
+    assert (
+        moved["pass"] is False
+        and "v1: the residual spreads 0.2000 ms (shadows +0.2000" in (moved["why"])
+    )
     off = a11((8.0, 6.9, 1.0))
     assert off["pass"] is False and "timers delta is -0.1000 ms off" in off["why"]
 
@@ -349,3 +352,63 @@ def test_a11_fails_on_a_moving_residual_or_timers_off_gpubusy() -> None:
 def test_a11_waits_on_dropped_timer_frames() -> None:
     found = a11((8.0, 7.0, 1.0), flags=("timersDropped",))
     assert found["pass"] is None and "the timers dropped frames" in found["pending"]
+
+
+def test_a11_compares_every_pair_of_variants_not_each_with_the_baseline_alone() -> None:
+    """mod.md#12-acceptance: the residual moves less than the threshold between the variants:
+    shadows off at -0.03 ms and the twin at +0.03 ms are each inside 0.05 ms of the baseline's,
+    0.06 ms apart."""
+    captures = []
+    for view in ("v1", "v2"):
+        others = [
+            ("shadows", "candidate", [(8.0, (), (7.03, 0.97))]),
+            ("twin", "twin", [(10.0, (), (8.97, 1.03))]),
+        ]
+        captures += view_captures(view, [(10.0, (), (9.0, 1.0))] * 3, others, 1, len(captures) + 1)
+    entry = stats.judge_items(captures, FLOORED, ["A11"], None)[0]
+    assert entry["pass"] is False and "the residual spreads 0.0600 ms" in entry["evidence"]["why"]
+
+
+def test_a11_fails_on_a_measured_failure_though_another_view_is_unjudged() -> None:
+    captures = []
+    for view, flags in (("v1", ()), ("v2", ("timersDropped",))):
+        others = [
+            ("shadows", "candidate", [(8.0, flags, (7.0, 1.2))]),
+            ("twin", "twin", [(10.0, (), (9.0, 1.0))]),
+        ]
+        captures += view_captures(view, [(10.0, (), (9.0, 1.0))] * 3, others, 1, len(captures) + 1)
+    entry = stats.judge_items(captures, FLOORED, ["A11"], None)[0]
+    assert entry["pass"] is False and entry["evidence"]["unjudged"]
+
+
+def test_an_accept_at_exactly_twice_its_threshold_is_still_confirmed() -> None:
+    """measurement.md: an accept within 2x threshold, on the unrounded numbers."""
+    judged = {
+        "variant": "cand",
+        "views": [],
+        "unjudged": [],
+        "geoMeanThreshold": 0.5,
+        "geoMeanDelta": -1.0,
+        "inside": False,
+        "bare": "accept",
+        "exact": -1.0,
+        "exactThreshold": 0.5,
+    }
+    found = stats.candidate_verdict(judged, {"inside": True}, "full")
+    assert found["confirm"] is True and "exact" not in found and "exactThreshold" not in found
+    beyond = stats.candidate_verdict({**judged, "exact": -1.0001}, {"inside": True}, "full")
+    assert beyond["confirm"] is False
+
+
+def test_a_variant_the_record_names_but_never_measured_is_unjudged_not_left_out() -> None:
+    expected = [
+        {"id": "baseline", "role": "baseline"},
+        {"id": "cand", "role": "candidate"},
+        {"id": "late", "role": "candidate"},
+        {"id": "twin", "role": "twin"},
+    ]
+    found = stats.judge(session({"v1": 9.0, "v2": 9.0}), FLOORED, "full", expected)
+    late = found["candidates"][1]
+    assert late["variant"] == "late" and late["verdict"] == "inconclusive"
+    assert late["unjudged"] == ["v1", "v2"] and "round 1 was not measured" in late["why"]
+    assert len(stats.judge(session({"v1": 9.0, "v2": 9.0}), FLOORED, "full")["candidates"]) == 1
