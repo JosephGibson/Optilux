@@ -149,7 +149,7 @@ def test_a_record_without_a_calibration_is_refused_naming_calibrate(root, capsys
     write_record(root, "m2-null-1", None, captures(6.3))
     err = refusal(capsys, "m2-null-1")
     assert "names no calibration (calibration null, plans/m2.md D40" in err
-    assert "fix: `optilux calibrate --mode quick`" in err
+    assert "fix: `optilux calibrate --mode quick`, then a measurement run that names" in err
     missing = "quick-" + "0" * 64
     err = refusal(capsys, "m2-null-1", "--calibration", missing)
     assert "fix: `optilux calibrate --mode quick`" in err

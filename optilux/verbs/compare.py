@@ -42,8 +42,7 @@ def compare(root: Path, name: str, cid: str | None) -> dict:
         mode = found.get("mode") or "quick"
         raise CompareError(
             f"{name} names no calibration (calibration null, plans/m2.md D40: no verdicts); fix: "
-            f"`optilux calibrate --mode {mode}` for its identity, then `optilux compare {name} "
-            "--calibration <its id>`"
+            f"`optilux calibrate --mode {mode}`, then a measurement run that names the id it prints"
         )
     cal = record.load_calibration(root, cid)
     differ = record.identity_differences(found.get("identity"), cal["identity"])
