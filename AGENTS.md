@@ -14,8 +14,8 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout
-- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py stored prompts, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, session.py a game session, measure.py the measured session, acceptance.py M1's items, world.py the world verbs, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper, presentmon.py PresentMon, docs_check.py the doc rules. Run `uv run optilux <verb>`.
-- tests/: pytest, run in parallel by `uv run optilux test` (`--serial`: one process); fixtures/ saved 26.3 JSON, log, logman, jcmd, typeperf and PresentMon output; `windows`-marked tests skip elsewhere.
+- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py stored prompts, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, session.py a game session, measure.py the measured session, stats.py the statistics, acceptance.py M1's items, world.py the world verbs, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py the SendInput helper, presentmon.py PresentMon, docs_check.py the doc rules. Run `uv run optilux <verb>`.
+- tests/: pytest, run in parallel by `uv run optilux test` (`--serial`: one process); fixtures/ saved 26.3 output; `windows`-marked tests skip elsewhere.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`), optilux-release (the PR checklist, the release watch, the switch block), optilux-plan; agents/researcher.md and reviewer.md (read-only).
 - .github/: workflows/ci.yml (push and pull_request) and release.yml (push to main), both windows-latest (docs/workflow.md#release).
@@ -42,8 +42,8 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - docs/handoff.md: the latest stop: the last phase done, what passed, failed or was deferred, the next step.
 - docs/sources/: external documents kept verbatim (the user's optimization playbook).
 - docs/roadmap.md: milestones M0-M6, the current one in detail; findings assigned; decisions, each with an owner.
-- docs/plans/: one plan per milestone (m0.md first), from the strict template docs/templates/plan.md, premises verified at their source.
-- docs/prompts/: stored prompt sets, one prompt per phase plus Resume (m0.md first); standing.md, the Plan and Release prompts every milestone uses.
+- docs/plans/: one plan per milestone, from the strict template docs/templates/plan.md, premises verified at their source.
+- docs/prompts/: stored prompt sets, one prompt per phase plus Resume; standing.md, the Plan and Release prompts every milestone uses.
 
 ## Terms
 - view: fixed camera pose in the bench world; perf views are gated, coverage views are visual only.
