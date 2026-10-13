@@ -59,27 +59,27 @@ Change, exit and estimate per phase; files and tests are in plans/m2.md section 
 ### M2.P06 Reload budget
 - Change: F14's controlled pair as measured sessions; the heap, capture.reloadCap and the calibration's twins and sessions by plans/m2.md D43 (F4, F14).
 - Exit: the records with their heap tables; suite.json and bench.json set from them; at a changed heap, the third run's slope within 10 % of the predicted.
-- Estimate: 1.5 h; machine: 2-3 launches. Attended: the machine left alone while they run.
+- Estimate: 1.5 h; machine: 4-5 launches. Attended: the machine left alone while they run.
 
 ### M2.P07 compare, report, calibrate, verify records
-- Change: the statistics (thresholds, verdicts, the twin monitor, A8's and A11's verdicts); `compare`, `report` (plans/m2.md D50), `calibrate` with its resume, `verify records` (F13; D51); one critique of the measuring path (D52).
+- Change: the statistics (thresholds, verdicts, the twin monitor, A8's and A11's verdicts); `compare`, `report` (plans/m2.md D50), `calibrate` with its resume, `verify records` (F13; D51); one critique of the measuring path (D52); D43's split, a session over the reload cap run as launches of views (run-record.md#split-sessions).
 - Exit: tests green; `verify records` passes; `compare` refuses an uncalibrated record, naming `calibrate`; each critique finding handled.
-- Estimate: 3.5 h; machine: none. Attended: the critique's permission prompt (D52), unless allowed.
+- Estimate: 5 h; machine: none. Attended: the critique's permission prompt (D52), unless allowed.
 
 ### M2.P08 The final views: GPU-bound, CPU floor, A2 and A3
-- Change: P17's fallback path read in the pinned Iris jar; a full-mode survey of the baseline, its twin and the passthrough pack (plans/m2.md D46, D47); the CPU floor per view with GPULatency (F10) into measurement.md; then A2, A3 and A10 on the eleven views.
+- Change: P17's fallback path read in the pinned Iris jar; a full-mode survey at R 1 in 3-view launches of the baseline, its twin and the passthrough pack (plans/m2.md D46, D47); the CPU floor per view with GPULatency (F10) into measurement.md; then A2, A3 and A10 on the eleven views.
 - Exit: the jar read agrees with P17; every baseline capture valid and GPU-bound; the floors written; A2, A3 and A10 passed. A view that fails is the user's: the run stops.
-- Estimate: 1.5 h; machine: 2 launches, about 20 min. Attended: the machine left alone (A2 injects input).
+- Estimate: 1.5 h; machine: 5 launches, about 25 min. Attended: the machine left alone (A2 injects input).
 
 ### M2.P09 Calibration and the known positive
 - Change: the quick and full calibrations; per mode, shadows off (SHADOW_QUALITY -1) against the baseline beside its twin; `compare` refusing an M1 record live.
 - Exit: both calibrations committed; in each mode the twin inside the geo-mean threshold and shadows off faster beyond it; the refusal names an identity key.
-- Estimate: 1.5 h; machine: 3-5 h of sessions, about 15 launches. Attended: the user's go and the machine left alone.
+- Estimate: 1.5 h; machine: about 4 h of sessions, about 77 launches. Attended: the user's go and the machine left alone.
 
 ### M2.P10 A8 and A11
 - Change: the timers' overhead (A8) and their agreement with GPUBusy (A11) on full mode's schedule, judged by the full calibration through M2.P05's runner and M2.P07's verdicts, no measured module changed; kept for M4's timer rows only if both pass (E3; plans/m2.md D53).
-- Exit: an acceptance record with A8 and A11 and their evidence; E3's outcome in design.md.
-- Estimate: 1 h; machine: 2-3 sessions, 40-60 min. Attended: the machine left alone.
+- Exit: acceptance records with A8 and A11 and their evidence; E3's outcome in design.md.
+- Estimate: 1 h; machine: 2-3 sessions of 6 launches, about 1 h. Attended: the machine left alone.
 
 ### M2.P11 optilux-bench and the close
 - Change: the optilux-bench skill by the creation rule, with three evals; the docs as built; CHANGELOG's 0.3.0 entry completed; the findings marked landed.
@@ -155,5 +155,5 @@ Owner: who decides. Recommendation: what an unattended run takes. The user's dec
 ## Estimates
 - M0: 0.3 + 1 + 1 + 1.5 + 1.5 + 1 + 1.5 = 7.8 h agent, no machine time. Basis: ALC's phases took about 1 h each (workflow.md#git); the spike estimated 4 h and took 2.5 h; ALC's run estimates of 4-6 h took about 1.2 h (workflow.md#running-a-milestone), so these are expected to run short rather than long.
 - M1: 28 h agent from plans/m1.md (2, 2, 2, 3, 3, 3, 2.5, 2, 1.5, 2, 3, 2; 25 h before the QA pass became two phases, D27; the mod phases carry 3 h each: ALC's mod ran 3x its line estimate, lessons.md#mod).
-- M2: 25 h agent from plans/m2.md (2, 2.5, 3.5, 3, 3.5, 1.5, 3.5, 1.5, 1.5, 1, 1.5, P03, P05 and P07 raised from 3 h on 2026-10-12 to size XL, Opus 5.5 Max; its section 8 has the basis); machine time apart: 26-31 launches, M2.P09's calibration sessions 3-5 h. M3, rough until its plan is approved: 10 h.
-- Tripwire baseline: M0-M3 summed 70.8 h (7.8 + 28 + 25 + 10); the trip is at 141.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass).
+- M2: 26.5 h agent from plans/m2.md (2, 2.5, 3.5, 3, 3.5, 1.5, 5, 1.5, 1.5, 1, 1.5, P03, P05 and P07 raised from 3 h on 2026-10-12 to size XL, Opus 5.5 Max, P07 to 5 h on 2026-10-13 for D43's split; its section 8 has the basis); machine time apart: 104-113 launches, M2.P09's sessions about 4 h. M3, rough until its plan is approved: 10 h.
+- Tripwire baseline: M0-M3 summed 72.3 h (7.8 + 28 + 26.5 + 10); the trip is at 144.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass).
