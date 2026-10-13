@@ -429,3 +429,20 @@ def test_a11_waits_without_a_measured_effect_for_the_timers_to_match() -> None:
     entry = stats.judge_items(zero, FLOORED, ["A11"], None)[0]
     assert entry["pass"] is None and "no effect" in entry["evidence"]["pending"]
     assert a11((8.0, 7.0, 1.0))["effect"] == ["v1: shadows", "v2: shadows"]
+
+
+def test_a_calibration_twin_never_measured_keeps_its_session_from_counting() -> None:
+    """The critique's finding 3: a twin found only in the record's variants, none of its captures
+    taken, is a problem, never one null fewer."""
+    seq = []
+    for view in ("v1", "v2"):
+        seq += view_captures(view, [10.0, 10.0], [("twin-1", "twin", [10.05])], 1, len(seq) + 1)
+    expected = [
+        {"id": "baseline", "role": "baseline"},
+        {"id": "twin-1", "role": "twin"},
+        {"id": "twin-2", "role": "twin"},
+    ]
+    found = stats.nulls_of(seq, ["v1", "v2"], 1, "cal-quick-1", expected, 2)
+    assert found["nulls"] == [] and "twin-2 at v1: round 1 was not measured" in found["problems"]
+    short = stats.nulls_of(seq, ["v1", "v2"], 1, "cal-quick-1", expected[:2], 2)
+    assert short["nulls"] == [] and "1 twins, the calibration takes 2" in short["problems"][0]
