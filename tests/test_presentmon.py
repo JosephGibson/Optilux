@@ -1,6 +1,8 @@
 """PresentMon, minimal (docs/plans/m1.md 0.01.09): the start and the CTRL_BREAK_EVENT stop on a
 fake process (and, on Windows, on a real child that handles the break the way PresentMon does),
-the CSV read while it grows, and A9's cut and match on a fixture CSV and stamps."""
+the CSV read while it grows (only what grew, cr10), A9's cut and match on a fixture CSV and
+stamps, and the measured session's window cut at its edges and its summaries (plans/m2.md
+M2.P05) on synthetic rows and on A9's real CSV and stamps."""
 
 import csv
 import ctypes
@@ -376,3 +378,132 @@ def test_a9_refuses_a_frame_without_a_swap_stamp() -> None:
     found = presentmon.a9_match([], frames)
     assert found["pass"] is False and "swap stamp" in found["problem"]
     assert presentmon.a9_match([], [])["pass"] is False
+
+
+def test_the_tail_reads_only_what_grew(tmp_path: Path) -> None:
+    """cr10: each read takes the bytes past the last one, a partial last line waits for its
+    newline, and bytes already read are never read again (here overwritten, then not seen)."""
+    path = tmp_path / "pm.csv"
+    tail = presentmon.RowsTail(path)
+    tail.read()  # PresentMon creates the file with its first present
+    assert (tail.rows, tail.offset) == (0, 0)
+    data = ("﻿" + csv_text([1000.0, 1007.0]).replace("\n", "\r\n")).encode("utf-8")
+    path.write_bytes(data[:-5])
+    tail.read()
+    assert (tail.rows, tail.last_ns) == (1, 1_000_000_000)
+    path.write_bytes(data)
+    tail.read()
+    assert (tail.rows, tail.last_ns, tail.offset) == (2, 1_007_000_000, len(data))
+    more = csv_text([1014.0]).replace("\n", "\r\n").split("\r\n", 1)[1].encode("utf-8")
+    path.write_bytes(b"X" * len(data) + more)  # the old bytes garbled: a re-read would refuse
+    tail.read()
+    assert (tail.rows, tail.last_ns) == (3, 1_014_000_000)
+    path.write_bytes(path.read_bytes() + b"1,2\r\n")
+    with pytest.raises(presentmon.PresentMonError, match="2 fields"):
+        tail.read()
+
+
+# The measured session's window cut (plans/m2.md M2.P05): frames n = 100..140, frame n's HEAD stamp
+# at n x 7 ms, its swap stamp 0.1 ms before, its row's CPU start `offset` ms after the HEAD stamp.
+
+FLIP = "Hardware: Independent Flip"
+
+
+def frame_row(n: int, offset: float = 0.05, **values: object) -> dict:
+    found = {name: "0" for name in HEADER.split(",")}
+    found.update(
+        Application="javaw.exe",
+        ProcessID="4242",
+        SwapChainAddress="0x1",
+        PresentMode=FLIP,
+        CPUStartQPCTime=f"{n * 7 + offset:.4f}",
+        FrameTime="7.0000",
+        GPUBusy="6.9000",
+        GPULatency="14.0000",
+    )
+    found.update({key: str(value) for key, value in values.items()})
+    return found
+
+
+def mark(n: int) -> dict:
+    return {
+        "frameIndex": n,
+        "sinceReload": n,
+        "qpcNs": n * 7_000_000,
+        "swapQpcNs": n * 7_000_000 - 100_000,
+    }
+
+
+def line_of(rows: list[dict]) -> presentmon.Timeline:
+    return presentmon.timeline(rows, 4242)
+
+
+def test_the_cut_takes_the_rows_between_the_head_stamps_and_reads_each_edge() -> None:
+    after = line_of([frame_row(n, +0.05) for n in range(100, 141)])
+    found = presentmon.cut_window(after, mark(110), mark(130), 20)
+    assert (len(found["rows"]), found["edges"], found["problems"]) == (20, [0, 0], [])
+    assert found["frameRow"] == 10  # frame 110's row: the eleventh
+    # Rows a hair before their HEAD stamps: the one-frame shift D26 keeps, rows still = frames.
+    before = line_of([frame_row(n, -0.05) for n in range(100, 141)])
+    found = presentmon.cut_window(before, mark(110), mark(130), 20)
+    assert (len(found["rows"]), found["edges"], found["problems"]) == (20, [1, 1], [])
+    assert found["rows"][0]["CPUStartQPCTime"] == f"{111 * 7 - 0.05:.4f}"
+    # Each edge on its own side: one row more than frames, still within one at each edge.
+    mixed = line_of([frame_row(n, -0.05 if n == 130 else 0.05) for n in range(100, 141)])
+    found = presentmon.cut_window(mixed, mark(110), mark(130), 20)
+    assert (len(found["rows"]), found["edges"], found["problems"]) == (21, [0, 1], [])
+
+
+def test_the_cut_refuses_a_missing_row_an_open_end_an_unmatched_edge_and_two_chains() -> None:
+    gap = line_of([frame_row(n) for n in range(100, 141) if n != 120])
+    assert (
+        "19 rows from frame start's row"
+        in presentmon.cut_window(gap, mark(110), mark(130), 20)["problems"][0]
+    )
+    short = presentmon.cut_window(
+        line_of([frame_row(n) for n in range(100, 126)]), mark(110), mark(130), 20
+    )
+    assert any("ends inside the window" in p for p in short["problems"])
+    assert any("end mark's swap stamp" in p for p in short["problems"])
+    late = presentmon.cut_window(
+        line_of([frame_row(n) for n in range(112, 141)]), mark(110), mark(130), 20
+    )
+    assert any("start mark's swap stamp" in p for p in late["problems"])
+    two = line_of(
+        [frame_row(n, SwapChainAddress="0x2" if n == 115 else "0x1") for n in range(100, 141)]
+    )
+    assert presentmon.cut_window(two, mark(110), mark(130), 20)["problems"] == [
+        "2 swap chains in the window"
+    ]
+    far = {**mark(110), "swapQpcNs": 108 * 7_000_000 - 100_000}  # a stamp two frames early
+    found = presentmon.cut_window(
+        line_of([frame_row(n) for n in range(100, 141)]), far, mark(130), 20
+    )
+    assert "the start edge is 2 rows off the window's frames" in found["problems"]
+
+
+@pytest.mark.parametrize(("run", "edges"), [("4", [1, 1]), ("5", [1, 1])])
+def test_the_cut_on_a_real_csv_and_stamps_matches_rows_to_frames(run: str, edges: list) -> None:
+    """0.01.09's A9 runs: 120 consecutive frames with both stamps and PresentMon's rows of the
+    same session. A window from the 11th frame to the 111th cuts 100 rows, one per frame."""
+    frames = json.loads((FIXTURES / f"a9-{run}-frames.json").read_text(encoding="utf-8"))["frames"]
+    _, rows = presentmon.read_rows(FIXTURES / f"a9-{run}-presentmon.csv", complete=True)
+    line = presentmon.timeline(rows, int(rows[0]["ProcessID"]))
+    found = presentmon.cut_window(line, frames[10], frames[110], 100)
+    assert (len(found["rows"]), found["edges"], found["problems"]) == (100, edges, [])
+    whole = presentmon.cut_window(line, frames[1], frames[60], 59)
+    assert len(whole["rows"]) - 59 == whole["edges"][1] - whole["edges"][0]
+    assert all(abs(edge) <= 1 for edge in whole["edges"]) and not whole["problems"]
+
+
+def test_the_summaries_read_medians_the_tail_the_halves_and_the_modes() -> None:
+    rows = [frame_row(n, GPUBusy=5.0 + (n % 2), FrameTime=6.0 + n / 100) for n in range(200)]
+    found = presentmon.summary(rows)
+    assert found["frames"] == 200 and found["gpuBusyMs"] == 5.5
+    assert found["frameTimeMs"] == pytest.approx(6.995, abs=1e-4)
+    assert found["frameTimeP95Ms"] == pytest.approx(7.8905, abs=1e-4)
+    assert found["halvesGpuBusyMs"] == [5.5, 5.5] and found["halvesPct"] == 0.0
+    assert found["gpuBusyOverFrameTime"] == pytest.approx(5.5 / 6.995, abs=1e-4)
+    assert found["presentModes"] == {FLIP: 200} and found["notNumbers"] == 0
+    na = presentmon.summary([frame_row(1), frame_row(2, GPUBusy="NA")])
+    assert na["notNumbers"] == 1 and na["gpuBusyMs"] == 6.9

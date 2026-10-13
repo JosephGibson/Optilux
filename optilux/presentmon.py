@@ -6,12 +6,15 @@ CSV: started with measurement.md#tools' flags in its own console process group
 one stop that leaves no ETW session behind (Windows disables Ctrl+C in such a child; spike L1).
 A PresentMon that exits before the stop, or outlasts it and is killed, fails the run: its session
 may still be running. The CSV grows during the run and completes at exit; its first row arrives
-about 4 s after the start, so the caller waits for rows, never sleeps. `--qpc_time_ms` writes
-CPUStartQPCTime as absolute QPC milliseconds, the mod's clock (docs/mod.md#6-time-and-determinism).
-A9's row match lives here too: the rows of a capture's span against the capture's stamps. M2
-builds the session and the window cut on this.
+about 4 s after the start, so the caller waits for rows, never sleeps, and reads only what grew
+since its last read (cr10). `--qpc_time_ms` writes CPUStartQPCTime as absolute QPC milliseconds,
+the mod's clock (docs/mod.md#6-time-and-determinism). A9's row match lives here too: the rows of a
+capture's span against the capture's stamps; and the measured session's window cut
+(measurement.md#tools): a window's rows between its two HEAD stamps, each edge held against the
+row its swap stamp maps to, and the summaries of those rows.
 """
 
+import bisect
 import contextlib
 import csv
 import io
@@ -20,7 +23,8 @@ import signal
 import statistics
 import subprocess
 import time
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
@@ -29,6 +33,14 @@ SESSION_PREFIX = "optilux-"
 QPC = "CPUStartQPCTime"
 PROCESS_ID = "ProcessID"
 SWAP_CHAIN = "SwapChainAddress"
+# The v2 metrics the summaries read (measurement.md#tools): FrameTime runs from this frame's CPU
+# start to the next's, GPUBusy is the time at least one GPU engine worked for the process,
+# GPULatency the time from the frame's CPU start until the GPU started on it.
+FRAME_TIME = "FrameTime"
+GPU_BUSY = "GPUBusy"
+GPU_LATENCY = "GPULatency"
+PRESENT_MODE = "PresentMode"
+UTF8_BOM = b"\xef\xbb\xbf"
 # CTRL_BREAK_EVENT (wincon.h); the child gets a process group of its own, no console of its own.
 CTRL_BREAK_EVENT = 1
 CREATION_FLAGS = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
@@ -114,9 +126,53 @@ def command(exe: Path, pid: int, output: Path, session: str) -> list[str]:
     return [str(exe), *arguments(str(pid), str(output), session)]
 
 
+class RowsTail:
+    """The CSV read as it grows (cr10): each read takes only the bytes past the last one and keeps
+    a partial last line for the next, so a session's long file is never read again whole; the
+    rows counted, the last row's CPU start. PermissionError passes up (PresentMon holds the file
+    unshared while it runs, P5); PresentMonError as read_rows refuses."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.offset = 0
+        self.header: list[str] | None = None
+        self.rows = 0
+        self.last_ns: int | None = None
+        self._partial = b""
+
+    def read(self) -> None:
+        try:
+            with self.path.open("rb") as handle:
+                handle.seek(self.offset)
+                data = handle.read()
+        except FileNotFoundError:  # PresentMon creates it with the first present it sees
+            return
+        if not self.offset and data.startswith(UTF8_BOM):
+            data = data[len(UTF8_BOM) :]
+            self.offset = len(UTF8_BOM)
+        self.offset += len(data)
+        data = self._partial + data
+        end = data.rfind(b"\n") + 1
+        self._partial = data[end:]
+        lines = list(csv.reader(io.StringIO(data[:end].decode("utf-8", "replace"))))
+        if lines and self.header is None:
+            self.header = lines.pop(0)
+            if QPC not in self.header:
+                raise PresentMonError(f"{self.path.name} has no {QPC} column")
+        for values in lines:
+            if self.header is None or len(values) != len(self.header):
+                raise PresentMonError(
+                    f"{self.path.name} row {self.rows + 1}: {len(values)} fields, the header "
+                    f"has {len(self.header or [])}"
+                )
+            self.rows += 1
+            self.last_ns = round(float(values[self.header.index(QPC)]) * 1e6)
+
+
 @dataclass
 class Recording:
-    """A started PresentMon: its process, the CSV it writes, its session and its console log."""
+    """A started PresentMon: its process, the CSV it writes, its session and its console log; the
+    CSV's tail as the waits have read it."""
 
     process: Process
     output: Path
@@ -124,6 +180,10 @@ class Recording:
     log: Path
     command: list[str]
     started: float
+    tail: RowsTail = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.tail = RowsTail(self.output)
 
 
 def tail(path: Path, size: int = 400) -> str:
@@ -241,16 +301,16 @@ def qpc_ns(row: dict) -> int:
 
 def wait_rows(found: Recording, host: Host, after_ns: int | None, timeout: float) -> int:
     """Wait until the CSV holds a row (with `after_ns`, one whose CPUStartQPCTime lies after it);
-    the rows then. While PresentMon holds the file unshared, its size stands in: any bytes for a
-    first row, two growths since the wait began for a row after `after_ns` (-1 is returned then;
-    the complete CSV is checked after the stop). PresentMonError when PresentMon exits meanwhile
-    or the timeout passes."""
+    the rows then. Each poll reads only what the file gained (found.tail, cr10). While PresentMon
+    holds the file unshared, its size stands in: any bytes for a first row, two growths since the
+    wait began for a row after `after_ns` (-1 is returned then; the complete CSV is checked after
+    the stop). PresentMonError when PresentMon exits meanwhile or the timeout passes."""
     deadline = host.clock() + timeout
     sizes: list[int] = []
-    rows: list[dict] = []
+    rows = found.tail
     while True:
         try:
-            _, rows = read_rows(found.output)
+            rows.read()
         except PermissionError:
             size = found.output.stat().st_size
             if not sizes or size != sizes[-1]:
@@ -258,8 +318,9 @@ def wait_rows(found: Recording, host: Host, after_ns: int | None, timeout: float
             if (after_ns is None and size > 0) or (after_ns is not None and len(sizes) >= 3):
                 return -1
         else:
-            if rows and (after_ns is None or qpc_ns(rows[-1]) > after_ns):
-                return len(rows)
+            last = rows.last_ns
+            if rows.rows and (after_ns is None or (last is not None and last > after_ns)):
+                return rows.rows
         if found.process.poll() is not None:
             raise PresentMonError(
                 f"PresentMon exited with code {found.process.returncode} while recording: "
@@ -268,9 +329,131 @@ def wait_rows(found: Recording, host: Host, after_ns: int | None, timeout: float
         if host.clock() >= deadline:
             wanted = "a row" if after_ns is None else f"a row after qpcNs {after_ns}"
             raise PresentMonError(
-                f"{found.output.name} held {len(rows)} rows and no {wanted} after {timeout:g} s"
+                f"{found.output.name} held {rows.rows} rows and no {wanted} after {timeout:g} s"
             )
         host.sleep(POLL)
+
+
+# The measured session's window cut (measurement.md#tools, plans/m2.md M2.P05).
+
+
+@dataclass(frozen=True)
+class Timeline:
+    """One process's rows of a complete CSV in CPU-start order, with each row's qpcNs: what every
+    window of the session is cut from."""
+
+    rows: list[dict]
+    qpcs: list[int]
+
+
+def timeline(rows: list[dict], pid: int) -> Timeline:
+    mine = sorted((row for row in rows if row.get(PROCESS_ID) == str(pid)), key=qpc_ns)
+    return Timeline(mine, [qpc_ns(row) for row in mine])
+
+
+def nearest(line: Timeline, stamp: int, within: float) -> int | None:
+    """The index of the row whose CPU start lies nearest `stamp`, None when none lies within
+    `within` ns of it."""
+    at = bisect.bisect_left(line.qpcs, stamp)
+    near = [i for i in (at - 1, at) if 0 <= i < len(line.qpcs)]
+    if not near:
+        return None
+    best = min(near, key=lambda i: abs(line.qpcs[i] - stamp))
+    return best if abs(line.qpcs[best] - stamp) <= within else None
+
+
+def cut_window(line: Timeline, start: dict, end: dict, frames: int) -> dict:
+    """A window's rows (measurement.md#tools): those whose CPUStartQPCTime x 1e6 lies between its
+    start and end HEAD stamps, both included. Each edge is held against the row its swap stamp maps
+    to (A9's mapping: frame k's row starts 0.1-0.4 ms after frame k's swap stamp, plans/m1.md D26):
+    `edges` gives, at the start, the cut's first row less frame start's row, and at the end, its
+    last row less frame end - 1's; a frame's row and HEAD stamp lie within a fraction of a
+    millisecond of each other, so each edge reads 0 or 1 (M2.P02's windows read 1 at both: the
+    constant one-frame shift D26 keeps). Problems, each invalidating the capture: no row after
+    the end (the CSV ends inside), an edge whose swap stamp maps to no row within half a frame, an
+    edge more than one row off, rows between the edges' frames that are not one per frame, more
+    than one swap chain."""
+    lo = bisect.bisect_left(line.qpcs, start["qpcNs"])
+    hi = bisect.bisect_right(line.qpcs, end["qpcNs"])
+    rows = line.rows[lo:hi]
+    found: dict = {"rows": rows, "edges": None, "frameRow": None, "problems": []}
+    problems = found["problems"]
+    if frames <= 0:
+        problems.append(f"the window holds {frames} frames")
+        return found
+    if hi >= len(line.rows):
+        problems.append("the CSV ends inside the window: no row after its end")
+    half = (end["qpcNs"] - start["qpcNs"]) / frames / 2
+    first = nearest(line, start["swapQpcNs"], half)
+    last = nearest(line, end["swapQpcNs"], half)
+    for name, index in (("start", first), ("end", last)):
+        if index is None:
+            problems.append(f"no row within half a frame of the {name} mark's swap stamp")
+    found["frameRow"] = first  # frame start's row: frame start + k's is row frameRow + k
+    if first is not None and last is not None:
+        found["edges"] = [lo - first, hi - last]
+        if last - first != frames:
+            problems.append(
+                f"{last - first} rows from frame start's row to frame end's, {frames} frames"
+            )
+        for name, off in zip(("start", "end"), found["edges"], strict=True):
+            if abs(off) > 1:
+                problems.append(f"the {name} edge is {off} rows off the window's frames")
+    chains = sorted({row.get(SWAP_CHAIN, "") for row in rows})
+    if len(chains) > 1:
+        problems.append(f"{len(chains)} swap chains in the window")
+    return found
+
+
+def number(value: str | None) -> float | None:
+    """A CSV metric as a float; None for PresentMon's NA or an empty field."""
+    try:
+        found = float(value) if value is not None else None
+    except ValueError:
+        return None
+    return found
+
+
+def p95(values: list[float]) -> float | None:
+    """The 95th percentile, linear between the order statistics; None below two values."""
+    if len(values) < 2:
+        return None
+    return statistics.quantiles(values, n=20, method="inclusive")[18]
+
+
+def summary(rows: list[dict]) -> dict:
+    """A window's summaries (measurement.md#validity, run-record.md#fields), in ms: median GPUBusy,
+    median and p95 FrameTime, median GPULatency, median GPUBusy over median FrameTime, the median
+    GPUBusy of each half (the rows split in order) and their difference in % of their mean, the
+    present modes counted, and the rows whose metrics were not numbers (PresentMon's NA)."""
+    busy = [v for r in rows if (v := number(r.get(GPU_BUSY))) is not None]
+    frame = [v for r in rows if (v := number(r.get(FRAME_TIME))) is not None]
+    latency = [v for r in rows if (v := number(r.get(GPU_LATENCY))) is not None]
+    middle = len(rows) // 2
+    halves = [
+        [v for r in part if (v := number(r.get(GPU_BUSY))) is not None]
+        for part in (rows[:middle], rows[middle:])
+    ]
+    found: dict = {
+        "frames": len(rows),
+        "gpuBusyMs": round(statistics.median(busy), 4) if busy else None,
+        "frameTimeMs": round(statistics.median(frame), 4) if frame else None,
+        "frameTimeP95Ms": None if (tail95 := p95(frame)) is None else round(tail95, 4),
+        "gpuLatencyMs": round(statistics.median(latency), 4) if latency else None,
+        "gpuBusyOverFrameTime": None,
+        "halvesGpuBusyMs": None,
+        "halvesPct": None,
+        "presentModes": dict(Counter(r.get(PRESENT_MODE, "") for r in rows)),
+        "notNumbers": len(rows) - min(len(busy), len(frame)),
+    }
+    if busy and frame and found["frameTimeMs"]:
+        found["gpuBusyOverFrameTime"] = round(statistics.median(busy) / statistics.median(frame), 4)
+    if all(halves):
+        first, second = (statistics.median(part) for part in halves)
+        found["halvesGpuBusyMs"] = [round(first, 4), round(second, 4)]
+        if first + second > 0:
+            found["halvesPct"] = round(100 * abs(second - first) / ((first + second) / 2), 3)
+    return found
 
 
 # A9.
