@@ -1,5 +1,5 @@
-"""`optilux calibrate --mode quick|full [--json]` (docs/measurement.md#calibration, docs/plans/m2.md
-M2.P07 and M2.P09): the current identity's calibration.
+"""`optilux calibrate --mode quick|full [--recalibrate] [--json]` (docs/measurement.md#calibration,
+docs/plans/m2.md M2.P07 and M2.P09): the current identity's calibration.
 
 - Its sessions: statistics.calibration.minSessionsPerMode calibration runs of the baseline (D35:
   the reference pack with the played profile; the runner adds twinsPerSession twins), named
@@ -10,9 +10,11 @@ M2.P07 and M2.P09): the current identity's calibration.
   at the first session that does not end whole; a rerun resumes, keeping the whole sessions and
   passing over a taken name (a record that does not count, or an orphan the runner finishes).
 - Then config/calibrations/<mode>-<identity sha256>.json: the identity and its hash, the mode's
-  views and rounds, the false rate and floor, the baseline (recorded, never matched), the
-  sessions, every null candidate's per-view ratios and the thresholds they give. An existing
-  calibration of the identity ends calibrate at once.
+  views and rounds, the false rate, floor and twin monitor, the baseline (recorded, never
+  matched), the sessions, every null candidate's per-view ratios and the thresholds they give. An
+  existing calibration of the identity ends calibrate at once; `--recalibrate` makes the next
+  generation of it (<...>-r<g>, its sessions cal-<mode>-<hash>-r<g>-<n>) from new sessions, as
+  the twin monitor asks (measurement.md#calibration: its window starts over).
 """
 
 import argparse
@@ -36,8 +38,9 @@ WORLD = "bench_263"
 HASH_SHOWN = 12
 
 
-def session_name(mode: str, digest: str, n: int) -> str:
-    return f"cal-{mode}-{digest[:HASH_SHOWN]}-{n}"
+def session_name(mode: str, digest: str, n: int, generation: int = 1) -> str:
+    again = f"-r{generation}" if generation > 1 else ""
+    return f"cal-{mode}-{digest[:HASH_SHOWN]}{again}-{n}"
 
 
 def session_spec(name: str, mode: str, pack: str) -> dict:
@@ -65,6 +68,8 @@ class Plan:
     identity: dict
     digest: str
     cid: str
+    generation: int
+    existing: list[str]
     views: list[str]
     rounds: int
     twins: int
@@ -73,19 +78,31 @@ class Plan:
     ready: run_verb.Prepared
 
 
-def plan(root: Path, mode: str, machine: record.Machine) -> Plan:
+def plan(root: Path, mode: str, machine: record.Machine, recalibrate: bool = False) -> Plan:
     """The current identity, built as `run` builds it for a calibration session (nothing
-    launched), and what the calibration of the mode needs."""
+    launched), its calibrations of the mode, and what the next one needs: the first generation,
+    or with `recalibrate` the one after the newest."""
     pack = launch.reference_pack(platform.load(root)).file
     probe = session_spec(f"cal-{mode}-probe", mode, pack)
     ready = run_verb.prepare(root, probe, machine, fresh=False)
     digest = record.identity_hash(ready.identity)
     calibration = ready.suite["statistics"]["calibration"]
+    existing = record.calibration_ids(root, mode, digest)
+    if recalibrate and not existing:
+        raise record.RecordError(
+            f"no {mode} calibration of this identity to recalibrate; fix: `optilux calibrate "
+            f"--mode {mode}`"
+        )
+    generation = 1
+    if recalibrate:
+        generation = record.load_calibration(root, existing[-1])["generation"] + 1
     return Plan(
         mode=mode,
         identity=ready.identity,
         digest=digest,
-        cid=f"{mode}-{digest}",
+        cid=record.calibration_id(mode, digest, generation),
+        generation=generation,
+        existing=existing,
         views=list(ready.spec.view_ids),
         rounds=ready.spec.rounds,
         twins=calibration["twinsPerSession"],
@@ -103,6 +120,9 @@ def session_state(root: Path, p: Plan, name: str) -> dict:
         return {"state": "taken" if (root / record.RAW / name).exists() else "new"}
     found = record.read_record(root, name)
     problems = []
+    spec = session_spec(name, p.mode, p.ready.pack.file)
+    if record.canonical(found.get("spec")) != record.canonical(spec):
+        problems.append("a spec calibrate did not write")
     if found.get("status") != "ok":
         problems.append(f"status {found.get('status')}: {found.get('reason')}")
     differ = record.identity_differences(found.get("identity"), p.identity)
@@ -128,6 +148,8 @@ def write_calibration(root: Path, p: Plan, sessions: list[tuple[str, list[dict]]
     data = {
         "schema": record.SCHEMA,
         "id": p.cid,
+        "generation": p.generation,
+        "supersedes": p.existing[-1] if p.existing else None,
         "mode": p.mode,
         "createdAt": now(),
         "identityHash": p.digest,
@@ -138,6 +160,7 @@ def write_calibration(root: Path, p: Plan, sessions: list[tuple[str, list[dict]]
         "twinsPerSession": p.twins,
         "falseRate": rules["falseRate"],
         "floorPct": rules["thresholdFloorPct"],
+        "twinMonitor": {k: rules["twinMonitor"][k] for k in ("window", "maxExceed")},
         "baseline": {
             "pack": p.ready.pack.file,
             "sha512": p.ready.pack.sha512,
@@ -159,21 +182,32 @@ def write_calibration(root: Path, p: Plan, sessions: list[tuple[str, list[dict]]
 
 
 def calibrate(
-    root: Path, mode: str, host: RunHost, machine: record.Machine, say: Say, announce: Say
+    root: Path,
+    mode: str,
+    host: RunHost,
+    machine: record.Machine,
+    say: Say,
+    announce: Say,
+    recalibrate: bool = False,
 ) -> dict:
-    """The identity's calibration of `mode`: its missing sessions run, each announced, then its
-    file written. The outcome: the id, the sessions, whether it stopped and why."""
-    p = plan(root, mode, machine)
-    path = root / record.CALIBRATIONS / f"{p.cid}.json"
+    """The identity's calibration of `mode`, or with `recalibrate` its next generation: its
+    missing sessions run, each announced, then its file written. The outcome: the id, the
+    sessions, whether it stopped and why."""
+    p = plan(root, mode, machine, recalibrate)
     outcome: dict = {"calibration": p.cid, "identityHash": p.digest, "mode": mode, "ran": []}
-    if path.is_file():
-        say(f"{PREFIX}: {shown(path, root)} exists for this identity; nothing to run")
-        return {**outcome, "path": shown(path, root), "stopped": None}
+    if p.existing and not recalibrate:
+        newest = p.existing[-1]
+        path = root / record.CALIBRATIONS / f"{newest}.json"
+        say(
+            f"{PREFIX}: {shown(path, root)} exists for this identity; nothing to run "
+            "(`--recalibrate` makes its next generation when its twin monitor asks)"
+        )
+        return {**outcome, "calibration": newest, "path": shown(path, root), "stopped": None}
     whole: list[tuple[str, list[dict]]] = []
     passed: list[str] = []
     n = 1
     while True:  # the names taken so far: whole sessions kept, others passed over
-        name = session_name(mode, p.digest, n)
+        name = session_name(mode, p.digest, n, p.generation)
         state = session_state(root, p, name)
         if state["state"] == "new":
             break
@@ -187,11 +221,13 @@ def calibrate(
     held = sum(
         1
         for part in range(1, p.launches + 1)
-        if p.launches > 1 and run_verb.part_record(root, session_name(mode, p.digest, n), part)[0]
+        if p.launches > 1
+        and run_verb.part_record(root, session_name(mode, p.digest, n, p.generation), part)[0]
     )
     launches = max(0, todo * p.launches - held)
+    again = f" (generation {p.generation}, after {p.existing[-1][:24]}...)" if recalibrate else ""
     announce(
-        f"{PREFIX}: {mode} mode, identity {p.digest[:HASH_SHOWN]}: {p.need} sessions of "
+        f"{PREFIX}: {mode} mode, identity {p.digest[:HASH_SHOWN]}{again}: {p.need} sessions of "
         f"{p.twins} twins; {len(whole)} whole, {todo} to run, {launches} launch(es) of "
         "the game in all, each announced; hands off the mouse and keyboard until the end"
     )
@@ -199,7 +235,7 @@ def calibrate(
         say(f"{PREFIX}: passed over {skipped}")
     pack = p.ready.pack.file
     while len(whole) < p.need:
-        name = session_name(mode, p.digest, n)
+        name = session_name(mode, p.digest, n, p.generation)
         n += 1
         if session_state(root, p, name)["state"] != "new":
             continue
@@ -219,6 +255,11 @@ def calibrate(
 
 def configure(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--mode", required=True, choices=record.MODES, help="quick or full")
+    parser.add_argument(
+        "--recalibrate",
+        action="store_true",
+        help="the identity's next calibration from new sessions, as its twin monitor asks",
+    )
 
 
 def run(args: argparse.Namespace) -> int:
@@ -229,7 +270,9 @@ def run(args: argparse.Namespace) -> int:
         print(text, file=sys.stderr if args.json else sys.stdout, flush=True)
 
     try:
-        outcome = calibrate(root, args.mode, RunHost(), record.Machine(), say, announce)
+        outcome = calibrate(
+            root, args.mode, RunHost(), record.Machine(), say, announce, args.recalibrate
+        )
     except (
         record.RecordError,
         platform.PlatformError,

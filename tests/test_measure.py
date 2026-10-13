@@ -504,7 +504,12 @@ SPEC_REFUSALS = [
     (dict(calibration="quick-" + "0" * 64), "`optilux calibrate --mode quick` for this identity"),
     (dict(kind="calibration", calibration="quick-" + "0" * 64), "judged by no calibration"),
     (dict(heap=True, calibration="quick-" + "0" * 64), "which no measured run it would judge runs"),
-    (dict(kind="acceptance", items=["A8"], variants=[BASE, TIMED]), "judged by a calibration"),
+    (
+        dict(mode="full", kind="acceptance", items=["A8"], variants=[BASE, TIMED]),
+        "judged by a calibration",
+    ),
+    (dict(kind="acceptance", items=["A8"], variants=[BASE, TIMED]), "run on full mode's schedule"),
+    (dict(warmup=1), "true, or leave it out"),
     (dict(items=["A1"]), "takes none"),
     (dict(reloads=10), "F4's acceptance table"),
     (dict(heap="yes"), "true or false"),
@@ -529,7 +534,17 @@ SPEC_REFUSALS = [
     (dict(kind="calibration", warmup=True), "a calibration-null measurement run's"),
     (dict(warmup=False), "true, or leave it out"),
     (dict(dimensions=["minecraft:overworld"]), "a budget run's"),
-    (dict(kind="acceptance", items=["A8"], variants=[BASE, TIMED], heap=True, rounds=1), "budget"),
+    (
+        dict(
+            mode="full",
+            kind="acceptance",
+            items=["A8"],
+            variants=[BASE, TIMED],
+            heap=True,
+            rounds=1,
+        ),
+        "budget",
+    ),
     (dict(heap=True, rounds=0), "a positive count"),
     (dict(heap=True, rounds=True), "a positive count"),
     (dict(heap=True, dimensions=[]), "each once"),
@@ -577,7 +592,7 @@ def test_a_measured_spec_without_its_calibration_or_over_the_cap_is_refused(benc
     )
     with pytest.raises(record.RecordError, match="A8 compares"):
         record.check_spec(root, a8, PLAT, SUITE, saves, PACK)
-    both = measured(kind="acceptance", items=["A8"], variants=[BASE, TIMED])
+    both = measured(mode="full", kind="acceptance", items=["A8"], variants=[BASE, TIMED])
     with pytest.raises(record.RecordError, match="judged by a calibration"):
         record.check_spec(root, both, PLAT, SUITE, saves, PACK)
 
@@ -1127,12 +1142,11 @@ def test_an_orphans_pids_are_checked_before_anything_is_ended(fake_run, monkeypa
     assert found["captures"][0]["valid"] is True  # PresentMon was gone: its CSV complete
 
 
-def fake_calibration(root: Path, spec_path: Path, mode: str = "quick", **changes: Any) -> str:
-    """A calibration of the fake run's own identity (`changes` replacing its keys) written under
-    the root's config/calibrations/: 20 null candidates within 0.3 % at the mode's views, R the
-    mode's; its id."""
-    identity = {**run_verb.prepare(root, spec_path, FakeMachine()).identity, **changes}
-    views = list(record.mode_views(SUITE, mode, VIEWS))
+def calibration_data(
+    identity: dict, mode: str, views: list[str], rounds: int, generation: int = 1
+) -> dict:
+    """A calibration's content: 20 null candidates within 0.3 % at `views` (every threshold the
+    0.5 % floor), 2 twins a session, the suite's twin monitor."""
     digest = record.identity_hash(identity)
     nulls = [
         {
@@ -1142,35 +1156,63 @@ def fake_calibration(root: Path, spec_path: Path, mode: str = "quick", **changes
         }
         for n in range(20)
     ]
-    data = {
+    return {
         "schema": 1,
-        "id": f"{mode}-{digest}",
+        "id": record.calibration_id(mode, digest, generation),
+        "generation": generation,
         "mode": mode,
         "createdAt": "2026-10-13T00:00:00+00:00",
         "identityHash": digest,
         "identity": identity,
         "resourcePacks": "standard",
         "views": views,
-        "rounds": SUITE["modes"][mode]["rounds"],
+        "rounds": rounds,
         "twinsPerSession": 2,
         "falseRate": 0.05,
         "floorPct": 0.5,
+        "twinMonitor": {"window": 20, "maxExceed": 2},
         "baseline": {"pack": PACK, "profile": "played"},
         "sessions": [f"cal-{n}" for n in range(10)],
         "nulls": nulls,
         "thresholds": {},
     }
+
+
+def write_calibration(root: Path, data: dict) -> str:
     folder = root / record.CALIBRATIONS
     folder.mkdir(parents=True, exist_ok=True)
     (folder / f"{data['id']}.json").write_text(json.dumps(data), encoding="utf-8")
     return data["id"]
 
 
+def fake_calibration(
+    root: Path, spec_path: Path, mode: str = "quick", generation: int = 1, **changes: Any
+) -> str:
+    """A calibration of the fake run's own identity (`changes` replacing its keys) written under
+    the root's config/calibrations/, at the root suite's views and R of the mode; its id."""
+    identity = {**run_verb.prepare(root, spec_path, FakeMachine()).identity, **changes}
+    suite = json.loads((root / platform.SUITE).read_text(encoding="utf-8"))
+    views = list(record.mode_views(suite, mode, VIEWS))
+    rounds = suite["modes"][mode]["rounds"]
+    return write_calibration(root, calibration_data(identity, mode, views, rounds, generation))
+
+
+def small_full(root: Path) -> None:
+    """The root's full mode at quick mode's three views and R 1: the twin and one candidate in
+    one launch of 20 reloads (A8 and A11 run in full mode, plans/m2.md M2.P10)."""
+    set_suite(
+        root, modes__full={"views": ["forest_noon", "nether_crimson", "end_dragon"], "rounds": 1}
+    )
+
+
 def test_a8_is_judged_by_its_calibration_on_its_timers_on_variant(fake_run) -> None:
     root, spec_path, fake, host = fake_run
-    cid = fake_calibration(root, spec_path)
+    small_full(root)
+    cid = fake_calibration(root, spec_path, mode="full")
     timed = {"id": "timed", "pack": PACK, "profile": "played", "timers": True}
-    spec = measured(name="m2-a8-test", kind="acceptance", items=["A8"], calibration=cid)
+    spec = measured(
+        name="m2-a8-test", mode="full", kind="acceptance", items=["A8"], calibration=cid
+    )
     spec["variants"] = [spec["variants"][0], timed]
     spec_path.write_text(json.dumps(spec), encoding="utf-8")
     found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
@@ -1581,7 +1623,8 @@ def test_a_judged_run_writes_its_verdicts_and_the_twin_monitor(fake_run) -> None
 def test_run_refuses_a_calibration_of_another_identity_naming_the_key(fake_run, key) -> None:
     root, spec_path, _, _ = fake_run
     cid = fake_calibration(root, spec_path, **{key: {"other": key}})
-    spec_path.write_text(json.dumps(measured(calibration=cid)), encoding="utf-8")
+    spec = measured(calibration=cid, variants=[BASE, SHADOWS])
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
     with pytest.raises(record.RecordError) as refused:
         run_verb.prepare(root, spec_path, FakeMachine())
     message = str(refused.value)
@@ -1592,7 +1635,8 @@ def test_run_refuses_a_calibration_of_another_identity_naming_the_key(fake_run, 
 def test_run_refuses_a_calibration_of_another_mode_or_resource_pack_set(fake_run) -> None:
     root, spec_path, _, _ = fake_run
     cid = fake_calibration(root, spec_path, mode="full")
-    spec_path.write_text(json.dumps(measured(calibration=cid)), encoding="utf-8")
+    spec = measured(calibration=cid, variants=[BASE, SHADOWS])
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
     with pytest.raises(record.RecordError, match="is full mode's, the spec runs quick"):
         run_verb.prepare(root, spec_path, FakeMachine())
     spec_path.write_text(json.dumps(measured()), encoding="utf-8")
@@ -1600,7 +1644,7 @@ def test_run_refuses_a_calibration_of_another_mode_or_resource_pack_set(fake_run
     path = root / record.CALIBRATIONS / f"{cid}.json"
     data = json.loads(path.read_text(encoding="utf-8"))
     path.write_text(json.dumps({**data, "resourcePacks": "deterministic"}), encoding="utf-8")
-    spec_path.write_text(json.dumps(measured(calibration=cid)), encoding="utf-8")
+    spec_path.write_text(json.dumps(measured(calibration=cid, variants=[BASE, SHADOWS])), "utf-8")
     with pytest.raises(record.RecordError, match="covers the deterministic resource-pack set"):
         run_verb.prepare(root, spec_path, FakeMachine())
 
@@ -1609,12 +1653,22 @@ def test_a_calibration_whose_content_left_its_id_is_refused(bench_root) -> None:
     root, _ = bench_root
     identity = {key: {"sha256": key} for key in record.IDENTITY_KEYS}
     digest = record.identity_hash(identity)
-    data = {key: None for key in record.CALIBRATION_KEYS}
-    data.update(id=f"quick-{digest}", mode="quick", identityHash=digest, identity=identity)
+    data = calibration_data(identity, "quick", ["forest_noon"], 1)
     folder = root / record.CALIBRATIONS
-    folder.mkdir(parents=True)
-    (folder / f"quick-{digest}.json").write_text(json.dumps(data), encoding="utf-8")
+    write_calibration(root, data)
     assert record.load_calibration(root, f"quick-{digest}")["identity"] == identity
+    for change, says in (
+        ({"rounds": 0}, "rounds or twinsPerSession is no positive count"),
+        ({"views": []}, "views is no list of view ids"),
+        ({"falseRate": 1.5}, "falseRate or floorPct is out of range"),
+        ({"twinMonitor": {"window": 0}}, "twinMonitor holds no window and maxExceed"),
+        ({"nulls": [{"ratios": {"forest_noon": 0}}]}, "lacks a positive ratio"),
+        ({"generation": 2}, "disagrees with its content"),
+    ):
+        write_calibration(root, {**data, **change})
+        with pytest.raises(record.RecordError, match=says):
+            record.load_calibration(root, f"quick-{digest}")
+    write_calibration(root, data)
     edited = {**data, "identity": {**identity, "suite": {"sha256": "moved"}}}
     (folder / f"quick-{digest}.json").write_text(json.dumps(edited), encoding="utf-8")
     with pytest.raises(record.RecordError, match="disagrees with its content"):
@@ -1630,21 +1684,24 @@ def test_a8s_second_session_names_the_first_whose_views_wait(bench_root) -> None
     threshold, under the spec's calibration; anything else is refused."""
     root, saves = bench_root
     identity = {key: {"sha256": key} for key in record.IDENTITY_KEYS}
-    digest = record.identity_hash(identity)
-    cid = f"quick-{digest}"
-    data = {key: [] for key in record.CALIBRATION_KEYS}
-    data.update(id=cid, mode="quick", identityHash=digest, identity=identity)
-    data["resourcePacks"] = "standard"
-    (root / record.CALIBRATIONS).mkdir(parents=True)
-    (root / record.CALIBRATIONS / f"{cid}.json").write_text(json.dumps(data), encoding="utf-8")
+    views = list(record.mode_views(SUITE, "full", VIEWS))
+    cid = write_calibration(root, calibration_data(identity, "full", views, 2))
     evidence = {"beyond": {"end_dragon": 0.8}, "remeasure": ["end_dragon"], "calibration": cid}
-    first = {"acceptance": [{"item": "A8", "pass": None, "evidence": {**evidence, "pending": "x"}}]}
+    entry = {"item": "A8", "pass": None, "evidence": {**evidence, "pending": "x"}}
+    second = measured(
+        mode="full", kind="acceptance", items=["A8"], variants=[BASE, TIMED], calibration=cid
+    )
+    first = {"status": "ok", "spec": second, "acceptance": [entry]}
     (root / record.RECORDS).mkdir(parents=True)
     (root / record.RECORDS / "m2-a8-1.json").write_text(json.dumps(first), encoding="utf-8")
-    second = measured(kind="acceptance", items=["A8"], variants=[BASE, TIMED], calibration=cid)
     spec = record.check_spec(root, {**second, "remeasures": "m2-a8-1"}, PLAT, SUITE, saves, PACK)
     assert spec.first is not None and spec.first["remeasure"] == ["end_dragon"]
     assert spec.cal is not None and spec.cal["id"] == cid
+    other = {**second, "variants": [BASE, {**TIMED, "options": {"SHADOW_QUALITY": "-1"}}]}
+    for changed in ({**first, "status": "failed"}, {**first, "spec": other}):
+        (root / record.RECORDS / "m2-a8-3.json").write_text(json.dumps(changed), encoding="utf-8")
+        with pytest.raises(record.RecordError, match="re-measure an ok first session's variants"):
+            record.check_spec(root, {**second, "remeasures": "m2-a8-3"}, PLAT, SUITE, saves, PACK)
     with pytest.raises(record.RecordError, match="A8's second session"):
         record.check_spec(root, {**measured(), "remeasures": "m2-a8-1"}, PLAT, SUITE, saves, PACK)
     passed = {"acceptance": [{"item": "A8", "pass": True, "evidence": evidence}]}
@@ -1878,11 +1935,17 @@ def test_a8_in_a_split_session_waits_in_its_parts_and_is_judged_in_its_record(
     fake_run, monkeypatch
 ) -> None:
     root, spec_path, fake, host = fake_run
+    small_full(root)
     set_suite(root, capture__reloadCap=12)
     fresh_games(monkeypatch, fake, host)
-    cid = fake_calibration(root, spec_path)
+    cid = fake_calibration(root, spec_path, mode="full")
     spec = measured(
-        name="m2-a8-split", kind="acceptance", items=["A8"], variants=[BASE, TIMED], calibration=cid
+        name="m2-a8-split",
+        mode="full",
+        kind="acceptance",
+        items=["A8"],
+        variants=[BASE, TIMED],
+        calibration=cid,
     )
     spec_path.write_text(json.dumps(spec), encoding="utf-8")
     found, _ = run_verb.run_session(root, spec_path, host, FakeMachine(), print, print)
@@ -1915,3 +1978,187 @@ def test_calibrate_resumes_a_split_session_at_its_first_part_not_ok(fake_run, mo
     cal = record.load_calibration(root, outcome["calibration"])
     first = record.read_record(root, cal["sessions"][0])
     assert first["parts"][1].endswith("-p2b") and len(cal["nulls"]) == 4
+
+
+# The review's fixes (M2.P07 step 4).
+
+
+def judged_record(root: Path, name: str, cid: str, beyond: bool, at: str) -> None:
+    """A record the twin monitor reads: ok, judged by `cid`, its twin inside or beyond."""
+    found = {
+        "name": name,
+        "status": "ok",
+        "startedAt": at,
+        "verdicts": {"calibration": cid, "twin": {"inside": not beyond}},
+    }
+    (root / record.RECORDS).mkdir(parents=True, exist_ok=True)
+    (root / record.RECORDS / f"{name}.json").write_text(json.dumps(found), encoding="utf-8")
+
+
+def test_a_judged_run_keeps_its_calibrations_launch_its_newest_and_its_monitor(fake_run) -> None:
+    """measurement.md#calibration: a run whose Ci is not the calibration's twins a session would
+    launch otherwise (D43); a superseded generation, or one whose twin monitor asks for
+    recalibrating (more than 2 of the last 20 twins beyond), judges no new run."""
+    root, spec_path, _, _ = fake_run
+    cid = fake_calibration(root, spec_path)
+    spec_path.write_text(json.dumps(measured(calibration=cid)), encoding="utf-8")
+    with pytest.raises(
+        record.RecordError, match=r"measured 2 candidates \(its twins\) a round, this"
+    ):
+        run_verb.prepare(root, spec_path, FakeMachine())
+    pair = measured(calibration=cid, variants=[BASE, SHADOWS])
+    spec_path.write_text(json.dumps(pair), encoding="utf-8")
+    run_verb.prepare(root, spec_path, FakeMachine())  # holds
+    for n, at in enumerate(("2026-10-13T01", "2026-10-13T02", "2026-10-13T03")):
+        judged_record(root, f"m2-noisy-{n}", cid, True, at)
+    with pytest.raises(record.RecordError, match="twin monitor asks for recalibrating: 3 of the"):
+        run_verb.prepare(root, spec_path, FakeMachine())
+    spec_path.write_text(json.dumps(measured()), encoding="utf-8")
+    again = fake_calibration(root, spec_path, generation=2)
+    assert again == f"{cid}-r2" and record.calibration_ids(root, "quick", cid[6:]) == [cid, again]
+    spec_path.write_text(json.dumps(pair), encoding="utf-8")
+    with pytest.raises(record.RecordError, match=f"is superseded; fix: name {again}"):
+        run_verb.prepare(root, spec_path, FakeMachine())
+    spec_path.write_text(json.dumps({**pair, "calibration": again}), encoding="utf-8")
+    assert run_verb.prepare(root, spec_path, FakeMachine()).spec.calibration == again
+
+
+def test_a_run_that_did_not_end_ok_holds_no_verdicts_and_its_items_wait(
+    fake_run, monkeypatch
+) -> None:
+    root, spec_path, fake, host = fake_run
+    small_full(root)
+    fresh_games(monkeypatch, fake, host)
+    quick = fake_calibration(root, spec_path)
+    full = fake_calibration(root, spec_path, mode="full")
+    quit_mod = launch.quit_mod
+
+    def bad_quit(*args: Any) -> dict:
+        return {**quit_mod(*args), "exitCode": 1}
+
+    monkeypatch.setattr(launch, "quit_mod", bad_quit)
+    pair = measured(name="m2-badquit-1", calibration=quick, variants=[BASE, SHADOWS])
+    spec_path.write_text(json.dumps(pair), encoding="utf-8")
+    found, _ = run_verb.run_session(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "failed" and "exited 1" in found["reason"]
+    assert "verdicts" not in found and found["captures"]
+    a8 = measured(
+        name="m2-badquit-2",
+        mode="full",
+        kind="acceptance",
+        items=["A8"],
+        variants=[BASE, TIMED],
+        calibration=full,
+    )
+    spec_path.write_text(json.dumps(a8), encoding="utf-8")
+    found, _ = run_verb.run_session(root, spec_path, host, FakeMachine(), print, print)
+    entry = found["acceptance"][0]
+    assert found["status"] == "failed" and entry["pass"] is None
+    assert entry["evidence"]["pending"] == "the session ended failed"
+
+
+def test_a_judged_split_session_whose_identity_moved_ends_invalid(fake_run, monkeypatch) -> None:
+    """run-record.md#split-sessions: the part's identity is held against the first ok part's
+    before the calibration's, so the session ends invalid rather than refused."""
+    root, spec_path, fake, host = fake_run
+    set_suite(root, capture__reloadCap=12)
+    fresh_games(monkeypatch, fake, host)
+    cid = fake_calibration(root, spec_path)
+    spec = measured(name="m2-judged-moved", calibration=cid, variants=[BASE, SHADOWS])
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    lose_focus_at(monkeypatch, fake, 10 + 1)
+    found, _ = run_verb.run_session(root, spec_path, host, FakeMachine(), print, print)
+    assert (found["name"], found["status"]) == ("m2-judged-moved-p2", "invalid")
+    set_suite(root, validity__minFrames=99)
+    found, path = run_verb.run_session(root, spec_path, host, FakeMachine(), print, print)
+    assert path.name == "m2-judged-moved.json" and found["status"] == "invalid"
+    assert "part 2's identity differs" in found["reason"] and "verdicts" not in found
+
+
+def test_a_session_record_checks_its_parts_identity_and_groups() -> None:
+    one = {"name": "s-p1", "identity": {"a": 1}, "split": {"part": 1, "views": ["v1"]}}
+    two = {"name": "s-p2", "identity": {"a": 1}, "split": {"part": 2, "views": ["v2"]}}
+    assert run_verb.session_mismatch([one, two], (("v1",), ("v2",))) is None
+    moved = {**two, "identity": {"a": 2}}
+    assert "s-p2's identity differs from s-p1's: a" in str(
+        run_verb.session_mismatch([one, moved], (("v1",), ("v2",)))
+    )
+    assert "measured ['v2'] as part 2, not group 2" in str(
+        run_verb.session_mismatch([one, two], (("v1",), ("v3",)))
+    )
+    assert run_verb.session_mismatch([one], (("v1",), ("v2",))) == "1 parts for 2 groups"
+
+
+def test_a_part_keeps_its_split_when_its_analysis_breaks(fake_run, monkeypatch) -> None:
+    root, spec_path, fake, host = fake_run
+    set_suite(root, capture__reloadCap=8)
+    fresh_games(monkeypatch, fake, host)
+    spec_path.write_text(json.dumps(measured(name="m2-broken-split")), encoding="utf-8")
+
+    def broken(run: Any) -> dict:
+        raise RuntimeError("the cut met a wall")
+
+    monkeypatch.setattr(run_verb, "measured_fields", broken)
+    found, _ = run_verb.run_session(root, spec_path, host, FakeMachine(), print, print)
+    assert found["name"] == "m2-broken-split-p1" and found["status"] == "failed"
+    assert found["split"]["session"] == "m2-broken-split" and "met a wall" in found["reason"]
+
+
+def test_an_orphaned_parts_items_wait_on_their_session_record(tmp_path: Path) -> None:
+    raw = tmp_path / record.RAW / "m2-a8-x-p1"
+    raw.mkdir(parents=True)
+    spec = {"kind": "acceptance", "mode": "full", "items": ["A8", "A11"]}
+    split = {"session": "m2-a8-x", "part": 1, "parts": 2, "views": ["v1"]}
+    journal = {"name": "m2-a8-x-p1", "spec": spec, "split": split}
+    found = measure.orphan_record(tmp_path, raw, journal, {"at": "now"}, False)
+    assert found["split"] == split
+    assert [(e["item"], e["pass"]) for e in found["acceptance"]] == [("A8", None), ("A11", None)]
+    assert found["acceptance"][0]["evidence"]["pending"] == "judged in session m2-a8-x's record"
+    record.check_acceptance(found["acceptance"])
+
+
+def test_the_twin_monitor_counts_a8_and_a11_twins_and_only_ok_records(tmp_path: Path) -> None:
+    folder = tmp_path / record.RECORDS
+    folder.mkdir(parents=True)
+    cid = "full-" + "c" * 64
+    entry = {"item": "A8", "pass": True, "evidence": {"calibration": cid, "twin": False}}
+    for name, changes in (
+        ("m2-a8-1", {}),
+        ("m2-a8-2", {"status": "failed"}),
+        ("m2-a8-3", {"split": {"session": "m2-a8-x"}}),
+    ):
+        found = {"name": name, "status": "ok", "startedAt": name, "acceptance": [entry], **changes}
+        (folder / f"{name}.json").write_text(json.dumps(found), encoding="utf-8")
+    assert record.judged_twins(tmp_path, cid) == [True]
+
+
+def test_calibrate_recalibrates_its_identity_as_a_new_generation(fake_run, monkeypatch) -> None:
+    """measurement.md#calibration: the monitor's recalibration under the same identity; the
+    sessions cal-<mode>-<hash>-r2-<n>, the file <mode>-<sha256>-r2 superseding the first; a
+    session whose spec calibrate did not write is passed over."""
+    root, _, fake, host = fake_run
+    small_calibration(root, 2)
+    fresh_games(monkeypatch, fake, host)
+    first = calibrate_verb.calibrate(root, "quick", host, FakeMachine(), print, print)
+    assert first["stopped"] is None and "-r" not in first["calibration"]
+    with pytest.raises(record.RecordError, match="no full calibration of this identity"):
+        calibrate_verb.calibrate(root, "full", host, FakeMachine(), print, print, True)
+    digest = first["identityHash"]
+    stray = calibrate_verb.session_spec(
+        calibrate_verb.session_name("quick", digest, 1, 2), "quick", PACK
+    )
+    run_verb.run_session(root, {**stray, "notes": "by hand"}, host, FakeMachine(), print, print)
+    said: list[str] = []
+    announced: list[str] = []
+    again = calibrate_verb.calibrate(
+        root, "quick", host, FakeMachine(), said.append, announced.append, True
+    )
+    assert again["calibration"] == f"{first['calibration']}-r2" and again["stopped"] is None
+    assert "(generation 2, after quick-" in announced[0] and "0 whole, 2 to run" in announced[0]
+    assert any("a spec calibrate did not write" in s for s in said)
+    cal = record.load_calibration(root, again["calibration"])
+    assert (cal["generation"], cal["supersedes"]) == (2, first["calibration"])
+    assert all("-r2-" in name for name in cal["sessions"]) and cal["twinMonitor"]["window"] == 20
+    said.clear()
+    calibrate_verb.calibrate(root, "quick", host, FakeMachine(), said.append, print)
+    assert f"{again['calibration']}.json exists for this identity" in said[0]

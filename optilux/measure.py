@@ -1294,10 +1294,13 @@ def orphan_record(root: Path, raw: Path, journal: dict, done: dict, complete: bo
             captures=captures,
         )
     if spec["kind"] == "acceptance":
-        found["acceptance"] = [
-            {"item": item, "pass": False, "evidence": {"notRun": "the run was killed"}}
-            for item in spec.get("items") or []
-        ]
+        part = journal.get("split")
+        entry = (
+            {"pass": None, "evidence": {"pending": f"judged in session {part['session']}'s record"}}
+            if part
+            else {"pass": False, "evidence": {"notRun": "the run was killed"}}
+        )
+        found["acceptance"] = [{"item": item, **entry} for item in spec.get("items") or []]
     found["session"] = {"orphan": done, "journal": shown(raw / CLOSED, root)}
     found["raw"] = shown(raw, root)
     return found

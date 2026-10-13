@@ -183,8 +183,8 @@ def record_problems(root: Path, name: str, text: bytes) -> tuple[list[str], str 
             problems.append(str(error))
     if found.get("mode") is not None or kind != "acceptance":
         problems += measured_problems(root, found)
-    elif not isinstance(found.get("variants"), list):
-        problems.append("no variants list")
+    elif "variants" in found and not isinstance(found["variants"], list):
+        problems.append("variants is no list")  # an aborted run of M1's items holds none
     over = len(text) > RECORD_BUDGET
     if over and kind in BUDGETED:
         problems.append(f"{len(text):,} bytes, over the {RECORD_BUDGET:,}-byte budget (D51)")

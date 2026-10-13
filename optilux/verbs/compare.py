@@ -3,9 +3,11 @@ docs/plans/m2.md M2.P07): a measured record re-judged from its captures alone; n
 
 The calibration is `--calibration`'s, else the one the record names; a record without one (D40's
 calibration null) is refused naming `calibrate`. The identity is checked key by key first, then
-the kind and the mode, and a refusal names the field. The verdicts are optilux/stats.py's, as
-`run` writes them: each candidate's, the twin's check, the twin monitor over the calibration's
-judged twins; A8's and A11's entries for their acceptance runs. Exit 0 when judged.
+the kind and the mode, then the status (ok) and the record's own calibration (D40: a
+calibration-null run, a budget run or the survey among them, kept another schedule and has no
+verdicts), and a refusal names the field. The verdicts are optilux/stats.py's, as `run` writes
+them: each candidate's, the twin's check, the twin monitor over the calibration's judged twins
+by its window; A8's and A11's entries for their acceptance runs. Exit 0 when judged.
 """
 
 import argparse
@@ -18,7 +20,6 @@ from optilux import REPO_ROOT, record, stats
 from optilux.verbs import Verb
 
 PREFIX = "optilux compare"
-SUITE = "config/suite.json"
 
 
 class CompareError(RuntimeError):
@@ -63,21 +64,37 @@ def compare(root: Path, name: str, cid: str | None) -> dict:
             f"{name}'s mode is {mode}, calibration {cid[:24]}... is {cal['mode']} mode's; fix: "
             f"the {mode} calibration"
         )
+    if found.get("status") != "ok":
+        raise CompareError(
+            f"{name}'s status is {found.get('status')} ({found.get('reason')}): a run that did "
+            "not end ok has no verdicts; fix: rerun it under a new name"
+        )
+    if found.get("calibration") is None:
+        raise CompareError(
+            f"{name} ran calibration null (plans/m2.md D40: no verdicts, its schedule its own); "
+            f"fix: a measurement run that names calibration {cid[:24]}..."
+        )
+    first = first_evidence(root, found)
+    if first is not None and first.get("calibration") != cid:
+        raise CompareError(
+            f"{name} re-measures an A8 session judged by calibration "
+            f"{str(first.get('calibration'))[:24]}...; fix: compare it under that calibration"
+        )
     captures = record.session_captures(root, found)
-    suite = json.loads((root / SUITE).read_text(encoding="utf-8"))
-    monitor = suite["statistics"]["twinMonitor"]
-    judged = stats.judge(captures, cal, mode)
+    expected = found.get("variants") or None
+    judged = stats.judge(captures, cal, mode, expected)
     history = record.judged_twins(root, cal["id"])
-    own = (found.get("verdicts") or {}).get("calibration") == cid
+    own = (record.judged_twin(found) or (None, None))[0] == cid
     if judged["twin"]["inside"] is not None and not own:
         history.append(not judged["twin"]["inside"])  # a record not yet among the judged
-    judged["twinMonitor"] = stats.twin_monitor(history, monitor["window"], monitor["maxExceed"])
+    window = cal["twinMonitor"]
+    judged["twinMonitor"] = stats.twin_monitor(history, window["window"], window["maxExceed"])
     result: dict[str, Any] = {"name": name, "calibration": cid, "kind": kind, "verdicts": judged}
     if kind == "acceptance":
         items = [e["item"] for e in found.get("acceptance") or []]
-        first = first_evidence(root, found)
-        result["acceptance"] = stats.judge_items(captures, cal, items, timed(found), first)
-    if own:
+        timed_id = timed(found)
+        result["acceptance"] = stats.judge_items(captures, cal, items, timed_id, first, expected)
+    if own and found.get("verdicts"):
         keep = ("candidates", "twin", "session")
         recorded = {k: found["verdicts"].get(k) for k in keep}
         result["sameAsRecord"] = recorded == {k: judged[k] for k in keep}
