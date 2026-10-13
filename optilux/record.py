@@ -442,7 +442,8 @@ def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict
 
 def check_measured_items(items: tuple[str, ...], variants: tuple[dict, ...]) -> None:
     """A8 and A11's variants (plans/m2.md M2.P10): A8 a baseline without timers and a candidate
-    equal to it with them; A11 every variant with timers on."""
+    equal to it with them; A11 every variant with timers on, and its known positive: a candidate
+    unlike the baseline (shadows off), whose effect the timers must match."""
     base = variants[0]
     if "A8" in items:
         same = [
@@ -457,6 +458,16 @@ def check_measured_items(items: tuple[str, ...], variants: tuple[dict, ...]) -> 
             )
     if "A11" in items and not all(v["timers"] for v in variants):
         raise RecordError("A11 times every variant; fix: timers true on each one")
+    unlike = [
+        v
+        for v in variants[1:]
+        if (v["profile"], v["options"]) != (base["profile"], base["options"])
+    ]
+    if "A11" in items and not unlike:
+        raise RecordError(
+            "A11 matches the timers' delta against GPUBusy's on a known positive; fix: a "
+            'candidate unlike the baseline (shadows off: SHADOW_QUALITY "-1")'
+        )
 
 
 def check_spec(
