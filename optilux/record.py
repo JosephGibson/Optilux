@@ -520,11 +520,15 @@ def check_spec(
         data, kind, heap, suite["modes"][mode]["rounds"], ids, views_file, variants
     )
     planned = planned_reloads(len(ids), candidates(kind, variants, suite), rounds)
-    if planned > cap:
+    # A budget run (heap true, calibration null) measures the leak past the cap and judges
+    # nothing; F4's 2 GiB guard stops it before the machine pages (plans/m2.md D43, M2.P06).
+    budget = kind == "measurement" and heap and data["calibration"] is None
+    if planned > cap and not budget:
         raise RecordError(
             f"the session plans {planned} reloads (selftest's and the start-of-run, the warm-up "
-            f"pass, {len(ids)} views x the schedule), over capture.reloadCap {cap}; fix: fewer "
-            "candidates or quick mode"
+            f"pass, {len(ids)} views x the schedule), over capture.reloadCap {cap}; fix: quick "
+            "mode or fewer candidates (a session over the cap splits into launches of views, "
+            "plans/m2.md D43, not built yet)"
         )
     return Spec(
         name,
@@ -667,7 +671,7 @@ def check_acceptance_spec(
     if planned > cap:
         raise RecordError(
             f"the session plans {planned} reloads, over capture.reloadCap {cap}; fix: fewer "
-            "reloads, or raise the cap from F4's table"
+            "reloads (the cap is plans/m2.md D43's)"
         )
     order = tuple(item for item in RUNNABLE if item in items)
     return Spec(

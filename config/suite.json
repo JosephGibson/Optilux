@@ -288,8 +288,8 @@
    "underwater": 2.0,
    "addAfterDimensionChange": 3.0
   },
-  "reloadCap": 288,
-  "why": "ALC calibrated: 1.5 s checked over 372 reloads; Nether still meshing at 2 s (12.7 % drift); underwater 6.2 % of pixels differ at 0.5 s; reload cap from ALC's Iris reload leak (10.4 MB/reload on 1.10.7); the spike measured 20.6 MiB heap and 320 MiB private bytes per reload on the dev tier with debug options (platform.md#mc-263-verified), so M1 re-measures on the bench tier before the cap is trusted; ticksAfterWeatherChange from ALC's /tick step 120 (weather ramps only while ticking) [verify on the platform]; the pending-frame cap is the mod's CaptureAdapter.MAX_PENDING, identity through the jar's hash (mod.md#8-capture)",
+  "reloadCap": 20,
+  "why": "ALC calibrated: 1.5 s checked over 372 reloads; Nether still meshing at 2 s (12.7 % drift); underwater 6.2 % of pixels differ at 0.5 s; reloadCap 20 by plans/m2.md D43 (optilux/budget.py) over M2.P06's records (m2-budget-full-1, m2-budget-overworld-1, m2-diag-alone-1, m2-diag-switches-1 and m2-diag-defaults-1): each pipeline reload leaks about 0.5 GiB of GPU memory under AMD's driver 32.0.31041.3013 (510-603 MiB of private bytes a reload over reloads 2-20; M1's records, on 32.0.32015.2008, 50-76 over reloads 0-20), the 16 GB card fills near reload 21 and the baseline then slows 13-474 % (drift onsets 22-24), and private bytes pass 75 % of physical memory between reloads 20 and 30, at 6144 and 7168 MiB in all five; a session over the cap splits into launches of views without the warm-up pass (user, 2026-10-13); budget runs (heap true) pass it, stopped by F4's 2 GiB guard; ticksAfterWeatherChange from ALC's /tick step 120 (weather ramps only while ticking) [verify on the platform]; the pending-frame cap is the mod's CaptureAdapter.MAX_PENDING, identity through the jar's hash (mod.md#8-capture)",
   "ticksAfterWeatherChange": 120,
   "unitsWhy": "seconds, timed by the mod on the QPC clock (ALC calibrated settles and windows in seconds; a frame-count wait was rejected)"
  },
@@ -315,8 +315,9 @@
   "falseRate": 0.05,
   "thresholdFloorPct": 0.5,
   "calibration": {
-   "twinsPerSession": 5,
-   "minSessionsPerMode": 4
+   "twinsPerSession": 2,
+   "minSessionsPerMode": 10,
+   "why": "plans/m2.md D43 at reloadCap 20 (m2-budget-full-1, m2-budget-overworld-1, m2-diag-alone-1, m2-diag-switches-1 and m2-diag-defaults-1): quick mode's 3 views at R 1 with the warm-up pass hold 2 twins a launch (2 + 3 + 3 x 5 = 20), full mode's 2-view launches at R 2 without it 2 (2 + 2 x 9 = 20); 10 sessions make measurement.md#calibration's 20 null candidates (optilux/budget.py calibration_fit)"
   },
   "why": "ALC: bracketing beat ABBA (rms 0.52 -> 0.33 %) against 10-40 s GPU regimes; one geo-mean test per candidate; the thresholds are empirical and target <= 5 % false accepts, monitored by every session's twin",
   "twinMonitor": {

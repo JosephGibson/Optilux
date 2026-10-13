@@ -17,8 +17,8 @@
   "xmsEqualsXmx": true,
   "size": 6144,
   "unit": "MiB",
-  "provisional": true,
-  "sizeWhy": "provisional 6144 MiB (the spike launches with it and checks the started process against it); the spike records an idle lower bound, and M2 sets the size from the heap after GC over a full-mode session with its reloads, plus headroom. Xms = Xmx removes heap resizing from the measurement"
+  "provisional": false,
+  "sizeWhy": "6144 MiB by plans/m2.md D43 (optilux/budget.py) over M2.P06's records (m2-budget-full-1, m2-budget-overworld-1, m2-diag-alone-1, m2-diag-switches-1 and m2-diag-defaults-1): 6144 and 7168 MiB cap a launch at 20 reloads in all five (the pair alone: 6144 to 9216) and the smallest is kept; the heap after GC reaches 904-1,190 MiB at reload 20, far under 75 % of 6144 (4,608), so the GPU memory binds, not the heap; a bigger heap only commits more private bytes. Xms = Xmx removes heap resizing from the measurement"
  },
  "flags": [],
  "flagsWhy": "plain and reproducible (user, 2026-10-05); GPU-bound shader scenes barely react to JVM flags; tuning belongs to the JVM track",

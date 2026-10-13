@@ -139,18 +139,19 @@ def rule(runs: list[Run]) -> dict:
     return {"heap": chosen["heap"], "cap": best, "table": table}
 
 
-def holds_twin_and_one(cap: int, views: int, rounds: int) -> bool:
-    """Whether a session of `views` views at R `rounds` with the twin and one candidate fits the
-    cap (plans/m2.md section 7 stops when full mode's does not, at every heap)."""
-    return record.planned_reloads(views, TWIN_AND_ONE, rounds) <= cap
+def holds_twin_and_one(cap: int, views: int, rounds: int, warmup: bool = True) -> bool:
+    """Whether a launch of `views` views at R `rounds` with the twin and one candidate fits the
+    cap, with or without the warm-up pass (plans/m2.md section 7 stops when a 2-view launch
+    without it does not, at every heap: D43 splits sessions over the cap into such launches)."""
+    return record.planned_reloads(views, TWIN_AND_ONE, rounds, warmup) <= cap
 
 
-def calibration_fit(cap: int, views: int, rounds: int) -> dict | None:
-    """The most twins a calibration session of `views` views at R `rounds` holds within `cap`
-    (selftest's reload counted) and the sessions that make NULL_CANDIDATES; None when not one
-    twin fits."""
+def calibration_fit(cap: int, views: int, rounds: int, warmup: bool = True) -> dict | None:
+    """The most twins a calibration launch of `views` views at R `rounds` holds within `cap`
+    (selftest's reload counted, the warm-up pass with `warmup`) and the sessions that make
+    NULL_CANDIDATES; None when not one twin fits."""
     twins = 0
-    while record.planned_reloads(views, twins + 1, rounds) <= cap:
+    while record.planned_reloads(views, twins + 1, rounds, warmup) <= cap:
         twins += 1
     if twins == 0:
         return None

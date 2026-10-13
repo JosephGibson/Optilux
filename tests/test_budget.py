@@ -134,6 +134,10 @@ def test_full_mode_needs_112_reloads_for_the_twin_and_one_candidate() -> None:
     assert not budget.holds_twin_and_one(20, 11, 2)  # 2 + 11 + 11 x 9 = 112
     assert budget.holds_twin_and_one(112, 11, 2) and not budget.holds_twin_and_one(67, 11, 1)
     assert budget.holds_twin_and_one(20, 3, 1)  # quick: 2 + 3 + 3 x 5 = 20
+    # D43's split: a 2-view launch at R 2 without the warm-up pass, 2 + 2 x 9 = 20.
+    assert budget.holds_twin_and_one(20, 2, 2, warmup=False)
+    assert not budget.holds_twin_and_one(20, 2, 2)
+    assert not budget.holds_twin_and_one(19, 2, 2, warmup=False)
 
 
 def test_the_calibration_fits_twins_in_the_cap_and_sessions_to_20_nulls() -> None:
@@ -143,3 +147,8 @@ def test_the_calibration_fits_twins_in_the_cap_and_sessions_to_20_nulls() -> Non
     # Quick mode, 3 views at R 1: 8 + 6 x twins <= 20 holds 2; 10 sessions make 20 nulls.
     assert budget.calibration_fit(20, 3, 1) == {"twinsPerSession": 2, "minSessionsPerMode": 10}
     assert budget.calibration_fit(288, 11, 2) == {"twinsPerSession": 6, "minSessionsPerMode": 4}
+    # Full mode split into 2-view launches without the warm-up pass: 2 + 2 (1 + 4 twins) <= 20.
+    assert budget.calibration_fit(20, 2, 2, warmup=False) == {
+        "twinsPerSession": 2,
+        "minSessionsPerMode": 10,
+    }
