@@ -474,10 +474,11 @@ def check_spec(
     without a mode: one variant of the reference pack `pack` at its defaults, items `run`
     performs, F4's reload count (`reloads`, a multiple of RELOAD_EVERY). A measured run (`mode`
     quick or full; measurement, calibration, or acceptance of A8 and A11): its variants
-    (check_variants), `calibration` written null (plans/m2.md D40: M2.P07 brings calibrations),
-    `heap` true or false, a budget run's rounds and dimensions (check_budget), no treatment and
-    no reloads. Each refusal names its fix. `fresh` False skips the single-use name (`calibrate`
-    builds the identity before naming a session)."""
+    (check_variants), `calibration` null (plans/m2.md D40) or a calibration matching it
+    (check_calibration), A8 and A11 in full mode, `heap` true or false, a budget run's or the
+    survey's keys (check_budget), no treatment and no reloads; a session over the cap cut into
+    launches of views (split_groups). Each refusal names its fix. `fresh` False skips the
+    single-use name (`calibrate` builds the identity before naming a session)."""
     if not isinstance(data, dict):
         raise RecordError("the spec is no JSON object; fix: give its fields as an object")
     missing = [key for key in SPEC_REQUIRED if key not in data]
@@ -580,13 +581,18 @@ def check_spec(
     variants = check_variants(root, data, suite, pack)
     order = tuple(item for item in MEASURED_ITEMS if item in items)
     check_measured_items(order, variants)
+    if order and mode != "full":
+        raise RecordError(
+            f"{' and '.join(order)} run on full mode's schedule, judged by the full calibration "
+            "(plans/m2.md M2.P10); fix: mode full"
+        )
     ids = mode_views(suite, mode, views_file)
     rounds, ids, alone, windows = check_budget(
         data, kind, heap, suite["modes"][mode]["rounds"], ids, views_file, variants
     )
-    cal = check_calibration(root, data, kind, mode)
-    first = check_remeasures(root, data, order)
     ci = candidates(kind, variants, suite)
+    cal = check_calibration(root, data, kind, mode, ci)
+    first = check_remeasures(root, data, order)
     planned = planned_reloads(len(ids), ci, rounds)
     # A budget run (heap true, calibration null) measures the leak past the cap and judges
     # nothing; F4's 2 GiB guard stops it before the machine pages (plans/m2.md D43, M2.P06).
@@ -633,12 +639,14 @@ def check_spec(
     )
 
 
-def check_calibration(root: Path, data: dict, kind: str, mode: str) -> dict | None:
+def check_calibration(root: Path, data: dict, kind: str, mode: str, ci: int) -> dict | None:
     """The calibration a measured run is judged by (measurement.md#calibration, plans/m2.md D40),
     loaded: none for a calibration run, which is judged by none; null allowed for a measurement
     run, which then has no verdicts; named for A8 and A11, which are judged. A named one exists,
-    is the spec's mode's and covers its resource-pack set; its identity is matched once the run's
-    is built (`run`'s prepare)."""
+    is the spec's mode's and covers its resource-pack set; its sessions measured as many
+    candidates (its twins) as this run's Ci, so both launch alike (D43's groups, the warm-up
+    pass); it is the newest of its identity, and its twin monitor does not ask for recalibrating.
+    Its identity is matched once the run's is built (`run`'s prepare)."""
     cid = data["calibration"]
     if cid is None:
         if kind == "acceptance":
@@ -661,6 +669,25 @@ def check_calibration(root: Path, data: dict, kind: str, mode: str) -> dict | No
         raise RecordError(
             f"calibration {cid[:24]}... covers the {cal['resourcePacks']} resource-pack set, the "
             f"spec runs {data['resourcePacks']}; fix: a calibration of that set"
+        )
+    if ci != cal["twinsPerSession"]:
+        raise RecordError(
+            f"calibration {cid[:24]}...'s sessions measured {cal['twinsPerSession']} candidates "
+            f"(its twins) a round, this run {ci} with its twin, and so launch otherwise (D43); "
+            f"fix: {cal['twinsPerSession'] - 1} candidate(s) beside the twin"
+        )
+    newest = calibration_ids(root, cal["mode"], cal["identityHash"])[-1]
+    if newest != cid:
+        raise RecordError(f"calibration {cid[:24]}... is superseded; fix: name {newest}")
+    window = cal["twinMonitor"]
+    history = judged_twins(root, cid)
+    exceeded = sum(1 for beyond in history[-window["window"] :] if beyond)
+    if exceeded > window["maxExceed"]:
+        raise RecordError(
+            f"calibration {cid[:24]}...'s twin monitor asks for recalibrating: {exceeded} of the "
+            f"last {min(len(history), window['window'])} twins at or beyond its geo-mean "
+            f"threshold (measurement.md#calibration); fix: `optilux calibrate --mode {mode} "
+            "--recalibrate`, then name its id"
         )
     return cal
 
@@ -687,6 +714,16 @@ def check_remeasures(root: Path, data: dict, items: tuple[str, ...]) -> dict | N
     if evidence.get("calibration") != data["calibration"]:
         raise RecordError(
             f"{name}'s A8 was judged by another calibration; fix: the same calibration"
+        )
+    spec = first.get("spec") or {}
+    same = (spec.get("mode"), canonical(spec.get("variants"))) == (
+        data.get("mode"),
+        canonical(data["variants"]),
+    )
+    if first.get("status") != "ok" or not same:
+        raise RecordError(
+            f"{name} ended {first.get('status')} or ran other variants or another mode; fix: "
+            "re-measure an ok first session's variants in its mode"
         )
     return evidence
 
@@ -717,7 +754,7 @@ def check_budget(
             f"{', '.join(surveyed)}: a calibration-null measurement run's (the survey's, or a "
             "budget run's): a judged run keeps its calibration's schedule; fix: drop them"
         )
-    if data.get("warmup") not in (None, True):
+    if data.get("warmup") is not None and data["warmup"] is not True:
         raise RecordError(
             f"warmup {data['warmup']!r}: true keeps each launch's warm-up pass in a split "
             "session (the survey's, plans/m2.md D47); fix: true, or leave it out"
@@ -1456,9 +1493,28 @@ def record_names(root: Path) -> list[str]:
     return sorted(p.stem for p in folder.glob("*.json")) if folder.is_dir() else []
 
 
+def judged_twin(found: dict) -> tuple[str, bool] | None:
+    """The calibration a record's A/A twin was judged by and whether it lay at or beyond the
+    geo-mean threshold: a measurement's verdicts, or an A8 and A11 run's entries; None for a record
+    that did not end ok, a part, or a twin not measured."""
+    if found.get("status") != "ok" or found.get("split") is not None:
+        return None
+    judged = found.get("verdicts") or {}
+    cid, inside = judged.get("calibration"), (judged.get("twin") or {}).get("inside")
+    if cid is None:
+        for entry in found.get("acceptance") or []:
+            evidence = entry.get("evidence") if isinstance(entry, dict) else None
+            if isinstance(evidence, dict) and evidence.get("calibration"):
+                cid, inside = evidence["calibration"], evidence.get("twin")
+                break
+    if not isinstance(cid, str) or inside not in (True, False):
+        return None
+    return cid, inside is False
+
+
 def judged_twins(root: Path, cid: str) -> list[bool]:
-    """The twin monitor's history (measurement.md#calibration): for every record judged by the
-    calibration `cid` whose twin was judged, oldest first by its start, whether its twin lay at or
+    """The twin monitor's history (measurement.md#calibration): for every ok record whose twin
+    the calibration `cid` judged (judged_twin), oldest first by its start, whether it lay at or
     beyond the geo-mean threshold; a record that cannot be read is `verify records`' to report."""
     found = []
     for name in record_names(root):
@@ -1466,21 +1522,22 @@ def judged_twins(root: Path, cid: str) -> list[bool]:
             one = read_record(root, name)
         except RecordError:
             continue
-        judged = one.get("verdicts") or {}
-        twin = judged.get("twin") or {}
-        if judged.get("calibration") == cid and twin.get("inside") is not None:
-            found.append((str(one.get("startedAt")), twin["inside"] is False))
+        twin = judged_twin(one)
+        if twin is not None and twin[0] == cid:
+            found.append((str(one.get("startedAt")), twin[1]))
     return [beyond for _, beyond in sorted(found)]
 
 
 # Calibrations (measurement.md#calibration): config/calibrations/<mode>-<identity sha256>.json,
-# written by `calibrate`, matched key by key on the identity; the baseline pack recorded, not
-# matched (user, 2026-10-06).
+# a recalibration of the same identity <...>-r<generation> from 2 (its twin monitor's window
+# starting over), written by `calibrate`, matched key by key on the identity; the baseline pack
+# recorded, not matched (user, 2026-10-06).
 CALIBRATIONS = "config/calibrations"
-CALIBRATION_ID = re.compile(r"(?:quick|full)-[0-9a-f]{64}")
+CALIBRATION_ID = re.compile(r"(?:quick|full)-[0-9a-f]{64}(?:-r(?:[2-9]|[1-9][0-9]+))?")
 CALIBRATION_KEYS = (
     "schema",
     "id",
+    "generation",
     "mode",
     "createdAt",
     "identityHash",
@@ -1491,11 +1548,29 @@ CALIBRATION_KEYS = (
     "twinsPerSession",
     "falseRate",
     "floorPct",
+    "twinMonitor",
     "baseline",
     "sessions",
     "nulls",
     "thresholds",
 )
+
+
+def calibration_id(mode: str, digest: str, generation: int = 1) -> str:
+    """<mode>-<identity sha256>, a recalibration's with -r<generation>."""
+    return f"{mode}-{digest}" + (f"-r{generation}" if generation > 1 else "")
+
+
+def calibration_ids(root: Path, mode: str, digest: str) -> list[str]:
+    """The calibrations of an identity and mode, oldest generation first."""
+    folder = root / CALIBRATIONS
+    found = []
+    for path in folder.glob(f"{mode}-{digest}*.json") if folder.is_dir() else []:
+        cid = path.stem
+        if CALIBRATION_ID.fullmatch(cid):
+            suffix = cid[len(mode) + 65 :]  # after <mode>-<64 hex>: "" or -r<generation>
+            found.append((int(suffix[2:]) if suffix else 1, cid))
+    return [cid for _, cid in sorted(found)]
 
 
 def identity_hash(found: dict) -> str:
@@ -1531,13 +1606,49 @@ def load_calibration(root: Path, cid: Any) -> dict:
             f"calibrate --mode {mode}` again"
         )
     digest = identity_hash(data["identity"])
+    generation = data["generation"]
     held = (data["id"], data["mode"], data["identityHash"], cid)
-    if held != (cid, mode, digest, f"{mode}-{digest}"):
+    expected = (cid, mode, digest, calibration_id(mode, digest, generation))
+    if not isinstance(generation, int) or held != expected:
         raise RecordError(
             f"{shown_path}: its id, mode or identity hash disagrees with its content; fix: "
             "restore it from git (a calibration is never edited)"
         )
+    problem = calibration_problem(data)
+    if problem:
+        raise RecordError(f"{shown_path}: {problem}; fix: restore it from git")
     return data
+
+
+def calibration_problem(data: dict) -> str | None:
+    """What in a calibration's content no judgment could use: its views, rounds, twins, rate,
+    floor and monitor of the wrong kind, or a null candidate without a positive ratio at a
+    view."""
+    views = data["views"]
+    if not isinstance(views, list) or not views or not all(isinstance(v, str) for v in views):
+        return "views is no list of view ids"
+    counts = (data["rounds"], data["twinsPerSession"])
+    if any(isinstance(n, bool) or not isinstance(n, int) or n < 1 for n in counts):
+        return "rounds or twinsPerSession is no positive count"
+    rate, floor = data["falseRate"], data["floorPct"]
+    if not (finite(rate) and 0 < rate < 1 and finite(floor) and floor >= 0):
+        return "falseRate or floorPct is out of range"
+    monitor = data["twinMonitor"]
+    if not isinstance(monitor, dict) or not all(
+        isinstance(monitor.get(k), int) and monitor[k] >= low
+        for k, low in (("window", 1), ("maxExceed", 0))
+    ):
+        return "twinMonitor holds no window and maxExceed"
+    nulls = data["nulls"]
+    if not isinstance(nulls, list) or not nulls:
+        return "nulls lists no null candidate"
+    for null in nulls:
+        ratios = null.get("ratios") if isinstance(null, dict) else None
+        if not isinstance(ratios, dict) or not all(
+            finite(ratios.get(v)) and ratios[v] > 0 for v in views
+        ):
+            return "a null candidate lacks a positive ratio at a view"
+    return None
 
 
 def first_difference(a: Any, b: Any, path: str) -> str:
@@ -1565,6 +1676,8 @@ def identity_differences(found: Any, other: Any) -> list[str]:
     keys = [*IDENTITY_KEYS, *(k for k in [*found, *other] if k not in IDENTITY_KEYS)]
     differ = []
     for key in dict.fromkeys(keys):
+        if key not in found and key not in other:
+            continue
         if key not in found or key not in other:
             differ.append(f"{key} (in one only)")
         elif found[key] != other[key]:

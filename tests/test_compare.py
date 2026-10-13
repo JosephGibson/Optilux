@@ -39,6 +39,7 @@ def write_calibration(root: Path, identity: dict = IDENTITY, mode: str = "quick"
     data = {
         "schema": 1,
         "id": f"{mode}-{digest}",
+        "generation": 1,
         "mode": mode,
         "createdAt": "2026-10-13T00:00:00+00:00",
         "identityHash": digest,
@@ -49,6 +50,7 @@ def write_calibration(root: Path, identity: dict = IDENTITY, mode: str = "quick"
         "twinsPerSession": 2,
         "falseRate": 0.05,
         "floorPct": 0.5,
+        "twinMonitor": {"window": 20, "maxExceed": 2},
         "baseline": {"pack": "pack.zip", "profile": "played"},
         "sessions": [f"cal-{n}" for n in range(10)],
         "nulls": nulls,
@@ -172,6 +174,12 @@ def test_an_m1_record_without_harness_is_refused_on_that_key(root, capsys, monke
     assert "differ in identity: harness (in one only)" in err
 
 
+def test_two_identities_without_the_same_key_do_not_differ_on_it() -> None:
+    m1 = {k: v for k, v in IDENTITY.items() if k != "harness"}
+    assert record.identity_differences(m1, dict(m1)) == []
+    assert record.identity_differences(m1, IDENTITY) == ["harness (in one only)"]
+
+
 def test_the_kind_then_the_mode_are_checked_after_the_identity(root, capsys, monkeypatch):
     monkeypatch.setattr(compare_verb, "REPO_ROOT", root)
     cal = write_calibration(root)
@@ -208,6 +216,32 @@ def test_a_twin_beyond_makes_compare_inconclusive_too(root, monkeypatch) -> None
     assert result["verdicts"]["session"] == "inconclusive"
     assert result["verdicts"]["candidates"][0]["verdict"] == "inconclusive"
     assert "sameAsRecord" not in result  # the record holds no verdicts of its own
+
+
+def test_a_record_that_did_not_end_ok_or_ran_calibration_null_is_refused(root, monkeypatch):
+    """After the identity, kind and mode: a run that did not end ok has no verdicts, nor one that
+    ran calibration null (plans/m2.md D40: a budget run or the survey kept its own schedule)."""
+    monkeypatch.setattr(compare_verb, "REPO_ROOT", root)
+    cal = write_calibration(root)
+    write_record(root, "m2-failed-1", cal, captures(6.3), status="failed", reason="quit 1")
+    with pytest.raises(compare_verb.CompareError, match=r"status is failed \(quit 1\): a run that"):
+        compare_verb.compare(root, "m2-failed-1", None)
+    write_record(root, "m2-null-2", None, captures(6.3), spec={"heap": True})
+    with pytest.raises(compare_verb.CompareError, match="ran calibration null"):
+        compare_verb.compare(root, "m2-null-2", cal["id"])
+
+
+def test_a_second_a8_session_is_compared_under_its_first_sessions_calibration(root) -> None:
+    cal = write_calibration(root)
+    first = {"item": "A8", "pass": None, "evidence": {"calibration": "full-" + "b" * 64}}
+    write_record(root, "m2-a8-1", None, [], kind="acceptance", acceptance=[first])
+    spec = {"name": "m2-a8-2", "remeasures": "m2-a8-1"}
+    item = {"item": "A8", "pass": True, "evidence": {"calibration": cal["id"]}}
+    write_record(
+        root, "m2-a8-2", cal, captures(7.0), kind="acceptance", spec=spec, acceptance=[item]
+    )
+    with pytest.raises(compare_verb.CompareError, match="re-measures an A8 session judged by"):
+        compare_verb.compare(root, "m2-a8-2", None)
 
 
 # report (plans/m2.md D50).

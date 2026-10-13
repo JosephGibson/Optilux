@@ -132,7 +132,11 @@ class Prepared:
 
 
 def prepare(
-    root: Path, spec_in: Path | dict, machine: record.Machine, fresh: bool = True
+    root: Path,
+    spec_in: Path | dict,
+    machine: record.Machine,
+    fresh: bool = True,
+    match: bool = True,
 ) -> Prepared:
     """Everything `run` checks before the live world, and the identity (run-record.md#identity)
     built from what the session will use, nothing launched or written (`--check` stops here): the
@@ -141,7 +145,8 @@ def prepare(
     views file and the JDK's release file hashed, the jars launch places, the pinned resource
     packs, the options file as the launch would write it, the measured modules; a calibration the
     spec names matched key by key on that identity. A failed launch records this identity (id7,
-    id9). `fresh` False: the spec's name may be taken (record.check_spec)."""
+    id9). `fresh` False: the spec's name may be taken (record.check_spec); `match` False: the
+    calibration's identity is left unmatched (a split session's own check comes first)."""
     plat = platform.load(root)
     suite = json.loads((root / platform.SUITE).read_text(encoding="utf-8"))
     java_profile = json.loads((root / JAVA_PROFILE).read_text(encoding="utf-8"))
@@ -191,7 +196,7 @@ def prepare(
         harness=record.harness_identity(root, pm_exe),
     )
     record.check_identity(found)
-    if spec.cal is not None:  # measurement.md#calibration: matched key by key
+    if spec.cal is not None and match:  # measurement.md#calibration: matched key by key
         differ = record.identity_differences(found, spec.cal["identity"])
         if differ:
             raise record.RecordError(
@@ -655,8 +660,8 @@ def measured_body(run: Runner, s: Session) -> None:
 
 def measured_fields(run: Runner) -> dict:
     """A measured record's own fields (run-record.md#fields): mode and calibration, the variants
-    with their effective options, every capture with its summaries and flags, A8's and A11's
-    entries, the heap table; the steps, events and full captures to raw/."""
+    with their effective options, every capture with its summaries and flags, the heap table;
+    the steps, events and full captures to raw/."""
     spec, m = run.spec, run.m
     pid = run.launched.pid if run.launched is not None else -1
     captures: list[dict] = []
@@ -674,16 +679,6 @@ def measured_fields(run: Runner) -> dict:
         "variants": measure.variant_records(m, run.ready.pack.sha512) if m else [],
         "captures": [{k: v for k, v in c.items() if k != "problems"} for c in captures],
     }
-    if spec.split is not None:  # a part's verdicts are its session record's
-        found["split"] = spec.split
-    elif spec.cal is not None and spec.kind == "measurement":
-        try:
-            monitor = run.ready.suite["statistics"]["twinMonitor"]
-            found["verdicts"] = verdicts(run.root, captures, spec.cal, spec.cal["mode"], monitor)
-        except stats.StatsError as error:
-            run.problems.append(f"the verdicts: {error}")
-    if spec.kind == "acceptance":
-        found["acceptance"] = item_entries(spec, captures)
     if spec.heap:
         found["heapTable"] = measure.heap_table(m.heap if m else [], run.host.physical_memory())
     full = {"captures": captures, "entries": m.entries if m else []}
@@ -691,14 +686,42 @@ def measured_fields(run: Runner) -> dict:
     return found
 
 
-def verdicts(root: Path, captures: list[dict], cal: dict, mode: str, monitor: dict) -> dict:
-    """A judged run's verdicts (stats.judge) and the twin monitor over the twins judged under its
-    calibration before it, then its own (measurement.md#calibration)."""
-    found = stats.judge(captures, cal, mode)
+def judge_session(run: Runner, found: dict, status: str) -> None:
+    """An ok session's judgment (run-record.md#record): a judged measurement run's verdicts, or
+    A8's and A11's entries; an item of a session that did not end ok, or of a part, waits. A
+    verdict's error or a failed item is a problem of the run's."""
+    spec = run.spec
+    captures, expected = found.get("captures") or [], found.get("variants") or None
+    if spec.kind == "acceptance":
+        if status == "ok":
+            found["acceptance"] = item_entries(spec, captures, expected)
+        else:
+            why = f"the session ended {status}"
+            found["acceptance"] = [
+                {"item": i, "pass": None, "evidence": {"pending": why}} for i in spec.items
+            ]
+        failed = [e["item"] for e in found["acceptance"] if e["pass"] is False]
+        if failed:  # an item waiting (pass null) has not failed, and never passes
+            run.problems.append(f"items failed: {', '.join(failed)}")
+    elif status == "ok" and spec.split is None and spec.cal is not None:
+        try:
+            found["verdicts"] = verdicts(run.root, captures, spec.cal, spec.cal["mode"], expected)
+        except stats.StatsError as error:
+            run.problems.append(f"the verdicts: {error}")
+
+
+def verdicts(
+    root: Path, captures: list[dict], cal: dict, mode: str, expected: list[dict] | None
+) -> dict:
+    """A judged run's verdicts (stats.judge, the record's variants `expected`) and the twin
+    monitor over the twins judged under its calibration before it, then its own, by the
+    calibration's window (measurement.md#calibration)."""
+    found = stats.judge(captures, cal, mode, expected)
     history = record.judged_twins(root, cal["id"])
     if found["twin"]["inside"] is not None:
         history.append(not found["twin"]["inside"])
-    found["twinMonitor"] = stats.twin_monitor(history, monitor["window"], monitor["maxExceed"])
+    window = cal["twinMonitor"]
+    found["twinMonitor"] = stats.twin_monitor(history, window["window"], window["maxExceed"])
     return found
 
 
@@ -716,9 +739,12 @@ def timed_variant(spec: record.Spec) -> str | None:
     )
 
 
-def item_entries(spec: record.Spec, captures: list[dict]) -> list[dict]:
-    """A8's and A11's entries judged by the spec's calibration (stats.judge_items); a session
-    whose captures cannot be judged leaves them waiting, never passed."""
+def item_entries(
+    spec: record.Spec, captures: list[dict], expected: list[dict] | None = None
+) -> list[dict]:
+    """A8's and A11's entries judged by the spec's calibration (stats.judge_items, the record's
+    variants `expected`); a part's wait on its session record, and a session whose captures
+    cannot be judged leaves them waiting, never passed."""
     if spec.split is not None or spec.cal is None:
         why = (
             f"judged in session {spec.split['session']}'s record"
@@ -727,7 +753,8 @@ def item_entries(spec: record.Spec, captures: list[dict]) -> list[dict]:
         )
         return [{"item": i, "pass": None, "evidence": {"pending": why}} for i in spec.items]
     try:
-        return stats.judge_items(captures, spec.cal, spec.items, timed_variant(spec), spec.first)
+        timed = timed_variant(spec)
+        return stats.judge_items(captures, spec.cal, spec.items, timed, spec.first, expected)
     except stats.StatsError as error:
         why = f"unjudged: {error}"
         return [{"item": i, "pass": None, "evidence": {"pending": why}} for i in spec.items]
@@ -892,14 +919,16 @@ def perform(
             found["reloadTable"] = run.table
     else:
         found.update(mode=spec.mode, calibration=spec.calibration, variants=[], captures=[])
+        if spec.split is not None:  # a part, whatever its analysis meets
+            found["split"] = spec.split
         try:
             found.update(measured_fields(run))
         except Exception as error:  # noqa: BLE001 the record is written whatever the cut met
             run.problems.append(f"the captures' analysis: {type(error).__name__}: {error}")
-        failed = [e["item"] for e in found.get("acceptance", []) if e["pass"] is False]
-        if failed:  # an item waiting (pass null) has not failed, and never passes
-            run.problems.append(f"items failed: {', '.join(failed)}")
         status = measured_status(run)
+        judge_session(run, found, status)
+        if run.problems and status == "ok":
+            status = "failed"
         try:
             measured_session_facts(run)
         except Exception as error:  # noqa: BLE001 as above
@@ -1046,7 +1075,7 @@ def run_split(
             say(f"{PREFIX}: {spec.name}: part {n} of {len(spec.groups)} is {name}, ok")
             continue
         if done:
-            ready = prepare(root, data, machine)
+            ready = prepare(root, data, machine, match=False)
             differ = record.identity_differences(ready.identity, done[0]["identity"])
             if differ:
                 why = (
@@ -1064,6 +1093,24 @@ def run_split(
     return write_session(root, data, spec, done, "ok", None, say)
 
 
+def session_mismatch(parts: list[dict], groups: tuple[tuple[str, ...], ...]) -> str | None:
+    """Why ok parts do not make one session: an identity other than the first part's, or a part
+    whose `split` is not the session's group of that number."""
+    if len(parts) != len(groups):
+        return f"{len(parts)} parts for {len(groups)} groups"
+    for n, (part, views) in enumerate(zip(parts, groups, strict=True), start=1):
+        differ = record.identity_differences(part.get("identity"), parts[0].get("identity"))
+        if differ:
+            return (
+                f"{part['name']}'s identity differs from {parts[0]['name']}'s: {', '.join(differ)}"
+            )
+        split = part.get("split") or {}
+        if (split.get("part"), split.get("views")) != (n, list(views)):
+            held = f"{split.get('views')} as part {split.get('part')}"
+            return f"{part['name']} measured {held}, not group {n}"
+    return None
+
+
 def write_session(
     root: Path,
     data: dict,
@@ -1077,7 +1124,6 @@ def write_session(
     identity and the first part's variants; when it ends ok, the verdicts over the mode's views
     with the calibration's id (each view bracketed in its own part), or A8's and A11's entries;
     no captures (the parts keep them)."""
-    suite = json.loads((root / platform.SUITE).read_text(encoding="utf-8"))
     found: dict[str, Any] = {
         "schema": record.SCHEMA,
         "name": spec.name,
@@ -1096,16 +1142,25 @@ def write_session(
         "variants": parts[0].get("variants", []) if parts else [],
     }
     if status == "ok":
+        mismatch = session_mismatch(parts, spec.groups)
+        if mismatch:
+            found.update(
+                status="invalid",
+                reason=f"{mismatch} (a split session's parts share one identity and its groups; "
+                "never resumed: start a new one)",
+            )
+            status = "invalid"
+    if status == "ok":
         captures = record.session_captures(root, found)
+        expected = found["variants"] or None
         problems = []
         if spec.cal is not None and spec.kind == "measurement":
             try:
-                monitor = suite["statistics"]["twinMonitor"]
-                found["verdicts"] = verdicts(root, captures, spec.cal, spec.cal["mode"], monitor)
+                found["verdicts"] = verdicts(root, captures, spec.cal, spec.cal["mode"], expected)
             except stats.StatsError as error:
                 problems.append(f"the verdicts: {error}")
         if spec.kind == "acceptance":
-            found["acceptance"] = item_entries(spec, captures)
+            found["acceptance"] = item_entries(spec, captures, expected)
             failed = [e["item"] for e in found["acceptance"] if e["pass"] is False]
             if failed:
                 problems.append(f"items failed: {', '.join(failed)}")

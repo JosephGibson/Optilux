@@ -125,6 +125,13 @@ def test_each_broken_record_is_a_violation(tmp_path: Path, make, says: str) -> N
     assert all(v.startswith(f"{record.RECORDS}/m2-x-1.json: ") for v in ledger.violations)
 
 
+def test_an_aborted_run_of_m1s_items_holds_no_variants_and_passes(tmp_path: Path) -> None:
+    """measure.orphan_record writes no variants for a run without a mode."""
+    found = acceptance("m2-aborted-1", status="aborted", reason="killed")
+    del found["variants"]
+    assert verify.check_records(write(tmp_path, found)).violations == []
+
+
 def test_a_file_that_is_no_json_is_a_violation(tmp_path: Path) -> None:
     (tmp_path / record.RECORDS).mkdir(parents=True)
     (tmp_path / record.RECORDS / "m2-x-1.json").write_bytes(b"{not json")
