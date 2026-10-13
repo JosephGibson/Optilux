@@ -38,9 +38,10 @@ SPEC_REQUIRED = ("name", "kind", "views", "world", "variants", "tier", "resource
 # items: an acceptance run's; mode: a measured schedule's (measurement and calibration runs, and
 # acceptance runs of A8 and A11); calibration: the calibration a measured run is judged by, or
 # null (plans/m2.md D40: no verdicts); heap: the heap read every RELOAD_EVERY reloads (M2.P06);
-# rounds, dimensions, keepViews, alone and windows: a budget run's (BUDGET); remeasures: the A8
-# session whose views beyond their threshold this one re-measures (plans/m2.md M2.P10);
-# treatment: declared treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
+# rounds, dimensions, keepViews, alone and windows: a budget run's (BUDGET), rounds and warmup
+# a calibration-null measurement run's (the survey's, SURVEY); remeasures: the A8 session whose
+# views beyond their threshold this one re-measures (plans/m2.md M2.P10); treatment: declared
+# treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
 SPEC_OPTIONAL = (
     "items",
     "notes",
@@ -48,6 +49,7 @@ SPEC_OPTIONAL = (
     "calibration",
     "heap",
     *("rounds", "dimensions", "keepViews", "alone", "windows"),
+    "warmup",
     "remeasures",
     "treatment",
     "reloads",
@@ -58,6 +60,9 @@ SPEC_OPTIONAL = (
 # capture's reload and options check alone); its heap table sets the budget, no verdict reads its
 # captures (calibration null).
 BUDGET = ("rounds", "dimensions", "keepViews", "alone", "windows")
+# The survey's exception (run-record.md#split-sessions; user, 2026-10-13): a calibration-null
+# measurement run may set its rounds and keep each launch's warm-up pass (D47).
+SURVEY = ("rounds", "warmup")
 KINDS = ("measurement", "calibration", "acceptance")
 MODES = ("quick", "full")
 ITEMS = tuple(f"A{number}" for number in range(1, 13))
@@ -83,6 +88,12 @@ OPTION_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
 # F4's table (roadmap.md#findings-assigned): heap after GC and private bytes every RELOAD_EVERY
 # reloads.
 RELOAD_EVERY = 10
+
+# A split session's part (run-record.md#split-sessions): <session>-p<n>, a re-run taking the
+# next letter; run names stay within NAME's 40 characters.
+PART = "{session}-p{n}"
+RETRIES = "bcdefghijklmnopqrstuvwxyz"
+NAME_MAX = 40
 
 # The views file (measurement.md#baseline-suite): config/views/<world id>.json.
 VIEW_KEYS = ("id", "dim", "x", "y", "z", "yaw", "pitch", "time", "weather")
@@ -246,6 +257,9 @@ class Spec:
     windows: bool = True
     cal: dict | None = None  # the calibration `calibration` names, loaded (load_calibration)
     first: dict | None = None  # A8's evidence in the session `remeasures` names
+    warmup: bool = True  # this launch runs the warm-up pass
+    groups: tuple[tuple[str, ...], ...] = ()  # a split session's views per launch
+    split: dict | None = None  # a part's: its session, part, parts and views
 
 
 def candidates(kind: str, variants: tuple[dict, ...] | list[dict], suite: dict) -> int:
@@ -262,6 +276,51 @@ def planned_reloads(views: int, ci: int, rounds: int, warmup: bool = True) -> in
     start-of-run reload, the warm-up pass's one per view, then per view the schedule's
     1 + 2 x R x Ci."""
     return ACCEPTANCE_RELOADS + (views if warmup else 0) + views * (1 + 2 * rounds * ci)
+
+
+def lap(views: list[dict], ramped: str | None) -> list[dict]:
+    """One pass over the mode's views (D48): the overworld's first, grouped by weather, the group
+    of the weather the overworld is already ramped to first (else the views file's first weather),
+    then the Nether's and the End's; each group in the views file's order. Two passes then step
+    the weather's ticks three times at most: into the first weather, into the second, back."""
+    over = [v for v in views if v["dim"] == DIMENSIONS[0]]
+    weathers = list(dict.fromkeys(v["weather"] for v in over))
+    if ramped in weathers:
+        weathers.remove(ramped)
+        weathers.insert(0, ramped)
+    order = [v for weather in weathers for v in over if v["weather"] == weather]
+    for dim in DIMENSIONS[1:]:
+        order += [v for v in views if v["dim"] == dim]
+    return order
+
+
+def split_groups(
+    ids: tuple[str, ...], ci: int, rounds: int, cap: int, warmup: bool
+) -> tuple[tuple[str, ...], ...]:
+    """A session over the cap as launches of views (run-record.md#split-sessions, plans/m2.md
+    D43): `ids` in lap order cut into consecutive groups of the most views whose launch plans
+    within `cap` (selftest's and the start-of-run reload, then per view 1 + 2 x R x Ci, the
+    warm-up pass only with `warmup`); RecordError when one view alone is over it."""
+    alone = planned_reloads(1, ci, rounds, warmup)
+    if alone > cap:
+        raise RecordError(
+            f"one view alone plans {alone} reloads, over capture.reloadCap {cap}; fix: fewer "
+            "candidates or rounds (plans/m2.md D43)"
+        )
+    groups: list[tuple[str, ...]] = []
+    current: list[str] = []
+    for vid in ids:
+        if current and planned_reloads(len(current) + 1, ci, rounds, warmup) > cap:
+            groups.append(tuple(current))
+            current = []
+        current.append(vid)
+    groups.append(tuple(current))
+    return tuple(groups)
+
+
+def part_name(session: str, n: int, retry: int = 0) -> str:
+    """A part's run name: <session>-p<n>, a re-run's with the next letter (b, c, ...)."""
+    return PART.format(session=session, n=n) + (RETRIES[retry - 1] if retry else "")
 
 
 def mode_views(suite: dict, mode: str, views: dict) -> tuple[str, ...]:
@@ -527,17 +586,26 @@ def check_spec(
     )
     cal = check_calibration(root, data, kind, mode)
     first = check_remeasures(root, data, order)
-    planned = planned_reloads(len(ids), candidates(kind, variants, suite), rounds)
+    ci = candidates(kind, variants, suite)
+    planned = planned_reloads(len(ids), ci, rounds)
     # A budget run (heap true, calibration null) measures the leak past the cap and judges
     # nothing; F4's 2 GiB guard stops it before the machine pages (plans/m2.md D43, M2.P06).
     budget = kind == "measurement" and heap and data["calibration"] is None
-    if planned > cap and not budget:
-        raise RecordError(
-            f"the session plans {planned} reloads (selftest's and the start-of-run, the warm-up "
-            f"pass, {len(ids)} views x the schedule), over capture.reloadCap {cap}; fix: quick "
-            "mode or fewer candidates (a session over the cap splits into launches of views, "
-            "plans/m2.md D43, not built yet)"
-        )
+    groups: tuple[tuple[str, ...], ...] = ()
+    warmup = True
+    if planned > cap and not budget:  # D43: launches of views, the warm-up pass the survey's
+        warmup = data.get("warmup") is True
+        by_id = {v["id"]: v for v in views_file["views"]}
+        order_ids = tuple(v["id"] for v in lap([by_id[vid] for vid in ids], None))
+        groups = split_groups(order_ids, ci, rounds, cap, warmup)
+        planned = sum(planned_reloads(len(g), ci, rounds, warmup) for g in groups)
+        longest = part_name(name, len(groups), 1)
+        if len(longest) > NAME_MAX:
+            raise RecordError(
+                f"name {name} splits into {len(groups)} launches, whose re-run names ({longest}) "
+                f"pass {NAME_MAX} characters; fix: a name of at most "
+                f"{NAME_MAX - len(longest) + len(name)} characters"
+            )
     return Spec(
         name,
         kind,
@@ -560,6 +628,8 @@ def check_spec(
         windows=windows,
         cal=cal,
         first=first,
+        warmup=warmup,
+        groups=groups,
     )
 
 
@@ -633,12 +703,24 @@ def check_budget(
     """A budget run's rounds, views, `alone` and `windows` (BUDGET): the spec's rounds, a
     positive count, else the mode's; the mode's views in the spec's dimensions, else all of them,
     then those `keepViews` names; `alone` (the baseline in every slot) only without candidates;
-    `windows` false only without timers. Each refused outside a measurement run with heap true."""
-    given = [key for key in BUDGET if data.get(key) is not None]
+    `windows` false only without timers. Each refused outside a measurement run with heap true,
+    but rounds and `warmup` true (SURVEY), a calibration-null measurement run's."""
+    given = [key for key in BUDGET if key not in SURVEY and data.get(key) is not None]
     if given and (kind != "measurement" or not heap):
         raise RecordError(
             f"{', '.join(given)}: a budget run's (plans/m2.md M2.P06), whose heap table sets the "
             "reload cap; fix: drop them, or run kind measurement with heap true"
+        )
+    surveyed = [key for key in SURVEY if data.get(key) is not None]
+    if surveyed and (kind != "measurement" or data.get("calibration") is not None):
+        raise RecordError(
+            f"{', '.join(surveyed)}: a calibration-null measurement run's (the survey's, or a "
+            "budget run's): a judged run keeps its calibration's schedule; fix: drop them"
+        )
+    if data.get("warmup") not in (None, True):
+        raise RecordError(
+            f"warmup {data['warmup']!r}: true keeps each launch's warm-up pass in a split "
+            "session (the survey's, plans/m2.md D47); fix: true, or leave it out"
         )
     if data.get("rounds") is not None:
         rounds = data["rounds"]
@@ -703,7 +785,7 @@ def check_acceptance_spec(
     cap: int,
 ) -> Spec:
     """An acceptance run without a mode (M1's items): one variant, items, F4's reloads."""
-    for key in ("calibration", "heap", *BUDGET):
+    for key in ("calibration", "heap", *BUDGET, "warmup", "remeasures"):
         if key in data:
             raise RecordError(f"{key} is for measured runs; fix: drop it from an acceptance run")
     variants = data["variants"]
@@ -1348,6 +1430,24 @@ def read_record(root: Path, name: str) -> dict:
     if not isinstance(found, dict):
         raise RecordError(f"{RECORDS}/{name}.json is no object; fix: restore it from git")
     return found
+
+
+def session_captures(root: Path, found: dict) -> list[dict]:
+    """The captures a record's verdicts read: a one-launch record's own; a split session's joined
+    from its parts (run-record.md#split-sessions), each view's from the one part that measured
+    it, so its bracketing is that part's. RecordError for a view two parts measured."""
+    if "parts" not in found:
+        return found.get("captures") or []
+    joined, owner = [], {}
+    for name in found["parts"]:
+        for capture in read_record(root, name).get("captures") or []:
+            if owner.setdefault(capture["view"], name) != name:
+                raise RecordError(
+                    f"{capture['view']} was measured in {owner[capture['view']]} and {name}; fix: "
+                    "a split session's parts measure disjoint views"
+                )
+            joined.append({**capture, "part": name})
+    return joined
 
 
 def record_names(root: Path) -> list[str]:

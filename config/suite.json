@@ -266,12 +266,13 @@
    ],
    "rounds": 1,
    "estMinutes": 3,
-   "why": "one view per dimension; estimate from ALC 4.4 s/capture"
+   "why": "one view per dimension; estimate from ALC 4.4 s/capture; one launch with the warm-up pass holds the twin and one candidate (2 + 3 + 3 x 5 = 20 reloads), m2-measurement-1 took 2.4 min from its launch to its quit"
   },
   "full": {
    "views": "all",
    "rounds": 2,
-   "estMinutesPer5Variants": 19,
+   "estMinutesPerSplitSession": 18,
+   "estMinutesWhy": "D43's split (run-record.md#split-sessions): the twin and one candidate at R 2 take 6 launches of 2 views; a launch about 3 min, as m2-measurement-1 took 2.4 min from its launch to its quit (its join, start and warm-up about 1 min) for 12 windows, a 2-view part 18 windows without the warm-up pass",
    "why": "ALC calibrated R=2; ALC's ~15 min for 8 views scaled to 10 views (estimate)"
   }
  },

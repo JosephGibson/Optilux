@@ -90,7 +90,7 @@ def plan(root: Path, mode: str, machine: record.Machine) -> Plan:
         rounds=ready.spec.rounds,
         twins=calibration["twinsPerSession"],
         need=calibration["minSessionsPerMode"],
-        launches=1,
+        launches=len(ready.spec.groups) or 1,
         ready=ready,
     )
 
@@ -111,7 +111,8 @@ def session_state(root: Path, p: Plan, name: str) -> dict:
     if (found.get("kind"), found.get("mode")) != ("calibration", p.mode):
         problems.append(f"a {found.get('kind')} run of mode {found.get('mode')}")
     if not problems:
-        nulls = stats.nulls_of(found.get("captures") or [], p.views, p.rounds, name)
+        captures = record.session_captures(root, found)
+        nulls = stats.nulls_of(captures, p.views, p.rounds, name)
         problems += nulls["problems"]
         if not problems:
             return {"state": "whole", "nulls": nulls["nulls"]}
@@ -182,9 +183,16 @@ def calibrate(
             passed.append(f"{name} ({state.get('why') or 'no record yet'})")
         n += 1
     todo = max(0, p.need - len(whole))
+    # A split session stopped part-way resumes at its first part without an ok record.
+    held = sum(
+        1
+        for part in range(1, p.launches + 1)
+        if p.launches > 1 and run_verb.part_record(root, session_name(mode, p.digest, n), part)[0]
+    )
+    launches = max(0, todo * p.launches - held)
     announce(
         f"{PREFIX}: {mode} mode, identity {p.digest[:HASH_SHOWN]}: {p.need} sessions of "
-        f"{p.twins} twins; {len(whole)} whole, {todo} to run, {todo * p.launches} launch(es) of "
+        f"{p.twins} twins; {len(whole)} whole, {todo} to run, {launches} launch(es) of "
         "the game in all, each announced; hands off the mouse and keyboard until the end"
     )
     for skipped in passed:

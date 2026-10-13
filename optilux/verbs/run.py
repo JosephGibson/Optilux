@@ -27,6 +27,12 @@ gathered so far go into the record. The journal raw/<name>/partial.json follows 
   names its calibration is refused unless the calibration's identity equals its own key by key,
   and its record holds the verdicts (optilux/stats.py: each candidate's, the twin's check and the
   twin monitor over the calibration's judged twins) or A8's and A11's judged entries.
+- A session over capture.reloadCap (plans/m2.md D43, run-record.md#split-sessions) runs as one
+  launch per group of its views, each a part <session>-p<n> recorded on its own with the session's
+  spec and its `split`, without the warm-up pass but the survey's; `run` resumes it at its first
+  part without an ok record (a re-run's name takes the next letter), ends it invalid when a part's
+  identity differs from the first ok part's, and once its last part is ok writes the session
+  record: the parts, their one identity, the verdicts and A8's and A11's entries.
 
 The record goes to results/records/<name>.json, the request log and the raw artifacts to
 results/raw/<name>/. Exit 0 when the status is ok.
@@ -142,9 +148,7 @@ def prepare(
     base = root / RUNTIME / plat.id
     game = base / launch.GAME
     pack = launch.reference_pack(plat)
-    saves = game / launch.SAVES
-    data = load_spec(spec_in) if isinstance(spec_in, Path) else spec_in
-    spec = record.check_spec(root, data, plat, suite, saves, pack.file, fresh)
+    spec = checked(root, spec_in, fresh)
     views, views_path = record.load_views(root, spec.views)
     stale = measure.stale_functions(root, views) if spec.mode is not None else []
     if stale:
@@ -198,6 +202,50 @@ def prepare(
     recorded = {"platformFile": record.file_sha256(plat.path), **system_recorded}
     return Prepared(
         spec, plat, suite, pack, views, base, java_home, snapshot, pm_exe, found, recorded
+    )
+
+
+def checked(root: Path, spec_in: Path | dict, fresh: bool = True) -> record.Spec:
+    """The spec (a file, or its data) checked against the platform and the suite alone
+    (record.check_spec): its kind, variants, calibration and, over the cap, its groups."""
+    plat = platform.load(root)
+    suite = json.loads((root / platform.SUITE).read_text(encoding="utf-8"))
+    saves = root / RUNTIME / plat.id / launch.GAME / launch.SAVES
+    data = load_spec(spec_in) if isinstance(spec_in, Path) else spec_in
+    pack = launch.reference_pack(plat).file
+    return record.check_spec(root, data, plat, suite, saves, pack, fresh)
+
+
+@dataclass(frozen=True)
+class Part:
+    """One launch of a split session (run-record.md#split-sessions): the session, the part's
+    number of all the parts, its run name (a re-run's with its letter), its group of views."""
+
+    session: str
+    n: int
+    parts: int
+    name: str
+    views: tuple[str, ...]
+
+
+def part_spec(ready: Prepared, part: Part) -> record.Spec:
+    """The session's checked spec as one part runs it: the part's name, views and reloads, its
+    `split`; the warm-up pass the session's (the survey's alone keeps it)."""
+    spec = ready.spec
+    ci = record.candidates(spec.kind, spec.variants, ready.suite)
+    split = {
+        "session": part.session,
+        "part": part.n,
+        "parts": part.parts,
+        "views": list(part.views),
+    }
+    return dataclasses.replace(
+        spec,
+        name=part.name,
+        view_ids=part.views,
+        planned=record.planned_reloads(len(part.views), ci, spec.rounds, spec.warmup),
+        groups=(),
+        split=split,
     )
 
 
@@ -279,6 +327,7 @@ class Runner:
                 "identity": ready.identity,
                 "recorded": self.recorded,
                 "runner": host.process_facts(os.getpid()),
+                **({"split": self.spec.split} if self.spec.split else {}),
             },
         )
 
@@ -547,11 +596,14 @@ def acceptance_after(run: Runner) -> None:
 def measured_plan(run: Runner) -> str:
     spec = run.spec
     ids = ", ".join(v.id for v in run.found)
+    split = spec.split
     return (
-        f"a {spec.mode}-mode {spec.kind} run of {ids}"
+        (f"part {split['part']} of {split['parts']} of {split['session']}: " if split else "")
+        + f"a {spec.mode}-mode {spec.kind} run of {ids}"
         + (" alone in every slot" if spec.alone else "")
         + f" on {len(spec.view_ids)} views, {spec.rounds} round(s), {spec.planned} reloads"
         + (", no windows" if not spec.windows else "")
+        + ("" if spec.warmup else ", no warm-up pass")
         + ", PresentMon recording throughout"
         + (", the heap read every 10 reloads and the GPU memory after each" if spec.heap else "")
     )
@@ -612,7 +664,7 @@ def measured_fields(run: Runner) -> dict:
         captures, problems = measure.summarize(m, pid)
         run.problems += problems
     per_view = len(measure.schedule(run.found, spec.rounds, spec.alone))
-    planned = len(spec.view_ids) * (1 + per_view)
+    planned = len(spec.view_ids) * ((1 if spec.warmup else 0) + per_view)
     run.problems += measure.measured_problems(
         captures, planned, run.status == "ok" and not run.problems
     )
@@ -622,7 +674,9 @@ def measured_fields(run: Runner) -> dict:
         "variants": measure.variant_records(m, run.ready.pack.sha512) if m else [],
         "captures": [{k: v for k, v in c.items() if k != "problems"} for c in captures],
     }
-    if spec.cal is not None and spec.kind == "measurement":
+    if spec.split is not None:  # a part's verdicts are its session record's
+        found["split"] = spec.split
+    elif spec.cal is not None and spec.kind == "measurement":
         try:
             monitor = run.ready.suite["statistics"]["twinMonitor"]
             found["verdicts"] = verdicts(run.root, captures, spec.cal, spec.cal["mode"], monitor)
@@ -665,8 +719,12 @@ def timed_variant(spec: record.Spec) -> str | None:
 def item_entries(spec: record.Spec, captures: list[dict]) -> list[dict]:
     """A8's and A11's entries judged by the spec's calibration (stats.judge_items); a session
     whose captures cannot be judged leaves them waiting, never passed."""
-    if spec.cal is None:
-        why = "no calibration named"
+    if spec.split is not None or spec.cal is None:
+        why = (
+            f"judged in session {spec.split['session']}'s record"
+            if spec.split
+            else "no calibration"
+        )
         return [{"item": i, "pass": None, "evidence": {"pending": why}} for i in spec.items]
     try:
         return stats.judge_items(captures, spec.cal, spec.items, timed_variant(spec), spec.first)
@@ -744,12 +802,21 @@ def perform(
     machine: record.Machine,
     say: Say,
     announce: Say,
+    part: Part | None = None,
 ) -> dict:
-    """The run: orphans finished (D41), prepare's checks and identity, the live world restored to
-    its snapshot, D42's check for a measured run, the session, the record. Returns the record."""
+    """The run, or one part of a split session's: orphans finished (D41), prepare's checks and
+    identity, the live world restored to its snapshot, D42's check for a measured run, the
+    session, the record. Returns the record."""
     marks: dict[str, float] = {"prepare": time.monotonic()}
     orphans = measure.finish_orphans(root, host, say)
     ready = prepare(root, spec_in, machine)
+    if part is not None:
+        ready = dataclasses.replace(ready, spec=part_spec(ready, part))
+    elif ready.spec.groups:
+        raise record.RecordError(
+            f"{ready.spec.name} splits into {len(ready.spec.groups)} launches; fix: run it "
+            "through `optilux run`, which runs its parts"
+        )
     spec = ready.spec
     snap_hash, snap_files, _ = ready.snapshot
     marks["restore"] = time.monotonic()
@@ -861,18 +928,22 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 
 def check(ready: Prepared, as_json: bool) -> int:
-    """`--check`: the identity `run` would record, key by key, and the calibration that matched
-    it; nothing launched or written."""
+    """`--check`: the identity `run` would record, key by key, the calibration that matched it
+    and a split session's launches; nothing launched or written."""
     cid = ready.spec.calibration
+    groups = [list(g) for g in ready.spec.groups]
     if as_json:
         found = {"ok": True, "name": ready.spec.name, "launched": False, "calibration": cid}
-        print(json.dumps({**found, "identity": ready.identity}))
+        print(json.dumps({**found, "groups": groups, "identity": ready.identity}))
         return 0
     judged = f"; calibration {cid[:24]}... matches it key by key" if cid else ""
     print(
         f"{PREFIX} --check: {ready.spec.name} ({ready.spec.kind} on {ready.spec.views}) holds"
         f"{judged}; nothing launched, the live world left to the run; the identity:"
     )
+    if groups:
+        launches = "; ".join(", ".join(g) for g in groups)
+        print(f"split: {len(groups)} launches of views (D43): {launches}")
     for key, value in ready.identity.items():
         print(f"{key}: {json.dumps(value)}")  # ASCII: a piped stdout may be cp1252
     return 0
@@ -921,10 +992,131 @@ def run_session(
     say: Say,
     announce: Say,
 ) -> tuple[dict, Path]:
-    """One session through the runner (`run`'s and `calibrate`'s): its record written. The
-    record and its path."""
-    found = perform(root, spec_in, host, machine, say, announce)
-    return found, write_launch(root, found, say)
+    """One session through the runner (`run`'s and `calibrate`'s): one launch and its record, or a
+    split session's parts from the first without an ok record, then its session record. The
+    last record written and its path: a part that did not end ok stops the session there."""
+    data = load_spec(spec_in) if isinstance(spec_in, Path) else spec_in
+    spec = checked(root, data)
+    if not spec.groups:
+        found = perform(root, data, host, machine, say, announce)
+        return found, write_launch(root, found, say)
+    return run_split(root, data, spec, host, machine, say, announce)
+
+
+def part_record(root: Path, session: str, n: int) -> tuple[dict | None, str]:
+    """Part n of a session: its ok record if one exists, and the next free run name (a name
+    whose record or raw folder exists is taken: an orphan's folder the next run finishes)."""
+    for retry in range(len(record.RETRIES) + 1):
+        name = record.part_name(session, n, retry)
+        if (root / record.RECORDS / f"{name}.json").is_file():
+            found = record.read_record(root, name)
+            split = found.get("split") or {}
+            if (split.get("session"), split.get("part"), found.get("status")) == (session, n, "ok"):
+                return found, name
+            continue
+        if not (root / record.RAW / name).exists():
+            return None, name
+    raise record.RecordError(
+        f"part {n} of {session} ran {len(record.RETRIES) + 1} times; fix: start a new session"
+    )
+
+
+def run_split(
+    root: Path,
+    data: dict,
+    spec: record.Spec,
+    host: RunHost,
+    machine: record.Machine,
+    say: Say,
+    announce: Say,
+) -> tuple[dict, Path]:
+    """A split session (run-record.md#split-sessions): each part without an ok record launched,
+    recorded, stopped at the first that does not end ok; the session ended invalid when a part's
+    identity differs from the first ok part's; the session record once every part is ok."""
+    done: list[dict] = []
+    for n, views in enumerate(spec.groups, start=1):
+        found, name = part_record(root, spec.name, n)
+        if found is not None:
+            if record.canonical(found["spec"]) != record.canonical(data):
+                raise record.RecordError(
+                    f"{name} ran another spec under the name {spec.name}; fix: rerun with its "
+                    "spec, or start a new session under a new name"
+                )
+            done.append(found)
+            say(f"{PREFIX}: {spec.name}: part {n} of {len(spec.groups)} is {name}, ok")
+            continue
+        if done:
+            ready = prepare(root, data, machine)
+            differ = record.identity_differences(ready.identity, done[0]["identity"])
+            if differ:
+                why = (
+                    f"part {n}'s identity differs from {done[0]['name']}'s: {', '.join(differ)} "
+                    "(a split session's parts share one identity; never resumed: start a new one)"
+                )
+                return write_session(root, data, spec, done, "invalid", why, say)
+        say(f"{PREFIX}: {spec.name}: part {n} of {len(spec.groups)} as {name}: {', '.join(views)}")
+        part = Part(spec.name, n, len(spec.groups), name, views)
+        found = perform(root, data, host, machine, say, announce, part)
+        path = write_launch(root, found, say)
+        if found["status"] != "ok":
+            return found, path
+        done.append(found)
+    return write_session(root, data, spec, done, "ok", None, say)
+
+
+def write_session(
+    root: Path,
+    data: dict,
+    spec: record.Spec,
+    parts: list[dict],
+    status: str,
+    reason: str | None,
+    say: Say,
+) -> tuple[dict, Path]:
+    """A split session's record (run-record.md#split-sessions): its parts' names, their one
+    identity and the first part's variants; when it ends ok, the verdicts over the mode's views
+    with the calibration's id (each view bracketed in its own part), or A8's and A11's entries;
+    no captures (the parts keep them)."""
+    suite = json.loads((root / platform.SUITE).read_text(encoding="utf-8"))
+    found: dict[str, Any] = {
+        "schema": record.SCHEMA,
+        "name": spec.name,
+        "kind": spec.kind,
+        "spec": data,
+        "notes": spec.notes,
+        "status": status,
+        "reason": reason,
+        "startedAt": parts[0]["startedAt"] if parts else now(),
+        "endedAt": now(),
+        "identity": parts[0]["identity"] if parts else None,
+        "mode": spec.mode,
+        "calibration": spec.calibration,
+        "parts": [p["name"] for p in parts],
+        "groups": [list(g) for g in spec.groups],
+        "variants": parts[0].get("variants", []) if parts else [],
+    }
+    if status == "ok":
+        captures = record.session_captures(root, found)
+        problems = []
+        if spec.cal is not None and spec.kind == "measurement":
+            try:
+                monitor = suite["statistics"]["twinMonitor"]
+                found["verdicts"] = verdicts(root, captures, spec.cal, spec.cal["mode"], monitor)
+            except stats.StatsError as error:
+                problems.append(f"the verdicts: {error}")
+        if spec.kind == "acceptance":
+            found["acceptance"] = item_entries(spec, captures)
+            failed = [e["item"] for e in found["acceptance"] if e["pass"] is False]
+            if failed:
+                problems.append(f"items failed: {', '.join(failed)}")
+        if problems:
+            found.update(status="failed", reason="; ".join(problems))
+    elif spec.kind == "acceptance":  # never judged: each item waits on a new session
+        why = f"session {spec.name} ended {status}: {reason}"
+        found["acceptance"] = [
+            {"item": i, "pass": None, "evidence": {"pending": why}} for i in spec.items
+        ]
+    return found, record.write_record(root, found, say)
 
 
 def run(args: argparse.Namespace) -> int:
@@ -970,6 +1162,8 @@ def run(args: argparse.Namespace) -> int:
         line = f"{PREFIX}: {found['status']}; {shown(path, root)}: {summary_line(found)}"
         if found["reason"]:
             line += f"; {found['reason']}"
+        if found.get("split") and found["status"] != "ok":
+            line += f"; rerun to resume {found['split']['session']} at this part"
         print(line, file=sys.stdout if found["status"] == "ok" else sys.stderr)
     return 0 if found["status"] == "ok" else 1
 

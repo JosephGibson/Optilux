@@ -78,8 +78,6 @@ SETTINGS = "{pack}.txt"
 FUNCTION = "/function optilux:view/{id}"
 # The only view that shows the GUI, in creative with prep's torch in the main hand (D49).
 ENTITIES = "entities"
-NETHER = "minecraft:the_nether"
-END = "minecraft:the_end"
 TICKS_TIMEOUT = 60.0
 # The timers on a timers-on variant (mod-protocol.md#commands): every pass, read 3 frames late,
 # and room for every frame from the start to the stop (a 4 s settle and a 2.5 s window at 400 fps
@@ -292,22 +290,6 @@ def schedule(found: list[Variant], rounds: int, alone: bool = False) -> list[tup
     for r in range(1, rounds + 1):
         for variant in others:
             order += [(variant, r), (base, r)]
-    return order
-
-
-def lap(views: list[dict], ramped: str | None) -> list[dict]:
-    """One pass over the mode's views (D48): the overworld's first, grouped by weather, the group
-    of the weather the overworld is already ramped to first (else the views file's first weather),
-    then the Nether's and the End's; each group in the views file's order. Two passes then step
-    the weather's ticks three times at most: into the first weather, into the second, back."""
-    over = [v for v in views if v["dim"] == OVERWORLD]
-    weathers = list(dict.fromkeys(v["weather"] for v in over))
-    if ramped in weathers:
-        weathers.remove(ramped)
-        weathers.insert(0, ramped)
-    order = [v for weather in weathers for v in over if v["weather"] == weather]
-    for dim in (NETHER, END):
-        order += [v for v in views if v["dim"] == dim]
     return order
 
 
@@ -683,8 +665,9 @@ class Measured:
 
 
 def body(m: Measured) -> None:
-    """The measured session after hello: PresentMon, the session start, the warm-up pass, the
-    measured pass, PresentMon's stop, input.block off."""
+    """The measured session after hello: PresentMon, the session start, the warm-up pass (not in
+    a split session's part, but the survey's), the measured pass, PresentMon's stop, input.block
+    off."""
     s, c = m.s, m.c
     s.stop_on = ends
     output = s.raw / CSV
@@ -717,15 +700,16 @@ def body(m: Measured) -> None:
         heap_row(m)
         rows = presentmon.wait_rows(m.recording, pm, None, FIRST_ROWS_TIMEOUT)
         pm_facts["firstRows"] = rows
-        m.mark("warmupPass")
         laps = []
-        order = lap(m.views, m.ramped)
-        laps.append([v["id"] for v in order])
-        for view in order:
-            switch = arrive(m, view)
-            capture(m, view, base, 0, 1, settle_for(m.suite["capture"], True, switch))
+        if m.spec.warmup:  # a split session's part has none but the survey's (D43)
+            m.mark("warmupPass")
+            order = record.lap(m.views, m.ramped)
+            laps.append([v["id"] for v in order])
+            for view in order:
+                switch = arrive(m, view)
+                capture(m, view, base, 0, 1, settle_for(m.suite["capture"], True, switch))
         m.mark("measuredPass")
-        order = lap(m.views, m.ramped)
+        order = record.lap(m.views, m.ramped)
         laps.append([v["id"] for v in order])
         m.facts["laps"] = laps
         for view in order:
@@ -1297,6 +1281,8 @@ def orphan_record(root: Path, raw: Path, journal: dict, done: dict, complete: bo
         "identity": journal.get("identity"),
         "recorded": journal.get("recorded", {}),
     }
+    if journal.get("split"):  # a split session's part (run-record.md#split-sessions)
+        found["split"] = journal["split"]
     if spec.get("mode") is not None:
         effective = journal.get("effective", {})
         found.update(

@@ -50,7 +50,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - motion path: pose as a function of frames since the path start.
 - variant: pack + effective option values.
 - capture: one timed window or frame set at one view.
-- session: one game launch. run record: JSON for one session.
+- session: one launch, or a split session's launches. run record: JSON for one launch, and one per split session.
 - sinceReload: frames since the last pipeline creation; equals Iris's frameCounter. flush: one-frame TAA history invalidation (BENCH_DETERMINISTIC).
 - A/A twin: byte-identical baseline copy measured as a candidate.
 - threshold: minimum detectable effect, from null calibration.

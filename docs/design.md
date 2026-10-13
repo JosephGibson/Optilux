@@ -60,7 +60,7 @@ user / Claude Code --skills--> optilux CLI (Python)
   |---|---|---|
   | install | Minecraft, Fabric, the tier's mods, Java and tools (config/tools.json) into runtime/, hash-checked; write or check the launch spec | M1 |
   | launch | check the launch spec's hashes, start the game directly (token on the command line) | M1 |
-  | run | validate a run spec, run the session, write the run record | M1 |
+  | run | validate a run spec, run the session (over the reload cap as launches of views, M2), write the run record | M1 |
   | mod build / test | Gradle through the pinned wrapper, no daemon left | M1 |
   | world prep / snapshot / restore | prepare a bench world (Chunky's pre-generation, the kill, the view functions, reference frames) and retake its snapshot; copy, manifest and tree hash; restore in place | M2 |
   | calibrate | the current identity's null sessions per mode, resumed after a stop -> config/calibrations/<mode>-<identity sha256>.json | M2 |

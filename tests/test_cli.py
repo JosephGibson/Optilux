@@ -35,7 +35,7 @@ def test_run_names_an_os_error_before_its_session(
     def locked(*args: object) -> dict:
         raise PermissionError(13, "Permission denied", "saves/spike/session.lock")
 
-    monkeypatch.setattr(run_verb, "perform", locked)
+    monkeypatch.setattr(run_verb, "run_session", locked)
     assert cli.main(["run", "spec.json"]) == 1
     err = capsys.readouterr().err
     assert err.startswith("optilux run: ") and "session.lock" in err and "fix:" in err
