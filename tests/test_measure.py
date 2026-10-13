@@ -430,6 +430,7 @@ def test_a_measured_spec_carries_its_variants_views_and_reloads(bench_root) -> N
         PACK,
     )
     assert full.planned == record.planned_reloads(11, 2, 2) and len(full.view_ids) == 11
+    assert (spec.rounds, full.rounds) == (1, 2)  # the modes' own R
     assert full.variants[1]["options"] == {**PLAYED, "SHADOW_QUALITY": "-1"}
     calibration = record.check_spec(root, measured(kind="calibration"), PLAT, SUITE, saves, PACK)
     twins = measure.variants(calibration, SUITE)
@@ -463,6 +464,14 @@ SPEC_REFUSALS = [
     (dict(kind="acceptance", items=["A8"]), "A8 compares the baseline"),
     (dict(kind="acceptance", items=["A11"], variants=[BASE, TIMED]), "A11 times every variant"),
     (dict(kind="acceptance", items=["A2"]), "takes A8, A11"),
+    (dict(rounds=1), "a budget run's"),
+    (dict(dimensions=["minecraft:overworld"]), "a budget run's"),
+    (dict(kind="acceptance", items=["A8"], variants=[BASE, TIMED], heap=True, rounds=1), "budget"),
+    (dict(heap=True, rounds=0), "a positive count"),
+    (dict(heap=True, rounds=True), "a positive count"),
+    (dict(heap=True, dimensions=[]), "each once"),
+    (dict(heap=True, dimensions=["minecraft:overworld"] * 2), "each once"),
+    (dict(heap=True, dimensions=["overworld"]), "each once"),
 ]
 
 
@@ -495,6 +504,40 @@ def test_a_measured_spec_without_its_calibration_or_over_the_cap_is_refused(benc
         record.check_spec(root, a8, PLAT, SUITE, saves, PACK)
     both = measured(kind="acceptance", items=["A8"], variants=[BASE, TIMED])
     assert record.check_spec(root, both, PLAT, SUITE, saves, PACK).items == ("A8",)
+
+
+SHADOWS = {**BASE, "id": "shadows-off", "options": {"SHADOW_QUALITY": "-1"}}
+
+
+def test_the_budget_pair_plans_68_and_44_reloads(bench_root) -> None:
+    """F14's controlled pair (plans/m2.md M2.P06): full mode at R 1 with the baseline, shadows
+    off and the twin plans 68 reloads over the eleven views, 44 over the overworld's seven."""
+    root, saves = bench_root
+    pair = measured(mode="full", variants=[BASE, SHADOWS], heap=True, rounds=1)
+    full = record.check_spec(root, pair, PLAT, SUITE, saves, PACK)
+    assert (full.rounds, full.planned, len(full.view_ids)) == (1, 68, 11)
+    overworld = record.check_spec(
+        root, {**pair, "dimensions": ["minecraft:overworld"]}, PLAT, SUITE, saves, PACK
+    )
+    assert overworld.planned == 44
+    assert overworld.view_ids == (
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "night",
+        "underwater",
+        "entities",
+    )
+    suite = copy.deepcopy(SUITE)
+    suite["modes"]["quick"]["views"] = ["forest_noon"]
+    nether = measured(heap=True, dimensions=["minecraft:the_nether"])
+    with pytest.raises(record.RecordError, match="none of the mode's views lies there"):
+        record.check_spec(root, nether, PLAT, suite, saves, PACK)
+    plain = measured(kind="acceptance", items=["A1"], variants=[{"pack": PACK, "profile": None}])
+    plain = {k: v for k, v in plain.items() if k not in ("mode", "calibration")}
+    with pytest.raises(record.RecordError, match="rounds is for measured runs"):
+        record.check_spec(root, {**plain, "rounds": 1}, PLAT, SUITE, saves, PACK)
 
 
 # The runner on a fake game.
@@ -989,12 +1032,44 @@ def test_the_heap_is_read_at_the_start_and_every_tenth_reload(fake_run, monkeypa
     monkeypatch.setattr(host, "jcmd", jcmd, raising=False)
     monkeypatch.setattr(host, "private_bytes", lambda pid: 900 * 1024**2, raising=False)
     monkeypatch.setattr(host, "available_memory", lambda: 16 * 1024**3, raising=False)
+    monkeypatch.setattr(host, "physical_memory", lambda: 32 * 1024**3)
     found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
     assert found["status"] == "ok", found["reason"]
     table = found["heapTable"]
     assert [r["reloads"] for r in table["rows"]] == [2, 10]  # the start's two, then the tenth
     assert asked == ["GC.run", "GC.heap_info"] * 2
     assert table["perReload"] == {"heapMiB": 0.0, "privateMiB": 0.0}
+    assert table["physicalMiB"] == 32768
+
+
+def test_a_budget_run_keeps_its_rounds_and_dimensions(fake_run, monkeypatch) -> None:
+    """Full mode at R 1 in the Nether alone: two views, the baseline and its twin, 10 reloads."""
+    root, spec_path, fake, host = fake_run
+    spec = measured(
+        name="m2-budget-test",
+        mode="full",
+        heap=True,
+        rounds=1,
+        dimensions=["minecraft:the_nether"],
+    )
+    spec_path.write_text(json.dumps(spec), encoding="utf-8")
+    heap = (FIXTURES / "gc-heap-info.txt").read_text(encoding="utf-8")
+    monkeypatch.setattr(
+        host,
+        "jcmd",
+        lambda path, pid, command: heap if command == "GC.heap_info" else "",
+        raising=False,
+    )
+    monkeypatch.setattr(host, "private_bytes", lambda pid: 900 * 1024**2, raising=False)
+    monkeypatch.setattr(host, "physical_memory", lambda: 32 * 1024**3)
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "ok", found["reason"]
+    captures = found["captures"]
+    assert len(captures) == 2 + 2 * 3 and all(c["valid"] for c in captures)
+    assert {c["view"] for c in captures} == {"nether_crimson", "nether_soul"}
+    assert {c["round"] for c in captures if c["pass"] == 2} == {1}
+    assert reloads(fake) + 1 == 10  # selftest's, the start's, 2 warm-up, 2 x (1 + 2 x 1 x 1)
+    assert [r["reloads"] for r in found["heapTable"]["rows"]] == [2, 10]
 
 
 def test_a_snapshot_whose_view_functions_left_the_views_file_is_refused(fake_run) -> None:

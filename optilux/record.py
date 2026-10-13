@@ -38,8 +38,23 @@ SPEC_REQUIRED = ("name", "kind", "views", "world", "variants", "tier", "resource
 # items: an acceptance run's; mode: a measured schedule's (measurement and calibration runs, and
 # acceptance runs of A8 and A11); calibration: the calibration a measurement run is judged by,
 # null before one exists (plans/m2.md D40); heap: the heap read every RELOAD_EVERY reloads
-# (M2.P06); treatment: declared treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
-SPEC_OPTIONAL = ("items", "notes", "mode", "calibration", "heap", "treatment", "reloads")
+# (M2.P06); rounds and dimensions: a budget run's R and its mode's views cut to those dimensions
+# (BUDGET); treatment: declared treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
+SPEC_OPTIONAL = (
+    "items",
+    "notes",
+    "mode",
+    "calibration",
+    "heap",
+    "rounds",
+    "dimensions",
+    "treatment",
+    "reloads",
+)
+# A budget run (plans/m2.md M2.P06, F14's controlled pair): a measurement run with heap true may
+# set its rounds and keep only some dimensions' views; its heap table sets the budget, no
+# verdict reads its captures (calibration null).
+BUDGET = ("rounds", "dimensions")
 KINDS = ("measurement", "calibration", "acceptance")
 MODES = ("quick", "full")
 ITEMS = tuple(f"A{number}" for number in range(1, 13))
@@ -204,7 +219,7 @@ def load_views(root: Path, world_id: str) -> tuple[dict, Path]:
 class Spec:
     """A checked run spec (run-record.md#run-spec). A measured run (`mode` set: measurement and
     calibration runs, acceptance runs of A8 and A11) carries its variants as checked, the
-    mode's views in the views file's order and its planned reloads."""
+    mode's views in the views file's order, its rounds and its planned reloads."""
 
     name: str
     kind: str
@@ -223,6 +238,7 @@ class Spec:
     variants: tuple[dict, ...] = ()
     view_ids: tuple[str, ...] = ()
     planned: int = 0
+    rounds: int = 0
 
 
 def candidates(kind: str, variants: tuple[dict, ...] | list[dict], suite: dict) -> int:
@@ -387,7 +403,8 @@ def check_spec(
     performs, F4's reload count (`reloads`, a multiple of RELOAD_EVERY). A measured run (`mode`
     quick or full; measurement, calibration, or acceptance of A8 and A11): its variants
     (check_variants), `calibration` written null (plans/m2.md D40: M2.P07 brings calibrations),
-    `heap` true or false, no treatment and no reloads. Each refusal names its fix."""
+    `heap` true or false, a budget run's rounds and dimensions (check_budget), no treatment and
+    no reloads. Each refusal names its fix."""
     if not isinstance(data, dict):
         raise RecordError("the spec is no JSON object; fix: give its fields as an object")
     missing = [key for key in SPEC_REQUIRED if key not in data]
@@ -496,9 +513,8 @@ def check_spec(
     order = tuple(item for item in MEASURED_ITEMS if item in items)
     check_measured_items(order, variants)
     ids = mode_views(suite, mode, views_file)
-    planned = planned_reloads(
-        len(ids), candidates(kind, variants, suite), suite["modes"][mode]["rounds"]
-    )
+    rounds, ids = check_budget(data, kind, heap, suite["modes"][mode]["rounds"], ids, views_file)
+    planned = planned_reloads(len(ids), candidates(kind, variants, suite), rounds)
     if planned > cap:
         raise RecordError(
             f"the session plans {planned} reloads (selftest's and the start-of-run, the warm-up "
@@ -521,7 +537,44 @@ def check_spec(
         variants=variants,
         view_ids=ids,
         planned=planned,
+        rounds=rounds,
     )
+
+
+def check_budget(
+    data: dict, kind: str, heap: bool, rounds: int, ids: tuple[str, ...], views: dict
+) -> tuple[int, tuple[str, ...]]:
+    """A budget run's rounds and views (BUDGET): the spec's rounds, a positive count, else the
+    mode's; the mode's views in the spec's dimensions, else all of them. Each refused outside a
+    measurement run with heap true."""
+    given = [key for key in BUDGET if data.get(key) is not None]
+    if given and (kind != "measurement" or not heap):
+        raise RecordError(
+            f"{', '.join(given)}: a budget run's (plans/m2.md M2.P06), whose heap table sets the "
+            "reload cap; fix: drop them, or run kind measurement with heap true"
+        )
+    if data.get("rounds") is not None:
+        rounds = data["rounds"]
+        if isinstance(rounds, bool) or not isinstance(rounds, int) or rounds < 1:
+            raise RecordError(f"rounds {rounds!r}; fix: a positive count, or leave it out")
+    dims = data.get("dimensions")
+    if dims is not None:
+        if (
+            not isinstance(dims, list)
+            or not dims
+            or len(set(dims)) != len(dims)
+            or any(dim not in DIMENSIONS for dim in dims)
+        ):
+            raise RecordError(
+                f"dimensions {dims!r}; fix: some of {', '.join(DIMENSIONS)}, each once"
+            )
+        dim_of = {view["id"]: view["dim"] for view in views["views"]}
+        ids = tuple(vid for vid in ids if dim_of[vid] in dims)
+        if not ids:
+            raise RecordError(
+                f"dimensions {dims}: none of the mode's views lies there; fix: another dimension"
+            )
+    return rounds, ids
 
 
 def check_acceptance_spec(
@@ -535,7 +588,7 @@ def check_acceptance_spec(
     cap: int,
 ) -> Spec:
     """An acceptance run without a mode (M1's items): one variant, items, F4's reloads."""
-    for key in ("calibration", "heap"):
+    for key in ("calibration", "heap", *BUDGET):
         if key in data:
             raise RecordError(f"{key} is for measured runs; fix: drop it from an acceptance run")
     variants = data["variants"]
