@@ -1,15 +1,19 @@
 """One game session as `run` drives it (docs/mod-protocol.md#choreography), and what M2's verbs
-reuse: RunHost (the machine beyond launch's: pipes, jcmd, memory, SendInput, focus, PresentMon),
-the Session (the client, the step log, the events), the session start, a view's time, weather and
-pose, the focus checks before any injected input, the spec loader and the PresentMon pin check.
-The acceptance items live in optilux/acceptance.py, the verb in optilux/verbs/run.py."""
+reuse: RunHost (the machine beyond launch's: pipes, jcmd, memory, SendInput, focus, PresentMon,
+idle time and the 3D engine's users, other processes' facts, the game's connections), the Session
+(the client, the step log, the events, the events that end it), the run's journal (plans/m2.md
+D41), the session start, a view's time, weather and pose, the focus checks before any injected
+input, the spec loader and the PresentMon pin check. The acceptance items live in
+optilux/acceptance.py, the measured session in optilux/measure.py, the verb in
+optilux/verbs/run.py."""
 
+import contextlib
 import json
 import os
 import queue
 import subprocess
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -23,6 +27,21 @@ REQUESTS = launch.REQUESTS
 
 
 PIPES = "\\\\.\\pipe\\"
+
+
+# The run's journal (plans/m2.md D41): raw/<name>/partial.json while the run goes, renamed
+# journal.json once its record is written.
+PARTIAL = "partial.json"
+CLOSED = "journal.json"
+# A rename over a file a scanner holds open can fail for a moment on Windows.
+REPLACE_TRIES = 20
+REPLACE_GAP = 0.05
+
+
+# The 3D engine's users (plans/m2.md D42, P16): typeperf's per-process GPU Engine counters.
+GPU_COUNTER = r"\GPU Engine(*engtype_3D)\Utilization Percentage"
+TYPEPERF_TIMEOUT = 30
+LOGMAN_STOP_TIMEOUT = 30
 
 
 # The session start's waits (seconds): world.wait and selftest after a 14 s join (0.01.07's
@@ -65,8 +84,52 @@ class RunError(RuntimeError):
     """A run that cannot go on; the message names the problem."""
 
 
+class SessionEnded(RunError):
+    """A measured session ended by an event (plans/m2.md D42: focus.lost or screen.opened):
+    its record is invalid."""
+
+
 def now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds")
+
+
+class Attached:
+    """A running process this harness did not start (an orphan's game or PresentMon), as launch's
+    end and PresentMon's stop use a started one: poll, wait (subprocess.TimeoutExpired), kill.
+    Windows gives no exit code of another process's child: an exit reads as code 0."""
+
+    def __init__(self, proc: psutil.Process) -> None:
+        self._proc = proc
+        self.pid = proc.pid
+        self.returncode: int | None = None
+
+    def poll(self) -> int | None:
+        if self.returncode is None and not self._proc.is_running():
+            self.returncode = 0
+        return self.returncode
+
+    def wait(self, timeout: float | None = None) -> int:
+        try:
+            code = self._proc.wait(timeout)
+        except psutil.TimeoutExpired:
+            raise subprocess.TimeoutExpired(f"pid {self.pid}", timeout or 0) from None
+        self.returncode = code if isinstance(code, int) else 0
+        return self.returncode
+
+    def kill(self) -> None:
+        with contextlib.suppress(psutil.NoSuchProcess):
+            self._proc.kill()  # psutil refuses a pid reused since this handle was made
+
+    def same(self, kept: dict) -> bool:
+        """This handle's process is the journal's: the same creation time and executable, read
+        through the handle the end will use (D41: Windows reuses pids)."""
+        try:
+            exe = self._proc.exe()
+            created = self._proc.create_time()
+        except psutil.Error:
+            return False
+        same_exe = launch.norm(exe) == launch.norm(str(kept.get("exe") or ""))
+        return created == kept.get("createTime") and same_exe
 
 
 # The machine, beyond launch's.
@@ -123,6 +186,95 @@ class RunHost(launch.Host):
     def presentmon(self) -> presentmon.Host:
         return presentmon.Host()
 
+    def idle_seconds(self) -> float:
+        """Seconds since the last input on this session's desktop (GetLastInputInfo; the
+        harness's own SendInput counts too, lessons.md#windows). OSError when the call fails."""
+        import ctypes
+        from ctypes import wintypes
+
+        class LastInputInfo(ctypes.Structure):
+            _fields_ = [("cbSize", wintypes.UINT), ("dwTime", wintypes.DWORD)]
+
+        info = LastInputInfo()
+        info.cbSize = ctypes.sizeof(info)
+        user32 = ctypes.WinDLL("user32", use_last_error=True)  # type: ignore[attr-defined]
+        kernel32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
+        kernel32.GetTickCount.restype = wintypes.DWORD
+        if not user32.GetLastInputInfo(ctypes.byref(info)):
+            raise OSError(ctypes.get_last_error(), "GetLastInputInfo failed")
+        return ((kernel32.GetTickCount() - info.dwTime) & 0xFFFFFFFF) / 1000.0
+
+    def gpu_engine(self, samples: int) -> str:
+        """typeperf's CSV of every process's 3D engine use, one sample a second (only read,
+        plans/m2.md P16). OSError naming the exit when typeperf fails."""
+        try:
+            done = subprocess.run(  # noqa: S603 a constant counter path and two integers
+                ["typeperf", GPU_COUNTER, "-si", "1", "-sc", str(samples)],  # noqa: S607
+                capture_output=True,
+                text=True,
+                timeout=TYPEPERF_TIMEOUT + samples,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise OSError(f"typeperf ran past {error.timeout:g} s") from None
+        if done.returncode != 0:
+            raise OSError(f"typeperf exited {done.returncode}: {done.stdout.strip()[-200:]}")
+        return done.stdout
+
+    def process_facts(self, pid: int) -> dict | None:
+        """A running process's facts as a journal keeps them (D41: Windows reuses pids, so a pid
+        names the same process only with the same creation time and executable); None when no
+        process has the pid. A field Windows will not read (another user's or a protected
+        process: never this harness's game or PresentMon) is None, so it never matches."""
+        try:
+            proc = psutil.Process(pid)
+        except psutil.NoSuchProcess:
+            return None
+        found: dict[str, Any] = {"pid": pid}
+        reads = {
+            "createTime": proc.create_time,
+            "exe": proc.exe,
+            "name": proc.name,
+            "cwd": proc.cwd,
+            "cmdline": proc.cmdline,
+        }
+        for key, read in reads.items():
+            try:
+                found[key] = read()
+            except psutil.NoSuchProcess:
+                return None
+            except psutil.Error:  # AccessDenied: not a process of this user's
+                found[key] = None
+        return found
+
+    def attach(self, pid: int) -> Attached:
+        return Attached(psutil.Process(pid))
+
+    def connections(self, pid: int) -> list[dict]:
+        """The process's internet connections with a remote end (F10: offline mode still calls
+        api.minecraftservices.com at startup), recorded, never blocked."""
+        found = psutil.Process(pid).net_connections(kind="inet")
+        return [
+            {"remote": f"{c.raddr.ip}:{c.raddr.port}", "status": c.status} for c in found if c.raddr
+        ]
+
+    def stop_session(self, name: str) -> str:
+        """`logman stop <name> -ets`: an orphan's own ETW session stopped, the fix PresentMon's
+        error names (D41). RunError when it fails."""
+        try:
+            done = subprocess.run(  # noqa: S603 logman and an optilux- session name
+                ["logman", "stop", name, "-ets"],  # noqa: S607
+                capture_output=True,
+                text=True,
+                timeout=LOGMAN_STOP_TIMEOUT,
+            )
+        except (OSError, subprocess.TimeoutExpired) as error:
+            raise RunError(f"logman stop {name} -ets failed: {error}") from None
+        if done.returncode != 0:
+            raise RunError(
+                f"logman stop {name} -ets exited {done.returncode}: {done.stdout.strip()[-200:]}"
+            )
+        return done.stdout.strip()
+
     def focus(self, pid: int) -> str:
         """The game's window brought to the foreground (attached thread input), when it is not."""
         import ctypes
@@ -176,7 +328,9 @@ def view_pose(view: dict) -> dict:
 
 
 class Session:
-    """One launched game with the mod connected: its steps, events and facts as they happen."""
+    """One launched game with the mod connected: its steps, events and facts as they happen.
+    `stop_on` tells the events that end the session at the step that drains them
+    (SessionEnded)."""
 
     def __init__(
         self, root: Path, raw: Path, launched: launch.Launched, client, host: RunHost, say: Say
@@ -190,6 +344,7 @@ class Session:
         self.steps: list[dict] = []
         self.events: list[dict] = []
         self.label = "start"
+        self.stop_on: Callable[[dict], bool] | None = None
 
     def drain(self) -> list[dict]:
         found = []
@@ -210,8 +365,20 @@ class Session:
         self.events += found
         return found
 
-    def step(self, name: str, call, show=None) -> Any:
-        """Run one request, record its answer (or error) and the seconds, say it."""
+    def stop_check(self, events: list[dict], name: str) -> None:
+        """SessionEnded at the first of `events` that `stop_on` tells."""
+        ending = [e for e in events if self.stop_on is not None and self.stop_on(e)]
+        if ending:
+            first = ending[0]
+            raise SessionEnded(
+                f"{name}: {first['event']} {first.get('data') or ''} at frame "
+                f"{first['frameIndex']} ends the session (plans/m2.md D42: a measured session "
+                "needs the machine to itself)"
+            )
+
+    def step(self, name: str, call, show=None, keep=None) -> Any:
+        """Run one request, record its answer (or error, or what `keep` keeps of a long one) and
+        the seconds, say it."""
         self.label = name
         began = time.monotonic()
         try:
@@ -223,10 +390,55 @@ class Session:
             self.drain()
             raise RunError(f"{name}: {error}") from None
         seconds = round(time.monotonic() - began, 3)
-        self.steps.append({"step": name, "answer": answer, "seconds": seconds})
-        self.drain()
+        kept = keep(answer) if keep is not None else answer
+        self.steps.append({"step": name, "answer": kept, "seconds": seconds})
+        drained = self.drain()
         self.say(f"{name}: {show(answer) if show else 'ok'} ({seconds:.2f} s)")
+        self.stop_check(drained, name)
         return answer
+
+
+class Journal:
+    """The run's journal (plans/m2.md D41), raw/<name>/partial.json: the spec, the identity, the
+    pids of the runner, the game and PresentMon, the files the run wrote under runtime/ and each
+    capture's stamps, written whole as they change (a temporary file renamed over it, so a run
+    killed at any moment leaves the last whole one). The next `run` finishes a run whose journal
+    is still partial (measure.finish_orphans); `close` renames it once the record is written."""
+
+    def __init__(self, raw: Path, data: dict) -> None:
+        self.path = raw / PARTIAL
+        self.data = data
+        self.write()
+
+    def set(self, key: str, value: Any) -> None:
+        self.data[key] = value
+        self.write()
+
+    def append(self, key: str, value: Any) -> None:
+        self.data.setdefault(key, []).append(value)
+        self.write()
+
+    def write(self) -> None:
+        self.data["journaledAt"] = now()  # an orphan's record ends at its journal's last write
+        part = self.path.with_name(self.path.name + ".tmp")
+        text = json.dumps(self.data, indent=1, default=str, allow_nan=False) + "\n"
+        part.write_bytes(text.encode("utf-8"))
+        replace(part, self.path)
+
+    def close(self) -> None:
+        replace(self.path, self.path.with_name(CLOSED))
+
+
+def replace(source: Path, target: Path) -> None:
+    """os.replace, retried for a moment while another process (a scanner) holds the target."""
+    for attempt in range(REPLACE_TRIES):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt == REPLACE_TRIES - 1:
+                raise
+            time.sleep(REPLACE_GAP)
 
 
 def record_status(
@@ -323,13 +535,24 @@ def framebuffer_refusal(state: dict, mode: str, resolution: str) -> str | None:
     )
 
 
-def session_start(s: Session, pack: str, warmup: float, mode: str, resolution: str) -> dict:
+def session_start(
+    s: Session,
+    pack: str,
+    warmup: float,
+    mode: str,
+    resolution: str,
+    facts: dict | None = None,
+    before_reload: Callable[[], None] | None = None,
+) -> dict:
     """mod-protocol.md#choreography's session start after hello: world.wait, state (its
     framebuffer refused unless equal to the display mode and suite.json's display.resolution,
-    D38), selftest (A10), input.block on, hideGui, /tick freeze, ready, the start-of-run reload,
-    the GPU warm-up, then the pack's effective options (the variant fields)."""
+    D38), selftest (A10; a failed one ends the session, c5), input.block on, hideGui, /tick
+    freeze, ready, the start-of-run reload (after `before_reload`, which writes a measured run's
+    baseline files), the GPU warm-up, then the pack's effective options (the variant fields).
+    Each answer goes into `facts` as it comes, so a session that ends inside keeps them."""
     c = s.client
-    joined = s.step(
+    facts = {} if facts is None else facts
+    facts["joined"] = s.step(
         "world.wait",
         lambda: c.world_wait(WORLD_TIMEOUT),
         lambda a: f"{a['pose']['dimension']} at frame {a['frameIndex']}",
@@ -348,6 +571,13 @@ def session_start(s: Session, pack: str, warmup: float, mode: str, resolution: s
     selftest = s.step(
         "selftest", lambda: c.selftest(SELFTEST_TIMEOUT), lambda a: f"pass {a['pass']}"
     )
+    facts["selftest"] = selftest
+    if selftest.get("pass") is not True:
+        failed = [k for k, v in (selftest.get("checks") or {}).items() if v.get("pass") is not True]
+        raise RunError(
+            f"selftest failed at the session start ({', '.join(failed) or 'no check named'}): "
+            "the session ends there (c5); fix: read the checks in the record"
+        )
     s.step("input.block on", lambda: c.input_block(True))
     s.step("hud.set hideGui", lambda: c.hud_set(hide_gui=True))
     s.step(
@@ -360,19 +590,21 @@ def session_start(s: Session, pack: str, warmup: float, mode: str, resolution: s
         lambda: c.ready(STABLE_FRAMES, 0.0, READY_TIMEOUT),
         lambda a: f"{a['seconds']:.2f} s, limitedBy {a['limitedBy']}",
     )
-    reload = s.step(
+    if before_reload is not None:
+        before_reload()
+    facts["reload"] = s.step(
         "shaders.reload",
         lambda: c.shaders_reload(RELOAD_TIMEOUT, 2, pack=pack),
         lambda a: f"{a['pack']} in {a['seconds']:.3f} s, reloadFrame {a['reloadFrame']}",
     )
     s.label = "warm-up"
     launch.hold(s.launched.process, s.host, warmup)
-    s.drain()
+    s.stop_check(s.drain(), "warm-up")
     s.say(f"GPU warm-up: held {warmup:g} s (suite.json capture.gpuWarmupS)")
-    options = s.step(
+    facts["options"] = s.step(
         "shaders.options", c.shaders_options, lambda a: f"{len(a['values'])} values of {a['pack']}"
     )
-    return {"joined": joined, "selftest": selftest, "reload": reload, "options": options}
+    return facts
 
 
 def set_time(c: modclient.Client, ticks: int) -> dict:

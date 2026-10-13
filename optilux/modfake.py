@@ -12,9 +12,14 @@ their flags, `/tick freeze` freezes (ticks.step fails without it; an unknown dim
 without tpSemantics, a pitch outside -90..90 are refused, as the mod does); the fake applies no
 `/tp` semantics (the mod alone does, docs/lessons.md#game-control), so tpSemantics places the
 pose as given. `ready` answers at once; shaders.reload restarts sinceReload at the current frame,
-answers framesAfter + 1 frames later and pushes reload.done; shaders.options reads the model's
-options; frames.capture writes `count` small PNGs and capture.json into a new attempt folder under
-an absolute directory, as the mod does; window.measure times its window on 7 ms frames from the
+answers framesAfter + 1 frames later and pushes reload.done, and with a game folder (`game_dir`)
+switches packs as Iris does at a reload: iris.properties' shaderPack, then that pack's settings
+file over the pack's defaults (`defaults`), a value of no option or of the wrong kind ignored;
+a dimension change also shows the loading screen and the quit the saving screens, as the game's
+do;
+shaders.options reads the model's options; frames.capture writes `count` small PNGs and
+capture.json into a new attempt folder under an absolute directory, as the mod does;
+window.measure times its window on 7 ms frames from the
 last reload's frame (none after a dimension change: not-ready) or from now, pushes window.start
 and window.end and moves the frames to its end; state reports the model's framebuffer; selftest
 passes; timers.start times every frame from the next on with FAKE_PASSES (the top level only
@@ -41,7 +46,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from optilux import modclient
+from optilux import launch, modclient
 
 PROTOCOL = 1
 # A fake value per result type; `|null` types answer null.
@@ -133,6 +138,13 @@ FAKE_PASSES = (
     ("composite2", 1, 840_000),
     ("final", 0, 120_000),
 )
+# The screens the game opens itself, as the mod reports them (m1-acceptance-10's events): the
+# loading screen at a dimension change, the saving screens at the quit.
+LOADING_SCREEN = "net.minecraft.client.gui.screens.LevelLoadingScreen"
+QUIT_SCREENS = (
+    "net.minecraft.client.gui.screens.GenericMessageScreen",
+    "net.minecraft.client.gui.screens.ProgressScreen",
+)
 # The fake's captured frames: tiny RGBA PNGs.
 FRAME_SIZE = 2
 # The fake's frame time: frame n's HEAD stamp at n x 7 ms; a window's swap stamps 0.1 ms before.
@@ -218,6 +230,9 @@ class Fake:
         self._held: dict[str, Any] = {}
         self.quit = threading.Event()
         self.game = initial_game()
+        # A game folder makes shaders.reload read iris.properties and the pack's settings file.
+        self.game_dir: Path | None = None
+        self.defaults: dict[str, Any] = dict(self.game["options"])
 
     # The wire.
 
@@ -316,6 +331,11 @@ class Fake:
         answer = self._judge(request_id, message)
         if answer is not None:
             write(answer)
+            if message.get("cmd") == "quit" and answer.get("ok") is True:
+                # The quit as the game makes it: the world left, its saving screens shown.
+                self.emit("world.left", {})
+                for screen in QUIT_SCREENS:
+                    self.emit("screen.opened", {"screen": screen})
 
     def _judge(self, request_id: Any, message: dict) -> dict | None:
         """The immediate answer, or None when the request runs on (delayed). The checks run in
@@ -543,6 +563,8 @@ class Fake:
                 "frames": args["stableFrames"],
             }
         if name == "shaders.reload":
+            if self.game_dir is not None:
+                self._switch(self.game_dir)
             # Answered once the new pipeline rendered framesAfter frames, as the mod does.
             game["reloadFrame"] = self._frame
             game["reloaded"] = True
@@ -565,6 +587,26 @@ class Fake:
         if name == "window.measure":
             return self._window(args)
         return self._capture(args)
+
+    def _switch(self, game_dir: Path) -> None:
+        """The pack and its options as Iris loads them at a reload (platform.md R4)."""
+        iris = (game_dir / "config" / "iris.properties").read_text(encoding="utf-8")
+        pack = launch.properties_values(iris).get("shaderPack", "")
+        if not (game_dir / "shaderpacks" / pack).is_file():
+            raise Refusal("failed", f"no shader pack {pack} in shaderpacks/")
+        values = dict(self.defaults)
+        settings = game_dir / "shaderpacks" / f"{pack}.txt"
+        written = settings.read_text(encoding="utf-8") if settings.is_file() else ""
+        for name, value in launch.properties_values(written).items():
+            if name not in values:
+                continue
+            if isinstance(values[name], bool):
+                if value in ("true", "false"):
+                    values[name] = value == "true"
+            else:
+                values[name] = value
+        self.game["pack"] = pack
+        self.game["options"] = values
 
     def _window(self, args: dict) -> dict:
         """window.measure as the mod times it, on the fake's frame clock: the skip from the last
@@ -695,6 +737,8 @@ class Fake:
                 game["reloadFrame"] = self._frame
                 game["reloaded"] = False
                 self.emit("dimension.changed", {"from": pose["dimension"], "to": target})
+                # The game's own loading screen, as the mod reports it (every M1 log).
+                self.emit("screen.opened", {"screen": LOADING_SCREEN})
             game["pose"] = {"dimension": target, **{k: args[k] for k in modclient.POSE_KEYS}}
             return {"pose": dict(game["pose"]), "arrivedSeconds": 0.0}
         if name == "camera.get":
