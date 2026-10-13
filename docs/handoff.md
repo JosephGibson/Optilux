@@ -1,66 +1,54 @@
 # Handoff
-Status: the latest stop: M2.P05, the measured session, and what M2.P06 starts from.
+Status: the latest stop: M2.P06, the reload budget, stopped on plans/m2.md section 7 (no heap under D43 holds full mode's twin and one candidate); the user's decision comes first.
 
 ## Contents
 Outcome · What changed · Checks · Review · Open questions · Left alone · Weak points · Commits and time · Next
 
 ## Outcome
 Last phase: M2.P05
-- Exit held: one announced quick-mode measurement run, m2-measurement-1 on bench_263 (calibration null, D40; the baseline Unbound r5.9.3 with the played profile, D35, and its A/A twin optilux-twin1-ComplementaryUnbound_r5.9.3.zip, a byte copy, sha512 a085d1d8...): status ok, 12 of 12 captures valid, 314 to 436 frames each, every row Hardware: Independent Flip, GPUBusy over FrameTime 0.998 to 1.000, halves within 0.31 %.
-- The cut's edges (each window's first row less frame start's row, its last less frame end - 1's, rows found by the swap stamps): [0, 0] on ten windows, [1, 1] on capture 5 (314 rows, 314 frames), [1, 0] on capture 11 (318 rows for 319 frames).
-- Captures, median GPUBusy (ms) and frames: warm-up pass forest_noon 7.857 (315), nether_crimson 5.669 (434), end_dragon 7.745 (320); measured pass forest_noon A 7.821 (316), twin 7.845 (314), A 7.853 (315); nether_crimson 5.679 (435), 5.673 (436), 5.677 (434); end_dragon 7.756 (319), 7.775 (319), 7.770 (320).
-- Informative, no verdict (calibration null): the twin against its two baselines +0.107 %, -0.085 %, +0.158 %; the warm-up pass against the measured pass's baselines +0.259 %, -0.152 %, -0.223 % (D47 is M2.P08's).
-- The session's time split: D42's wait 201.8 s (input within 30 s, nxplayer.bin at 2.1 to 3.4 % of the 3D engine), launch to join 19.1 s, the mod 4.1 s, the session start 37.0 s (selftest 3.2 s, the start-of-run reload 2.5 s, the 30 s warm-up), warm-up pass 31.2 s, measured pass 51.1 s, PresentMon's stop 2.1 s, quit 1.1 s (exit code 0). PresentMon 121.3 s, 14,392 rows, 2,530,857 bytes; the record 53,314 bytes.
-- F10: no remote connection at the join this run (the game's startup call had ended); recorded per run.
-- A run killed in a test leaves an aborted record: tests/test_measure.py kills the runner after two captures, the next run's finisher ends the orphan's game (WM_CLOSE) and PresentMon's ETW session, deletes its twin and settings files and writes the record aborted with both captures summarized.
+- Stopped: plans/m2.md section 7, "no heap under D43 at which full mode holds the twin and one candidate". D43's rule over the pair gives 6144 MiB and a cap of 30 reloads; full mode's twin and one candidate plan 112 (a full calibration session of one twin 68). bench.json, capture.reloadCap and statistics.calibration are unchanged; the third run did not happen. M2.P06's Exit does not hold.
+- F14's controlled pair, both announced, both status ok, calibration null, the baseline (D35), shadows off (SHADOW_QUALITY -1) and the twin at R 1, Xmx 6144 MiB, physical memory 32,691 MiB:
+  - m2-budget-full-1: full mode, 11 views, 68 reloads; 55 of 66 captures valid (11 fewFrames); heap after GC / private bytes / available (MiB) at reloads 2: 589.6 / 11,739.7 / 12,087; 10: 843.7 / 15,910.7 / 11,872; 20: 1,189.6 / 20,923.9 / 11,466; 30: 1,409.6 / 25,500.0 / 7,672; 40: 1,612.8 / 29,396.8 / 3,991; 50: 1,919.6 / 33,835.2 / 364; 60: 2,255.4 / 36,121.5 / 446. Per reload: heap 28.72, private 420.4.
+  - m2-budget-overworld-1: the overworld's seven views, no Nether or End visit, 44 reloads; 41 of 42 valid (1 halves); at 2: 590.7 / 11,719.6 / 14,754; 10: 816.2 / 15,890.7 / 14,446; 20: 986.6 / 21,133.2 / 14,217; 30: 1,166.3 / 24,996.0 / 11,079; 40: 1,389.1 / 28,986.4 / 6,976. Per reload: heap 21.01, private 454.4.
+- F14 answered: the heap's extra growth follows the dimension visits (28.72 against 21.01 MiB a reload, as M1's 33 against 20), the private bytes do not (420 and 454 MiB a reload in both). M1's F4 table (m1-acceptance-10: one pack reloaded back to back, 2 frames each) grew 46.3 MiB a reload; these sessions switch packs and options and render a 4 s window after each reload. Which of those makes the tenfold growth is unread.
+- D43 as written (results/raw/budget-rule/d43.py, local): per heap, the cap by the heap and by private bytes, the worse run's: 6144: 30 (heap 140 and 190, private 30 and 30); 7168 to 10240: 20; 11264 to 14336: 10; 15360 and up: 0 or less. Private bytes bind everywhere: each 1024 MiB of heap commits 1024 MiB more at the start, about 2.4 reloads' growth.
+- The baseline drifts with the reloads, inside that cap: every pass-2 baseline lies within 0.9 % of its view's warm-up capture (full) and 0.3 % (overworld) up to reload 22, then 13.3 % (forest_noon, reload 23, full) and 40.6 % (ocean_sunset, reload 24, overworld) above it, rising to +474 % (entities, reload 44, full) and +118 % (underwater, reload 39, overworld). The onset sits near 22 GB of private bytes (20.9 and 21.1 GB at reload 20) with 11.5 and 14.2 GB of physical memory still available; the GPU's dedicated memory was not read. M2.P05's quick run (14 reloads) lies before it.
+- Done in the phase: a measurement run with heap true takes `rounds` and `dimensions` (a budget run), the heap table records the physical memory (70a0c8e); the pair's records (7d22628). The rule as a module, its tests, the reviewer pass, the configs, measurement.md's budget and CHANGELOG's reload cap were left at the stop. The budget's refusal one reload over the cap is already tested (tests/test_measure.py: capture.reloadCap 13 refuses a plan of 14).
 
 ## What changed
-- optilux/measure.py (new): variants and twins, their files (shaderpacks/<pack>.txt from the profile's literal text, iris.properties), the schedule, D48's laps, the settle, arrive (function, camera.place, `ready` after a dimension change, D49's GUI and creative, weather ticks), capture (the files, shaders.reload, the options checked, timers, window.measure, camera.get), the summaries' validity flags, D42's wait (GetLastInputInfo, typeperf on the display adapter's LUID), the heap rows, D41's orphan finisher.
-- optilux/presentmon.py: RowsTail (wait_rows reads only what grew, cr10), Timeline, cut_window with its edges, summary.
-- optilux/record.py: the measurement and calibration kinds and A8 and A11 on a mode's schedule, variants with profiles and options, calibration null (D40), heap, the budget with selftest's reload (P12); write_record writes whole, then renames.
-- optilux/session.py: c5 (a failed selftest ends the session), the focus end (Session.stop_on), the journal, Attached, RunHost's idle, 3D engine, process facts, connections and logman stop.
-- optilux/verbs/run.py: one Runner for acceptance and measured runs (simp2), one way to end a game (simp20), notes in the record (simp11), F10's connections; optilux/modfake.py: pack switches at a reload, the game's loading and quit screens.
-- Choices no plan or prompt names, taken here:
-  - laps, not one order: two passes need three weather steps (into clear, thunder, back), against D48's "at most twice", which counted one pass;
-  - GPUBusy over FrameTime is median over median; halves split the rows in order, apart in % of their mean; a window's events are those of frames start to end - 1;
-  - the twin last among the candidates; option values text or booleans (a JSON number would turn "0.50" into 0.5, which Iris refuses);
-  - `ready` after a dimension change (its loading screen closed) before the reload; `camera.get` after every window must read the view's pose;
-  - D42's end ignores the screens the game opens itself (a dimension change's loading screen, the quit's); a calibration run takes no timers (M4's timer twins) and no heap reads; a measured run refuses a snapshot whose view functions left the views file;
-  - A8 and A11 recorded unjudged and failed until M2.P07's verdicts; the timers' maxFrames 10,000; heap rows at the start and every 10 reloads;
-  - a measured record keeps its steps and events in raw/ (counted in the record), the baseline's whole effective option map and the others' differences.
-- Docs: measurement.md (Session, Validity, Tools), run-record.md (Status, Record, Fields, Run spec), AGENTS.md's layout (measure.py; the placeholder's file list cut), CHANGELOG's 0.3.0 entry.
+- optilux/record.py: SPEC_OPTIONAL gains `rounds` and `dimensions` (BUDGET), check_budget refusing them outside a measurement run with heap true; Spec.rounds read by the planned reloads, the schedule (measure.py), the announcement and the planned captures (run.py).
+- optilux/measure.py: heap_table's physicalMiB; optilux/session.py: RunHost.physical_memory (psutil).
+- docs/run-record.md (Record, Run spec): the budget run's fields and physicalMiB.
+- Choices no plan or prompt names, taken here: the pair needs R 1 in full mode and an overworld-only view set, which no spec field gave, so the spec gained them for heap runs only (no verdict reads a budget run: calibration null); D43's slopes are each record's perReload (first row to last), its start the first row, the worse run per heap the smaller cap; the overworld half ran after the full half had already shown the stop, being step 1's other half and F14's answer.
 
 ## Checks
-- At the start: 528 passed, verify docs 0 violations, tree clean on m2.
-- At the end: `optilux test` 600 passed; ruff, ruff format and pyright clean; verify docs 0 violations. The first commit alone: 534 passed.
-- Tests added (72): the schedule and its reloads, the laps, the settle; the cut on synthetic rows and on A9's real CSVs and stamps; the summaries and each flag; the variant files' bytes, the twins, the options read back; D42 on typeperf's real output; the measured spec's 23 refusals; the runner on the protocol fake: a quick run, D49, the focus end (and in the warm-up), the game's own screens, a moved camera, a failed selftest, A8 admitted with its timers, the heap rows, an orphan finished (its pids checked, a reused pid left alone, a short CSV left unsummarized), a dead PresentMon's session stopped, files not the run's kept.
+- At the start: 600 passed, verify docs 0 violations, tree clean on m2.
+- 70a0c8e: 610 passed; ruff, ruff format and pyright clean; verify docs 0 violations; CI green. 7d22628: 610 passed.
+- Tests added (10): the pair's 68 and 44 reloads and its seven overworld views; eight refusals of rounds and dimensions; a budget run on the fake (full mode, R 1, the Nether's two views, 10 reloads, heap rows at 2 and 10); the heap test also reads physicalMiB.
 
 ## Review
-The reviewer agent three times, each finding read at its source: correctness (6: 2 high, 2 medium, 2 low), failure paths (15: 2 high, 5 medium, 8 low; 6 the same), identity (9: 1 medium, 8 low).
-- Fixed: the game's own LevelLoadingScreen ended every session at its first dimension change and the quit's screens made every record invalid (both high; verified in M2.P04's request log and m1-acceptance-10, the fake now sends them); D42's GPU check passed on no reading; a reused pid of a protected process crashed every run; a focus.lost in the warm-up went unseen; twins left when the mod session failed; a dead PresentMon's ETW session left; an error after the session lost the record; the journal written outside the trys that end the game and PresentMon; a pid checked through one handle, ended through another; an orphan's CSV taken as complete; files that were not the run's deleted; latest.log not kept for a broken session; a short record on a killed write; timers on in calibration runs; heap reads in calibration runs; an orphan's record without its variant fields or its suite; the Java mismatch's journal identity; the view functions unchecked.
-- Left: below.
+None at this stop: the reviewer pass was to read the rule and the configs it writes, and neither was committed.
 
 ## Open questions
-- For M2.P06 and M2.P08: D47 from this one run: pass 1 differs from pass 2 by -0.22 to +0.26 %, within D47's 0.5 % on all three views.
-- nxplayer.bin (NoMachine) drew 2.1 to 3.4 % of the 3D engine while input arrived; at the launch 0.63 %. Whether a remote viewer moves GPU time is unread.
-- A game killed during its join, A9's PresentMon and A1's second game are never journaled, so an orphan of those needs the user's hands (launch owns the process until the join).
-- The baseline's profile and options are not enforced (D35 fixes them for M2); one sha512 per run holds only while every variant runs the reference zip (M2.P08's passthrough needs its own).
-- Stepped thunder ticks may leave random snow, ice or a bolt near a view, the same within a session; inputs outside identity (power plan, AMD per-app settings, game/config's other files) carried.
-- Carried: the views file's end_city `why`; 1 or 2 entities at forest_noon under ticks; world.py in `harness`; unmatched pops; the residual (M2.P10); the display's rate and count; machine state; window 1's start frame.
+- For the user (the stop): what a session may hold. Each launch leaks about 420-454 MiB of private bytes a reload under pack switching, and the baseline slows from about reload 23, so no launch measures past about 20 reloads as things stand; full mode plans 112 or more. Options, recommended first:
+  1. Name the cause before amending D43: one or two diagnostic launches, the baseline reloaded alone with its windows against pack switches without windows, reading the game's GPU dedicated memory (typeperf's GPU Process Memory, read only) beside the heap; then D43 amended with a drift limit beside the memory one. Costs a phase (about 1.5 h) before M2.P07.
+  2. Amend D43 now: a launch holds at most 20 reloads, sessions split across launches (full mode by view groups, calibration by fewer twins and more sessions); M2.P05's runner gains the split. Costs many more launches (full mode's 11 views need several per round) and keeps an unexplained leak in every session.
+  3. Drop the warm-up pass (D47) and shrink R: saves 11 reloads in full mode, not enough alone (2 + 11 x 5 = 57 for the twin and one candidate at R 1).
+- M2.P08's survey (full mode, Ci 2, 112), M2.P09's calibrations (244 and 38 at 5 twins) and M2.P10 all plan past the onset; they wait on the decision.
+- Carried: D47 (pass 1 against pass 2 within 0.26 % in M2.P05's quick run); nxplayer.bin's GPU share; orphans of a join or of A9; the baseline's profile unenforced; stepped thunder's debris; the views file's end_city `why`; world.py in `harness`; unmatched pops; the residual (M2.P10); the display's rate and count; machine state; window 1's start frame.
 
 ## Left alone
-- WM_CLOSE to an orphan's game goes by its pid's windows after the handle check (a microsecond window).
-- notNumbers counts the larger missing column, not their union; any NA still flags.
-- The first prep's raw folder prep-bench_263-20261012-214122.
+- results/raw/budget-rule/ (ignored): d43.py, the rule as run, and the pair's specs.
+- D42 waited 294.0 s before the first launch (input inside 30 s, chrome.exe at 2.2-3.0 % of the 3D engine), 30.4 s before the second.
 
 ## Weak points
-- One live run, quick mode, three views; the focus end, the orphan finisher and the timers path ran only on the fake.
-- The fake models the game's screens from the logs; the loading screen's close is awaited with `ready`, not read.
+- One run per half; the drift's cause and the leak's are unread; the GPU's memory was never read.
+- The overworld half's captures after its onset (reload 24) carry valid flags, as the flags judge a window, not a session's drift.
 
 ## Commits and time
-- bf47ddd feat: cut PresentMon rows by window stamps and summarize each window; 5f1b3d7 feat: run measurement and calibration sessions through one runner; 295e31e chore: record the first quick-mode run of the baseline and its twin; this handoff. Each pushed after the previous one's CI ended green.
-- M2.P05: 21:49 to about 23:20 ADT, about 1.5 h against 3.5 h.
-- Tripwire: M0-M3 summed 70.8 h, the trip at 141.6 h; actuals about 33.0 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5).
+- 70a0c8e feat: let a heap run set its rounds and keep some dimensions; 7d22628 chore: record the reload budget pair at the 6144 MiB heap; this handoff. Each pushed after the previous one's CI ended green.
+- M2.P06: 23:18 to about 23:55 ADT, about 0.6 h against 1.5 h, stopped.
+- Tripwire: M0-M3 summed 70.8 h, the trip at 141.6 h; actuals about 33.6 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 0.6).
 
 ## Next
-/optilux-next prints M2.P06's prompt: the reload budget, 1.5 h (M), 2-3 launches.
+The user's decision on the session's reload budget (Open questions), then D43 amended in plans/m2.md; /optilux-next then prints M2.P06's prompt again.
