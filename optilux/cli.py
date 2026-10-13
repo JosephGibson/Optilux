@@ -7,11 +7,14 @@ from typing import NoReturn
 
 from optilux.verbs import (
     Verb,
+    calibrate,
+    compare,
     install,
     launch,
     milestone,
     mod,
     pack,
+    report,
     run,
     status,
     test,
@@ -30,6 +33,9 @@ VERBS: tuple[Verb, ...] = (
     launch.VERB,
     mod.VERB,
     run.VERB,
+    calibrate.VERB,
+    compare.VERB,
+    report.VERB,
     world.VERB,
 )
 

@@ -36,10 +36,11 @@ SCHEMA = 1
 NAME = re.compile(r"[a-z0-9-]{1,40}")
 SPEC_REQUIRED = ("name", "kind", "views", "world", "variants", "tier", "resourcePacks")
 # items: an acceptance run's; mode: a measured schedule's (measurement and calibration runs, and
-# acceptance runs of A8 and A11); calibration: the calibration a measurement run is judged by,
-# null before one exists (plans/m2.md D40); heap: the heap read every RELOAD_EVERY reloads
-# (M2.P06); rounds, dimensions, keepViews, alone and windows: a budget run's (BUDGET); treatment:
-# declared treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
+# acceptance runs of A8 and A11); calibration: the calibration a measured run is judged by, or
+# null (plans/m2.md D40: no verdicts); heap: the heap read every RELOAD_EVERY reloads (M2.P06);
+# rounds, dimensions, keepViews, alone and windows: a budget run's (BUDGET); remeasures: the A8
+# session whose views beyond their threshold this one re-measures (plans/m2.md M2.P10);
+# treatment: declared treatments (after 1.0); reloads: F4's table (plans/m1.md 0.01.09).
 SPEC_OPTIONAL = (
     "items",
     "notes",
@@ -47,6 +48,7 @@ SPEC_OPTIONAL = (
     "calibration",
     "heap",
     *("rounds", "dimensions", "keepViews", "alone", "windows"),
+    "remeasures",
     "treatment",
     "reloads",
 )
@@ -242,6 +244,8 @@ class Spec:
     rounds: int = 0
     alone: bool = False
     windows: bool = True
+    cal: dict | None = None  # the calibration `calibration` names, loaded (load_calibration)
+    first: dict | None = None  # A8's evidence in the session `remeasures` names
 
 
 def candidates(kind: str, variants: tuple[dict, ...] | list[dict], suite: dict) -> int:
@@ -397,7 +401,13 @@ def check_measured_items(items: tuple[str, ...], variants: tuple[dict, ...]) -> 
 
 
 def check_spec(
-    root: Path, data: Any, plat: platform.Platform, suite: dict, saves: Path, pack: str
+    root: Path,
+    data: Any,
+    plat: platform.Platform,
+    suite: dict,
+    saves: Path,
+    pack: str,
+    fresh: bool = True,
 ) -> Spec:
     """A run spec checked before anything launches (run-record.md#run-spec): its fields, a
     single-use name, the kind, the bench tier, the views file and its snapshot, the world under
@@ -407,7 +417,8 @@ def check_spec(
     quick or full; measurement, calibration, or acceptance of A8 and A11): its variants
     (check_variants), `calibration` written null (plans/m2.md D40: M2.P07 brings calibrations),
     `heap` true or false, a budget run's rounds and dimensions (check_budget), no treatment and
-    no reloads. Each refusal names its fix."""
+    no reloads. Each refusal names its fix. `fresh` False skips the single-use name (`calibrate`
+    builds the identity before naming a session)."""
     if not isinstance(data, dict):
         raise RecordError("the spec is no JSON object; fix: give its fields as an object")
     missing = [key for key in SPEC_REQUIRED if key not in data]
@@ -420,7 +431,7 @@ def check_spec(
     name = data["name"]
     if not isinstance(name, str) or not NAME.fullmatch(name):
         raise RecordError(f"name {name!r} is not [a-z0-9-]{{1,40}}; fix: rename the run")
-    for taken in (root / RECORDS / f"{name}.json", root / RAW / name):
+    for taken in (root / RECORDS / f"{name}.json", root / RAW / name) if fresh else ():
         if taken.exists():
             raise RecordError(
                 f"run {name} exists ({taken.relative_to(root).as_posix()}); fix: pick a new name "
@@ -496,21 +507,16 @@ def check_spec(
             raise RecordError(f"{key} is F4's acceptance table; fix: heap true reads the heap")
     if "calibration" not in data:
         raise RecordError(
-            "the spec does not name its calibration; fix: write calibration null (plans/m2.md "
-            "D40: no verdicts, and `compare` refuses the record) until `calibrate` writes one"
-        )
-    if data["calibration"] is not None:
-        raise RecordError(
-            f"calibration {data['calibration']!r}: no calibration exists before M2.P07's "
-            "`calibrate`; fix: calibration null (D40)"
+            "the spec does not name its calibration; fix: the id `optilux calibrate` printed, or "
+            "null (plans/m2.md D40: no verdicts, and `compare` refuses the record)"
         )
     heap = data.get("heap", False)
     if not isinstance(heap, bool):
         raise RecordError(f"heap {heap!r}; fix: true or false")
-    if heap and kind == "calibration":
+    if heap and (kind == "calibration" or data["calibration"] is not None):
         raise RecordError(
             "heap true runs a GC every 10 reloads, which no measured run it would judge runs; "
-            "fix: heap false (the budget runs read it, plans/m2.md M2.P06)"
+            "fix: heap false (the budget runs read it, calibration null: plans/m2.md M2.P06)"
         )
     variants = check_variants(root, data, suite, pack)
     order = tuple(item for item in MEASURED_ITEMS if item in items)
@@ -519,6 +525,8 @@ def check_spec(
     rounds, ids, alone, windows = check_budget(
         data, kind, heap, suite["modes"][mode]["rounds"], ids, views_file, variants
     )
+    cal = check_calibration(root, data, kind, mode)
+    first = check_remeasures(root, data, order)
     planned = planned_reloads(len(ids), candidates(kind, variants, suite), rounds)
     # A budget run (heap true, calibration null) measures the leak past the cap and judges
     # nothing; F4's 2 GiB guard stops it before the machine pages (plans/m2.md D43, M2.P06).
@@ -542,6 +550,7 @@ def check_spec(
         notes,
         data,
         mode=mode,
+        calibration=data["calibration"],
         heap=heap,
         variants=variants,
         view_ids=ids,
@@ -549,7 +558,67 @@ def check_spec(
         rounds=rounds,
         alone=alone,
         windows=windows,
+        cal=cal,
+        first=first,
     )
+
+
+def check_calibration(root: Path, data: dict, kind: str, mode: str) -> dict | None:
+    """The calibration a measured run is judged by (measurement.md#calibration, plans/m2.md D40),
+    loaded: none for a calibration run, which is judged by none; null allowed for a measurement
+    run, which then has no verdicts; named for A8 and A11, which are judged. A named one exists,
+    is the spec's mode's and covers its resource-pack set; its identity is matched once the run's
+    is built (`run`'s prepare)."""
+    cid = data["calibration"]
+    if cid is None:
+        if kind == "acceptance":
+            raise RecordError(
+                "A8 and A11 are judged by a calibration, and the spec names none; fix: the full "
+                "calibration's id (`optilux calibrate --mode full`)"
+            )
+        return None
+    if kind == "calibration":
+        raise RecordError(
+            f"a calibration run is judged by no calibration, and names {cid!r}; fix: null"
+        )
+    cal = load_calibration(root, cid)
+    if cal["mode"] != mode:
+        raise RecordError(
+            f"calibration {cid[:24]}... is {cal['mode']} mode's, the spec runs {mode}; fix: the "
+            f"{mode} calibration's id"
+        )
+    if cal["resourcePacks"] != data["resourcePacks"]:
+        raise RecordError(
+            f"calibration {cid[:24]}... covers the {cal['resourcePacks']} resource-pack set, the "
+            f"spec runs {data['resourcePacks']}; fix: a calibration of that set"
+        )
+    return cal
+
+
+def check_remeasures(root: Path, data: dict, items: tuple[str, ...]) -> dict | None:
+    """`remeasures`: the A8 session whose views beyond their own threshold this run re-measures
+    (plans/m2.md M2.P10); its A8 entry waits on them (`remeasure`) under the spec's calibration.
+    The first session's A8 evidence."""
+    name = data.get("remeasures")
+    if name is None:
+        return None
+    if "A8" not in items:
+        raise RecordError("remeasures is A8's second session; fix: drop it, or run A8")
+    if not isinstance(name, str) or not NAME.fullmatch(name):
+        raise RecordError(f"remeasures {name!r}; fix: the first A8 session's run name")
+    first = read_record(root, name)
+    entry = next((e for e in first.get("acceptance") or [] if e.get("item") == "A8"), None)
+    evidence = (entry or {}).get("evidence") or {}
+    if entry is None or entry.get("pass") is not None or not evidence.get("remeasure"):
+        raise RecordError(
+            f"{name}'s A8 waits on no view to re-measure; fix: name the session whose A8 entry "
+            "says `remeasure`"
+        )
+    if evidence.get("calibration") != data["calibration"]:
+        raise RecordError(
+            f"{name}'s A8 was judged by another calibration; fix: the same calibration"
+        )
+    return evidence
 
 
 def check_budget(
@@ -1217,13 +1286,20 @@ def system_facts(machine: Machine, options: dict[str, str], display: dict) -> tu
 
 
 def check_acceptance(items: Any) -> None:
+    """Each entry item, pass, evidence: pass a boolean, or null while its verdict waits, the
+    evidence's `pending` saying on what (run-record.md#record)."""
     if not isinstance(items, list) or not items:
         raise RecordError("an acceptance record holds no item; fix: record each item run")
     for entry in items:
         if not isinstance(entry, dict) or tuple(entry) != ACCEPTANCE_KEYS:
             raise RecordError(f"acceptance entry {entry!r}; fix: give item, pass, evidence")
-        if entry["item"] not in ITEMS or not isinstance(entry["pass"], bool):
-            raise RecordError(f"acceptance entry {entry['item']!r}: no item or no boolean pass")
+        evidence = entry["evidence"] if isinstance(entry["evidence"], dict) else {}
+        waits = entry["pass"] is None and isinstance(evidence.get("pending"), str)
+        if entry["item"] not in ITEMS or not (isinstance(entry["pass"], bool) or waits):
+            raise RecordError(
+                f"acceptance entry {entry['item']!r}: no item, or a pass neither boolean nor null "
+                "with its pending reason"
+            )
 
 
 def write_record(root: Path, record: dict, say: Callable[[str], None] | None = None) -> Path:
@@ -1258,3 +1334,139 @@ def write_record(root: Path, record: dict, say: Callable[[str], None] | None = N
     if say is not None:
         say(f"record: {RECORDS}/{path.name}, {len(text.encode('utf-8')):,} bytes")
     return path
+
+
+def read_record(root: Path, name: str) -> dict:
+    """results/records/<name>.json as an object; RecordError naming the fix."""
+    path = root / RECORDS / f"{name}.json"
+    if not NAME.fullmatch(name) or not path.is_file():
+        raise RecordError(f"no record {RECORDS}/{name}.json; fix: a run's name (`ls {RECORDS}`)")
+    try:
+        found = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError as error:
+        raise RecordError(f"{RECORDS}/{name}.json is not JSON ({error}); fix: restore it") from None
+    if not isinstance(found, dict):
+        raise RecordError(f"{RECORDS}/{name}.json is no object; fix: restore it from git")
+    return found
+
+
+def record_names(root: Path) -> list[str]:
+    """Every record's name under results/records/, sorted."""
+    folder = root / RECORDS
+    return sorted(p.stem for p in folder.glob("*.json")) if folder.is_dir() else []
+
+
+def judged_twins(root: Path, cid: str) -> list[bool]:
+    """The twin monitor's history (measurement.md#calibration): for every record judged by the
+    calibration `cid` whose twin was judged, oldest first by its start, whether its twin lay at or
+    beyond the geo-mean threshold; a record that cannot be read is `verify records`' to report."""
+    found = []
+    for name in record_names(root):
+        try:
+            one = read_record(root, name)
+        except RecordError:
+            continue
+        judged = one.get("verdicts") or {}
+        twin = judged.get("twin") or {}
+        if judged.get("calibration") == cid and twin.get("inside") is not None:
+            found.append((str(one.get("startedAt")), twin["inside"] is False))
+    return [beyond for _, beyond in sorted(found)]
+
+
+# Calibrations (measurement.md#calibration): config/calibrations/<mode>-<identity sha256>.json,
+# written by `calibrate`, matched key by key on the identity; the baseline pack recorded, not
+# matched (user, 2026-10-06).
+CALIBRATIONS = "config/calibrations"
+CALIBRATION_ID = re.compile(r"(?:quick|full)-[0-9a-f]{64}")
+CALIBRATION_KEYS = (
+    "schema",
+    "id",
+    "mode",
+    "createdAt",
+    "identityHash",
+    "identity",
+    "resourcePacks",
+    "views",
+    "rounds",
+    "twinsPerSession",
+    "falseRate",
+    "floorPct",
+    "baseline",
+    "sessions",
+    "nulls",
+    "thresholds",
+)
+
+
+def identity_hash(found: dict) -> str:
+    """An identity's sha256 over its canonical JSON: a calibration's id carries it."""
+    return sha256_of(found)
+
+
+def load_calibration(root: Path, cid: Any) -> dict:
+    """config/calibrations/<cid>.json checked: an id `calibrate` writes, its fields, its id and
+    identity hash agreeing with its identity. RecordError naming the fix, `calibrate` when the
+    calibration does not exist."""
+    if not isinstance(cid, str) or not CALIBRATION_ID.fullmatch(cid):
+        raise RecordError(
+            f"calibration {cid!r} is no calibration id (<mode>-<the identity's sha256>); fix: the "
+            "id `optilux calibrate` printed, or null"
+        )
+    mode = cid.split("-", 1)[0]
+    path = root / CALIBRATIONS / f"{cid}.json"
+    shown_path = f"{CALIBRATIONS}/{path.name}"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except OSError:
+        raise RecordError(
+            f"no calibration {cid[:24]}... in {CALIBRATIONS}/; fix: `optilux calibrate --mode "
+            f"{mode}` for this identity"
+        ) from None
+    except ValueError as error:
+        raise RecordError(f"{shown_path} is not JSON ({error}); fix: restore it") from None
+    missing = [key for key in CALIBRATION_KEYS if not isinstance(data, dict) or key not in data]
+    if missing:
+        raise RecordError(
+            f"{shown_path} lacks {', '.join(missing)}; fix: restore it from git, or `optilux "
+            f"calibrate --mode {mode}` again"
+        )
+    digest = identity_hash(data["identity"])
+    held = (data["id"], data["mode"], data["identityHash"], cid)
+    if held != (cid, mode, digest, f"{mode}-{digest}"):
+        raise RecordError(
+            f"{shown_path}: its id, mode or identity hash disagrees with its content; fix: "
+            "restore it from git (a calibration is never edited)"
+        )
+    return data
+
+
+def first_difference(a: Any, b: Any, path: str) -> str:
+    """The first path at which two differing JSON values differ (a key, then an index)."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        for key in [*a, *(k for k in b if k not in a)]:
+            inner = f"{path}.{key}" if re.fullmatch(r"[A-Za-z_]\w*", key) else f'{path}["{key}"]'
+            if key not in a or key not in b:
+                return f"{inner} (in one only)"
+            if a[key] != b[key]:
+                return first_difference(a[key], b[key], inner)
+    if isinstance(a, list) and isinstance(b, list) and len(a) == len(b):
+        for i, (x, y) in enumerate(zip(a, b, strict=True)):
+            if x != y:
+                return first_difference(x, y, f"{path}[{i}]")
+    return path
+
+
+def identity_differences(found: Any, other: Any) -> list[str]:
+    """The identity keys on which two identities differ, in IDENTITY_KEYS order, each as the
+    first path inside it that differs (`harness.modules["optilux/stats.py"]`); a key one of them
+    lacks is named so; `identity` alone when either was never recorded."""
+    if not isinstance(found, dict) or not isinstance(other, dict):
+        return ["identity (none recorded)"]
+    keys = [*IDENTITY_KEYS, *(k for k in [*found, *other] if k not in IDENTITY_KEYS)]
+    differ = []
+    for key in dict.fromkeys(keys):
+        if key not in found or key not in other:
+            differ.append(f"{key} (in one only)")
+        elif found[key] != other[key]:
+            differ.append(first_difference(found[key], other[key], key))
+    return differ

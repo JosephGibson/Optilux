@@ -498,6 +498,7 @@ MEASURED = {
     "optilux.repo",
     "optilux.sendinput",
     "optilux.session",
+    "optilux.stats",
     "optilux.verbs",
     "optilux.verbs.install",
     "optilux.verbs.run",
@@ -723,7 +724,7 @@ def test_a_failed_session_may_lack_its_identity_an_ok_one_never(tmp_path: Path) 
 def test_the_writer_checks_status_and_items(tmp_path: Path) -> None:
     with pytest.raises(record.RecordError, match="status"):
         record.write_record(tmp_path, a_record(status="fine"))
-    with pytest.raises(record.RecordError, match="no boolean pass"):
+    with pytest.raises(record.RecordError, match="a pass neither boolean nor null"):
         record.write_record(
             tmp_path, a_record(acceptance=[{"item": "A2", "pass": "yes", "evidence": {}}])
         )
