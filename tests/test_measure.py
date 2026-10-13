@@ -472,6 +472,16 @@ SPEC_REFUSALS = [
     (dict(heap=True, dimensions=[]), "each once"),
     (dict(heap=True, dimensions=["minecraft:overworld"] * 2), "each once"),
     (dict(heap=True, dimensions=["overworld"]), "each once"),
+    (dict(keepViews=["forest_noon"]), "a budget run's"),
+    (dict(alone=True), "a budget run's"),
+    (dict(windows=False), "a budget run's"),
+    (dict(heap=True, keepViews=[]), "each once"),
+    (dict(heap=True, keepViews=["forest_noon"] * 2), "each once"),
+    (dict(heap=True, keepViews=["night"]), "some of the mode's views here"),
+    (dict(heap=True, alone="yes"), "true or false"),
+    (dict(heap=True, windows=0), "true or false"),
+    (dict(heap=True, alone=True, variants=[BASE, {**BASE, "id": "other"}]), "the baseline only"),
+    (dict(heap=True, windows=False, variants=[{**BASE, "timers": True}]), "timers false"),
 ]
 
 
@@ -538,12 +548,45 @@ def test_the_budget_pair_plans_68_and_44_reloads(bench_root) -> None:
     plain = {k: v for k, v in plain.items() if k not in ("mode", "calibration")}
     with pytest.raises(record.RecordError, match="rounds is for measured runs"):
         record.check_spec(root, {**plain, "rounds": 1}, PLAT, SUITE, saves, PACK)
+    with pytest.raises(record.RecordError, match="windows is for measured runs"):
+        record.check_spec(root, {**plain, "windows": False}, PLAT, SUITE, saves, PACK)
+
+
+def test_the_diagnosis_plans_42_and_44_reloads_at_one_view(bench_root) -> None:
+    """M2.P06's diagnosis (plans/m2.md): at forest_noon the baseline alone at R 19 plans 42
+    reloads, its slots all the baseline's and no twin; the pair's switches without windows at R 10
+    plan 44."""
+    root, saves = bench_root
+    alone = measured(mode="full", heap=True, rounds=19, keepViews=["forest_noon"], alone=True)
+    spec = record.check_spec(root, alone, PLAT, SUITE, saves, PACK)
+    assert (spec.view_ids, spec.planned, spec.alone, spec.windows) == (
+        ("forest_noon",),
+        42,
+        True,
+        True,
+    )
+    found = measure.variants(spec, SUITE)
+    assert [v.id for v in found] == ["baseline"]
+    slots = measure.schedule(found, spec.rounds, spec.alone)
+    assert len(slots) == 1 + 2 * 19 and {v.id for v, _ in slots} == {"baseline"}
+    switches = measured(
+        mode="full",
+        heap=True,
+        rounds=10,
+        keepViews=["forest_noon"],
+        windows=False,
+        variants=[BASE, SHADOWS],
+    )
+    spec = record.check_spec(root, switches, PLAT, SUITE, saves, PACK)
+    assert (spec.planned, spec.windows) == (44, False)
+    assert [v.id for v in measure.variants(spec, SUITE)] == ["baseline", "shadows-off", "twin"]
 
 
 # The runner on a fake game.
 
 TOKEN = "t" * 43
 GAME_PID = 4242
+LUID = "luid_0x00000000_0x00011D94"  # FakeMachine.hags's 0x11d94
 PM_PID = 5151
 JAVA_RELEASE = b'IMPLEMENTOR="Eclipse Adoptium"\nJAVA_RUNTIME_VERSION="25.0.4.1+1-LTS"\n'
 JAVA_PROFILE = json.loads((REPO_ROOT / "config/java/bench.json").read_text(encoding="utf-8"))
@@ -675,6 +718,27 @@ class Host(session.RunHost):
 
     def gpu_engine(self, samples: int) -> str:
         return Machine([(120.0, {77: 0.3})]).gpu_engine(samples)
+
+    def gpu_memory(self) -> str:
+        """typeperf's GPU memory on the fake's adapter: the game's dedicated memory 1 GiB plus
+        64 MiB a reload, the rest fixed."""
+        mib = 1024**2
+        values = {
+            f"GPU Process Memory(pid_{GAME_PID}_{LUID}_phys_0)\\Dedicated Usage": (
+                1024 + 64 * reloads(self.fake)
+            )
+            * mib,
+            f"GPU Process Memory(pid_{GAME_PID}_{LUID}_phys_0)\\Shared Usage": 100 * mib,
+            f"GPU Process Memory(pid_77_{LUID}_phys_0)\\Dedicated Usage": 5 * mib,
+            f"GPU Adapter Memory({LUID}_phys_0)\\Dedicated Usage": 4096 * mib,
+            f"GPU Adapter Memory({LUID}_phys_0)\\Shared Usage": 200 * mib,
+        }
+        header = ",".join(['"(PDH-CSV 4.0)"', *(f'"\\\\PC\\{k}"' for k in values)])
+        row = ",".join(['"10/13/2026 05:00:00.000"', *(f'"{v:.6f}"' for v in values.values())])
+        return f"\n{header}\n{row}\nExiting, please wait...\n"
+
+    def available_memory(self) -> int:
+        return 16 * 1024**3
 
     def windows(self, pid: int) -> list[int]:
         return [1] if pid == GAME_PID and self.game.returncode is None else []
@@ -1038,8 +1102,15 @@ def test_the_heap_is_read_at_the_start_and_every_tenth_reload(fake_run, monkeypa
     table = found["heapTable"]
     assert [r["reloads"] for r in table["rows"]] == [2, 10]  # the start's two, then the tenth
     assert asked == ["GC.run", "GC.heap_info"] * 2
-    assert table["perReload"] == {"heapMiB": 0.0, "privateMiB": 0.0}
+    assert table["perReload"] == {"heapMiB": 0.0, "privateMiB": 0.0, "gpuDedicatedMiB": 64.0}
     assert table["physicalMiB"] == 32768
+    assert table["rows"][0]["gpu"] == {
+        "processDedicatedMiB": 1088.0,  # 1 GiB and the start-of-run reload's 64 MiB
+        "processSharedMiB": 100.0,
+        "adapterDedicatedMiB": 4096.0,
+        "adapterSharedMiB": 200.0,
+    }
+    assert all(c["gpuMemory"]["processDedicatedMiB"] > 1024 for c in found["captures"])
 
 
 def test_a_budget_run_keeps_its_rounds_and_dimensions(fake_run, monkeypatch) -> None:
@@ -1070,6 +1141,112 @@ def test_a_budget_run_keeps_its_rounds_and_dimensions(fake_run, monkeypatch) -> 
     assert {c["round"] for c in captures if c["pass"] == 2} == {1}
     assert reloads(fake) + 1 == 10  # selftest's, the start's, 2 warm-up, 2 x (1 + 2 x 1 x 1)
     assert [r["reloads"] for r in found["heapTable"]["rows"]] == [2, 10]
+
+
+def test_the_diagnosis_runs_the_baseline_alone_in_every_slot(fake_run, monkeypatch) -> None:
+    """M2.P06's diagnosis on the fake: the baseline alone in every slot at one view, no twin
+    copied; then (the next test) the pair's switches with no window measured, every capture's GPU
+    memory read."""
+    root, spec_path, fake, host = fake_run
+    heap = (FIXTURES / "gc-heap-info.txt").read_text(encoding="utf-8")
+    monkeypatch.setattr(
+        host,
+        "jcmd",
+        lambda path, pid, command: heap if command == "GC.heap_info" else "",
+        raising=False,
+    )
+    monkeypatch.setattr(host, "private_bytes", lambda pid: 900 * 1024**2, raising=False)
+    monkeypatch.setattr(host, "physical_memory", lambda: 32 * 1024**3)
+    alone = measured(
+        name="m2-diag-alone",
+        mode="full",
+        heap=True,
+        rounds=2,
+        keepViews=["forest_noon"],
+        alone=True,
+    )
+    spec_path.write_text(json.dumps(alone), encoding="utf-8")
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "ok", found["reason"]
+    assert found["session"]["twins"] == [] and [v["id"] for v in found["variants"]] == ["baseline"]
+    captures = found["captures"]
+    assert len(captures) == 1 + 1 + 2 * 2 and all(c["valid"] for c in captures)
+    assert {(c["view"], c["variant"]) for c in captures} == {("forest_noon", "baseline")}
+    assert reloads(fake) + 1 == 2 + 1 + 5
+
+
+def test_the_diagnosis_runs_the_switches_without_windows(fake_run, monkeypatch) -> None:
+    root, spec_path, fake, host = fake_run
+    heap = (FIXTURES / "gc-heap-info.txt").read_text(encoding="utf-8")
+    monkeypatch.setattr(
+        host,
+        "jcmd",
+        lambda path, pid, command: heap if command == "GC.heap_info" else "",
+        raising=False,
+    )
+    monkeypatch.setattr(host, "private_bytes", lambda pid: 900 * 1024**2, raising=False)
+    monkeypatch.setattr(host, "physical_memory", lambda: 32 * 1024**3)
+    switches = measured(
+        name="m2-diag-switches",
+        mode="full",
+        heap=True,
+        rounds=1,
+        keepViews=["forest_noon"],
+        windows=False,
+        variants=[BASE, SHADOWS],
+    )
+    spec_path.write_text(json.dumps(switches), encoding="utf-8")
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "ok", found["reason"]
+    captures = found["captures"]
+    assert [c["variant"] for c in captures] == [
+        "baseline",
+        "baseline",
+        "shadows-off",
+        "baseline",
+        "twin",
+        "baseline",
+    ]
+    assert all(c["noWindow"] and not c["valid"] and "gpuBusyMs" not in c for c in captures)
+    assert all(c["gpuMemory"]["adapterDedicatedMiB"] == 4096.0 for c in captures)
+    assert reloads(fake) + 1 == 2 + 1 + 5
+    assert not [m for m in fake.received if m.get("cmd") == "window.measure"]
+
+
+def test_a_budget_run_stops_before_a_reload_under_2_gib_available(fake_run, monkeypatch) -> None:
+    root, spec_path, _, host = fake_run
+    heap = (FIXTURES / "gc-heap-info.txt").read_text(encoding="utf-8")
+    monkeypatch.setattr(
+        host,
+        "jcmd",
+        lambda path, pid, command: heap if command == "GC.heap_info" else "",
+        raising=False,
+    )
+    monkeypatch.setattr(host, "private_bytes", lambda pid: 900 * 1024**2, raising=False)
+    monkeypatch.setattr(host, "physical_memory", lambda: 32 * 1024**3)
+    monkeypatch.setattr(host, "available_memory", lambda: 1024**3)
+    spec_path.write_text(json.dumps(measured(name="m2-guard-test", heap=True)), encoding="utf-8")
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "failed"
+    assert "1.0 GiB of physical memory available, under 2 GiB" in found["reason"]
+
+
+def test_gpu_memory_reads_the_game_and_its_adapter_on_the_luid() -> None:
+    """A real typeperf sample (dwm.exe, pid 2020, on two adapters): the display adapter's
+    columns only, in MiB; a pid typeperf did not list or no table is refused."""
+    text = (FIXTURES / "typeperf-gpu-memory.csv").read_text(encoding="utf-8")
+    assert measure.gpu_memory(text, 2020, "0x108fa") == {
+        "processDedicatedMiB": 994.7,
+        "processSharedMiB": 15.2,
+        "adapterDedicatedMiB": 2071.0,
+        "adapterSharedMiB": 219.6,
+    }
+    other = measure.gpu_memory(text, 2020, "0x12bfe")
+    assert other["processDedicatedMiB"] == 0.0 and other["adapterSharedMiB"] == 0.0
+    with pytest.raises(record.RecordError, match="no processDedicatedMiB, processSharedMiB"):
+        measure.gpu_memory(text, 4242, "0x108fa")
+    with pytest.raises(record.RecordError, match="no counter table"):
+        measure.gpu_memory("Error: no such counter\n", 2020, "0x108fa")
 
 
 def test_a_snapshot_whose_view_functions_left_the_views_file_is_refused(fake_run) -> None:

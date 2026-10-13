@@ -40,6 +40,12 @@ REPLACE_GAP = 0.05
 
 # The 3D engine's users (plans/m2.md D42, P16): typeperf's per-process GPU Engine counters.
 GPU_COUNTER = r"\GPU Engine(*engtype_3D)\Utilization Percentage"
+# plans/m2.md M2.P06's diagnosis: every process's and adapter's GPU memory (only read).
+GPU_MEMORY = tuple(
+    rf"\GPU {who} Memory(*)\{kind} Usage"
+    for who in ("Process", "Adapter")
+    for kind in ("Dedicated", "Shared")
+)
 TYPEPERF_TIMEOUT = 30
 LOGMAN_STOP_TIMEOUT = 30
 
@@ -217,6 +223,22 @@ class RunHost(launch.Host):
                 capture_output=True,
                 text=True,
                 timeout=TYPEPERF_TIMEOUT + samples,
+            )
+        except subprocess.TimeoutExpired as error:
+            raise OSError(f"typeperf ran past {error.timeout:g} s") from None
+        if done.returncode != 0:
+            raise OSError(f"typeperf exited {done.returncode}: {done.stdout.strip()[-200:]}")
+        return done.stdout
+
+    def gpu_memory(self) -> str:
+        """typeperf's one-sample CSV of every process's and adapter's dedicated and shared GPU
+        memory (only read, M2.P06). OSError naming the exit when typeperf fails."""
+        try:
+            done = subprocess.run(  # noqa: S603 constant counter paths
+                ["typeperf", *GPU_MEMORY, "-sc", "1"],  # noqa: S607
+                capture_output=True,
+                text=True,
+                timeout=TYPEPERF_TIMEOUT,
             )
         except subprocess.TimeoutExpired as error:
             raise OSError(f"typeperf ran past {error.timeout:g} s") from None
