@@ -6,9 +6,10 @@ docs/plans/m2.md M2.P07 and M2.P09): the current identity's calibration.
   cal-<mode>-<the identity hash's first 12>-<n>. A session counts when its record is ok, of this
   identity, kind and mode, and each twin is judged on every view of the mode (stats.nulls_of).
 - The count comes first, announced: the sessions whole, those to run and their launches; then each
-  session runs through `run`'s runner, each launch announced as `run` announces it. calibrate stops
-  at the first session that does not end whole; a rerun resumes, keeping the whole sessions and
-  passing over a taken name (a record that does not count, or an orphan the runner finishes).
+  session runs through `run`'s runner, each launch announced as `run` announces it, the displays
+  held on from the first session to the last (measure.displays_on). calibrate stops at the first
+  session that does not end whole; a rerun resumes, keeping the whole sessions and passing over a
+  taken name (a record that does not count, or an orphan the runner finishes).
 - Then config/calibrations/<mode>-<identity sha256>.json: the identity and its hash, the mode's
   views and rounds, the false rate, floor and twin monitor, the baseline (recorded, never
   matched), the sessions, every null candidate's per-view ratios and the thresholds they give. An
@@ -18,12 +19,13 @@ docs/plans/m2.md M2.P07 and M2.P09): the current identity's calibration.
 """
 
 import argparse
+import contextlib
 import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from optilux import REPO_ROOT, launch, platform, record, stats, world
+from optilux import REPO_ROOT, launch, measure, platform, record, stats, world
 from optilux.session import RunHost, now
 from optilux.verbs import Verb
 from optilux.verbs import run as run_verb
@@ -235,21 +237,28 @@ def calibrate(
     for skipped in passed:
         say(f"{PREFIX}: passed over {skipped}")
     pack = p.ready.pack.file
-    while len(whole) < p.need:
-        name = session_name(mode, p.digest, n, p.generation)
-        n += 1
-        if session_state(root, p, name)["state"] != "new":
-            continue
-        say(f"{PREFIX}: session {len(whole) + 1} of {p.need}: {name}")
-        found, _ = run_verb.run_session(
-            root, session_spec(name, mode, pack), host, machine, say, announce
-        )
-        outcome["ran"].append(name)
-        state = session_state(root, p, name)
-        if state["state"] != "whole":
-            why = state.get("why") or found.get("reason") or found.get("status")
-            return {**outcome, "stopped": f"{name} does not count: {why}", "whole": len(whole)}
-        whole.append((name, state["nulls"]))
+    # The displays held on once over every session, never released between two (a session's own
+    # hold would find the input older than their timeout after the first).
+    hold: contextlib.AbstractContextManager[dict | None] = (
+        measure.displays_on(host, say) if len(whole) < p.need else contextlib.nullcontext()
+    )
+    with hold as displays:
+        while len(whole) < p.need:
+            name = session_name(mode, p.digest, n, p.generation)
+            n += 1
+            if session_state(root, p, name)["state"] != "new":
+                continue
+            say(f"{PREFIX}: session {len(whole) + 1} of {p.need}: {name}")
+            found, _ = run_verb.run_session(
+                root, session_spec(name, mode, pack), host, machine, say, announce, displays
+            )
+            outcome["ran"].append(name)
+            state = session_state(root, p, name)
+            if state["state"] != "whole":
+                why = state.get("why") or found.get("reason") or found.get("status")
+                stopped = f"{name} does not count: {why}"
+                return {**outcome, "stopped": stopped, "whole": len(whole)}
+            whole.append((name, state["nulls"]))
     written = write_calibration(root, p, whole[: p.need])
     return {**outcome, "path": shown(written, root), "stopped": None, "whole": len(whole)}
 

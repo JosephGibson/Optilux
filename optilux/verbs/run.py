@@ -5,9 +5,10 @@ One runner for every kind (simp2): orphans finished first (a run whose journal o
 the spec checked (optilux/record.py, every refusal naming its fix), the display against the suite
 and the identity built before anything launches (`--check` prints it and stops there, the live
 world left to the run), the live world restored to its snapshot (D44), for a measured run the
-machine to itself (D42), then the announced launch, held against the identity, the mod opened,
-the kind's body, the quit; whatever breaks, the game ends one way (end_game, simp20) and the facts
-gathered so far go into the record. The journal raw/<name>/partial.json follows the run.
+displays held on throughout and the machine to itself (D42), then the announced launch, held
+against the identity, the mod opened, the kind's body, the quit; whatever breaks, the game ends
+one way (end_game, simp20) and the facts gathered so far go into the record. The journal
+raw/<name>/partial.json follows the run.
 
 - An acceptance run without a mode: the session start of docs/mod-protocol.md#choreography (A10
   is its selftest), then at the first view A4 (a copy of the reference zip with one program
@@ -835,10 +836,11 @@ def perform(
     say: Say,
     announce: Say,
     part: Part | None = None,
+    displays: dict | None = None,
 ) -> dict:
     """The run, or one part of a split session's: orphans finished (D41), prepare's checks and
-    identity, the live world restored to its snapshot, D42's check for a measured run, the
-    session, the record. Returns the record."""
+    identity, the live world restored to its snapshot, D42's check for a measured run (its
+    displays held on by its caller: their facts), the session, the record. Returns the record."""
     marks: dict[str, float] = {"prepare": time.monotonic()}
     orphans = measure.finish_orphans(root, host, say)
     ready = prepare(root, spec_in, machine)
@@ -878,6 +880,8 @@ def perform(
         run.facts["orphansFinished"] = [o["name"] for o in orphans]
     if machine_facts is not None:
         run.facts["machine"] = machine_facts
+    if displays is not None:
+        run.facts["displays"] = displays
     try:
         if spec.mode is None:
             run.session(
@@ -1025,16 +1029,26 @@ def run_session(
     machine: record.Machine,
     say: Say,
     announce: Say,
+    displays: dict | None = None,
 ) -> tuple[dict, Path]:
     """One session through the runner (`run`'s and `calibrate`'s): one launch and its record, or a
     split session's parts from the first without an ok record, then its session record. The
-    last record written and its path: a part that did not end ok stops the session there."""
+    last record written and its path: a part that did not end ok stops the session there. A
+    measured session holds the displays on throughout (measure.displays_on), unless its caller
+    holds them already (`displays`, calibrate's over its sessions)."""
     data = load_spec(spec_in) if isinstance(spec_in, Path) else spec_in
     spec = checked(root, data)
-    if not spec.groups:
-        found = perform(root, data, host, machine, say, announce)
-        return found, write_launch(root, found, say)
-    return run_split(root, data, spec, host, machine, say, announce)
+
+    def launches(held: dict | None) -> tuple[dict, Path]:
+        if not spec.groups:
+            found = perform(root, data, host, machine, say, announce, displays=held)
+            return found, write_launch(root, found, say)
+        return run_split(root, data, spec, host, machine, say, announce, held)
+
+    if spec.mode is None or displays is not None:
+        return launches(displays)
+    with measure.displays_on(host, say) as held:
+        return launches(held)
 
 
 def part_record(root: Path, session: str, n: int) -> tuple[dict | None, str]:
@@ -1063,6 +1077,7 @@ def run_split(
     machine: record.Machine,
     say: Say,
     announce: Say,
+    displays: dict | None = None,
 ) -> tuple[dict, Path]:
     """A split session (run-record.md#split-sessions): each part without an ok record launched,
     recorded, stopped at the first that does not end ok; the session ended invalid when a part's
@@ -1090,7 +1105,7 @@ def run_split(
                 return write_session(root, data, spec, done, "invalid", why, say)
         say(f"{PREFIX}: {spec.name}: part {n} of {len(spec.groups)} as {name}: {', '.join(views)}")
         part = Part(spec.name, n, len(spec.groups), name, views)
-        found = perform(root, data, host, machine, say, announce, part)
+        found = perform(root, data, host, machine, say, announce, part, displays)
         path = write_launch(root, found, say)
         if found["status"] != "ok":
             return found, path

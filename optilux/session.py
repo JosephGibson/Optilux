@@ -1,6 +1,7 @@
 """One game session as `run` drives it (docs/mod-protocol.md#choreography), and what M2's verbs
 reuse: RunHost (the machine beyond launch's: pipes, jcmd, memory, SendInput, focus, PresentMon,
-idle time and the 3D engine's users, other processes' facts, the game's connections), the Session
+idle time and the 3D engine's users, the display timeout and request, other processes' facts, the
+game's connections), the Session
 (the client, the step log, the events, the events that end it), the run's journal (plans/m2.md
 D41), the session start, a view's time, weather and pose, the focus checks before any injected
 input, the spec loader and the PresentMon pin check. The acceptance items live in
@@ -48,6 +49,14 @@ GPU_MEMORY = tuple(
 )
 TYPEPERF_TIMEOUT = 30
 LOGMAN_STOP_TIMEOUT = 30
+# The displays as a measured run takes its display request (winnt.h, winuser.h; only read): the
+# power scheme's "Turn off display after" (GUID_VIDEO_SUBGROUP, GUID_VIDEO_POWERDOWN_TIMEOUT) and
+# the console display's state (GUID_CONSOLE_DISPLAY_STATE), reported to a callback subscriber.
+DISPLAY_IDLE = ("7516b95f-f776-4464-8c53-06167f40cc99", "3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e")
+CONSOLE_DISPLAY = "6fe69556-704a-47a0-8f24-c28d936fda47"
+DEVICE_NOTIFY_CALLBACK = 2
+PBT_POWERSETTINGCHANGE = 0x8013
+DISPLAY_STATE_WAIT = 2.0
 
 
 # The session start's waits (seconds): world.wait and selftest after a 14 s join (0.01.07's
@@ -141,6 +150,14 @@ class Attached:
 # The machine, beyond launch's.
 
 
+def guid(text: str) -> Any:
+    """A GUID's 16 bytes as Windows lays them out, for a ctypes call to take by reference."""
+    import ctypes
+    import uuid
+
+    return (ctypes.c_ubyte * 16).from_buffer_copy(uuid.UUID(text).bytes_le)
+
+
 class RunHost(launch.Host):
     """launch's Host plus what the items read and inject; the tests replace it."""
 
@@ -213,6 +230,82 @@ class RunHost(launch.Host):
         if not user32.GetLastInputInfo(ctypes.byref(info)):
             raise OSError(ctypes.get_last_error(), "GetLastInputInfo failed")
         return ((kernel32.GetTickCount() - info.dwTime) & 0xFFFFFFFF) / 1000.0
+
+    def display_timeout(self) -> int:
+        """The active power scheme's "Turn off display after" on AC in seconds, 0 for never
+        (PowerGetActiveScheme, PowerReadACValueIndex: only read). OSError when a call fails."""
+        import ctypes
+        from ctypes import wintypes
+
+        powrprof = ctypes.WinDLL("powrprof")  # type: ignore[attr-defined]
+        kernel32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
+        kernel32.LocalFree.argtypes = [ctypes.c_void_p]
+        scheme = ctypes.c_void_p()  # a GUID the call allocates, freed with LocalFree
+        failed = powrprof.PowerGetActiveScheme(None, ctypes.byref(scheme))
+        if failed:
+            raise OSError(f"PowerGetActiveScheme returned {failed}")
+        subgroup, setting = (guid(g) for g in DISPLAY_IDLE)
+        value = wintypes.DWORD()
+        try:
+            failed = powrprof.PowerReadACValueIndex(
+                None, scheme, ctypes.byref(subgroup), ctypes.byref(setting), ctypes.byref(value)
+            )
+        finally:
+            kernel32.LocalFree(scheme)
+        if failed:
+            raise OSError(f"PowerReadACValueIndex returned {failed}")
+        return value.value
+
+    def display_state(self) -> int | None:
+        """The console display's state, which Windows reports at once to a new subscriber of
+        GUID_CONSOLE_DISPLAY_STATE (PowerSettingRegisterNotification with a callback; only read):
+        0 off, 1 on, 2 dimmed; None when no report came within DISPLAY_STATE_WAIT. OSError when
+        the subscription fails."""
+        import ctypes
+        import threading
+        from ctypes import wintypes
+
+        reported: list[int] = []
+        came = threading.Event()
+
+        @ctypes.WINFUNCTYPE(wintypes.ULONG, ctypes.c_void_p, wintypes.ULONG, ctypes.c_void_p)
+        def report(context: object, kind: int, setting: int) -> int:
+            # POWERBROADCAST_SETTING: the setting's GUID, its data's length, then the data.
+            raw = ctypes.string_at(setting, 24)
+            if kind == PBT_POWERSETTINGCHANGE and raw[:16] == bytes(guid(CONSOLE_DISPLAY)):
+                reported.append(int.from_bytes(raw[20:24], "little"))
+                came.set()
+            return 0
+
+        powrprof = ctypes.WinDLL("powrprof")  # type: ignore[attr-defined]
+        # DEVICE_NOTIFY_SUBSCRIBE_PARAMETERS: the callback and its context.
+        subscribe = (ctypes.c_void_p * 2)(ctypes.cast(report, ctypes.c_void_p), None)
+        console = guid(CONSOLE_DISPLAY)
+        handle = ctypes.c_void_p()
+        failed = powrprof.PowerSettingRegisterNotification(
+            ctypes.byref(console),
+            DEVICE_NOTIFY_CALLBACK,
+            ctypes.byref(subscribe),
+            ctypes.byref(handle),
+        )
+        if failed:
+            raise OSError(f"PowerSettingRegisterNotification returned {failed}")
+        try:
+            came.wait(DISPLAY_STATE_WAIT)
+        finally:
+            powrprof.PowerSettingUnregisterNotification(handle)
+        return reported[0] if reported else None
+
+    def execution_state(self, flags: int) -> None:
+        """SetThreadExecutionState(flags): a power request held by the calling thread until it
+        sets another or ends, no setting changed. OSError when it fails (it returns 0)."""
+        import ctypes
+
+        kernel32 = ctypes.WinDLL("kernel32")  # type: ignore[attr-defined]
+        kernel32.SetThreadExecutionState.restype = ctypes.c_uint32
+        kernel32.SetThreadExecutionState.argtypes = [ctypes.c_uint32]
+        if not kernel32.SetThreadExecutionState(flags):
+            raise OSError(f"SetThreadExecutionState({flags:#x}) returned 0")
 
     def gpu_engine(self, samples: int) -> str:
         """typeperf's CSV of every process's 3D engine use, one sample a second (only read,
