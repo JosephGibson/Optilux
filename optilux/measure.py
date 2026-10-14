@@ -1,7 +1,7 @@
 """The measured session (docs/measurement.md#session and #validity; docs/plans/m2.md M2.P05): what
 `run` does for a measurement, calibration or A8 and A11 acceptance run between the launch and the
-quit, the captures it records after it, the machine check before it (D42) and the orphans the next
-run finishes (D41).
+quit, the captures it records after it, the machine check before it (D42), the displays held on
+through it and the orphans the next run finishes (D41).
 
 - Variants: the spec's (record.check_variants) and the twins the runner adds, a measurement run's
   one A/A twin, a calibration run's statistics.calibration.twinsPerSession, each a byte copy of the
@@ -40,7 +40,7 @@ import shutil
 import statistics
 import time
 import zipfile
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -135,6 +135,13 @@ GPU_MAX_PCT = 2.0
 GPU_SAMPLES = 3
 MACHINE_WAIT = 600.0
 MACHINE_POLL = 10.0
+# The displays held on through a measured run (user, 2026-10-14): off on the idle timeout, nothing
+# presents and PresentMon writes no row (m2-survey-1-p1 and -p1b). winbase.h's flags.
+ES_CONTINUOUS = 0x80000000
+ES_DISPLAY_REQUIRED = 0x00000002
+DISPLAY_REQUEST = "ES_CONTINUOUS | ES_DISPLAY_REQUIRED"
+# GUID_CONSOLE_DISPLAY_STATE's values (winnt.h); a dimmed display still presents.
+DISPLAY_STATES = {0: "off", 1: "on", 2: "dimmed"}
 ENGINE = re.compile(
     r"GPU Engine\(pid_(?P<pid>\d+)_luid_0x(?P<high>[0-9A-Fa-f]+)_0x(?P<low>[0-9A-Fa-f]+)_phys_\d+"
     r"_eng_\d+_engtype_3D\)"
@@ -642,6 +649,55 @@ def machine_to_itself(host: RunHost, luid: str, say: Say) -> dict:
             )
         say(f"machine (D42): waiting: {'; '.join(reasons)}")
         host.sleep(max(IDLE_SECONDS - idle, MACHINE_POLL) if idle < IDLE_SECONDS else MACHINE_POLL)
+
+
+@contextlib.contextmanager
+def displays_on(host: RunHost, say: Say) -> Iterator[dict]:
+    """The displays held on through a measured run, from before its first step to its end: a
+    display-required power request on this thread (SetThreadExecutionState, DISPLAY_REQUEST; no
+    setting changed), released at the end whatever happened. RecordError when the displays read
+    off as it is taken (GUID_CONSOLE_DISPLAY_STATE, read after it: the request is not known to
+    wake them) or unread, or when a call fails. The AC display timeout and the input's seconds
+    are recorded beside the state, never judged: the request holds the displays' own idle timer,
+    so input older than the timeout does not mean them off (a process after a measured one). The
+    request's facts."""
+    try:
+        timeout = host.display_timeout()
+        idle = host.idle_seconds()
+        host.execution_state(ES_CONTINUOUS | ES_DISPLAY_REQUIRED)
+    except OSError as error:
+        raise record.RecordError(
+            f"the display request: {error}; fix: rerun, and if it fails again read the calls in "
+            "optilux/session.py (RunHost.display_timeout, idle_seconds, execution_state)"
+        ) from None
+    try:
+        try:
+            state = host.display_state()  # after the request, which holds them from here on
+        except OSError as error:
+            state = None
+            say(f"displays: their state was not read: {error}")
+        shown_state = DISPLAY_STATES.get(state, "unread") if state is not None else "unread"
+        if shown_state in ("off", "unread"):
+            raise record.RecordError(
+                f"the displays read {shown_state} (input {idle:.0f} s ago, the display timeout "
+                f"{timeout} s on AC), and with them off PresentMon records no frame; fix: wake "
+                "them, then rerun at once (the run holds them on)"
+            )
+        say(
+            f"displays: {shown_state}, held on through the run (the AC display timeout "
+            f"{timeout} s, input {idle:.0f} s ago)"
+        )
+        yield {
+            "request": DISPLAY_REQUEST,
+            "state": shown_state,
+            "acTimeoutS": timeout,
+            "idleSeconds": round(idle, 1),
+        }
+    finally:
+        try:
+            host.execution_state(ES_CONTINUOUS)
+        except OSError as error:  # the request ends with the thread: never fail a written record
+            say(f"displays: the request's release failed ({error}); it ends with the process")
 
 
 # The session.

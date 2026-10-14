@@ -442,6 +442,102 @@ def test_the_machine_check_waits_for_idle_input_and_a_free_gpu(monkeypatch) -> N
     assert busy.now >= measure.MACHINE_WAIT
 
 
+class Displays:
+    """The AC display timeout, the console display's state and the input's seconds, each call
+    logged in order (an execution state by its flags); `fails` names calls that raise OSError."""
+
+    def __init__(self, timeout: int, idle: float, state: int | None = 1, fails=()) -> None:
+        self.timeout = timeout
+        self.idle = idle
+        self.state = state
+        self.fails = fails
+        self.calls: list[str | int] = []
+
+    def answer(self, call: str | int, value: Any = None) -> Any:
+        self.calls.append(call)
+        if call in self.fails:
+            raise OSError(f"{call} failed")
+        return value
+
+    @property
+    def states(self) -> list[int]:
+        return [c for c in self.calls if isinstance(c, int)]
+
+    def display_timeout(self) -> int:
+        return self.answer("timeout", self.timeout)
+
+    def execution_state(self, flags: int) -> None:
+        self.answer(flags)
+
+    def display_state(self) -> int | None:
+        return self.answer("state", self.state)
+
+    def idle_seconds(self) -> float:
+        return self.answer("idle", self.idle)
+
+
+HOLD = measure.ES_CONTINUOUS | measure.ES_DISPLAY_REQUIRED
+
+
+def test_the_displays_are_held_on_through_a_measured_run_then_released() -> None:
+    host = Displays(600, 45.04)
+    said: list[str] = []
+    with measure.displays_on(host, said.append) as held:  # type: ignore[arg-type]
+        assert host.calls == ["timeout", "idle", 0x80000002, "state"]  # read after the request
+    assert held == {
+        "request": "ES_CONTINUOUS | ES_DISPLAY_REQUIRED",
+        "state": "on",
+        "acTimeoutS": 600,
+        "idleSeconds": 45.0,
+    }
+    assert host.states == [HOLD, measure.ES_CONTINUOUS] and "timeout 600 s" in said[0]
+    # A process after a measured one: input past the timeout, the displays held on by the last
+    # request's timer; dimmed still presents. A session breaking still releases.
+    for later in (Displays(600, 7200.0), Displays(600, 7200.0, state=2)):
+        with pytest.raises(KeyError), measure.displays_on(later, said.append):  # type: ignore[arg-type]
+            raise KeyError("the session broke")
+        assert later.states == [HOLD, measure.ES_CONTINUOUS]
+
+
+@pytest.mark.parametrize(("state", "shown"), [(0, "off"), (None, "unread"), (7, "unread")])
+def test_displays_read_off_or_unread_refuse_the_run_and_release_the_request(state, shown) -> None:
+    off = Displays(600, 30.0, state=state)
+    with pytest.raises(record.RecordError) as refused:  # noqa: SIM117 the body never runs
+        with measure.displays_on(off, print):  # type: ignore[arg-type]
+            raise AssertionError("held with the displays off")
+    assert f"the displays read {shown} (input 30 s ago, the display timeout 600 s on AC)" in str(
+        refused.value
+    )
+    assert "fix: wake them" in str(refused.value) and off.states == [HOLD, measure.ES_CONTINUOUS]
+
+
+def test_a_failed_power_call_is_refused_or_said_never_raised_as_os_error() -> None:
+    said: list[str] = []
+    for failing in ("timeout", "idle", HOLD):
+        host = Displays(600, 30.0, fails=(failing,))
+        with pytest.raises(record.RecordError, match=r"the display request: .* failed; fix:"):  # noqa: SIM117
+            with measure.displays_on(host, said.append):  # type: ignore[arg-type]
+                raise AssertionError("held without a request")
+        assert measure.ES_CONTINUOUS not in host.states  # nothing taken, nothing released
+    unread = Displays(600, 30.0, fails=("state",))
+    with pytest.raises(record.RecordError, match="the displays read unread"):  # noqa: SIM117
+        with measure.displays_on(unread, said.append):  # type: ignore[arg-type]
+            raise AssertionError("held unread")
+    assert unread.states == [HOLD, measure.ES_CONTINUOUS] and "not read: state failed" in said[0]
+    release = Displays(600, 30.0, fails=(measure.ES_CONTINUOUS,))
+    with measure.displays_on(release, said.append) as held:  # type: ignore[arg-type]
+        assert held["state"] == "on"
+    assert "the request's release failed (2147483648 failed)" in said[-1]
+
+
+@pytest.mark.windows
+def test_the_power_calls_answer_on_windows() -> None:
+    host = session.RunHost()
+    assert host.display_timeout() >= 0
+    assert host.display_state() in (0, 1, 2, None)
+    host.execution_state(measure.ES_CONTINUOUS)  # this thread's request cleared: none held
+
+
 # The spec of a measured run.
 
 
@@ -861,9 +957,19 @@ class Host(session.RunHost):
         self.stopped: list[str] = []
         self.closed: list[int] = []
         self.now = 0.0
+        self.states: list[int] = []
 
     def processes(self) -> list:
         return []
+
+    def display_timeout(self) -> int:
+        return 600
+
+    def display_state(self) -> int | None:
+        return 1
+
+    def execution_state(self, flags: int) -> None:
+        self.states.append(flags)
 
     def logman(self) -> str:
         rows = "\n".join(f"{name}  Trace  Running" for name in self.sessions)
@@ -1893,6 +1999,9 @@ def test_calibrate_announces_its_count_then_resumes_after_a_stop(fake_run, monke
     assert any(a.startswith("launch (announced): the session") for a in announced[1:])
     assert outcome["ran"] == names[:2] and "does not count: status invalid" in outcome["stopped"]
     assert not (root / record.CALIBRATIONS).exists()
+    assert host.states == [HOLD, measure.ES_CONTINUOUS]  # one request over both sessions
+    first = record.read_record(root, names[0])["session"]["displays"]
+    assert first == record.read_record(root, names[1])["session"]["displays"]
     monkeypatch.setattr(fake, "_window", original)
     said.clear()
     announced.clear()
@@ -1916,6 +2025,10 @@ def test_calibrate_announces_its_count_then_resumes_after_a_stop(fake_run, monke
     said.clear()
     again = calibrate_verb.calibrate(root, "quick", host, FakeMachine(), said.append, print)
     assert again["ran"] == [] and "exists for this identity; nothing to run" in said[0]
+    (root / outcome["path"]).unlink()  # every session whole, no calibration: none to run
+    rewritten = calibrate_verb.calibrate(root, "quick", host, FakeMachine(), print, print)
+    assert rewritten["ran"] == [] and rewritten["stopped"] is None
+    assert len(host.states) == 4  # the two calibrate calls that ran sessions held them
 
 
 def test_calibrate_names_a_session_by_its_identity_within_40_characters() -> None:
@@ -1978,6 +2091,7 @@ def test_a_split_session_runs_its_parts_then_writes_its_session_record(
     )
     assert path == root / record.RECORDS / "m2-split-test.json" and found["status"] == "ok"
     assert found["parts"] == ["m2-split-test-p1", "m2-split-test-p2"]
+    assert host.states == [HOLD, measure.ES_CONTINUOUS]  # one request over both launches
     assert found["groups"] == [["forest_noon", "nether_crimson"], ["end_dragon"]]
     assert [a for a in announced if "part 1 of 2 of m2-split-test" in a]
     assert all("no warm-up pass" in a for a in announced if a.startswith("launch (announced)"))
@@ -1993,6 +2107,7 @@ def test_a_split_session_runs_its_parts_then_writes_its_session_record(
         {"session": "m2-split-test", "part": 2, "parts": 2, "views": ["end_dragon"]},
     ]
     assert all(p["status"] == "ok" and "verdicts" not in p for p in parts)
+    assert all(p["session"]["displays"]["acTimeoutS"] == 600 for p in parts)
     assert all(c["pass"] == 2 for p in parts for c in p["captures"])  # no warm-up pass
     assert [len(p["captures"]) for p in parts] == [10, 5]
     assert found["identity"] == parts[0]["identity"] == parts[1]["identity"]
@@ -2010,6 +2125,33 @@ def test_a_split_session_runs_its_parts_then_writes_its_session_record(
         compare_verb.compare(root, "m2-split-test-p1", None)
     with pytest.raises(record.RecordError, match="run m2-split-test exists"):
         run_verb.run_session(root, spec_path, host, FakeMachine(), print, print)
+
+
+def test_only_a_measured_run_holds_the_displays_on(fake_run, monkeypatch) -> None:
+    root, _, _, host = fake_run
+    seen: list[dict | None] = []
+
+    def perform(*args: object, displays: dict | None = None, **kwargs: object) -> dict:
+        seen.append(displays)
+        return {"status": "ok"}
+
+    monkeypatch.setattr(run_verb, "perform", perform)
+    monkeypatch.setattr(run_verb, "write_launch", lambda root, found, say: root / "x.json")
+    acceptance = {
+        "name": "m2-acc-test",
+        "kind": "acceptance",
+        "views": "bench_263",
+        "world": "bench_263",
+        "variants": [{"pack": PACK, "profile": None}],
+        "tier": "bench",
+        "resourcePacks": "standard",
+        "items": ["A3"],
+    }
+    run_verb.run_session(root, acceptance, host, FakeMachine(), print, print)
+    assert seen == [None] and host.states == []
+    run_verb.run_session(root, measured(name="m2-held-test"), host, FakeMachine(), print, print)
+    assert seen[1] is not None and seen[1]["request"] == measure.DISPLAY_REQUEST
+    assert host.states == [HOLD, measure.ES_CONTINUOUS]
 
 
 def test_a_split_session_resumes_at_its_first_part_not_ok(fake_run, monkeypatch, capsys) -> None:
