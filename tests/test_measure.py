@@ -1730,6 +1730,15 @@ def test_the_quits_last_events_are_read_before_the_pipe_closes(fake_run, monkeyp
     assert found["session"]["quit"]["pipeEnded"] is True
 
 
+def test_a_pipe_that_does_not_end_after_the_quit_fails_the_run(fake_run, monkeypatch) -> None:
+    """Its last lines unread (a late hook.error among them), the run is never passed."""
+    root, spec_path, _, host = fake_run
+    monkeypatch.setattr(modclient.Client, "wait_closed", lambda self, timeout: False)
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "failed" and launch.UNREAD_END in found["reason"]
+    assert found["session"]["quit"]["pipeEnded"] is False
+
+
 def test_a_focus_lost_in_the_gpu_warm_up_ends_the_session(fake_run, monkeypatch) -> None:
     root, spec_path, fake, host = fake_run
     hold = launch.hold

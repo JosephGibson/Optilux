@@ -133,6 +133,20 @@ def session(
     return client, fake
 
 
+def test_the_pipe_ends_only_when_the_mod_closes_it(tmp_path: Path) -> None:
+    """wait_closed: True once the mod closed its end after the quit (every line read); False
+    while it is open, and after the client closed its own end."""
+    client, _ = session(tmp_path)
+    client.hello()
+    assert client.wait_closed(0.05) is False  # still open
+    client.request("quit")  # the fake answers, then closes its end
+    assert client.wait_closed(2.0) is True and client.gone == modclient.MOD_CLOSED
+    other, _ = session(tmp_path)
+    other.hello()
+    other.close()
+    assert other.wait_closed(0.05) is False and other.gone == "the client closed the pipe"
+
+
 def test_the_fake_answers_every_command_typed_from_commands_json(tmp_path: Path) -> None:
     client, fake = session(tmp_path)
     client.hello()

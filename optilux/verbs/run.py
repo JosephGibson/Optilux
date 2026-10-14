@@ -800,6 +800,8 @@ def measured_status(run: Runner) -> str:
     quit_facts = facts.get("quit")
     if quit_facts is not None and quit_facts["exitCode"] != 0:
         run.problems.append(f"the session's quit exited {quit_facts['exitCode']}")
+    if quit_facts is not None and quit_facts.get("pipeEnded") is False:
+        run.problems.append(launch.UNREAD_END)
     if "readBack" in facts and not facts["readBack"]["ok"]:
         run.problems.append("the option files did not read back as written")
     if facts.get("filesCleanup", {}).get("kept"):
