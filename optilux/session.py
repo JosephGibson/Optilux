@@ -601,6 +601,8 @@ def record_status(
     quit_facts = facts.get("quit")
     if quit_facts is not None and quit_facts["exitCode"] != 0:
         problems.append(f"the session's quit exited {quit_facts['exitCode']}")
+    if quit_facts is not None and quit_facts.get("pipeEnded") is False:
+        problems.append(launch.UNREAD_END)
     if "readBack" in facts and not facts["readBack"]["ok"]:
         problems.append("the option files did not read back as written")
     if "A10" in items and not items["A10"]["pass"] and "A10" not in asked:

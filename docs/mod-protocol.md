@@ -103,7 +103,7 @@ Phase: the milestone that first needs the command (design.md#6-milestones): M1 g
   1. `camera.place`, `shaders.reload`, `ready`;
   2. `camera.path {clock: frame, flush: true, align: cycle, capture: {directory, every: k}}`, one request.
 - Compile-error probe: reload a broken pack -> `iris-compile-error`; reload the good pack -> ok; `ready`; one frame.
-- Session end: `input.block off`, `quit`; after the game's exit the client reads to the pipe's end (2 s at most) before closing its own, so the quit's last events (world.left, the saving screens) are kept.
+- Session end: `input.block off`, `quit`; after the game's exit the client reads to the pipe's end (2 s at most) before closing its own, so the quit's last events (world.left, the saving screens) are kept; a run whose pipe does not end so fails.
 
 ## Client rules
 - Timeouts nest: the mod's `timeoutSeconds` < the client wait < any outer wait. A client timeout ends the request, not the session; send `cancel`.

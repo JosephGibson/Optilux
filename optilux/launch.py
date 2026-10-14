@@ -127,6 +127,11 @@ QUIT_TIMEOUT = 60.0
 # After the game's exit, the reader's wait for the pipe's end: the game's last lines (world.left,
 # its saving screens) are read before the client closes its end, which drops what is unread.
 QUIT_DRAIN = 2.0
+# A run whose pipe did not end so: its last lines (a late hook.error among them) went unread.
+UNREAD_END = (
+    f"the mod's pipe did not end within {QUIT_DRAIN:g} s of the game's exit (or its read "
+    "failed): the session's last events went unread"
+)
 # The window exists seconds after the start, long before the join.
 WINDOW_TIMEOUT = 10.0
 WM_CLOSE = 0x0010

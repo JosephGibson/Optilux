@@ -1239,10 +1239,12 @@ def test_the_quits_kill_a_game_that_will_not_go(tmp_path: Path) -> None:
         launch.hold(process, FakeGame(tmp_path, None), 5.0)
 
     class Client:
-        """The calls in their order: the reader's wait for the pipe's end before the close."""
+        """The calls in their order, the game's exit among them: the reader's wait for the
+        pipe's end comes after the exit and before the close, and takes 1.5 s of the clock."""
 
-        def __init__(self) -> None:
+        def __init__(self, host: FakeGame, ended: bool = True) -> None:
             self.calls: list[str] = []
+            self.host, self.ended = host, ended
 
         def request(self, command: str) -> dict:
             self.calls.append(command)
@@ -1250,20 +1252,34 @@ def test_the_quits_kill_a_game_that_will_not_go(tmp_path: Path) -> None:
 
         def wait_closed(self, timeout: float) -> bool:
             self.calls.append(f"wait_closed {timeout:g}")
-            return True
+            self.host.sleep(1.5)
+            return self.ended
 
         def close(self) -> None:
             self.calls.append("close")
 
-    client, process = Client(), FakeProcess()
+    class Exiting(FakeProcess):
+        def __init__(self, calls: list[str]) -> None:
+            super().__init__()
+            self.calls = calls
+
+        def wait(self, timeout: float | None = None) -> int:
+            self.calls.append("exit")
+            return super().wait(timeout)
+
+    host = FakeGame(tmp_path, None)
+    client = Client(host)
+    process = Exiting(client.calls)
     with pytest.raises(launch.LaunchError, match="outlasted quit"):
-        launch.quit_mod(client, process, FakeGame(tmp_path, None))  # type: ignore[arg-type]
-    assert process.killed and client.calls == ["quit", "close"]
-    client, process = Client(), FakeProcess()
-    process.returncode = 0
-    found = launch.quit_mod(client, process, FakeGame(tmp_path, None))  # type: ignore[arg-type]
-    assert found["exitCode"] == 0 and found["pipeEnded"] is True
-    assert client.calls == ["quit", f"wait_closed {launch.QUIT_DRAIN:g}", "close"]
+        launch.quit_mod(client, process, host)  # type: ignore[arg-type]
+    assert process.killed and client.calls == ["quit", "exit", "close"]
+    for ended in (True, False):
+        client = Client(host, ended)
+        process = Exiting(client.calls)
+        process.returncode = 0
+        found = launch.quit_mod(client, process, host)  # type: ignore[arg-type]
+        assert (found["exitCode"], found["seconds"], found["pipeEnded"]) == (0, 0.0, ended)
+        assert client.calls == ["quit", "exit", f"wait_closed {launch.QUIT_DRAIN:g}", "close"]
 
 
 def test_saved_pack_settings_refuse_a_launch_at_the_packs_defaults(tmp_path: Path) -> None:

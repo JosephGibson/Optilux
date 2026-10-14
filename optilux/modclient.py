@@ -267,6 +267,10 @@ class _Waiter:
         self.answer: dict | None = None
 
 
+# The reader's end when the mod closed its end: every line it wrote was read.
+MOD_CLOSED = "the mod closed the pipe"
+
+
 class Client:
     """A session with the mod over a stream: requests from any thread, answers matched by id,
     events queued. `expected_pid` is the launched game's: hello must answer with it."""
@@ -562,10 +566,10 @@ class Client:
             return None
 
     def wait_closed(self, timeout: float) -> bool:
-        """Whether the reader reached the pipe's end within `timeout`: the other end closed and
-        every line it wrote read (its events queued)."""
+        """Whether the reader reached the pipe's end within `timeout`: the mod closed it and
+        every line it wrote was read (its events queued); False too when the read failed."""
         self._reader.join(timeout)
-        return not self._reader.is_alive()
+        return not self._reader.is_alive() and self._gone == MOD_CLOSED
 
     def close(self) -> None:
         self._closing = True
@@ -579,7 +583,7 @@ class Client:
 
     def _read(self) -> None:
         buffer = b""
-        reason = "the mod closed the pipe"
+        reason = MOD_CLOSED
         try:
             while chunk := self._stream.read(READ_BYTES):
                 buffer += chunk
