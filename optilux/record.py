@@ -628,7 +628,13 @@ def check_spec(
     first = check_remeasures(root, data, order)
     # plans/m2.md D47: every launch, a split session's parts too, runs the warm-up pass while
     # suite.json keeps it; the survey's spec keeps it whatever the suite says (`warmup` true).
-    warmup = suite["capture"]["warmupPass"] is True or data.get("warmup") is True
+    keep = suite["capture"].get("warmupPass")
+    if not isinstance(keep, bool):
+        raise RecordError(
+            f"suite.json capture.warmupPass {keep!r}; fix: true (every launch warms up first, "
+            "plans/m2.md D47) or false"
+        )
+    warmup = keep or data.get("warmup") is True
     planned = planned_reloads(len(ids), ci, rounds, warmup)
     # A budget run (heap true, calibration null) measures the leak past the cap and judges
     # nothing; F4's 2 GiB guard stops it before the machine pages (plans/m2.md D43, M2.P06).
