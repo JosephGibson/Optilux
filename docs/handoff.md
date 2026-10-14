@@ -1,69 +1,74 @@
 # Handoff
-Status: the latest stop: M2.P08 stopped after its survey: D47 keeps the warm-up pass (entities -1.50 %, rain +0.60 %), the prompt's stop (step 6), and the passthrough gave no floor, only upper bounds; decisions for the user (Open questions). The display request and the survey's records are committed.
+Status: the latest stop: M2.P08 done: two surveys, every baseline capture valid and GPU-bound, the floors bounded from above, D47 keeping the warm-up pass in every launch, and A2, A3 and A10 passed on the eleven views. Next: M2.P09.
 
 ## Contents
-Outcome · What changed · Checks · Review · The survey · The stop · Open questions · Left alone · Weak points · Commits and time · Next
+Outcome · What changed · Checks · Review · The surveys · Acceptance · Open questions · Left alone · Weak points · Commits and time · Next
 
 ## Outcome
-Last phase: M2.P07
-- M2.P08's Exit does not hold: the survey record m2-survey-1 is ok, every baseline capture valid and GPU-bound (44 of 44, the lowest 0.9973 of FrameTime); no floor written (none measured, below); no D47 change in suite.json; no acceptance run (step 6 stops before step 7). Steps 1-4 were done in 12079c5.
-- The user's answer to the last handoff (2026-10-14): a measured run holds the displays on through a power request (built, f402c8c). m2-survey-1's four launches ran unattended under it, 04:09-04:23 ADT, every window with its rows, the displays read on; but the user's last input came about 04:13:40, so part 4's last window ended about 599 s after it (D42's 486.6 s plus its 112 s after the check): the request's effect past the 600 s timeout is not yet shown.
+Last phase: M2.P08
+- Exit holds: the jar read agrees with P17 (12079c5); m2-survey-1 and m2-survey-2 ok, 88 of 88 baseline captures valid and GPU-bound (the lowest 0.9973 of FrameTime); the floors written to measurement.md#validity as upper bounds (the user's go, 2026-10-14: no view's passthrough was CPU-limited); m2-acceptance-2 ok, A2, A3 and A10 passed on all eleven views.
+- D47 (the user's rule, fixed before m2-survey-2 ran, 2026-10-14): entities' warm-up capture again beyond 0.5 % in the same direction (-1.50 %, then -1.28 %), so the pass is kept: suite.json capture.warmupPass true, every launch runs it, full mode's twin and one candidate at R 2 take 11 launches of one view (two views plan 22, over the cap 20).
+- The display request (f402c8c): shown live past the timeout only by a scratch hold of the same request (the displays read on at 620 s without input); no `run` has yet passed 600 s from the last input (m2-survey-1 ended about 599 s after it, m2-survey-2 about 474 s).
 
 ## What changed
-- f402c8c: measure.displays_on: `run` on a measured spec, and `calibrate` once over all its sessions, takes SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED) before its first step and releases it at the end whatever happened; refused when the displays read off or unread (GUID_CONSOLE_DISPLAY_STATE through PowerSettingRegisterNotification, which reports the state at once: read live, 1 = on), a failed call refused as such (RecordError, never the file-lock fix); the record's session.displays holds the request, the state, the AC display timeout (600 s, PowerReadACValueIndex, only read) and the input's seconds. measurement.md#session step 2, run-record.md's `session`, CHANGELOG.md with it.
-- Choice no plan or prompt names, taken here: the refusal reads the displays' state, not idle input against the timeout as the question put it: the request holds the displays' own idle timer, so the input-only test refused a measured process after another (calibrate full after quick, M2.P10's sessions) with the displays on (the review's finding 1).
+- f402c8c: `run` and `calibrate` hold the displays on through a measured session (measure.displays_on; refused when they read off; the last handoff's review).
+- fc85e9a: m2-survey-2's records.
+- a153abf: launch.quit_mod reads to the pipe's end (QUIT_DRAIN 2 s, modclient.Client.wait_closed) before closing the client's end; the quit facts gain `pipeEnded`. fc85e9a's first CI run failed test_the_games_own_screens_never_end_the_session_but_another_screen_does (5 screens counted of 7: the fake's quit screens dropped by the close); its rerun passed; a test delaying them fails without the wait (5 == 7) and passes with it. mod-protocol.md#choreography with it. Its `git add -A` also took both acceptance records, against one logical change a commit; pushed, left so (no rewrite).
+- 3a751c4: record.check_spec takes the warm-up pass from suite.json capture.warmupPass (the survey's `warmup` true still forces it); suite.json's whys (estMinutesPerSplitSession 22, the calibration fit's, cpuFloorMs.status); measurement.md steps 4 and 7 and Calibration (11 launches, about 4.2 h), run-record.md#split-sessions (a name of at most 35 characters from ten parts), roadmap.md's M2.P10 machine line, CHANGELOG.md.
+- This commit: measurement.md#validity's floors and the queue sign's reading here; CHANGELOG.md's surveyed views and floors; roadmap.md's M2.P09 machine line (the acceptance records went in with a153abf).
+- Choices no plan or prompt names, taken here: a 20-minute display request from a scratch process before m2-acceptance-1 (the machine 572 s idle, an acceptance run holds none; stopped after m2-acceptance-2, no process left); m2-acceptance-2 launched only after 30 s without input; the plan's text left as the record of what was planned (below).
 
 ## Checks
-- At the start (22:46 ADT): branch m2 clean at 4e00289, 779 passed, verify docs 0 violations.
-- f402c8c: 786 passed (7 added: the hold and release, read order, off, unread, dimmed, failed calls, one hold over a split session and over calibrate's sessions, none for an acceptance run, the real calls on Windows); ruff, ruff format, pyright clean; verify docs 0 violations; CI green (run 38526478779).
-- This commit: verify records 22 records, 0 violations (the two over 200 KB are M1's acceptance records, reported).
+- This stretch's start (10:43 ADT): branch m2 clean at 750ab48.
+- 3a751c4: 788 passed, ruff, ruff format, pyright clean, verify docs 0 violations; a153abf 787 passed, CI green (run 38578416485); fc85e9a's CI green on its rerun (run 38576217124).
+- verify records: 0 violations; m2-acceptance-2 (245,837 bytes) and -1 (196,347) are acceptance records, reported over 200 KB as D51 allows.
 
 ## Review
-- The reviewer agent on the display change (correctness): 7 findings, each read at its source. Fixed before f402c8c, each with a test or a doc line: (1) idle input against the timeout refuses back-to-back measured processes (now the displays' state); (2) a failed power call reached `run` as an OSError with the file-lock fix, a failed release could fail a written record; (3) no test of the read order; (4) calibrate's no-hold branch untested; (5) no test of the real calls; (6) measurement.md placed the hold after D42, the code before step 1; (7) execution_state's docstring said the process holds the request (the thread does).
+- The display change's review is in the last handoff (git 750ab48). The quit drain and D47's change were checked by their tests only (the drain's test fails without it); no reviewer agent ran on them.
 
-## The survey
-m2-survey-1 (full mode, R 1, calibration null; parts m2-survey-1-p1c, -p2, -p3, -p4, each ok, 18, 18, 18 and 12 captures; snapshot 65e7ae73..., 116 files; heap 6144 MiB, cap 20). Per view: the baseline's median GPUBusy and GPUBusy over FrameTime (median, lowest), GPULatency; the passthrough's FrameTime and validity; D47's delta (warm-up against the measured pass's first baseline) and the measured baselines' spread:
+## The surveys
+m2-survey-1 (parts -p1c, -p2, -p3, -p4) and m2-survey-2 (-p1 to -p4): full mode, R 1, calibration null, the baseline, its twin and the passthrough; snapshot 65e7ae73... (116 files); heap 6144 MiB, cap 20.
 
-| View | GPUBusy ms | ratio (lowest) | GPULatency ms | passthrough | D47 delta % (spread) |
-|---|---|---|---|---|---|
-| forest_noon | 7.832 | 0.9991 (0.9987) | 8.148 | 0.5375 ms, valid, GPU-bound | +0.28 (0.06) |
-| ocean_sunset | 7.051 | 0.9995 (0.9985) | 7.321 | cut: 522 rows short | +0.41 (0.27) |
-| cave | 5.186 | 0.9995 (0.9993) | 5.457 | cut: 274 short | +0.13 (0.18) |
-| night | 5.284 | 0.9995 (0.9990) | 5.845 | cut: 1,259 short | -0.11 (0.19) |
-| underwater | 7.072 | 0.9996 (0.9992) | 7.322 | cut: 993 short | -0.04 (0.22) |
-| entities | 5.187 | 0.9997 (0.9991) | 5.705 | cut: 556 short | -1.50 (0.35) |
-| rain | 7.199 | 0.9991 (0.9981) | 7.451 | 0.9329 ms, valid, GPU-bound | +0.60 (0.40), settles 1.5/4.0 s |
-| nether_crimson | 5.671 | 0.9996 (0.9995) | 6.061 | cut: 562 short | +0.04 (0.08) |
-| nether_soul | 6.245 | 0.9998 (0.9992) | 6.493 | cut: 197 short, halves | +0.05 (0.16) |
-| end_dragon | 7.780 | 0.9988 (0.9979) | 8.226 | 0.6578 ms, valid, GPU-bound | -0.03 (0.34), settles 4.0/1.5 s |
-| end_city | 7.792 | 0.9987 (0.9973) | 8.249 | cut: 12 short | -0.14 (0.39) |
+| View | Baseline GPUBusy ms (survey 1), ratio lowest (1 / 2) | Passthrough, floor bound | D47 delta % (1 / 2) |
+|---|---|---|---|
+| forest_noon | 7.83, 0.9987 / 0.9994 | <= 0.54 ms | +0.28 / +0.18 |
+| ocean_sunset | 7.05, 0.9985 / 0.9988 | <= 0.59 ms | +0.41 / +0.28 |
+| cave | 5.19, 0.9993 / 0.9992 | cut twice, 0.50 | +0.13 / +0.00 |
+| night | 5.28, 0.9990 / 0.9996 | cut twice, 0.50-0.51 | -0.11 / +0.20 |
+| underwater | 7.07, 0.9992 / 0.9985 | <= 0.52 ms | -0.04 / +0.13 |
+| entities | 5.19, 0.9991 / 0.9991 | cut twice, 0.53-0.54 | -1.50 / -1.28 |
+| rain | 7.20, 0.9981 / 0.9973 | <= 0.93 ms | +0.60 / +0.79 (settles 1.5/4.0 s) |
+| nether_crimson | 5.67, 0.9995 / 0.9992 | cut twice, 0.49 | +0.04 / +0.10 |
+| nether_soul | 6.25, 0.9992 / 0.9990 | cut twice, 0.51 | +0.05 / +0.28 |
+| end_dragon | 7.78, 0.9979 / 0.9985 | <= 0.66 ms | -0.03 / -0.18 |
+| end_city | 7.79, 0.9973 / 0.9982 | <= 0.69 ms | -0.14 / -0.12 |
 
-- The floors (stats.cpu_floors): none. The passthrough ran at 1,440-2,060 fps, GPUBusy over FrameTime 0.96-1.04 and GPULatency 1.26-1.76 frames on all 11 captures: GPU-bound, so its FrameTime bounds the floor from above (forest_noon 0.54 ms, rain 0.93, end_dragon 0.66); on the other 8 PresentMon wrote 12 to 1,259 rows fewer than the mod's frames, so the cut failed. Every other capture's rows equal its frames within the edge's one row.
-- The baseline's GPULatency reads 1.03-1.11 frames (ALC: about 2.7).
-- D47 (stats.warmup_agreement, within 0.5 %): drop false: entities -1.50 % beyond its measured spread (0.35 %), rain +0.60 % on a pair of different settles (its warm-up after the start, its measured capture after the Nether); the other nine within 0.41 %.
+- The passthrough: 1,064-2,061 fps, GPUBusy 0.95-1.05 of FrameTime, GPULatency 1.26-1.76 frames: GPU-bound on every view, so no floor, only bounds; 14 of 22 captures cut invalid, PresentMon 12 to 1,259 rows short of the mod's frames (valid captures at 1,064-1,923 fps, invalid at 1,439-2,061: no clean threshold).
+- The baseline's GPULatency 1.03-1.11 frames (ALC: about 2.7): no CPU-limit sign on this machine.
+- m2-survey-2-p1: input came about 90 s into it (part 2's D42 read 56 s); it ended ok, no focus.lost, every baseline capture valid.
 
-## The stop
-- Prompt step 6: D47 keeping the warm-up pass is the user's; the floors are a Done-when not met. Not done: suite.json's D47 change, measurement.md's floors and warm-up, CHANGELOG's views and floors, the acceptance run (A2, A3, A10).
-- Nothing else launched; no system setting touched (the power calls only read, and the request is the run's own, released).
+## Acceptance
+- m2-acceptance-1 failed, A2 alone: on its first six views (forest_noon to end_dragon's first attempt) another window held the foreground (pid 5176, ended, unknown; then explorer.exe, then Code.exe) and covered the screen's centre, so F2 never reached the game; once the focus fallback's click landed, every F2 matched a frame. The user was at the machine. A3 and A10 passed.
+- m2-acceptance-2 ok (11:03-11:06 ADT): A2 passed on all eleven views at the first attempt; A3 (centre and wrap) on all eleven; A10's selftest.
 
 ## Open questions
-- The user's, now: D47. Recommended: a second survey session (m2-survey-2, about 15 min) before deciding, entities' -1.50 % against one capture per view; if it repeats, keep the pass and full mode's launches hold one view each (2 + 1 + 9 = 12 reloads with 2 candidates at R 2; D43's 2-view launch needs 22, over the cap 20), 11 launches a full session against 6, full mode's calibration hours nearly twice; else drop it in suite.json. Dropping now leaves a first visit 1.5 % off at entities inside the first bracket (half of it in that candidate's ratio), above the 0.5 % threshold floor.
-- The user's, now: the floor. Recommended: measurement.md#validity states it bounded from above by the survey (at most 0.54-0.93 ms on the three valid views, every passthrough GPU-bound), the 90 % rule out of reach until a frame nears 1 ms; ALC's alcUpperBound superseded. Else a floor read below 4K or with vanilla (identity changes), or PresentMon at 2,000 fps (its row loss unexplained).
-- Carried: measurement.md step 4's default against D47's; plans/m2.md section 7 lacks the stop on D47 keeping the pass; nxplayer.bin (NoMachine's player) at 3.7-6.2 % of the 3D engine while the user was at the machine held D42 for about 4 min, under 2 % in its last checks; orphans of a join or of A9; the baseline's profile unenforced; stepped thunder's debris; the views file's end_city `why`; world.py in `harness`; unmatched pops; the residual (M2.P10); the display's rate and count; machine state; window 1's start frame.
+- Stale, left as written: plans/m2.md D43's "no warm-up pass" in split launches, section 7's "a 2-view launch holds the twin and one candidate" and M2.P09's "about 77 launches, about 4 h"; prompts/m2.md's M2.P09 ("a full-mode session is 6 launches") and M2.P10 ("6 launches each"): a full-mode session is now 11 launches, M2.P09 about 132 launches and 4.5 h (roadmap.md), M2.P10 about 1.2 h; `calibrate` announces its true count first.
+- A pack near 1 ms a frame (M3's hello pack, M4) meets PresentMon's row loss before the 90 % rule: its captures may be cut invalid.
+- Carried: measurement.md's queue sign (GPULatency) reads no CPU limit here; nxplayer.bin (NoMachine) held D42 about 4 min with the user at the machine; orphans of a join or of A9; the baseline's profile unenforced; stepped thunder's debris; the views file's end_city `why`; world.py in `harness`; unmatched pops; the residual (M2.P10); the display's rate and count; machine state; window 1's start frame.
 
 ## Left alone
-- results/raw/m2-survey-1-p1c/, -p2/, -p3/, -p4/ (ignored); m2-survey-1-p1 and -p1b (failed, committed before).
-- The acceptance spec (scratchpad): m2-acceptance-1, kind acceptance, views and world bench_263, the reference pack with profile null, tier bench, resourcePacks standard, items A2, A3 and A10; `run --check` held.
-- measurement.md: 56 bytes left; its floors and warm-up wait for the answers.
+- results/raw/ of the six survey parts and both acceptance runs (ignored); the failed survey parts m2-survey-1-p1 and -p1b (committed before).
+- measurement.md: 37 bytes left; the next addition there needs a cut first.
 
 ## Weak points
-- D47 rests on one warm-up capture per view; the floors' bounds on three captures.
-- The display state's off path has met the fakes only; the on path was read live; the hold past the timeout is unshown (the survey ended about 599 s after the last input): the next unattended measured run past 600 s shows it, or fails at its first window as m2-survey-1-p1 did.
+- The floors are bounds from one GPU-bound capture per view per survey; five views have no valid passthrough capture at all.
+- D47 rests on two sessions; rain's pairs differ in settle, so rain says nothing either way.
+- The display state's off path has met the fakes only.
 
 ## Commits and time
-- f402c8c feat: hold the displays on through a measured session; this handoff with the survey's five records.
-- M2.P08 this session: 22:46 to about 22:58 ADT, then 03:49 to about 04:40 ADT after the user's answer (about 4.9 h waiting), about 1.0 h active; the phase about 1.7 h against 1.5 h, stopped.
-- Tripwire: M0-M3 summed 72.3 h, the trip at 144.6 h; actuals about 39.6 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 2.4, the re-plan 0.35, P07 2.1 active, P08 1.7 so far).
+- f402c8c, 750ab48 (the stop), fc85e9a, a153abf, 3a751c4, and this one: docs: hand off the surveyed views, floors and acceptance.
+- M2.P08: about 2.5 h active against 1.5 h (0.7 h on 2026-10-13, 0.9 h that night around a 4.9 h wait for the user, 0.9 h on 2026-10-14 from 10:42 ADT); machine: 10 launches (both surveys' 8, two acceptance runs) and 2 failed before (-p1, -p1b).
+- Tripwire: M0-M3 summed 72.3 h, the trip at 144.6 h; actuals about 40.4 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 2.4, the re-plan 0.35, P07 2.1 active, P08 2.5).
 
 ## Next
-The user's answers on D47 and the floor; then M2.P08's prompt again from step 5's outcome (a second survey if chosen), then step 7's acceptance run.
+M2.P09's prompt from docs/prompts/m2.md (Calibration and the known positive), with the user's go for its hours: about 132 launches over about 4.5 h, not the prompt's 77 and 4 h.
