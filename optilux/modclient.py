@@ -561,6 +561,12 @@ class Client:
         except queue.Empty:
             return None
 
+    def wait_closed(self, timeout: float) -> bool:
+        """Whether the reader reached the pipe's end within `timeout`: the other end closed and
+        every line it wrote read (its events queued)."""
+        self._reader.join(timeout)
+        return not self._reader.is_alive()
+
     def close(self) -> None:
         self._closing = True
         self._stream.close()

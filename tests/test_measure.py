@@ -1699,6 +1699,24 @@ def test_the_games_own_screens_never_end_the_session_but_another_screen_does(
     assert len(ended["captures"]) == 0  # the first window's capture was never kept
 
 
+def test_the_quits_last_events_are_read_before_the_pipe_closes(fake_run, monkeypatch) -> None:
+    """The game exits at once in the fake while its saving screens come late: the reader reads to
+    the pipe's end before the client closes it, so none is dropped (CI's serial run lost both)."""
+    root, spec_path, fake, host = fake_run
+    emit = fake.emit
+
+    def late(event: str, data: dict) -> bool:
+        if (data or {}).get("screen") in modfake.QUIT_SCREENS:
+            time.sleep(0.3)
+        return emit(event, data)
+
+    monkeypatch.setattr(fake, "emit", late)
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "ok", found["reason"]
+    assert found["session"]["events"]["counts"]["screen.opened"] == 5 + 2
+    assert found["session"]["quit"]["pipeEnded"] is True
+
+
 def test_a_focus_lost_in_the_gpu_warm_up_ends_the_session(fake_run, monkeypatch) -> None:
     root, spec_path, fake, host = fake_run
     hold = launch.hold
