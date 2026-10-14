@@ -31,10 +31,11 @@ raw/<name>/partial.json follows the run.
   twin monitor over the calibration's judged twins) or A8's and A11's judged entries.
 - A session over capture.reloadCap (plans/m2.md D43, run-record.md#split-sessions) runs as one
   launch per group of its views, each a part <session>-p<n> recorded on its own with the session's
-  spec and its `split`, without the warm-up pass but the survey's; `run` resumes it at its first
-  part without an ok record (a re-run's name takes the next letter), ends it invalid when a part's
-  identity differs from the first ok part's, and once its last part is ok writes the session
-  record: the parts, their one identity, the verdicts and A8's and A11's entries.
+  spec and its `split`, each with the warm-up pass while suite.json keeps it (D47); `run` resumes
+  it at its first part without an ok record (a re-run's name takes the next letter), ends it
+  invalid when a part's identity differs from the first ok part's, and once its last part is ok
+  writes the session record: the parts, their one identity, the verdicts and A8's and A11's
+  entries.
 
 The record goes to results/records/<name>.json, the request log and the raw artifacts to
 results/raw/<name>/. Exit 0 when the status is ok.
@@ -237,7 +238,7 @@ class Part:
 
 def part_spec(ready: Prepared, part: Part) -> record.Spec:
     """The session's checked spec as one part runs it: the part's name, views and reloads, its
-    `split`; the warm-up pass the session's (the survey's alone keeps it)."""
+    `split`; the warm-up pass the session's (suite.json capture.warmupPass, D47)."""
     spec = ready.spec
     ci = record.candidates(spec.kind, spec.variants, ready.suite)
     split = {

@@ -626,14 +626,15 @@ def check_spec(
     ci = candidates(kind, variants, suite)
     cal = check_calibration(root, data, kind, mode, ci)
     first = check_remeasures(root, data, order)
-    planned = planned_reloads(len(ids), ci, rounds)
+    # plans/m2.md D47: every launch, a split session's parts too, runs the warm-up pass while
+    # suite.json keeps it; the survey's spec keeps it whatever the suite says (`warmup` true).
+    warmup = suite["capture"]["warmupPass"] is True or data.get("warmup") is True
+    planned = planned_reloads(len(ids), ci, rounds, warmup)
     # A budget run (heap true, calibration null) measures the leak past the cap and judges
     # nothing; F4's 2 GiB guard stops it before the machine pages (plans/m2.md D43, M2.P06).
     budget = kind == "measurement" and heap and data["calibration"] is None
     groups: tuple[tuple[str, ...], ...] = ()
-    warmup = True
-    if planned > cap and not budget:  # D43: launches of views, the warm-up pass the survey's
-        warmup = data.get("warmup") is True
+    if planned > cap and not budget:  # D43: launches of views, each with the warm-up pass (D47)
         by_id = {v["id"]: v for v in views_file["views"]}
         order_ids = tuple(v["id"] for v in lap([by_id[vid] for vid in ids], None))
         groups = split_groups(order_ids, ci, rounds, cap, warmup)
@@ -789,8 +790,9 @@ def check_budget(
         )
     if data.get("warmup") is not None and data["warmup"] is not True:
         raise RecordError(
-            f"warmup {data['warmup']!r}: true keeps each launch's warm-up pass in a split "
-            "session (the survey's, plans/m2.md D47); fix: true, or leave it out"
+            f"warmup {data['warmup']!r}: true keeps each launch's warm-up pass whatever "
+            "suite.json's capture.warmupPass says (the survey's, plans/m2.md D47); fix: true, "
+            "or leave it out"
         )
     if data.get("rounds") is not None:
         rounds = data["rounds"]

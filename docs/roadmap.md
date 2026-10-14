@@ -79,7 +79,7 @@ Change, exit and estimate per phase; files and tests are in plans/m2.md section 
 ### M2.P10 A8 and A11
 - Change: the timers' overhead (A8) and their agreement with GPUBusy (A11) on full mode's schedule, judged by the full calibration through M2.P05's runner and M2.P07's verdicts, no measured module changed; kept for M4's timer rows only if both pass (E3; plans/m2.md D53).
 - Exit: acceptance records with A8 and A11 and their evidence; E3's outcome in design.md.
-- Estimate: 1 h; machine: 2-3 sessions of 6 launches, about 1 h. Attended: the machine left alone.
+- Estimate: 1 h; machine: 2-3 sessions of 11 launches, about 1.2 h. Attended: the machine left alone.
 
 ### M2.P11 optilux-bench and the close
 - Change: the optilux-bench skill by the creation rule, with three evals; the docs as built; CHANGELOG's 0.3.0 entry completed; the findings marked landed.

@@ -600,23 +600,30 @@ def test_a_measured_spec_carries_its_variants_views_and_reloads(bench_root) -> N
     assert calibration.planned == 20  # 2 + 3 + 3 x (1 + 2 x 1 x 2): the cap exactly
 
 
-def test_the_cap_of_20_holds_quick_mode_and_splits_full_mode_into_six_launches(bench_root):
-    """plans/m2.md D43 (suite.json capture.reloadCap 20; run-record.md#split-sessions): quick
-    mode's twin and one candidate plan 20 in one launch with the warm-up pass; over a cap of 19
-    they split without it; full mode's twin and one candidate at R 2 cut the lap into 6 launches,
-    2 views each (2 + 2 x 9 = 20) and end_city alone; a view alone over the cap is refused; a
-    budget run (heap true) passes the cap in one launch."""
+def test_the_cap_of_20_holds_quick_mode_and_splits_full_mode_into_eleven_launches(bench_root):
+    """plans/m2.md D43 and D47 (suite.json capture.reloadCap 20 and warmupPass true;
+    run-record.md#split-sessions): quick mode's twin and one candidate plan 20 in one launch with
+    the warm-up pass; over a cap of 19 they split, each launch keeping it; full mode's twin and one
+    candidate at R 2 take 11 launches of one view (2 + 1 + 9 = 12; two views 22); a suite that
+    drops the pass cuts full mode's lap into 6 launches, 2 views each (2 + 2 x 9 = 20) and
+    end_city alone; a view alone over the cap is refused; a budget run (heap true) passes the cap
+    in one launch."""
     root, saves = bench_root
-    assert SUITE["capture"]["reloadCap"] == 20
+    assert SUITE["capture"]["reloadCap"] == 20 and SUITE["capture"]["warmupPass"] is True
     pair = measured(variants=[BASE, SHADOWS])
     quick = record.check_spec(root, pair, PLAT, SUITE, saves, PACK)
     assert (quick.planned, quick.groups, quick.warmup) == (20, (), True)
     tight = copy.deepcopy(SUITE)
     tight["capture"]["reloadCap"] = 19
     split = record.check_spec(root, pair, PLAT, tight, saves, PACK)
-    assert split.groups == (("forest_noon", "nether_crimson", "end_dragon"),)
-    assert (split.warmup, split.planned) == (False, 2 + 3 * 5)
+    assert split.groups == (("forest_noon", "nether_crimson"), ("end_dragon",))
+    assert (split.warmup, split.planned) == (True, (2 + 2 * 6) + (2 + 6))
     full = record.check_spec(root, {**pair, "mode": "full"}, PLAT, SUITE, saves, PACK)
+    assert [len(g) for g in full.groups] == [1] * 11 and full.warmup is True
+    assert full.planned == 11 * 12 and record.planned_reloads(2, 2, 2, True) == 22
+    dropped = copy.deepcopy(SUITE)
+    dropped["capture"]["warmupPass"] = False
+    full = record.check_spec(root, {**pair, "mode": "full"}, PLAT, dropped, saves, PACK)
     assert full.groups == (
         ("forest_noon", "ocean_sunset"),
         ("cave", "night"),
@@ -627,8 +634,8 @@ def test_the_cap_of_20_holds_quick_mode_and_splits_full_mode_into_six_launches(b
     )
     assert full.planned == 5 * 20 + (2 + 9) and full.warmup is False
     assert all(record.planned_reloads(len(g), 2, 2, False) <= 20 for g in full.groups)
-    tight["capture"]["reloadCap"] = 10
-    with pytest.raises(record.RecordError, match=r"one view alone plans 11 reloads.*reloadCap 10"):
+    tight["capture"]["reloadCap"] = 11
+    with pytest.raises(record.RecordError, match=r"one view alone plans 12 reloads.*reloadCap 11"):
         record.check_spec(root, {**pair, "mode": "full"}, PLAT, tight, saves, PACK)
     budget = {**pair, "mode": "full", "heap": True}
     found = record.check_spec(root, budget, PLAT, SUITE, saves, PACK)
@@ -638,13 +645,19 @@ def test_the_cap_of_20_holds_quick_mode_and_splits_full_mode_into_six_launches(b
 def test_the_survey_keeps_each_launchs_warm_up_pass_at_r_1(bench_root) -> None:
     """The survey's exception (run-record.md#split-sessions): a calibration-null measurement run
     may set rounds and warmup true: at R 1 with the twin and one candidate, 3 views a launch
-    (2 + 3 + 3 x 5 = 20), so full mode's 11 views take 4 launches."""
+    (2 + 3 + 3 x 5 = 20), so full mode's 11 views take 4 launches; warmup true keeps the pass
+    when suite.json drops it (D47)."""
     root, saves = bench_root
     survey = measured(mode="full", variants=[BASE, SHADOWS], rounds=1, warmup=True)
-    spec = record.check_spec(root, survey, PLAT, SUITE, saves, PACK)
-    assert spec.warmup is True and [len(g) for g in spec.groups] == [3, 3, 3, 2]
+    dropped = copy.deepcopy(SUITE)
+    dropped["capture"]["warmupPass"] = False
+    for suite in (SUITE, dropped):
+        spec = record.check_spec(root, survey, PLAT, suite, saves, PACK)
+        assert spec.warmup is True and [len(g) for g in spec.groups] == [3, 3, 3, 2]
     assert record.planned_reloads(3, 2, 1, True) == 20
     plain = record.check_spec(root, {**survey, "warmup": None}, PLAT, SUITE, saves, PACK)
+    assert plain.warmup is True and [len(g) for g in plain.groups] == [3, 3, 3, 2]
+    plain = record.check_spec(root, {**survey, "warmup": None}, PLAT, dropped, saves, PACK)
     assert plain.warmup is False and [len(g) for g in plain.groups] == [3, 3, 3, 2]
 
 
@@ -667,9 +680,9 @@ def test_the_survey_measures_the_passthrough_pack_as_a_candidate(bench_root) -> 
 def test_a_split_sessions_name_leaves_room_for_its_parts(bench_root) -> None:
     root, saves = bench_root
     pair = measured(mode="full", variants=[BASE, SHADOWS])
-    record.check_spec(root, {**pair, "name": "s" * 36}, PLAT, SUITE, saves, PACK)
-    with pytest.raises(record.RecordError, match="a name of at most 36 characters"):
-        record.check_spec(root, {**pair, "name": "s" * 37}, PLAT, SUITE, saves, PACK)
+    record.check_spec(root, {**pair, "name": "s" * 35}, PLAT, SUITE, saves, PACK)  # 11 parts
+    with pytest.raises(record.RecordError, match="a name of at most 35 characters"):
+        record.check_spec(root, {**pair, "name": "s" * 36}, PLAT, SUITE, saves, PACK)
     assert record.part_name("cal-full-x-1", 6) == "cal-full-x-1-p6"
     assert record.part_name("cal-full-x-1", 6, 1) == "cal-full-x-1-p6b"
 
@@ -772,7 +785,7 @@ def test_a_measured_spec_without_its_calibration_or_over_the_cap_is_refused(benc
         record.check_spec(root, data, PLAT, SUITE, saves, PACK)
     suite = copy.deepcopy(SUITE)
     suite["capture"]["reloadCap"] = 4
-    with pytest.raises(record.RecordError, match=r"one view alone plans 5 reloads.*reloadCap 4"):
+    with pytest.raises(record.RecordError, match=r"one view alone plans 6 reloads.*reloadCap 4"):
         record.check_spec(root, measured(), PLAT, suite, saves, PACK)
     suite = copy.deepcopy(SUITE)
     suite["modes"]["quick"]["views"] = ["forest_noon", "nowhere"]
@@ -2093,7 +2106,7 @@ def test_a_split_session_runs_its_parts_then_writes_its_session_record(
     """Over a cap of 12, quick mode's twin and one candidate (5 reloads a view without the
     warm-up pass) run as 2 launches: forest_noon and nether_crimson (12), end_dragon (7)."""
     root, spec_path, fake, host = fake_run
-    set_suite(root, capture__reloadCap=12)
+    set_suite(root, capture__reloadCap=12, capture__warmupPass=False)
     fresh_games(monkeypatch, fake, host)
     cid = fake_calibration(root, spec_path)
     spec = measured(name="m2-split-test", variants=[BASE, SHADOWS], calibration=cid)
@@ -2172,9 +2185,31 @@ def test_only_a_measured_run_holds_the_displays_on(fake_run, monkeypatch) -> Non
     assert host.states == [HOLD, measure.ES_CONTINUOUS]
 
 
+def test_every_part_of_a_split_session_runs_the_warm_up_pass_the_suite_keeps(
+    fake_run, monkeypatch
+) -> None:
+    """D47: suite.json's warmupPass true keeps the pass in every launch; over a cap of 12 quick
+    mode's baseline and twin (with it 2 + 1 + 3 a view: 2 views 10, 3 views 14) take 2 launches,
+    each warming up over its own views first."""
+    root, spec_path, fake, host = fake_run
+    set_suite(root, capture__reloadCap=12)
+    fresh_games(monkeypatch, fake, host)
+    spec_path.write_text(json.dumps(measured(name="m2-warm-split")), encoding="utf-8")
+    announced: list[str] = []
+    found, _ = run_verb.run_session(root, spec_path, host, FakeMachine(), print, announced.append)
+    assert found["status"] == "ok", found["reason"]
+    assert found["groups"] == [["forest_noon", "nether_crimson"], ["end_dragon"]]
+    assert launches(fake) == 2 and reloads(fake) == (10 - 1) + (6 - 1)  # selftest's apart
+    assert not any("no warm-up pass" in a for a in announced)
+    for name, views in zip(found["parts"], found["groups"], strict=True):
+        part = record.read_record(root, name)
+        warm = [c["view"] for c in part["captures"] if c["pass"] == 1]
+        assert part["status"] == "ok" and warm == views
+
+
 def test_a_split_session_resumes_at_its_first_part_not_ok(fake_run, monkeypatch, capsys) -> None:
     root, spec_path, fake, host = fake_run
-    set_suite(root, capture__reloadCap=8)  # the baseline and its twin, 3 reloads a view: 8, 5
+    set_suite(root, capture__reloadCap=8, capture__warmupPass=False)  # the twin: 3 a view
     fresh_games(monkeypatch, fake, host)
     spec_path.write_text(json.dumps(measured(name="m2-resume-test")), encoding="utf-8")
     lose_focus_at(monkeypatch, fake, 6 + 2)  # part 2's second window
@@ -2243,7 +2278,7 @@ def test_calibrate_resumes_a_split_session_at_its_first_part_not_ok(fake_run, mo
     the first calibrate stops at session 1's second part, the next counts 3 launches left."""
     root, _, fake, host = fake_run
     small_calibration(root, 2)
-    set_suite(root, capture__reloadCap=12)
+    set_suite(root, capture__reloadCap=12, capture__warmupPass=False)
     fresh_games(monkeypatch, fake, host)
     lose_focus_at(monkeypatch, fake, 10 + 2)
     announced: list[str] = []
