@@ -623,6 +623,13 @@ def test_the_cap_of_20_holds_quick_mode_and_splits_full_mode_into_eleven_launche
     assert full.planned == 11 * 12 and record.planned_reloads(2, 2, 2, True) == 22
     dropped = copy.deepcopy(SUITE)
     dropped["capture"]["warmupPass"] = False
+    unsplit = record.check_spec(root, pair, PLAT, dropped, saves, PACK)  # one launch, no pass
+    assert (unsplit.planned, unsplit.groups, unsplit.warmup) == (2 + 3 * 5, (), False)
+    for wrong in ("true", 1, None):
+        typo = copy.deepcopy(SUITE)
+        typo["capture"]["warmupPass"] = wrong
+        with pytest.raises(record.RecordError, match=r"capture.warmupPass .*; fix: true"):
+            record.check_spec(root, pair, PLAT, typo, saves, PACK)
     full = record.check_spec(root, {**pair, "mode": "full"}, PLAT, dropped, saves, PACK)
     assert full.groups == (
         ("forest_noon", "ocean_sunset"),
