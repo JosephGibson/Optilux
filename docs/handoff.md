@@ -24,7 +24,8 @@ Last phase: M2.P08
 - verify records: 0 violations; m2-acceptance-2 (245,837 bytes) and -1 (196,347) are acceptance records, reported over 200 KB as D51 allows.
 
 ## Review
-- The display change's review is in the last handoff (git 750ab48). The quit drain and D47's change were checked by their tests only (the drain's test fails without it); no reviewer agent ran on them.
+- The display change's review is in git 750ab48's handoff.
+- Before M2.P09's freeze (the user's go, 2026-10-14), the reviewer agent on a153abf and 3a751c4 (correctness): 0 high, 0 medium, 5 low, each read at its source. Fixed: (1) a quit whose pipe did not end within 2 s, or whose read failed, passed silently (`pipeEnded` read nowhere, a late hook.error unread): wait_closed is true only when the mod closed the pipe, and a measured or acceptance run fails on it (de7e78c); (2) the launch test pinned neither the exit before the drain nor `seconds` at the exit (de7e78c); (3) a warmupPass other than true or false dropped the pass silently: refused (68af3e5); (4) an unsplit session with the pass dropped had no test (68af3e5). Reported: (5) D43's closed text and section 7's 2-view stop against the code (Open questions). Clean, by its reading: the real pipe ends 0.8 s after `quit` (m2-survey-2-p4's request log), so the drain costs a quit nothing; every reader of the warm-up pass agrees with split parts; a calibration and its runs cannot disagree on it (suite.json in the identity).
 
 ## The surveys
 m2-survey-1 (parts -p1c, -p2, -p3, -p4) and m2-survey-2 (-p1 to -p4): full mode, R 1, calibration null, the baseline, its twin and the passthrough; snapshot 65e7ae73... (116 files); heap 6144 MiB, cap 20.
@@ -52,7 +53,7 @@ m2-survey-1 (parts -p1c, -p2, -p3, -p4) and m2-survey-2 (-p1 to -p4): full mode,
 - m2-acceptance-2 ok (11:03-11:06 ADT): A2 passed on all eleven views at the first attempt; A3 (centre and wrap) on all eleven; A10's selftest.
 
 ## Open questions
-- Stale, left as written: plans/m2.md D43's "no warm-up pass" in split launches, section 7's "a 2-view launch holds the twin and one candidate" and M2.P09's "about 77 launches, about 4 h"; prompts/m2.md's M2.P09 ("a full-mode session is 6 launches") and M2.P10 ("6 launches each"): a full-mode session is now 11 launches, M2.P09 about 132 launches and 4.5 h (roadmap.md), M2.P10 about 1.2 h; `calibrate` announces its true count first.
+- Corrected (user, 2026-10-14): a full-mode session is 11 launches: the plan's M2.P09 (about 132 launches, 4.5 h) and M2.P10 (2-3 sessions of 11, 1.2 h) machine lines, prompts/m2.md's M2.P09 and M2.P10, roadmap.md's. Left as planned, the plan 3 bytes under its cap: D43's "no warm-up pass" (closed; D47's outcome supersedes it), section 7's "a 2-view launch holds the twin and one candidate" (met at M2.P06) and section 8's totals (104-113 launches; now about 169-183).
 - A pack near 1 ms a frame (M3's hello pack, M4) meets PresentMon's row loss before the 90 % rule: its captures may be cut invalid.
 - Carried: measurement.md's queue sign (GPULatency) reads no CPU limit here; nxplayer.bin (NoMachine) held D42 about 4 min with the user at the machine; orphans of a join or of A9; the baseline's profile unenforced; stepped thunder's debris; the views file's end_city `why`; world.py in `harness`; unmatched pops; the residual (M2.P10); the display's rate and count; machine state; window 1's start frame.
 
@@ -66,9 +67,9 @@ m2-survey-1 (parts -p1c, -p2, -p3, -p4) and m2-survey-2 (-p1 to -p4): full mode,
 - The display state's off path has met the fakes only.
 
 ## Commits and time
-- f402c8c, 750ab48 (the stop), fc85e9a, a153abf, 3a751c4, and this one: docs: hand off the surveyed views, floors and acceptance.
-- M2.P08: about 2.5 h active against 1.5 h (0.7 h on 2026-10-13, 0.9 h that night around a 4.9 h wait for the user, 0.9 h on 2026-10-14 from 10:42 ADT); machine: 10 launches (both surveys' 8, two acceptance runs) and 2 failed before (-p1, -p1b).
-- Tripwire: M0-M3 summed 72.3 h, the trip at 144.6 h; actuals about 40.4 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 2.4, the re-plan 0.35, P07 2.1 active, P08 2.5).
+- f402c8c, 750ab48 (the stop), fc85e9a, a153abf, 3a751c4, d160287 (the phase's handoff); before M2.P09: de7e78c, 68af3e5 and this one: docs: correct the calibration and timer runs' launch counts.
+- M2.P08: about 3.0 h active against 1.5 h (0.7 h on 2026-10-13, 0.9 h that night around a 4.9 h wait for the user, 0.9 h on 2026-10-14 from 10:42 ADT, 0.5 h of fixes before M2.P09 from 12:02 ADT); machine: 10 launches (both surveys' 8, two acceptance runs) and 2 failed before (-p1, -p1b).
+- Tripwire: M0-M3 summed 72.3 h, the trip at 144.6 h; actuals about 40.9 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 2.4, the re-plan 0.35, P07 2.1 active, P08 3.0).
 
 ## Next
-M2.P09's prompt from docs/prompts/m2.md (Calibration and the known positive), with the user's go for its hours: about 132 launches over about 4.5 h, not the prompt's 77 and 4 h.
+M2.P09's prompt from docs/prompts/m2.md (Calibration and the known positive), with the user's go for its hours: about 132 launches over about 4.5 h.
