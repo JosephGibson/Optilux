@@ -74,7 +74,7 @@ Change, exit and estimate per phase; files and tests are in plans/m2.md section 
 ### M2.P09 Calibration and the known positive
 - Change: the quick and full calibrations; per mode, shadows off (SHADOW_QUALITY -1) against the baseline beside its twin; `compare` refusing an M1 record live.
 - Exit: both calibrations committed; in each mode the twin inside the geo-mean threshold and shadows off faster beyond it; the refusal names an identity key.
-- Estimate: 1.5 h; machine: about 4 h of sessions, about 77 launches. Attended: the user's go and the machine left alone.
+- Estimate: 1.5 h; machine: about 4.5 h of sessions, about 132 launches (a full-mode session 11: D43 with D47's warm-up pass). Attended: the user's go and the machine left alone.
 
 ### M2.P10 A8 and A11
 - Change: the timers' overhead (A8) and their agreement with GPUBusy (A11) on full mode's schedule, judged by the full calibration through M2.P05's runner and M2.P07's verdicts, no measured module changed; kept for M4's timer rows only if both pass (E3; plans/m2.md D53).
