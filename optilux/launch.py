@@ -124,6 +124,9 @@ MODS_HEADER = re.compile(r"\]: Loading \d+ mods:$")
 TOP_MOD = re.compile(r"^\t- (\S+) \S+")
 # WM_CLOSE ended the bench game in 1.9 s (L1) and the dev game in 17 s (L2's watchdog).
 QUIT_TIMEOUT = 60.0
+# After the game's exit, the reader's wait for the pipe's end: the game's last lines (world.left,
+# its saving screens) are read before the client closes its end, which drops what is unread.
+QUIT_DRAIN = 2.0
 # The window exists seconds after the start, long before the join.
 WINDOW_TIMEOUT = 10.0
 WM_CLOSE = 0x0010
@@ -1120,8 +1123,9 @@ def open_mod(
 
 def quit_mod(client: modclient.Client, process: Process, host: Host) -> dict:
     """Quit through the mod: `quit` is answered, then the game stops as its close button makes
-    it; the exit code and the seconds from the request to the exit. LaunchError (the game killed)
-    when it outlasts QUIT_TIMEOUT."""
+    it, and the reader reads to the pipe's end (QUIT_DRAIN at most) before the client closes;
+    the exit code, the seconds from the request to the exit and whether the pipe ended.
+    LaunchError (the game killed) when it outlasts QUIT_TIMEOUT."""
     asked = host.clock()
     try:
         client.request("quit")
@@ -1129,6 +1133,8 @@ def quit_mod(client: modclient.Client, process: Process, host: Host) -> dict:
         raise LaunchError(f"quit: {error}") from None
     try:
         code = process.wait(QUIT_TIMEOUT)
+        seconds = host.clock() - asked
+        ended = client.wait_closed(QUIT_DRAIN)
     except subprocess.TimeoutExpired:
         process.kill()
         raise LaunchError(
@@ -1136,7 +1142,7 @@ def quit_mod(client: modclient.Client, process: Process, host: Host) -> dict:
         ) from None
     finally:
         client.close()
-    return {"how": "quit", "exitCode": code, "seconds": host.clock() - asked}
+    return {"how": "quit", "exitCode": code, "seconds": seconds, "pipeEnded": ended}
 
 
 def check_log(path: Path, token: str) -> dict:

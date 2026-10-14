@@ -1239,18 +1239,31 @@ def test_the_quits_kill_a_game_that_will_not_go(tmp_path: Path) -> None:
         launch.hold(process, FakeGame(tmp_path, None), 5.0)
 
     class Client:
-        closed = False
+        """The calls in their order: the reader's wait for the pipe's end before the close."""
+
+        def __init__(self) -> None:
+            self.calls: list[str] = []
 
         def request(self, command: str) -> dict:
+            self.calls.append(command)
             return {}
 
+        def wait_closed(self, timeout: float) -> bool:
+            self.calls.append(f"wait_closed {timeout:g}")
+            return True
+
         def close(self) -> None:
-            self.closed = True
+            self.calls.append("close")
 
     client, process = Client(), FakeProcess()
     with pytest.raises(launch.LaunchError, match="outlasted quit"):
         launch.quit_mod(client, process, FakeGame(tmp_path, None))  # type: ignore[arg-type]
-    assert process.killed and client.closed
+    assert process.killed and client.calls == ["quit", "close"]
+    client, process = Client(), FakeProcess()
+    process.returncode = 0
+    found = launch.quit_mod(client, process, FakeGame(tmp_path, None))  # type: ignore[arg-type]
+    assert found["exitCode"] == 0 and found["pipeEnded"] is True
+    assert client.calls == ["quit", f"wait_closed {launch.QUIT_DRAIN:g}", "close"]
 
 
 def test_saved_pack_settings_refuse_a_launch_at_the_packs_defaults(tmp_path: Path) -> None:
