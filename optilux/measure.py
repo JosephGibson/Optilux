@@ -779,9 +779,9 @@ class Measured:
 
 
 def body(m: Measured) -> None:
-    """The measured session after hello: PresentMon, the session start, the warm-up pass (not in
-    a split session's part, but the survey's), the measured pass, PresentMon's stop, input.block
-    off."""
+    """The measured session after hello: PresentMon, the session start, the warm-up pass (while
+    suite.json's capture.warmupPass keeps it, or the survey's spec does: D47), the measured pass,
+    PresentMon's stop, input.block off."""
     s, c = m.s, m.c
     s.stop_on = ends
     output = s.raw / CSV
@@ -815,7 +815,7 @@ def body(m: Measured) -> None:
         rows = presentmon.wait_rows(m.recording, pm, None, FIRST_ROWS_TIMEOUT)
         pm_facts["firstRows"] = rows
         laps = []
-        if m.spec.warmup:  # a split session's part has none but the survey's (D43)
+        if m.spec.warmup:  # suite.json capture.warmupPass (D47), or the survey's spec
             m.mark("warmupPass")
             order = record.lap(m.views, m.ramped)
             laps.append([v["id"] for v in order])
