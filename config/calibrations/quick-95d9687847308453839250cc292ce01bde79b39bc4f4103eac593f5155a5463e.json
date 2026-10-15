@@ -1,0 +1,564 @@
+{
+ "schema": 1,
+ "id": "quick-95d9687847308453839250cc292ce01bde79b39bc4f4103eac593f5155a5463e",
+ "generation": 1,
+ "supersedes": null,
+ "mode": "quick",
+ "createdAt": "2026-10-15T14:16:09+00:00",
+ "identityHash": "95d9687847308453839250cc292ce01bde79b39bc4f4103eac593f5155a5463e",
+ "identity": {
+  "platform": {
+   "sha256": "3bc69860cc84a5ac20feb2d34887c1768a1572c0a232d2ab52fd38def6aab20c",
+   "tier": "bench",
+   "tiers": [
+    "bench"
+   ]
+  },
+  "launchSpec": {
+   "file": "mc-26.3.launch.json",
+   "sha256": "9bd33805f28ad63e53add6f0af88fb409f33ffd13a4542cbb7b161f71d0de2d3"
+  },
+  "mods": [
+   "8654d88f0e087333cc9f851812352e20aa96a9791e4e686996e13d656fd1257b0993ad51d21c7b9456f222ba5fe3dd8e2607fa8a962a14595525a7b025bd913b",
+   "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+   "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+   "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+  ],
+  "world": {
+   "snapshot": "snapshots/bench_263",
+   "treeSha256": "65e7ae7326dda8a6e8d95c8812ca5ddaabd9dc7ca261d22bb8d93e91df5e22f9",
+   "files": 116
+  },
+  "views": {
+   "file": "bench_263.json",
+   "sha256": "9b05721e710c2a12191f7a9d4316753482a2317faa4613cfd99b1241f9d1675c"
+  },
+  "resourcePacks": {
+   "set": "standard",
+   "packs": [
+    {
+     "file": "Faithful 64x - Release 15.zip",
+     "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+    }
+   ]
+  },
+  "settings": {
+   "options": {
+    "version": "5023",
+    "fullscreen": "true",
+    "exclusiveFullscreen": "true",
+    "enableVsync": "false",
+    "maxFps": "260",
+    "renderDistance": "16",
+    "simulationDistance": "12",
+    "fov": "0.5",
+    "bobView": "false",
+    "guiScale": "3",
+    "mipmapLevels": "4",
+    "biomeBlendRadius": "2",
+    "graphicsPreset": "\"custom\"",
+    "preferredGraphicsBackend": "\"opengl\"",
+    "improvedTransparency": "false",
+    "pauseOnLostFocus": "false",
+    "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\"]",
+    "onboardAccessibility": "false",
+    "skipMultiplayerWarning": "true",
+    "joinedFirstServer": "true",
+    "telemetryOptInExtra": "false",
+    "realmsNotifications": "false",
+    "narrator": "0",
+    "inactivityFpsLimit": "\"minimized\""
+   },
+   "overrides": {},
+   "token": true,
+   "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+   "iris": {
+    "enableShaders": "true",
+    "enableDebugOptions": "false",
+    "disableUpdateMessage": "true",
+    "maxShadowRenderDistance": "32"
+   },
+   "unwritten": {
+    "ao": "true",
+    "chunkSectionFadeInTime": "0.75",
+    "cutoutLeaves": "true",
+    "entityDistanceScaling": "1.0",
+    "entityShadows": "true",
+    "forceUnicodeFont": "false",
+    "japaneseGlyphVariants": "false",
+    "fovEffectScale": "1.0",
+    "darknessEffectScale": "1.0",
+    "glintSpeed": "0.5",
+    "glintStrength": "0.75",
+    "prioritizeChunkUpdates": "1",
+    "macFullscreenMenuVisibility": "false",
+    "gamma": "0.5",
+    "debugGuiScale": "0",
+    "maxAnisotropyBit": "1",
+    "textureFiltering": "1",
+    "particles": "0",
+    "reducedDebugInfo": "false",
+    "renderClouds": "\"true\"",
+    "cloudRange": "64",
+    "screenEffectScale": "1.0",
+    "soundDevice": "\"\"",
+    "vignette": "true",
+    "weatherRadius": "10",
+    "autoJump": "false",
+    "rotateWithMinecart": "false",
+    "operatorItemsTab": "false",
+    "autoSuggestions": "true",
+    "chatColors": "true",
+    "chatLinks": "true",
+    "chatLinksPrompt": "true",
+    "discrete_mouse_scroll": "false",
+    "invertXMouse": "false",
+    "invertYMouse": "false",
+    "showSubtitles": "false",
+    "directionalAudio": "false",
+    "toggleCrouch": "false",
+    "toggleSprint": "false",
+    "toggleAttack": "false",
+    "toggleUse": "false",
+    "sprintWindow": "7",
+    "darkMojangStudiosBackground": "false",
+    "hideLightningFlashes": "false",
+    "hideSplashTexts": "false",
+    "mouseSensitivity": "0.5",
+    "damageTiltStrength": "1.0",
+    "highContrast": "false",
+    "highContrastBlockOutline": "false",
+    "narratorHotkey": "true",
+    "incompatibleResourcePacks": "[]",
+    "lastServer": "",
+    "lang": "en_us",
+    "chatVisibility": "0",
+    "chatOpacity": "1.0",
+    "chatLineSpacing": "0.0",
+    "textBackgroundOpacity": "0.5",
+    "backgroundForChatOnly": "true",
+    "hideServerAddress": "false",
+    "advancedItemTooltips": "false",
+    "overrideWidth": "0",
+    "overrideHeight": "0",
+    "chatHeightFocused": "1.0",
+    "chatDelay": "0.0",
+    "chatHeightUnfocused": "0.4375",
+    "chatScale": "1.0",
+    "chatWidth": "1.0",
+    "notificationDisplayTime": "1.0",
+    "useNativeTransport": "true",
+    "mainHand": "\"right\"",
+    "attackIndicator": "1",
+    "tutorialStep": "none",
+    "mouseWheelSensitivity": "1.0",
+    "allowCursorChanges": "true",
+    "quitShortcuts": "true",
+    "ctrlClickEmulatesRightClick": "false",
+    "glDebugVerbosity": "1",
+    "hideMatchedNames": "true",
+    "syncChunkWrites": "true",
+    "showAutosaveIndicator": "true",
+    "allowServerListing": "true",
+    "inGameNotification": "false",
+    "sharePresence": "\"all\"",
+    "onlyShowSecureChat": "false",
+    "saveChatDrafts": "false",
+    "panoramaScrollSpeed": "1.0",
+    "menuBackgroundBlurriness": "5",
+    "startedCleanly": "true",
+    "musicToast": "\"never\"",
+    "musicFrequency": "\"DEFAULT\"",
+    "key_key.attack": "key.mouse.left",
+    "key_key.use": "key.mouse.right",
+    "key_key.forward": "key.keyboard.w",
+    "key_key.left": "key.keyboard.a",
+    "key_key.back": "key.keyboard.s",
+    "key_key.right": "key.keyboard.d",
+    "key_key.jump": "key.keyboard.space",
+    "key_key.sneak": "key.keyboard.left.shift",
+    "key_key.sprint": "key.keyboard.left.control",
+    "key_key.drop": "key.keyboard.q",
+    "key_key.inventory": "key.keyboard.e",
+    "key_key.chat": "key.keyboard.t",
+    "key_key.playerlist": "key.keyboard.tab",
+    "key_key.pickItem": "key.mouse.middle",
+    "key_key.command": "key.keyboard.slash",
+    "key_key.friends": "key.keyboard.o",
+    "key_key.socialInteractions": "key.keyboard.p",
+    "key_key.toggleGui": "key.keyboard.f1",
+    "key_key.toggleSpectatorShaderEffects": "key.keyboard.f4",
+    "key_key.screenshot": "key.keyboard.f2",
+    "key_key.togglePerspective": "key.keyboard.f5",
+    "key_key.smoothCamera": "key.keyboard.unknown",
+    "key_key.fullscreen": "key.keyboard.f11",
+    "key_key.spectatorOutlines": "key.keyboard.unknown",
+    "key_key.spectatorHotbar": "key.mouse.middle",
+    "key_key.swapOffhand": "key.keyboard.f",
+    "key_key.saveToolbarActivator": "key.keyboard.c",
+    "key_key.loadToolbarActivator": "key.keyboard.x",
+    "key_key.advancements": "key.keyboard.l",
+    "key_key.quickActions": "key.keyboard.g",
+    "key_key.debug.overlay": "key.keyboard.f3",
+    "key_key.debug.modifier": "key.keyboard.f3",
+    "key_key.hotbar.1": "key.keyboard.1",
+    "key_key.hotbar.2": "key.keyboard.2",
+    "key_key.hotbar.3": "key.keyboard.3",
+    "key_key.hotbar.4": "key.keyboard.4",
+    "key_key.hotbar.5": "key.keyboard.5",
+    "key_key.hotbar.6": "key.keyboard.6",
+    "key_key.hotbar.7": "key.keyboard.7",
+    "key_key.hotbar.8": "key.keyboard.8",
+    "key_key.hotbar.9": "key.keyboard.9",
+    "key_key.debug.reloadChunk": "key.keyboard.a",
+    "key_key.debug.showHitboxes": "key.keyboard.b",
+    "key_key.debug.clearChat": "key.keyboard.d",
+    "key_key.debug.crash": "key.keyboard.c",
+    "key_key.debug.showChunkBorders": "key.keyboard.g",
+    "key_key.debug.showAdvancedTooltips": "key.keyboard.h",
+    "key_key.debug.copyRecreateCommand": "key.keyboard.i",
+    "key_key.debug.spectate": "key.keyboard.n",
+    "key_key.debug.switchGameMode": "key.keyboard.f4",
+    "key_key.debug.debugOptions": "key.keyboard.f6",
+    "key_key.debug.focusPause": "key.keyboard.p",
+    "key_key.debug.dumpDynamicTextures": "key.keyboard.s",
+    "key_key.debug.reloadResourcePacks": "key.keyboard.t",
+    "key_key.debug.profiling": "key.keyboard.l",
+    "key_key.debug.copyLocation": "key.keyboard.c",
+    "key_key.debug.dumpVersion": "key.keyboard.v",
+    "key_key.debug.profilingChart": "key.keyboard.1",
+    "key_key.debug.fpsCharts": "key.keyboard.2",
+    "key_key.debug.networkCharts": "key.keyboard.3",
+    "key_key.debug.lightmapTexture": "key.keyboard.4",
+    "key_key.debug.improvedTransparency": "key.keyboard.x",
+    "key_iris.keybind.reload": "key.keyboard.r",
+    "key_iris.keybind.toggleShaders": "key.keyboard.k",
+    "key_iris.keybind.shaderPackSelection": "key.keyboard.i",
+    "key_iris.keybind.wireframe": "key.keyboard.unknown",
+    "soundCategory_master": "0.0",
+    "soundCategory_music": "1.0",
+    "soundCategory_record": "1.0",
+    "soundCategory_weather": "1.0",
+    "soundCategory_block": "1.0",
+    "soundCategory_hostile": "1.0",
+    "soundCategory_neutral": "1.0",
+    "soundCategory_player": "1.0",
+    "soundCategory_ambient": "1.0",
+    "soundCategory_voice": "1.0",
+    "soundCategory_ui": "1.0",
+    "modelPart_cape": "true",
+    "modelPart_jacket": "true",
+    "modelPart_left_sleeve": "true",
+    "modelPart_right_sleeve": "true",
+    "modelPart_left_pants_leg": "true",
+    "modelPart_right_pants_leg": "true",
+    "modelPart_hat": "true"
+   }
+  },
+  "suite": {
+   "sha256": "8fe79f13e11cc9bcbfb18eabf9faf9504c88f067af2d22a0e9b9d728692d22e8",
+   "sections": [
+    "display",
+    "modes",
+    "capture",
+    "validity",
+    "statistics"
+   ]
+  },
+  "java": {
+   "runtime": "jdk-25.0.4.1+1",
+   "version": "25.0.4.1+1-LTS",
+   "release": "86e5e51658bb2b9cf064b3957d81ac39abdb346b2cac19867c1625dd19d440d9",
+   "heap": {
+    "xms": 6144,
+    "xmx": 6144,
+    "unit": "MiB"
+   },
+   "args": []
+  },
+  "system": {
+   "gpu": "AMD Radeon RX 7800 XT",
+   "hags": true,
+   "resolution": "3840x2160",
+   "windowMode": "exclusive fullscreen",
+   "windowsBuild": 26200
+  },
+  "harness": {
+   "modules": {
+    "optilux/__init__.py": "17e3ccb977899bc7d0e5bf9ce25e4cbec753f5ddc5753a49cf23a482a9ceca7b",
+    "optilux/acceptance.py": "68975e834c33206c956d8d477d879f5a96d08d071d757976d56c2f509749012f",
+    "optilux/launch.py": "c6ebc98cf5e8243bb6f2f318d32b3f27d3b7cbd7b1cd2cb0e8d826fdddf8639f",
+    "optilux/measure.py": "85db894c2df4c4077c1888bec54ca966b33b8627003bb64e9991bc4dc608bf9d",
+    "optilux/modclient.py": "ee8eb776dbf4099782eb26715195ca78140842e1bd9c7c2c5c38f1ce7feaf37e",
+    "optilux/platform.py": "8f516532ed3b012b06a7b8c71b25f6a1f0c2dedb680aaf53ef7749baa52e9b22",
+    "optilux/presentmon.py": "6424faf4d8e41ad699d25d3730b6d6d059fe914b2b3e2c6a0187882281e09269",
+    "optilux/record.py": "1ad48596e3877356421c345475b58b36b5603ea88347b9ca801f7905d834af4b",
+    "optilux/repo.py": "d22eef770a60566986bedbbca6783713dedec5cae344ee5bd1547ee237dfc394",
+    "optilux/sendinput.py": "0fccc5785ce28aa44f9775172470a1e0ae856ae3526bd382882d3d7b74fa9aff",
+    "optilux/session.py": "e53bef8224fc5126cbf7ab6c9112b2620eb2350da7f8d98140a3b43468e7f2ab",
+    "optilux/stats.py": "048e7afa5569b930ded697e2c7aea256292a1cc1694c68996ff7de1df782c478",
+    "optilux/verbs/__init__.py": "6fb856fb4a359a394bd83e135caf220ad6b0b1a224139a9380dfbe4e1da5859d",
+    "optilux/verbs/install.py": "0ca1553b5f75774e9fedd39b16e584ec835e9f92e781985b1e5e48a1ac5c6de4",
+    "optilux/verbs/run.py": "65fccddfabab777ce0a2eea0c2207957d5108731ffd1dd72a9f8b3afc29a7eab",
+    "optilux/winpipe.py": "f716a6c15d8548841ab87277f32e9341f0ca968d6b70e02afd36ef28c4b68106",
+    "optilux/world.py": "eee2a2d6db7c4878b63872bc3b5e4867f52c571716ecbe8543715ccbdc45def3"
+   },
+   "presentMon": {
+    "file": "PresentMon-2.6.0-x64.exe",
+    "sha256": "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af",
+    "arguments": [
+     "--process_id",
+     "<pid>",
+     "--output_file",
+     "<csv>",
+     "--qpc_time_ms",
+     "--v2_metrics",
+     "--session_name",
+     "optilux-<run>",
+     "--stop_existing_session",
+     "--no_console_stats"
+    ]
+   }
+  }
+ },
+ "resourcePacks": "standard",
+ "views": [
+  "forest_noon",
+  "nether_crimson",
+  "end_dragon"
+ ],
+ "rounds": 1,
+ "twinsPerSession": 2,
+ "falseRate": 0.05,
+ "floorPct": 0.5,
+ "twinMonitor": {
+  "window": 20,
+  "maxExceed": 2
+ },
+ "baseline": {
+  "pack": "ComplementaryUnbound_r5.9.3.zip",
+  "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c",
+  "profile": "played",
+  "options": {
+   "ANISOTROPIC_FILTER": "4",
+   "ATM_FOG_MULT": "0.50",
+   "BLOCK_REFLECT_QUALITY": "1",
+   "BORDER_FOG": false,
+   "CAVE_FOG": false,
+   "ENTITY_SHADOW": "-1",
+   "FXAA_DEFINE": "-1",
+   "LIGHTSHAFT_QUALI_DEFINE": "0",
+   "RAIN_STYLE": "2",
+   "RP_MODE": "0",
+   "WATER_REFLECT_QUALITY": "1",
+   "shadowDistance": "96.0",
+   "SHADER_STYLE": "4"
+  }
+ },
+ "sessions": [
+  "cal-quick-95d968784730-1",
+  "cal-quick-95d968784730-2",
+  "cal-quick-95d968784730-3",
+  "cal-quick-95d968784730-4",
+  "cal-quick-95d968784730-5",
+  "cal-quick-95d968784730-6",
+  "cal-quick-95d968784730-7",
+  "cal-quick-95d968784730-8",
+  "cal-quick-95d968784730-9",
+  "cal-quick-95d968784730-10"
+ ],
+ "nulls": [
+  {
+   "session": "cal-quick-95d968784730-1",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 1.0001565699899169,
+    "nether_crimson": 0.9988950276243094,
+    "end_dragon": 1.002047556561373
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-1",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 0.9992307932835119,
+    "nether_crimson": 1.000156712519589,
+    "end_dragon": 0.9998987495570293
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-2",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 1.0002377109684844,
+    "nether_crimson": 0.9995736201390519,
+    "end_dragon": 1.0027936322921087
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-2",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 1.000081345072053,
+    "nether_crimson": 0.9998782036782489,
+    "end_dragon": 0.9994491753458483
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-3",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 0.9989870061655057,
+    "nether_crimson": 0.9985683918268188,
+    "end_dragon": 1.0010335229182121
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-3",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 0.9986312927721007,
+    "nether_crimson": 1.000780437044745,
+    "end_dragon": 0.9986894669865971
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-4",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 1.001084116132024,
+    "nether_crimson": 0.9992007367122479,
+    "end_dragon": 1.0013439326512241
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-4",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 1.0016923655509589,
+    "nether_crimson": 0.9994271827807671,
+    "end_dragon": 1.0000506450918576
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-5",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 0.9999374233435959,
+    "nether_crimson": 0.9992883303535782,
+    "end_dragon": 1.0008436142209256
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-5",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 0.9994181718082343,
+    "nether_crimson": 1.0009201548637998,
+    "end_dragon": 1.0005766099138886
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-6",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 1.0003759539832326,
+    "nether_crimson": 1.002739392463627,
+    "end_dragon": 1.00119219744819
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-6",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 1.000625594314599,
+    "nether_crimson": 0.9995480225988702,
+    "end_dragon": 0.9992468211421737
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-7",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 1.0018619172105094,
+    "nether_crimson": 0.9974576785915713,
+    "end_dragon": 1.004516620147171
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-7",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 1.0014836330856438,
+    "nether_crimson": 0.9967409770134867,
+    "end_dragon": 0.9979037232661385
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-8",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 0.9996118595682876,
+    "nether_crimson": 1.0034820211352604,
+    "end_dragon": 1.0018197842889842
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-8",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 1.0011395226527087,
+    "nether_crimson": 1.0010935032024022,
+    "end_dragon": 0.9991458020918358
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-9",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 1.0011338507702041,
+    "nether_crimson": 1.003060816333629,
+    "end_dragon": 1.0015274723185255
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-9",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 0.9995430560163249,
+    "nether_crimson": 0.9986791337898432,
+    "end_dragon": 1.0011783338612605
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-10",
+   "twin": "twin-1",
+   "ratios": {
+    "forest_noon": 1.0016590184871004,
+    "nether_crimson": 0.9985235622101406,
+    "end_dragon": 1.0026610910473293
+   }
+  },
+  {
+   "session": "cal-quick-95d968784730-10",
+   "twin": "twin-2",
+   "ratios": {
+    "forest_noon": 0.9981557082392952,
+    "nether_crimson": 0.9988714494062088,
+    "end_dragon": 0.9983539094650206
+   }
+  }
+ ],
+ "thresholds": {
+  "nulls": 20,
+  "k": 1,
+  "falseRate": 0.05,
+  "floorPct": 0.5,
+  "geoMean": 0.5,
+  "perView": {
+   "forest_noon": 0.5,
+   "nether_crimson": 0.5,
+   "end_dragon": 0.5
+  }
+ }
+}
