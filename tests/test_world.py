@@ -11,6 +11,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+from conftest import copy_config
 
 from optilux import REPO_ROOT, launch, platform, record, world
 
@@ -56,7 +57,7 @@ WORLD = {
 @pytest.fixture
 def root(tmp_path: Path) -> Path:
     """A root holding the repo's config and a game whose saves/ holds world `w`."""
-    shutil.copytree(REPO_ROOT / "config", tmp_path / "config")
+    copy_config(tmp_path)
     tree(saves(tmp_path) / "w", WORLD)
     (saves(tmp_path) / "w" / "datapacks").mkdir()
     return tmp_path
