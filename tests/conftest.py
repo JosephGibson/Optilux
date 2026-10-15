@@ -1,8 +1,9 @@
 """Shared test helpers: git without leaked GIT_* variables, throwaway repos that prove they are
-not this checkout before anything is written (docs/workflow.md#testing), and the skip of
-Windows-only tests on other systems (docs/plans/m1.md D19)."""
+not this checkout before anything is written (docs/workflow.md#testing), the repo's config for a
+fake root, and the skip of Windows-only tests on other systems (docs/plans/m1.md D19)."""
 
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -66,6 +67,14 @@ def commit_file(root: Path, name: str, content: bytes, message: str) -> str:
     git(root, "add", name)
     git(root, "commit", "-q", "-m", message)
     return git(root, "rev-parse", "HEAD").stdout.strip()
+
+
+def copy_config(root: Path) -> None:
+    """The repo's config/ under `root`, without the committed calibrations: a fake root starts
+    with none, as its identity is not theirs."""
+    shutil.copytree(
+        REPO_ROOT / "config", root / "config", ignore=shutil.ignore_patterns("calibrations")
+    )
 
 
 @pytest.fixture

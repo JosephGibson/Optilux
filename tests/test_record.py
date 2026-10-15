@@ -16,6 +16,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
+from conftest import copy_config
 
 from optilux import (
     REPO_ROOT,
@@ -942,7 +943,7 @@ def check_root(tmp_path: Path) -> tuple[Path, Path]:
     """A root holding the repo's config and package, the snapshot and its live world, the game's
     options.txt, stand-ins for the pinned PresentMon and the JDK's release file; and a spec."""
     root = tmp_path / "root"
-    shutil.copytree(REPO_ROOT / "config", root / "config")
+    copy_config(root)
     shutil.copytree(
         REPO_ROOT / "optilux", root / "optilux", ignore=shutil.ignore_patterns("__pycache__")
     )

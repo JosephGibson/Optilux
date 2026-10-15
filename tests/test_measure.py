@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from conftest import copy_config
 
 from optilux import (
     REPO_ROOT,
@@ -545,7 +546,7 @@ def test_the_power_calls_answer_on_windows() -> None:
 def bench_root(tmp_path: Path) -> tuple[Path, Path]:
     """A root with the config, bench_263's snapshot folder and its live world."""
     root = tmp_path / "root"
-    shutil.copytree(REPO_ROOT / "config", root / "config")
+    copy_config(root)
     (root / record.SNAPSHOTS / "bench_263").mkdir(parents=True)
     saves = root / "saves"
     (saves / "bench_263").mkdir(parents=True)
@@ -1065,7 +1066,7 @@ def fake_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     stand-ins for PresentMon and the JDK; launch and the mod's pipe faked by the protocol fake
     serving the client over a socket pair. Returns (root, spec path, fake, host)."""
     root = tmp_path / "root"
-    shutil.copytree(REPO_ROOT / "config", root / "config")
+    copy_config(root)
     shutil.copytree(
         REPO_ROOT / "optilux", root / "optilux", ignore=shutil.ignore_patterns("__pycache__")
     )
