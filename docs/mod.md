@@ -162,10 +162,10 @@ Each item is recorded in an acceptance run record (run-record.md#record); design
 - A5 readiness: over >= 30 waits on the hello pack (TAA off), the first frame after predicate-ready equals a reference taken after the view's calibrated visual settle plus 2 s (decoded pixels), 30 of 30; only then may the predicate replace the settle as the visual floor (section 7); any miss keeps the settle and reports the rate. It runs in M3, on a deterministic pack.
 - A6 motion: one `camera.path` sequence identical across 2 sessions (hello pack, TAA on, flushed).
 - A7 input: mouse (26.3's one path, plans/m1.md D24) and keys move nothing and open nothing while blocked.
-- A8 overhead: in one session, the same variant with per-pass timers on vs off, judged by the in-session threshold; pass = no effect beyond it. The mod sits in both arms of every verdict, so additive cost cancels. The presence arm (mod present vs no jar, launch-level bracketing) and the known-effect arm (the shadows-off ratio through the mod equals a mod-free one) move to the JVM track's J1, where launch-level bracketing exists (jvm.md#build-order; user, 2026-10-06).
+- A8 overhead: in one session, the same variant with per-pass timers on vs off, judged by the in-session threshold; pass = no effect beyond it. The mod sits in both arms of every verdict, so additive cost cancels. The presence arm (mod present vs no jar, launch-level bracketing) and the known-effect arm (the shadows-off ratio through the mod equals a mod-free one) move to the JVM track's J1, where launch-level bracketing exists (jvm.md#build-order; user, 2026-10-06). M2.P10: passed (m2-a8-2, geo-mean +0.18 %).
 - A9 clocks: PresentMon's CPUStartQPCTime x 1e6 (the previous Present's return) against both frame stamps (section 6), matched by order over one capture: the swap-return stamp differs by under 1 ms at the median and the maximum, under half the shortest frame, so each frame maps to one row; the HEAD stamp's offset is reported beside it (plans/m1.md D26; measurement.md#tools).
 - A10 `selftest` passes at every session start, after `world.wait` (mod-protocol.md#choreography).
-- A11 timers: on GPU-bound captures, the residual GPUBusy minus pass sum (median over the window) moves by less than the view's calibrated threshold between the variants of one session (the sum never equals GPUBusy: Iris's depth copies and non-pack draws lie outside pack passes), and the shadows-off delta from timers matches the GPUBusy delta within the same threshold. Only then, and per pass after the submission control, may timers carry cost rows below the CPU floor (measurement.md#verdicts-and-cost-rows); otherwise they are dropped.
+- A11 timers: on GPU-bound captures, the residual GPUBusy minus pass sum (median over the window) moves by less than the view's calibrated threshold between the variants of one session (the sum never equals GPUBusy: Iris's depth copies and non-pack draws lie outside pack passes), and the shadows-off delta from timers matches the GPUBusy delta within the same threshold. Only then, and per pass after the submission control, may timers carry cost rows below the CPU floor (measurement.md#verdicts-and-cost-rows); otherwise they are dropped. M2.P10: failed at underwater (m2-a11-1), dropped (design.md E3).
 - A12 TAA on: two flush + capture cycles in one session are identical, and so are two sessions. If the flush fails, design.md E4's fallback replaces A6 and A12.
 
 ## 13. Lessons
@@ -173,7 +173,6 @@ Mod-specific lessons from ALC (reload semantics, `/tp` parsing, pipe bugs, estim
 
 ## 14. Open questions
 - Per-frame pose vs Minecraft's partial-tick camera interpolation: set the pose after interpolation each frame.
-- Per-pass timers kept or dropped: design.md E3, by A8 and A11 (plans/m2.md D53).
 
 Sources:
 - [S1] https://fabricmc.net/2026/03/14/261.html
