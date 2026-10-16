@@ -1,5 +1,5 @@
 # Optilux design
-Status: what Optilux is: goals, architecture, interfaces, milestones and decisions. Built through M1 (the harness's install, launch and run, the helper mod's M1 commands, the release path); the measuring and visual loops and the shader are spec, M2 on.
+Status: what Optilux is: goals, architecture, interfaces, milestones and decisions. Built through M2 (install, launch, run, the world verbs, calibrate, compare, report, the helper mod's M1 and M2 commands, optilux-bench, the release path); the visual loop and the shader are spec, M3 on.
 
 ## Contents
 1 Goals · 2 Non-goals · 3 Core rule · 4 Architecture · 5 Interfaces · 6 Milestones · 7 Decisions taken · 8 Open decisions
@@ -49,7 +49,7 @@ user / Claude Code --skills--> optilux CLI (Python)
   - runtime/: installed games, ignored.
   - snapshots/: worlds, ignored.
   - reference/: Complementary source for study, ignored, never redistributed.
-- Experts (draft v0 roles; their skills and modules are not built yet) are bundles, not programs:
+- Experts (draft v0 roles; of their skills and modules only optilux-bench is built, M2) are bundles, not programs:
   - Shader Expert = main session + optilux-bench and optilux-research skills + read-only researcher agent + `optilux.shader` + Viewfinder's MCP in dev sessions (offline.md).
   - JVM Expert = `optilux.jvm` reporter (rank, graph, recommend) + JVM scenarios (post-1.0).
 
