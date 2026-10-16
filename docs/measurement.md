@@ -16,7 +16,7 @@ config/suite.json is the source of every value below.
 - Coverage views (M3): a frozen area with entities and special renderers, out of sight of the perf views.
 - Reference pack: Complementary Unbound r5.9.3, unmodified. Profile `played`: the user's settings; profile `iso`: every dropped feature switched off (shader.md#dropped-features), kept features matched to Optilux as they land; start point: the ALC ablation costs in config/profiles/complementary-unbound-played.json.
 - Resource packs: M2 calibrates on Faithful 64x alone. From M3 every session uses the deterministic set (Faithful 64x + optilux-static-textures, animated textures held on frame 1) and M3 recalibrates both modes on it. The run spec names the set; `run` refuses a set the calibration does not cover.
-- Display: suite.json display, whose optionsTxt block holds every key the harness writes: the spike's, read back (M1 set exclusiveFullscreen true), and M1's inactivityFpsLimit (platform.md#install-and-launch).
+- Display: suite.json display, whose optionsTxt block holds every key the harness writes: the spike's, read back, and M1's inactivityFpsLimit (platform.md#install-and-launch).
 
 ## Session
 1. Restore the world snapshot and hash-check it: `run` makes the live world equal to snapshots/<id>/ in place (files that differ copied back, files it lacks deleted, the tree re-hashed equal; plans/m2.md D44), as `world restore <id>` does; `world snapshot <id>` takes one (copy, manifest, tree hash, the player's uuid). One launch per run name (a split session's parts: run-record.md#split-sessions); run names are single-use. `run` first finishes an orphan (plans/m2.md D41, run-record.md#record): its game and PresentMon ended once their pids match the journal's, its files deleted, its record written aborted.
@@ -36,7 +36,7 @@ config/suite.json is the source of every value below.
 - Confirmation: an accept within 2x threshold is re-measured in a second session before it ships.
 - Feature cost row: per-view ms delta, feature off vs on, with its threshold. No accept or reject; rows feed the budget (shader.md#method).
 - Timer cost rows, for frames below the CPU floor:
-  - per-pass GPU timer medians, only after mod acceptance A11 (mod.md#12-acceptance), and only with no dropped timer frames in the window;
+  - per-pass GPU timer medians, only after mod acceptance A11 (mod.md#12-acceptance), and only with no dropped timer frames in the window; M2's helper timers failed it (m2-a11-1, design.md E3): none yet;
   - thresholds from timer twins: null sessions on the mode's schedule with the chosen timer source on, in the tier whose sessions use the rows (order: calibration, A11, timer twins; design.md E3);
   - the record labels each row as a timer row;
   - submission control: a GL timer also counts GPU idle inside a pass while the CPU is still submitting, so CPU-limited frames can inflate it. Before timer rows are used, the same variant and view run with and without a fixed CPU load on the game's cores. A pass whose timer moves beyond its timer threshold is submission-sensitive, and its rows stay indicative. Fullscreen passes (composite, deferred, final) are expected to pass; geometry passes (gbuffers, shadow) are the risk.
@@ -106,4 +106,4 @@ The identity contract (every input that can move a measurement), the record's fi
   - AMD Software's own PresentMon runs beside every game (roadmap.md#findings-assigned F2): recorded, never waited on.
 - FLIP (flip-evaluator), LDR, sRGB inputs, ppd from suite.json. SSIM and PSNR via scikit-image.
 - RenderDoc 1.46 (debug tier): injected by gfx-debuggers (`-Ddebugger=renderdoc`, forward-slash path); what replay may decide: offline.md#decision-powers.
-- Python deps: locked in uv.lock (workflow.md#code-conventions). At M1: minecraft-launcher-lib and psutil. ALC's set is the candidate list for the analysis verbs: numpy, pillow, scikit-image, scipy, flip-evaluator, nbtlib.
+- Python deps: locked in uv.lock (workflow.md#code-conventions). ALC's set is the candidate list for the analysis verbs: numpy, pillow, scikit-image, scipy, flip-evaluator, nbtlib.
