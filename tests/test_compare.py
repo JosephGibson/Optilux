@@ -264,6 +264,79 @@ def test_report_writes_one_static_page_from_the_record(root, monkeypatch, capsys
     assert "prefers-color-scheme: dark" in page
 
 
+def test_report_prints_the_records_summary_beside_the_page(root, monkeypatch, capsys) -> None:
+    monkeypatch.setattr(report_verb, "REPO_ROOT", root)
+    cal = write_calibration(root)
+    found = captures(6.3)
+    found[0].update(valid=False, flags=["presentMode", "cut"])  # warm-up captures: no verdict
+    found[1].update(valid=False, flags=["halves"])
+    write_record(root, "m2-shadows-1", cal, found)
+    assert cli.main(["report", "m2-shadows-1"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines == [
+        "optilux report m2-shadows-1: measurement, mode quick, 2026-10-13T01:00:00+00:00 to "
+        "2026-10-13T01:03:00+00:00",
+        "  status ok",
+        f"  calibration {cal['id'][:24]}...",
+        "  verdicts as recorded: session ok, twin +0.0000 %, inside",
+        "    shadows-off: accept, geo-mean -10.0000 %; views beyond: forest_noon, nether_crimson, "
+        "end_dragon",
+        "  captures: 16 of 18 valid",
+        "    forest_noon: 1 of 6 invalid (cut, presentMode)",
+        "    nether_crimson: 1 of 6 invalid (halves)",
+        "  page: results/raw/m2-shadows-1/report.html",
+    ]
+    assert cli.main(["report", "m2-shadows-1", "--json"]) == 0
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["page"] == "results/raw/m2-shadows-1/report.html"
+    assert shown["summary"] == lines[:-1]
+
+
+def test_report_summarizes_an_acceptance_record_and_a_null_calibration(root) -> None:
+    items = [{"item": "A8", "pass": None, "evidence": {"pending": "re-measure end_dragon"}}]
+    write_record(root, "m2-a8-1", None, captures(7.0), kind="acceptance", acceptance=items)
+    _, lines = report_verb.report(root, "m2-a8-1")
+    assert "  calibration null: no verdicts" in lines
+    assert "  A8: waits: re-measure end_dragon" in lines
+    assert lines[-1] == "  captures: 18 of 18 valid"
+    write_record(root, "m2-failed-1", None, [], status="failed", reason="quit 1", mode=None)
+    _, lines = report_verb.report(root, "m2-failed-1")
+    assert lines[1:] == ["  status failed: quit 1"]
+
+
+def test_report_summarizes_a_split_session_an_unjudged_candidate_and_a_bare_item() -> None:
+    """A session record's parts; a twin not measured and one beyond; a candidate unjudged; an
+    item whose evidence names no why (M1's A2) shown without an empty reason."""
+    twin = {"inside": None, "geoMeanDelta": None}
+    unjudged = {"variant": "shadows-off", "verdict": "inconclusive", "geoMeanDelta": None}
+    found = {
+        "name": "m2-full-1",
+        "kind": "acceptance",
+        "mode": "full",
+        "status": "failed",
+        "reason": "items failed: A2",
+        "parts": ["m2-full-1-p1", "m2-full-1-p2", "m2-full-1-p3"],
+        "calibration": "full-" + "a" * 64,
+        "verdicts": {
+            "session": "inconclusive",
+            "twin": twin,
+            "candidates": [{**unjudged, "views": [{"view": "cave", "problem": "invalid"}]}],
+        },
+        "acceptance": [{"item": "A2", "pass": False, "evidence": {"views": []}}],
+    }
+    lines = report_verb.summary(found, [])
+    assert lines[1:] == [
+        "  status failed: items failed: A2",
+        "  split session: 3 parts, m2-full-1-p1 to m2-full-1-p3",
+        "  calibration full-aaaaaaaaaaaaaaaaaaa...",
+        "  verdicts as recorded: session inconclusive, twin not measured",
+        "    shadows-off: inconclusive, geo-mean unjudged; views beyond: none",
+        "  A2: FAIL",
+    ]
+    found["verdicts"]["twin"] = {"inside": False, "geoMeanDelta": 0.61}
+    assert "twin +0.6100 %, NOT inside" in report_verb.summary(found, [])[4]
+
+
 def test_report_shows_an_acceptance_records_items_and_a_null_calibration(root, monkeypatch):
     monkeypatch.setattr(report_verb, "REPO_ROOT", root)
     items = [
