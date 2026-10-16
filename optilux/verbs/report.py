@@ -4,7 +4,10 @@ record alone, results/raw/<run>/report.html, with no external asset; the record 
 
 The page: the run's status and reason, its verdicts as `run` wrote them (each candidate's, the
 twin's check, the twin monitor), A8's and A11's entries, the variants, every capture with its
-summaries and validity flags, the identity's keys and the session's time split.
+summaries and validity flags, the identity's keys and the session's time split. Printed beside
+it, the record's summary in a few lines (the status, the parts, the calibration, the verdicts as
+recorded, the items, the captures valid and each view with an invalid one), so a reader, or
+optilux-bench, repeats a command's lines instead of reading the record.
 """
 
 import argparse
@@ -198,8 +201,57 @@ def page(found: dict, captures: list[dict]) -> str:
     )
 
 
-def report(root: Path, name: str) -> Path:
-    """results/raw/<name>/report.html written from the record; its path."""
+def summary(found: dict, captures: list[dict]) -> list[str]:
+    """The record in a few lines, from what the page shows: the status, the parts, the
+    calibration, the verdicts as recorded (`compare` re-judges them), each acceptance item's entry
+    (its why, when its evidence holds one), the captures valid and, per view with an invalid
+    capture, how many and their flags."""
+    out = [
+        f"{PREFIX} {found['name']}: {found.get('kind')}, mode {found.get('mode') or 'none'}, "
+        f"{found.get('startedAt')} to {found.get('endedAt')}",
+        f"  status {found.get('status')}" + (f": {found['reason']}" if found.get("reason") else ""),
+    ]
+    parts = found.get("parts") or []
+    if parts:
+        out.append(f"  split session: {len(parts)} parts, {parts[0]} to {parts[-1]}")
+    if found.get("mode") is not None:
+        cid = found.get("calibration")
+        out.append(f"  calibration {cid[:24]}..." if cid else "  calibration null: no verdicts")
+    judged = found.get("verdicts")
+    if judged:
+        twin = judged["twin"]
+        inside = {True: "inside", False: "NOT inside", None: "not measured"}[twin["inside"]]
+        delta = "" if twin.get("geoMeanDelta") is None else f"{twin['geoMeanDelta']:+.4f} %, "
+        out.append(f"  verdicts as recorded: session {judged['session']}, twin {delta}{inside}")
+        for c in judged["candidates"]:
+            geo = "unjudged" if c["geoMeanDelta"] is None else f"{c['geoMeanDelta']:+.4f} %"
+            beyond = ", ".join(r["view"] for r in c["views"] if r.get("beyond")) or "none"
+            out.append(
+                f"    {c['variant']}: {c['verdict']}, geo-mean {geo}; views beyond: {beyond}"
+            )
+    shown_pass = {True: "pass", False: "FAIL", None: "waits"}
+    for entry in found.get("acceptance") or []:
+        ev = entry.get("evidence") or {}
+        why = ev.get("why") or ev.get("pending") or ev.get("notRun")
+        word = shown_pass.get(entry["pass"], "?")
+        out.append(f"  {entry['item']}: {word}" + (f": {why}" if why else ""))
+    if captures:
+        valid = sum(1 for c in captures if c.get("valid"))
+        out.append(f"  captures: {valid} of {len(captures)} valid")
+        views: dict[str, list[dict]] = {}
+        for c in captures:
+            views.setdefault(str(c.get("view")), []).append(c)
+        for view, group in views.items():
+            bad = [c for c in group if not c.get("valid")]
+            if bad:
+                flags = sorted({f for c in bad for f in c.get("flags") or []})
+                shown_flags = f" ({', '.join(flags)})" if flags else ""
+                out.append(f"    {view}: {len(bad)} of {len(group)} invalid{shown_flags}")
+    return out
+
+
+def report(root: Path, name: str) -> tuple[Path, list[str]]:
+    """results/raw/<name>/report.html written from the record; its path and the summary."""
     found = record.read_record(root, name)
     split = found.get("split")
     if split:
@@ -207,12 +259,13 @@ def report(root: Path, name: str) -> Path:
             f"{name} is part {split['part']} of session {split['session']}; fix: `optilux report "
             f"{split['session']}` (its session record joins the parts)"
         )
-    text = page(found, record.session_captures(root, found))
+    captures = record.session_captures(root, found)
+    text = page(found, captures)
     folder = root / record.RAW / name
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / PAGE
     path.write_bytes(text.encode("utf-8"))
-    return path
+    return path, summary(found, captures)
 
 
 def configure(parser: argparse.ArgumentParser) -> None:
@@ -221,7 +274,7 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 def run(args: argparse.Namespace) -> int:
     try:
-        path = report(REPO_ROOT, args.name)
+        path, lines = report(REPO_ROOT, args.name)
     except (ReportError, record.RecordError, OSError) as error:
         if args.json:
             print(json.dumps({"ok": False, "problem": str(error)}))
@@ -229,7 +282,10 @@ def run(args: argparse.Namespace) -> int:
             print(f"{PREFIX}: {error}", file=sys.stderr)
         return 1
     where = shown(path, REPO_ROOT)
-    print(json.dumps({"ok": True, "page": where}) if args.json else f"{PREFIX}: {where}")
+    if args.json:
+        print(json.dumps({"ok": True, "page": where, "summary": lines}))
+    else:
+        print("\n".join([*lines, f"  page: {where}"]))
     return 0
 
 
