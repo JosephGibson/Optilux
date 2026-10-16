@@ -1,72 +1,85 @@
 # Handoff
-Status: the latest stop: M2.P09 done: quick and full mode calibrated on bench_263, every threshold the 0.5 % floor, shadows off accepted beyond it in both modes beside a twin inside it, and `compare` refusing m1-acceptance-10 live on identity keys. Next: M2.P10.
+Status: the latest stop: M2.P10 done: A8 passed (m2-a8-2), A11 failed at underwater (m2-a11-1), so the helper's per-pass timers are dropped from use (D53), the jar kept as calibrated; E3 reopens in M4 with Viewfinder. Next: M2.P11.
 
 ## Contents
-Outcome · The calibrations · The known positive · What changed · Checks · Review · Open questions · Left alone · Weak points · Commits and time · Next
+Outcome · A8 · A11 · What changed · Checks · Review · Open questions · Left alone · Weak points · Commits and time · Next
 
 ## Outcome
-Last phase: M2.P09
-- Exit holds: config/calibrations/ holds quick-95d96878... and full-95d96878...; m2-shadows-quick-1's twin +0.0258 % and m2-shadows-full-1's +0.0048 % lie inside the 0.5 % geo-mean threshold, shadows off reads -10.6851 % and -12.3303 %, accept (`compare` re-judging both: the record's own verdicts, the same); `compare m1-acceptance-10 --calibration quick-...` refused, naming platform.sha256, mods[0], world.snapshot, views.file, settings.iris.shaderPack, suite.sha256, java.release and harness.
-- No section 7 stop: no geo-mean threshold above 2 %, no twin beyond, no launch invalid on focus, D42 never refused.
-- The user's go (10:47 ADT, 2026-10-15), after the stop at step 2 (de372df); a pause asked by the user (13:24-13:42 ADT), taken while part 2 of cal-full-...-7 waited on D42, no game running.
+Last phase: M2.P10
+- Exit holds: m2-a8-1, m2-a8-2 and m2-a11-1 are acceptance records holding A8 and A11 with their evidence, judged by full-95d96878...; E3's outcome is in design.md#8-open-decisions.
+- `run --check` before the first session: m2-a8-1's and m2-a11-1's identities hash to 95d9687847308453839250cc292ce01bde79b39bc4f4103eac593f5155a5463e, the full calibration's, 0 keys differing; no measured module changed (D36).
+- No section 7 stop: 154 timer captures, 0 frames missing, 0 dropped (late, full, overflow, lost), every pass list with its stages (the shadow passes and shadowcomp but in shadows off, the gbuffers phases, deferred, composite, final); no launch invalid on focus; D42 never refused.
+- A choice no plan names, taken here: m2-a8-1's A8 waits on forest_noon unjudged, not on a view beyond, which `remeasures` does not cover (check_remeasures refuses it); a fresh first session, m2-a8-2, was run, its outcome final, m2-a8-1 kept as evidence. So 3 sessions, not 2.
 
-## The calibrations
-Identity 95d9687847308453839250cc292ce01bde79b39bc4f4103eac593f5155a5463e (`run --check` before the first session and after the last commit's test fix, equal); snapshot bench_263 65e7ae73... (116 files); heap 6144 MiB, capture.reloadCap 20; 2 twins a session, 10 sessions a mode; driver 32.0.31041.3013 recorded.
+## A8
+The baseline with timers off against itself with them on, beside the twin (timers off); thresholds all 0.5 % (the floor).
 
-| Mode | Id | Sessions | Thresholds (k 1 of 20) | Largest null |delta| |
+| Run | Twin | Geo-mean | Per view | A8 |
 |---|---|---|---|---|
-| quick | quick-95d9687847308453839250cc292ce01bde79b39bc4f4103eac593f5155a5463e | cal-quick-95d968784730-1 to -10, 1 launch each | geo-mean 0.5, forest_noon, nether_crimson, end_dragon 0.5 (the floor) | geo-mean 0.19; views 0.19, 0.35, 0.45 |
-| full | full-95d9687847308453839250cc292ce01bde79b39bc4f4103eac593f5155a5463e | cal-full-95d968784730-1 to -4, -6 to -11, 11 launches each | geo-mean 0.5, every view 0.5 (the floor) | geo-mean 0.09; views 0.16 (ocean_sunset) to 0.42 (nether_crimson) |
+| m2-a8-1 | unjudged | unjudged | forest_noon unjudged (all 10 captures Composed: Flip); the other ten +0.03 (nether_crimson) to +0.46 % (underwater) | waits |
+| m2-a8-2 | -0.0018 %, inside | +0.1821 % | forest_noon +0.26, ocean_sunset +0.18, cave +0.05, night +0.14, underwater +0.27, entities +0.29, rain +0.33, nether_crimson +0.18, nether_soul +0.11, end_dragon +0.22, end_city -0.04; none beyond | pass |
 
-- cal-full-...-5 does not count: its nether_soul part (-5-p9, 12:54-12:56 ADT) presented every capture as Composed: Flip (flag presentMode) while the user was at the machine through NoMachine (nxplayer.bin at 2.4 % of the 3D engine in D42's wait after it); calibrate stopped, and its rerun passed it over and ran -6 to -11. Its 12 records are committed with the rest (every launch keeps its record).
+- The timers' own cost: 20 of the 21 judged views read positive, about +0.2 % (up to +0.03 ms), inside the floor: a steady cost, not noise, too small for A8's rule.
+- m2-a8-1-p1 (11:58 ADT): every row Composed: Flip. Input at the machine from before the run until about 12:10 (D42 waited 237 s before p1, 612 s before p2); NoMachine's player and tray monitor (nxplayer.bin, nxrunner.bin) were running and pid 2228 read 0.27-0.79 % of the 3D engine in both waits; all three gone by 12:30; nxservice stopped throughout (no one could connect in). D42 passed p1 all the same: it reads neither an overlay nor the composition.
 
-## The known positive
-SHADOW_QUALITY -1 over the baseline (Unbound r5.9.3, played profile, D35) beside the twin (P18):
+## A11
+Every variant timed: the baseline, its twin, shadows off (SHADOW_QUALITY -1). Per view the threshold in ms (0.5 % of the baseline's median GPUBusy); the residual's move against the baseline's; shadows off's delta from the timers against GPUBusy's, bracketed, in ms.
 
-| Run | Twin geo-mean | Shadows off geo-mean | Per view |
+| View | Limit | Residual: shadows off, twin | Shadows off: timers, GPUBusy, apart |
 |---|---|---|---|
-| m2-shadows-quick-1 (1 launch) | +0.0258 % | -10.6851 %, accept | forest_noon -16.73, nether_crimson -0.14 (inside), end_dragon -14.32 |
-| m2-shadows-full-1 (11 launches) | +0.0048 % | -12.3303 %, accept, no confirm | underwater -25.22 to entities -10.37 on the overworld and End views; nether_crimson -0.55 (beyond), nether_soul -0.36 (inside) |
+| forest_noon | 0.0393 | +0.0055, -0.0005 | -1.2959, -1.2916, -0.0044 |
+| ocean_sunset | 0.0355 | -0.0044, +0.0019 | -0.9108, -0.9144, +0.0036 |
+| cave | 0.0260 | +0.0132, -0.0011 | -0.6319, -0.6182, -0.0137 |
+| night | 0.0266 | +0.0145, -0.0025 | -0.6185, -0.6058, -0.0127 |
+| underwater | 0.0359 | -0.0484, +0.0007 | -1.7546, -1.8055, +0.0509 |
+| entities | 0.0261 | -0.0135, +0.0009 | -0.5514, -0.5635, +0.0121 |
+| rain | 0.0363 | +0.0034, +0.0030 | -1.0912, -1.0914, +0.0002 |
+| nether_crimson | 0.0285 | +0.0004, 0.0000 | -0.0345, -0.0337, -0.0008 |
+| nether_soul | 0.0313 | -0.0003, +0.0006 | -0.0068, -0.0066, -0.0002 |
+| end_dragon | 0.0390 | +0.0028, +0.0010 | -1.1225, -1.1167, -0.0058 |
+| end_city | 0.0391 | +0.0095, -0.0015 | -1.1448, -1.1325, -0.0123 |
 
-- Reports: results/raw/m2-shadows-quick-1/report.html and results/raw/m2-shadows-full-1/report.html (ignored). The twin monitor: 1 twin under each calibration, none beyond.
+- Fail at underwater only, systematic: the baseline's residual 0.528-0.531 ms in all five measured captures, shadows off's 0.4812 and 0.4813 in both rounds; shadows off removes 0.048 ms of GPU work no timed group holds.
+- The session: twin -0.0246 % (inside), shadows off -12.3450 % accept with every variant timed (m2-shadows-full-1: -12.3303 %); the known positive shows at ten views (all but nether_soul).
+- Re-derived here with compare's steps (record.session_captures, stats.judge_items): the same entry as the record's.
 
 ## What changed
-- 3647806: the tests' fake roots copy config/ without config/calibrations/ (conftest.copy_config): test_calibrate_announces_its_count_then_resumes_after_a_stop failed once the real calibrations existed (`assert not (root / record.CALIBRATIONS).exists()`), and passes with the fixture's copy.
-- b3af943: both calibrations and their 142 session records.
-- 7ad28e1: the shadows-off runs (13 records); measurement.md#calibration's results and its Status line, cuts of text that suite.json and plans/m2.md hold (step 4's D47 numbers, step 5's `/return` reason, step 7's budget citations, the 4.2 h estimate); CHANGELOG.md's calibrations.
-- Choices no plan or prompt names, taken here: m2-shadows-quick-1 ran right after the quick calibration, before the full one (a quick miss would have stopped before 3.7 h of launches); a scratch process held the displays on (SetThreadExecutionState's display request, no setting changed) from 10:48 to 15:41 so the gaps between commands never met the 600 s timeout; the stopped calibrate was resumed twice (after -5, after the user's pause).
+- 0083015: the 36 records (three sessions, 11 parts each); design.md#8-open-decisions E3's outcome and E5; mod.md#12-acceptance A8 and A11 as found, section 14's answered timers line cut; measurement.md's timer rows "none yet" (cut: pyproject.toml's two deps, suite.json's exclusiveFullscreen history); CHANGELOG.md's timers verdict.
+- No code changed. Reports: results/raw/m2-a8-1, m2-a8-2, m2-a11-1/report.html (ignored).
+- A scratch process held the displays on from 11:54:53 to 13:12:44 (the same request `run` holds, no setting changed), over the gaps between the three commands.
 
 ## Checks
-- Start (02:55 ADT): branch m2 clean at 11ab7ed; 790 passed; verify docs 0 violations; CI green on de372df (run 38689596734).
-- After the fix: 790 passed, ruff, ruff format and pyright clean; verify docs 32 files, 0 violations (measurement.md 24,566 of 24,576 bytes); verify records 184 records, 0 violations (three acceptance records over 200 KB, reported); CI green on 3647806 (run 38788285532) and b3af943 (run 38789083297).
-- The displays stayed on past the 600 s timeout: cal-quick-...-10 launched 1,583 s after the last input, m2-shadows-full-1-p1 1,036 s, every window with its rows; the scratch hold ran beside the harness's own request throughout, so this shows the two together, not `run`'s alone.
+- Start (11:46 ADT): branch m2 clean at 16be571, pushed; 790 passed; verify docs 0 violations.
+- Before the commit: 790 passed (the 10 A8 and A11 verdict tests of tests/test_stats.py among them); ruff, ruff format and pyright clean; verify docs 32 files, 0 violations (measurement.md 21 bytes left, mod.md 52); verify records 220 records, 0 violations (the three acceptance records over 200 KB, reported).
+- CI green on 0083015 (run 38930536945).
+- `compare m2-a8-2`: A8 pass, twin -0.0018 %; `compare m2-a8-1`: A8 waits; `compare m2-a11-1` refused (Open questions).
 
 ## Review
-The reviewer agent on both calibration files and both runs' verdicts (correctness against measurement.md#calibration): 0 high, 2 medium, 1 low; each read at its source.
-- Clean, by its recomputation: k 1 of 20 in both files, the stored thresholds from the stored nulls, the nulls from exactly the listed sessions (2 twins, every view; -5 absent), eight ratios from the captures, every per-view delta, `beyond`, ms value and both verdicts; the identity's stats.py hash equal in all 155 records.
-- Reported (1), medium, confirmed: in quick mode the first Ci slot reads slow against the last. Each view's first measured baseline follows a dimension change (settleS 4.0, the rest 1.5) and reads 0.13-0.16 % below the second (8-9 of 10 sessions per view), so twin-1 (slot 1) reads +0.198 % at end_dragon in 10 of 10 sessions (twin-2 -0.055 %), +0.085 % on the geo-mean. A quick candidate always sits in slot 1, the twin and the monitor in the last, which never see it. Inside the 0.5 % floor today (the largest slot-1 geo-mean null 0.19 %); full mode, one view a launch, shows no such slot difference (at most 0.05 %). Not fixed: the schedule is a measured module, frozen (plans/m2.md section 4).
-- Reported (2), medium, cause unknown: the baseline's GPUBusy level fell about 1.7 % between cal-full-...-5-p8 (12:52 ADT) and -6-p1 (13:02): forest_noon 7.99 ms in every quick session, m2-shadows-quick-1 and full -1 to -5, 7.85-7.86 ms in -6 to -11 and m2-shadows-full-1; end_dragon and nether_soul alike. `recorded` and D42's GPU readings (at most 0.49 %) do not tell the two apart; AMD's own PresentMon ran in both; the event logs show nothing; nxservice (NoMachine) is installed, stopped now. The quick calibration and its known positive lie wholly in the slower level, the full calibration across both (nulls -0.047 % on the geo-mean in -1 to -4, -0.010 % in -6 to -11, a like spread).
-- (3), low, stale: placeholders in measurement.md, read before the full run's numbers were written; none left.
+The reviewer agent on both specs, before any launch (correctness against plans/m2.md M2.P10): specs clean; 3 low findings, each read at its source, none fixable here (stats.py and record.py are measured modules, D36):
+- (1) a8_verdict re-judges the geo-mean in a second session, before reading `first`; stricter than one reading of the plan, never looser; untested branch. Reported.
+- (2) check_remeasures does not refuse a second re-measure of one first session: nothing stops redrawing until a pass. Reported; here no re-measure ran.
+- (3) A11's twin runs timers on, judged against timers-off nulls, and a session whose item failed leaves the twin monitor (judged_twin reads ok records only): m2-a11-1's twin is not counted. Reported; the monitor reads 0 of 2 (m2-shadows-full-1, m2-a8-2).
 
 ## Open questions
-- The level drop (Review 2): what ran on the machine before about 12:55 ADT and not after (the user's NoMachine session, a browser, another load)? D42 reads only the 3D engine. The twin monitor over the next quick runs says whether quick's thresholds hold at the new level.
-- The quick slot bias (Review 1): for M3's recalibration, e.g. one discarded baseline after a dimension change, or the twin's slot rotated so the monitor sees slot 1.
-- The reload leak (researched with the user, 2026-10-15): the driver went from 32.0.32015.2008 (Adrenalin 26.9.2, 2026-09-29; M1's 46 MiB of private bytes a reload) to 32.0.31041.3013 (26.9.1, 2026-09-03; 616 MiB a reload, GPU memory about 573 MiB) at 2026-10-10 00:17 ADT through an AMD installer, not Windows Update (driver store u0203731.inf; AMDRyzenMasterDriverV32 installed the same minute). The version mapping is from search snippets of AMD's notes, backed by three driver sites; M1's run also differed in world and helper jar. Test, the user's call, best before M3's recalibration: 26.9.2 or newer, then one budget run of m2-diag-alone-1's spec; a flat GPU memory would let the cap rise (fewer launches a full session, more candidates).
-- Carried from M2.P08's handoff (git d160287, 11ab7ed): D43's closed "no warm-up pass" and section 7's 2-view text against D47; a pack near 1 ms a frame meets PresentMon's row loss; the queue sign; nxplayer.bin; orphans of a join or of A9; the baseline's profile unenforced; stepped thunder's debris; the views file's end_city `why`; world.py in `harness`; unmatched pops; the residual (M2.P10); the display's rate and count; machine state; window 1's start frame.
+- Underwater's untimed work: which GPU work shadows off removes outside Iris's GLDebug groups (a shadow clear, copy or mipmap outside them?); Viewfinder hooks the same groups (P19), so it is M4's first E3 question.
+- A11 has no guard for 11 views against one threshold each, which A8's second session has; here the failure is systematic, but M4's A11 may want one.
+- `compare` refuses an A8 or A11 record whose item failed: run.py records a failed item as a problem, status failed, and compare judges ok records only. compare.py is outside the harness hash, so a fix needs no recalibration; the user's call.
+- m2-a8-1-p1's composition: NoMachine's player, pid 2228 or the input; D42 cannot see it. Ask for no NoMachine window during runs (memory: remote viewer).
+- forest_noon's baseline reads 7.85 ms today, the lower GPU level of M2.P09's Review 2; quick's thresholds rest on the higher one.
+- Timer unmatched pops: about 2,200 a timers-on capture since its timers.start (underwater), counted as mod-protocol.md#commands says; cause unread.
+- Carried from M2.P09: the level drop's cause, the quick slot bias, the reload leak and the driver test (git 16be571's handoff), and M2.P08's list.
 
 ## Left alone
-- measurement.md: 10 bytes left; the next addition there needs a cut first.
-- results/raw/ of every calibration session and both runs (ignored).
+- The timers in the jar (D53: kept as calibrated, unused); measurement.md (21 bytes) and mod.md (52) need a cut before they grow.
 
 ## Weak points
-- The quick calibration rests on one GPU level that ended mid-run (Review 2); the full calibration's 20 nulls span both.
-- The slot bias (Review 1) is inside the floor by 0.31 %; a quick accept near the threshold reads it against itself.
-- Twins within a launch share its state: the 20 nulls are not independent (measurement.md#calibration, a target, not a bound).
+- A11 rests on one session; its failure is one view of eleven, reproducible within it, not across sessions.
+- A8 judged on one complete session (m2-a8-2); m2-a8-1's ten views agree with it.
 
 ## Commits and time
-- de372df (the stop), 3647806, b3af943, 7ad28e1, and this one.
-- M2.P09: about 1.1 h active against 1.5 h (02:55-02:58 ADT; then from the go at 10:47 to about 16:05, with a 7.8 h wait for the go and the user's 0.3 h pause outside); machine about 4.6 h: 143 launches against 132 (quick 10 in 27.6 min; m2-shadows-quick-1 1 in 2.8 min; full 121, the passed-over session's 11 included, in 223.8 min; m2-shadows-full-1 11 in 20.0 min).
-- Tripwire: M0-M3 summed 72.3 h, the trip at 144.6 h; actuals about 42.0 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 2.4, the re-plan 0.35, P07 2.1 active, P08 3.0, P09 1.1).
+- 0083015 and this one.
+- M2.P10: about 1.6 h against 1 h (11:46-13:22 ADT), the machine inside it about 1.25 h against 1.2 h: 33 launches (m2-a8-1 34.9 min, 15.4 of it D42's waits; m2-a8-2 20.0; m2-a11-1 20.2).
+- Tripwire: M0-M3 summed 72.3 h, the trip at 144.6 h; actuals about 43.6 h (M0 3.3, M1 20.3, M2.P00 about 3.5, P01 0.6, P02 0.8, P03 1.8, P04 1.2, P05 1.5, P06 2.4, the re-plan 0.35, P07 2.1 active, P08 3.0, P09 1.1, P10 1.6).
 
 ## Next
-M2.P10's prompt from docs/prompts/m2.md (A8 and A11): 2-3 full-mode sessions of 11 launches against full-95d96878..., about 1.2 h of machine, the machine left alone; `run --check`'s identity equal to the full calibration's first.
+M2.P11's prompt from docs/prompts/m2.md (optilux-bench and the close): the skill by workflow.md#skills, three evals, CHANGELOG's 0.3.0 entry completed, the findings marked landed; 1-2 launches.
