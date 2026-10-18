@@ -2,7 +2,7 @@
 Status: milestones M0-M6, the current one in detail, the findings assigned and the decisions.
 
 ## Contents
-Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M2 phases · M1 to M6 · Findings assigned · Decisions · Estimates
+Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M1 to M6 · Findings assigned · Decisions · Estimates
 
 ## Rules
 - Commits and versions (D33): Conventional Commits, each one logical, test-green change (`optilux test` and `optilux verify docs` pass before it), a phase one or more of them (workflow.md#git); the version in VERSION, a milestone a minor release, one PR and one release per milestone plus patches (workflow.md#release). Phases are M<N>.P<PP>; M0's and M1's are 0.MM.PP.
@@ -22,74 +22,12 @@ Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M2 pha
 - Closed with release v0.2.0 (2026-10-08): `install`, `launch`, `run` for acceptance runs, `mod build`, `mod test` and the helper mod's 17 M1 commands, accepted on A1-A4, A7, A9 and A10 (m1-acceptance-10); the bench world bench_263 and its eleven views; optilux-plan; the QA pass; about 20.3 h against 28 estimated. Plan: plans/m1.md; prompts: prompts/m1.md; what happened: the 0.01.13 handoff and the workflow pass's, in git history; its open rows: Findings assigned.
 
 ## M2 perf loop
-- Goal (plans/m2.md section 1): calibrated sessions on bench_263's views say whether a shader change is faster, slower or inside the noise, with every input that can move the numbers in the record's identity.
-- Verbs (design.md#5-interfaces, From = M2): `world prep`, `world snapshot`, `world restore`, `calibrate`, `compare`, `report`, `verify records`, and `run`'s measurement and calibration kinds with `run --check`. Mod: `window.measure`, `timers.start`, `timers.read`, `timers.stop`, `state`'s framebuffer size and F23's rows. Skill: optilux-bench.
-- Not in M2 (plans/m2.md section 2): Viewfinder's timers and E5, which stays diagnostic; timer twins and timer cost rows (M4); the hello pack, the deterministic set, A5, `shaders.dump`, visual tiers, `check` and `verify similarity` (M3); `camera.path`, the flush, A6 and A12 (M5); declared treatments and launch-level bracketing (the JVM track, after 1.0); A9's capture path (M3, plans/m2.md D48); Gradle's verification metadata (F24).
-- Exit, all of (plans/m2.md section 1): the verbs above run, tests green; bench_263 pre-generated and set up, its snapshot retaken and hashed, every view function answering; the bench heap and capture.reloadCap set from F14's pair; a survey record with every perf view GPU-bound on the baseline and the CPU floor per view; A2, A3 and A10 passed on the eleven views; a quick and a full calibration, in each mode the twin inside the geo-mean threshold and shadows off faster beyond it; `compare` refusing a mismatched identity and naming the field, in a test and live; the helper's per-pass timers judged by A8 and A11 (E3); optilux-bench; CI green on every push and on the PR; the user's rebase merge and release v0.3.0; docs/handoff.md written.
-- Branch m2; M2.P00 (the plan) precedes the phases M2.P01 to M2.P11. Plan: plans/m2.md, premises verified 2026-10-08 (P9 open until M2.P04), its decisions D35-D53, approved by the user on 2026-10-08 and amended the same day (its section 10; D34 below). Prompts: prompts/m2.md.
-
-## M2 phases
-Change, exit and estimate per phase; files and tests are in plans/m2.md section 5, its decisions D35-D53 in section 6.
-
-### M2.P01 Identity before calibration
-- Change: F21's rows before any calibration: the key `harness`, options.txt's unwritten keys in `settings`, HAGS as applied, the reference pack out of identity (plans/m2.md D36-D39); the launch spec, views and Java hashed and the static identity built before the launch; `run <spec> --check`.
-- Exit: `run --check --json` on a bench_263 acceptance spec prints the identity with `harness` and `system.hags`, and nothing launches.
-- Estimate: 2 h; machine: none.
-
-### M2.P02 window.measure and the jar's M2 rows
-- Change (mod): `window.measure`, timed in seconds after a reload or from now, its stamps and frame count, failed when a reload, a dimension change or a world leave falls inside; `state`'s framebuffer size, a run refused unless it equals the display mode and suite.json (plans/m2.md D38); F23's rows.
-- Exit: one launch: three windows whose PresentMon rows match their frame counts within one at each edge, every row Independent Flip; `state` reads 3840x2160.
-- Estimate: 2.5 h; machine: 1 launch.
-
-### M2.P03 Per-pass timers
-- Change (mod): GL_TIMESTAMP queries at Iris's GLDebug group calls on the bench tier, read without stalling the render thread; `timers.start`, `timers.read`, `timers.stop` (D34; plans/m2.md D53).
-- Exit: one launch with Unbound: 120 frames, each with every pipeline stage, none dropped at maxPending 3, the median top-level pass sum below the span's median GPUBusy.
-- Estimate: 3.5 h; machine: 1 launch.
-
-### M2.P04 World verbs and bench_263's preparation
-- Change: `world snapshot` (F8); `world restore`, before every run (F15; plans/m2.md D44); `world prep`: the gamerules, Chunky's pre-generation (D45), the kill, the torch, the view functions and the reference frames (F16).
-- Exit: snapshots/bench_263 retaken and hashed; a restore leaves the live hash equal; each Chunky task's end read as P9 resolves; every view function succeeds; seven tagged mobs and ten end crystals counted; eleven reference frames kept.
-- Estimate: 3 h; machine: `install` (Chunky's jar), 1-2 launches, the generation.
-
-### M2.P05 The measured session
-- Change: one runner for acceptance and measured runs (F22); the measurement and calibration kinds (plans/m2.md D40); one PresentMon session cut by each window's stamps (F1); the summaries and validity flags; A8 and A11 admitted for M2.P10; the startup call recorded (F10); the machine to itself (F19; D42), orphans (F20; D41), the time split (F17, F18; D48) and the GUI per view (D49).
-- Exit: a quick-mode run of the baseline and its twin ends ok, every capture valid, its rows matching its frames; a run killed in a test leaves an aborted record.
-- Estimate: 3.5 h; machine: 1-2 launches. Attended: the machine left alone while it runs.
-
-### M2.P06 Reload budget
-- Change: F14's controlled pair as measured sessions; the heap, capture.reloadCap and the calibration's twins and sessions by plans/m2.md D43 (F4, F14).
-- Exit: the records with their heap tables; suite.json and bench.json set from them; at a changed heap, the third run's slope within 10 % of the predicted.
-- Estimate: 1.5 h; machine: 4-5 launches. Attended: the machine left alone while they run.
-
-### M2.P07 compare, report, calibrate, verify records
-- Change: the statistics (thresholds, verdicts, the twin monitor, A8's and A11's verdicts); `compare`, `report` (plans/m2.md D50), `calibrate` with its resume, `verify records` (F13; D51); one critique of the measuring path (D52); D43's split, a session over the reload cap run as launches of views (run-record.md#split-sessions).
-- Exit: tests green; `verify records` passes; `compare` refuses an uncalibrated record, naming `calibrate`; each critique finding handled.
-- Estimate: 5 h; machine: none. Attended: the critique's permission prompt (D52), unless allowed.
-
-### M2.P08 The final views: GPU-bound, CPU floor, A2 and A3
-- Change: P17's fallback path read in the pinned Iris jar; a full-mode survey at R 1 in 3-view launches of the baseline, its twin and the passthrough pack (plans/m2.md D46, D47); the CPU floor per view with GPULatency (F10) into measurement.md; then A2, A3 and A10 on the eleven views.
-- Exit: the jar read agrees with P17; every baseline capture valid and GPU-bound; the floors written; A2, A3 and A10 passed. A view that fails is the user's: the run stops.
-- Estimate: 1.5 h; machine: 5 launches, about 25 min. Attended: the machine left alone (A2 injects input).
-
-### M2.P09 Calibration and the known positive
-- Change: the quick and full calibrations; per mode, shadows off (SHADOW_QUALITY -1) against the baseline beside its twin; `compare` refusing an M1 record live.
-- Exit: both calibrations committed; in each mode the twin inside the geo-mean threshold and shadows off faster beyond it; the refusal names an identity key.
-- Estimate: 1.5 h; machine: about 4.5 h of sessions, about 132 launches (a full-mode session 11: D43 with D47's warm-up pass). Attended: the user's go and the machine left alone.
-
-### M2.P10 A8 and A11
-- Change: the timers' overhead (A8) and their agreement with GPUBusy (A11) on full mode's schedule, judged by the full calibration through M2.P05's runner and M2.P07's verdicts, no measured module changed; kept for M4's timer rows only if both pass (E3; plans/m2.md D53).
-- Exit: acceptance records with A8 and A11 and their evidence; E3's outcome in design.md.
-- Estimate: 1 h; machine: 2-3 sessions of 11 launches, about 1.2 h. Attended: the machine left alone.
-
-### M2.P11 optilux-bench and the close
-- Change: the optilux-bench skill by the creation rule, with three evals; the docs as built; CHANGELOG's 0.3.0 entry completed; the findings marked landed.
-- Exit: the evals pass; `optilux status` prints the Release prompt.
-- Estimate: 1.5 h; machine: 1-2 launches. Attended: `claude -p`'s permission prompt, unless allowed; the machine left alone for the run.
+- Closed with release v0.3.0 (2026-10-16): `world prep`, `world snapshot`, `world restore`, `calibrate`, `compare`, `report`, `verify records` and `run`'s measurement and calibration kinds with `run --check`; the mod's `window.measure` and per-pass timers (A8 passed, A11 failed at underwater: dropped from use, design.md#8-open-decisions E3); bench_263 prepared and surveyed, every view GPU-bound, the CPU floors; capture.reloadCap 20 and the split session; both modes calibrated on unmodified Unbound, shadows off detected beyond the 0.5 % floor; optilux-bench; about 21.3 h against 26.5 estimated. Plan: plans/m2.md; prompts: prompts/m2.md; what happened: the M2.P11 handoff in git history; its open rows: Findings assigned.
 
 ## M1 to M6
 One line each, from design.md#6-milestones; phase lists are provisional until each plan is approved. F and Q numbers refer to Findings assigned.
 - M1 game control: closed (above); exit: design.md#6-milestones M1.
-- M2 perf loop: detailed above (M2 perf loop, M2 phases); exit: design.md#6-milestones M2.
+- M2 perf loop: closed (above); exit: design.md#6-milestones M2.
 - M3 visual loop: the static-texture pack, the hello pack with BENCH_DETERMINISTIC and pipeline spec v0, offline L0-L2 (`check`), `verify similarity`, coverage views, review page, iso profile v1, both modes recalibrated on the deterministic set. Exit: every perf view identical across 2 sessions (TAA off); A5.
 - M4 shader base: every coverage-list program, lighting, tonemap; cost rows, timer rows below the CPU floor; offline L3-L4; debug-tier attribution; E2 decided.
 - M5 features and temporal: shadows, sky, clouds, water, fog, AO, bloom, full TAA; the history flush (E4, F12), A6, A12; temporal positive controls; live pass.
@@ -125,6 +63,9 @@ The Phase -1 spike's handoff findings (2026-10-06) and later ones, each with the
 | F22 | The session (0.01.12's review; D31's reading 2): a failed selftest does not end a session (c5); the GUI hidden at entities, whose torch measurement.md#session keeps (c1); perform keeps the session skeleton inline and the end-the-game policies apart (simp2, simp20); the spec's notes, pack and resource_packs unread (simp11); wait_rows re-reads the CSV at every poll (cr10) | landed in M2.P05 | the measured session's runner |
 | F23 | The jar (0.01.12's review): a hello after its own disconnect cancels the 10 s release (conc2); a stopped capture's frames outlive its resource (conc5); the game adapter's delegates are dead code | landed in M2.P02 | one jar change with `window.measure` |
 | F24 | Gradle's other downloads are trusted by coordinate (0.01.12) | the mod's next dependency change | verification metadata not taken (D28); M2 plans no dependency change |
+| F25 | A pack near 1 ms a frame meets PresentMon's row loss before the 90 % rule: the passthrough's captures were cut invalid on cave, night, entities, nether_crimson and nether_soul at 1,440-2,060 fps (m2-survey-1, -2; M2.P08's handoff) | M3 (the hello pack) and M4 | no GPUBusy row for a pack that light: BENCH_DETERMINISTIC's cost row and the hello pack's timings wait for a heavier base or timer rows (E3) |
+| F26 | Quick mode's first Ci slot reads slow: each view's first measured baseline follows a dimension change and reads 0.13-0.16 % below the second, so slot 1, a candidate's and never the twin's, reads +0.085 % on the geo-mean (M2.P09's review 1) | M3 (the recalibration) | the schedule changes before M3's calibration, so no candidate sits unwatched in that slot |
+| F27 | Each reload leaks about 0.5 GiB of GPU memory under driver 32.0.31041.3013, which an AMD installer put in place of 32.0.32015.2008 on 2026-10-10 (M1's 46 MiB of private bytes a reload), hence capture.reloadCap 20 (M2.P06; M2.P09's handoff) | M3, the user's call before the recalibration | a newer driver and one budget run of m2-diag-alone-1's spec may let plans/m2.md D43 raise the cap: fewer launches a full session |
 
 ## Decisions
 Owner: who decides. Recommendation: what an unattended run takes. The user's decisions of 2026-10-05 live in design.md#7-decisions-taken-user-2026-10-05, later closed ones in this table; evidence decisions E1-E5 in design.md#8-open-decisions.
@@ -156,4 +97,4 @@ Owner: who decides. Recommendation: what an unattended run takes. The user's dec
 - M0: 0.3 + 1 + 1 + 1.5 + 1.5 + 1 + 1.5 = 7.8 h agent, no machine time. Basis: ALC's phases took about 1 h each (workflow.md#git); the spike estimated 4 h and took 2.5 h; ALC's run estimates of 4-6 h took about 1.2 h (workflow.md#running-a-milestone), so these are expected to run short rather than long.
 - M1: 28 h agent from plans/m1.md (2, 2, 2, 3, 3, 3, 2.5, 2, 1.5, 2, 3, 2; 25 h before the QA pass became two phases, D27; the mod phases carry 3 h each: ALC's mod ran 3x its line estimate, lessons.md#mod).
 - M2: 26.5 h agent from plans/m2.md (2, 2.5, 3.5, 3, 3.5, 1.5, 5, 1.5, 1.5, 1, 1.5, P03, P05 and P07 raised from 3 h on 2026-10-12 to size XL, Opus 5.5 Max, P07 to 5 h on 2026-10-13 for D43's split; its section 8 has the basis); machine time apart: 104-113 launches, M2.P09's sessions about 4 h. M3, rough until its plan is approved: 10 h.
-- Tripwire baseline: M0-M3 summed 72.3 h (7.8 + 28 + 26.5 + 10); the trip is at 144.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass).
+- Tripwire baseline: M0-M3 summed 72.3 h (7.8 + 28 + 26.5 + 10); the trip is at 144.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass); M2 about 21.3 h against 26.5 (the M2.P11 handoff in git history).
