@@ -5,7 +5,7 @@ Status: what Optilux is: goals, architecture, interfaces, milestones and decisio
 1 Goals · 2 Non-goals · 3 Core rule · 4 Architecture · 5 Interfaces · 6 Milestones · 7 Decisions taken · 8 Open decisions
 
 ## 1. Goals
-- G1 Optilux shader: an original Iris shader pack with the Complementary Unbound look, leaner and faster than Unbound at matched features. Built, measured and released through Claude Code.
+- G1 Optilux shader: an original, next-generation Iris shader pack, heavily inspired by Complementary Unbound but with a look of its own, every feature on a measured cost budget (user, 2026-10-20; roadmap.md#decisions D71). Built, measured and released through Claude Code.
 - G2 Runtime report (post-1.0): the best Java runtime, JVM flags and runtime settings for the machine that runs it, from measured frame pacing, GC, chunk generation, tick time, startup and stability (jvm.md).
 - G3 One suite for both: one harness, one helper mod, one run-record format. A new Minecraft version or renderer is a new platform file plus an adapter, not a rewrite (platform.md).
 - Scope: boutique. One machine (Windows 11, RX 7800 XT, 5800X3D, HAGS on, 3840x2160). One platform at a time (mc-26.3). One developer; others may download releases.
@@ -14,7 +14,7 @@ Status: what Optilux is: goals, architecture, interfaces, milestones and decisio
 ## 2. Non-goals
 - Several MC versions or machines at once for the shader.
 - OptiFine; before 1.0, any shader loader other than the current backend (iris-gl); Aperture follows the renderer transition (platform.md#renderer-transition).
-- Every Complementary feature on the user's drop list (shader.md#dropped-features), plus ray and path tracing.
+- The not-yet list (shader.md#dropped-features), ray and path tracing among it, until roadmap.md#decisions D72 takes a feature back.
 - Driver workarounds, or drivers in run identity: drivers are assumed good.
 - Shipping textures: Faithful 64x is the build and test pack; nothing from it ships.
 - Extensive test coverage.
@@ -123,7 +123,7 @@ Sketch; roadmap.md holds the milestones, phases and prompt sets (docs/prompts/).
 - Release notes: CHANGELOG.md.
 - Bench Java: Temurin 25, default G1, Xms = Xmx, no extra flags (config/java/bench.json).
 - World: a new 26.3 world. ALC's 8 view roles plus nether_soul and entities (D10, D11) are placed fresh (measurement.md#baseline-suite).
-- Shader scope: the user's drop list plus a second round (light shafts, border and cave fog, light-level overlay). Kept: held-item light, night sky styles, End beams and flash, entity shadows, block reflections, rain puddles, image sharpening, underwater distortion, block-light flicker. Outline as played (vanilla). See shader.md#look-and-scope; the iso profile is config/profiles/complementary-unbound-iso.json.
+- Shader scope: the user's drop list plus a second round (light shafts, border and cave fog, light-level overlay). Kept: held-item light, night sky styles, End beams and flash, entity shadows, block reflections, rain puddles, image sharpening, underwater distortion, block-light flicker. Outline as played (vanilla). See shader.md#look-and-scope; the iso profile is config/profiles/complementary-unbound-iso.json. Reopened (user, 2026-10-20): the drop list is a not-yet list (roadmap.md#decisions D71, D72).
 - Drivers: assumed good; no workarounds, never part of run identity. Records note the version, so a stored frame that stops matching has its cause at hand (an overnight driver update stopped an ALC run).
 - Helper mod: full redesign and rewrite, not a port (mod.md).
 - Optimization playbook: the user's playbook is kept verbatim (sources/) and curated into playbook.md and gpu-iris.md. Every technique stays a hypothesis until Optilux measures it.
