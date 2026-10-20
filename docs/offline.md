@@ -58,12 +58,12 @@ Ranked by value x reliability / cost:
 ALC never rendered anything offline: glfw and PyOpenGL were only a GL-capability probe.
 
 ## Tools
-Versions as found on 2026-10-05; pin them in M3.
-- glslang 16.6.0 (`-E` preprocess, `-l` link, `-q` reflection). It is not AMD's compiler and can accept code the driver rejects; the in-game reload is the final compile check.
+glslang and RGA are pinned in config/tools.json (file, sha256, source), which `install` unpacks into runtime/tools/; RenderDoc is pinned there in M4.
+- glslang 16.6.0, runtime/tools/glslang-16.6.0/bin/glslang.exe (`-E` preprocess, `-l` link, `-q` reflection). It is not AMD's compiler and can accept code the driver rejects; the in-game reload is the final compile check.
 - Iris dumps: `enableDebugOptions=true` (iris.properties) writes `patched_shaders/` per pipeline build. They are fully preprocessed, and debug mode may change performance.
   - Iris's patcher is the Java library glsl-transformer (1.11.7 bundles glsl-transformer-3.0.0-pre3 and jcpp-1.4.14). Running it outside the game could produce dumps with no launch [verify].
-- Shadesmith (GPL-3.0, used as a tool, not linked or shipped): expands includes and options, then glslang -> spirv-opt -> spirv-cross with GL ABI checks [evaluate in M3].
-- RGA 2.14.2 command line (`-s opengl -c gfx1101`); the GUI no longer does OpenGL. Driver-independent, so it explains and never gates.
+- Shadesmith (GPL-3.0; expands includes and options, then glslang -> spirv-opt -> spirv-cross): unused, as glslang on the pack's own source covers L0 (plans/m3.md D58).
+- RGA 2.15, runtime/tools/rga-2.15/rga.exe (`-s opengl -c gfx1101`; `--version` prints 2.15.0.30); the GUI no longer does OpenGL. Driver-independent, so it explains and never gates.
 - RenderDoc 1.46:
   - headless `renderdoc` Python module (`InitialiseReplay`, `FetchCounters` for EventGPUDuration);
   - 1.46 renamed `ActionDescription.next/previous` and removed `GetDefaultCaptureOptions`;
@@ -87,7 +87,6 @@ ALC timings, for planning:
 
 ## Verify
 - glsl-transformer offline: does it reproduce Iris 1.11.7's dumps byte for byte?
-- Shadesmith: licence fit as a tool, and does its output agree with the dumps?
 - Viewfinder:
   - its overhead: before 1.0 only the in-session A8 timers arm with Viewfinder as the timer source (its presence sits in both arms); the declared-treatment presence check waits for J1 (jvm.md#build-order);
   - do its per-pass sums track GPUBusy;

@@ -4,6 +4,7 @@ User-facing changes per release, newest first. Versions are MAJOR.MINOR.PATCH fr
 
 ## 0.4.0 Visual loop
 Optilux's first shader pack, a minimal hello pack, and the visual loop around it: frames taken at every bench view are compared bit for bit or by how visible a difference is, checks before any launch catch a build that does not compile or that copies Complementary's code, and the performance calibration is redone on textures held still. The hello pack draws textures, vertex colour and light only; the look arrives in later releases.
+- `optilux install` also fetches glslang 16.6.0 and Radeon GPU Analyzer 2.15 from their GitHub releases, each checked against its pinned hash and unpacked under runtime/tools/: the shader compiler and the GPU analyzer the checks before a launch run.
 
 ## 0.3.0 Perf loop
 A performance verdict on a shader change: the harness times calibrated sessions on the bench world's views, restores the world before each run and says whether a change is faster, slower or inside the noise. Still no shader of Optilux's own: these verdicts were tried on Complementary Unbound, and the first pack arrives in a later release.

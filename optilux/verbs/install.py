@@ -4,7 +4,8 @@ Fills runtime/<platform>/ from the network and re-hashes every file on every run
 the Fabric profile through minecraft-launcher-lib, then install's own pass over every classpath
 jar, the asset index, every asset and the log config; the tier's Modrinth files into the store
 runtime/<platform>/files/ by sha512, resource and shader packs copied into their game folders;
-Temurin and PresentMon by sha256. The launch spec is built from Mojang's and Fabric's JSON and
+Temurin and the tools (PresentMon, glslang, RGA) by sha256, each zip unpacked into its own
+folder. The launch spec is built from Mojang's and Fabric's JSON and
 compared with the committed one: a difference exits 1 naming it, and --refresh rewrites the file.
 A hash that differs from its pin is refused with the file named, never repaired
 (docs/plans/m1.md#7-stop-conditions). game/saves/ and the game's option files are never touched.
@@ -294,6 +295,34 @@ def tier_files(root: Path, plat: platform.Platform, tier: str, outcome: Outcome,
     outcome.pending = plat.pending(tier)
 
 
+def unpack(
+    archive: Path, home: Path, top: str | None, check: Callable[[Path], None] | None = None
+) -> None:
+    """A zip unpacked into home through a .part folder renamed when whole, so a stop midway
+    leaves nothing at home that reads as present: with `top`, the zip's one top folder becomes
+    home; `check` judges the unpacked folder before the rename, and a refusal leaves nothing."""
+    part = home.with_name(home.name + ".part")
+    shutil.rmtree(part, ignore_errors=True)
+    with zipfile.ZipFile(archive) as zipped:
+        try:
+            zipped.extractall(part)
+        except OSError as error:
+            shutil.rmtree(part, ignore_errors=True)
+            raise InstallError(
+                f"unpacking {archive.name} failed: {error}; fix: free the disk, rerun"
+            ) from None
+    unpacked = part / top if top else part
+    if check is not None:
+        try:
+            check(unpacked)
+        except InstallError:
+            shutil.rmtree(part, ignore_errors=True)
+            raise
+    shutil.rmtree(home, ignore_errors=True)  # an earlier partial unpack
+    unpacked.rename(home)
+    shutil.rmtree(part, ignore_errors=True)
+
+
 def java(root: Path, outcome: Outcome, say: Say) -> None:
     """Temurin's archive by sha256 against config/java/bench.json, fetched from the Adoptium API
     when absent, and unpacked under runtime/java/<build>/ when that folder has no java.exe."""
@@ -322,26 +351,14 @@ def java(root: Path, outcome: Outcome, say: Say) -> None:
     unpacked = (home / "bin" / "java.exe").is_file()
     if not unpacked:
         say(f"java: unpacking {profile['archive']} into {shown(home, root)}")
-        # Into a .part folder, renamed when whole: a stop midway leaves no java.exe at home.
-        part = home.with_name(home.name + ".part")
-        shutil.rmtree(part, ignore_errors=True)
         with zipfile.ZipFile(archive) as zipped:
             tops = {name.split("/", 1)[0] for name in zipped.namelist()}
-            if tops != {profile["build"]}:
-                raise InstallError(
-                    f"{profile['archive']} unpacks to {', '.join(sorted(tops))}, not "
-                    f"{profile['build']}; fix: make bench.json's `build` the archive's folder"
-                )
-            try:
-                zipped.extractall(part)
-            except OSError as error:
-                shutil.rmtree(part, ignore_errors=True)
-                raise InstallError(
-                    f"unpacking {profile['archive']} failed: {error}; fix: free the disk, rerun"
-                ) from None
-        shutil.rmtree(home, ignore_errors=True)  # an earlier partial unpack
-        (part / profile["build"]).rename(home)
-        shutil.rmtree(part, ignore_errors=True)
+        if tops != {profile["build"]}:
+            raise InstallError(
+                f"{profile['archive']} unpacks to {', '.join(sorted(tops))}, not "
+                f"{profile['build']}; fix: make bench.json's `build` the archive's folder"
+            )
+        unpack(archive, home, profile["build"])
     outcome.java = {
         "build": profile["build"],
         "archive": profile["archive"],
@@ -351,13 +368,19 @@ def java(root: Path, outcome: Outcome, say: Say) -> None:
 
 
 def tools(root: Path, outcome: Outcome, say: Say) -> None:
-    """Every tool config/tools.json pins (a dict with `file` and `sha256`) into runtime/tools/."""
+    """Every tool config/tools.json pins (a dict with `file` and `sha256`) into runtime/tools/; a
+    zip with `unpack` is unpacked into runtime/tools/<unpack>/ when that folder lacks its `exe`."""
     pins = json.loads((root / TOOLS).read_text(encoding="utf-8"))
     for name, tool in pins.items():
         if not isinstance(tool, dict) or "sha256" not in tool:
             continue
-        if not platform.plain_name(tool["file"]):
-            raise InstallError(f"config/tools.json {name}: {tool['file']!r} is no plain file name")
+        folder, exe = tool.get("unpack"), tool.get("exe")
+        if bool(folder) != bool(exe):
+            raise InstallError(f"config/tools.json {name}: fix: give `unpack` and `exe` together")
+        # Each is joined under runtime/tools/: the file, the folder and every part of the exe.
+        for part in [tool["file"], *([folder, *exe.split("/")] if folder and exe else [])]:
+            if not platform.plain_name(part):
+                raise InstallError(f"config/tools.json {name}: {part!r} is no plain file name")
         target = root / TOOLS_DIR / tool["file"]
         state = EQUAL
         if not target.is_file():
@@ -371,7 +394,29 @@ def tools(root: Path, outcome: Outcome, say: Say) -> None:
             if state == "downloaded":
                 target.unlink()
             raise
-        outcome.tools.append({"tool": name, "file": tool["file"], "state": state})
+        entry = {"tool": name, "file": tool["file"], "state": state}
+        if folder and exe:
+            entry |= unpack_tool(root, name, target, folder, exe, say)
+        outcome.tools.append(entry)
+
+
+def unpack_tool(root: Path, name: str, archive: Path, folder: str, exe: str, say: Say) -> dict:
+    """A tool's zip unpacked into runtime/tools/<folder>/ when that folder lacks its exe, which
+    the unpack must hold; its exe's path and whether it was present."""
+    home = root / TOOLS_DIR / folder
+    present = (home / exe).is_file()
+    if not present:
+        say(f"tools: unpacking {archive.name} into {shown(home, root)}")
+
+        def has_exe(found: Path) -> None:
+            if not (found / exe).is_file():
+                raise InstallError(
+                    f"{archive.name} unpacks without {exe}; fix: make config/tools.json {name}'s "
+                    "`exe` the archive's path"
+                )
+
+        unpack(archive, home, None, has_exe)
+    return {"exe": shown(home / exe, root), "unpacked": "present" if present else "unpacked"}
 
 
 def launch_spec(
@@ -440,7 +485,11 @@ def report(outcome: Outcome) -> list[str]:
         f"java: {java_facts['build']}: {java_facts['archive']} sha256-equal, "
         f"{java_facts['unpacked']} at {java_facts['home']}"
     )
-    lines += [f"tools: {tool['file']} sha256-equal ({tool['state']})" for tool in outcome.tools]
+    lines += [
+        f"tools: {tool['file']} sha256-equal ({tool['state']})"
+        + (f", {tool['unpacked']} at {tool['exe']}" if "exe" in tool else "")
+        for tool in outcome.tools
+    ]
     spec = outcome.spec
     count = len(spec["diff"])
     facts = f"{count} fact{'s' if count != 1 else ''}"

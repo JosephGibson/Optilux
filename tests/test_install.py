@@ -8,6 +8,7 @@ touched. Nothing here reads runtime/ or the network (docs/workflow.md#testing)."
 import hashlib
 import io
 import json
+import shutil
 import zipfile
 from pathlib import Path
 
@@ -25,6 +26,9 @@ ASM = "org.ow2.asm:asm:9.10.1"
 JDK_BUILD = "jdk-fixture"
 JDK_ARCHIVE = "jdk-fixture.zip"
 PRESENTMON = "PresentMon-fixture.exe"
+# A zip tool as glslang's: no top folder, its exe under bin/.
+GLSLANG = "glslang-fixture.zip"
+GLSLANG_FILES = {"bin/glslang.exe": b"MZ fake glslang", "include/glslang/build_info.h": b"#if 1\n"}
 
 
 def sha1(data: bytes) -> str:
@@ -39,26 +43,29 @@ def sha512(data: bytes) -> str:
     return hashlib.sha512(data).hexdigest()
 
 
-def zipped(folder: str) -> bytes:
-    """A JDK archive whose bytes depend on `folder` alone: an entry named by a string takes the
-    clock's time, so two zips of one folder made 2 s apart would differ, and the pin with them."""
+def archive(files: dict[str, bytes]) -> bytes:
+    """A zip whose bytes depend on its files alone: an entry named by a string takes the clock's
+    time, so two zips of one tree made 2 s apart would differ, and the pin with them."""
     buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as archive:
-        for name, data in (
-            ("bin/java.exe", b"MZ fake java"),
-            ("release", b"JAVA_VERSION=fixture\n"),
-        ):
-            archive.writestr(
-                zipfile.ZipInfo(f"{folder}/{name}", date_time=(1980, 1, 1, 0, 0, 0)), data
-            )
+    with zipfile.ZipFile(buffer, "w") as zipped:
+        for name, data in files.items():
+            zipped.writestr(zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0)), data)
     return buffer.getvalue()
+
+
+def zipped(folder: str) -> bytes:
+    """A JDK archive under one top folder."""
+    return archive(
+        {f"{folder}/bin/java.exe": b"MZ fake java", f"{folder}/release": b"JAVA_VERSION=fixture\n"}
+    )
 
 
 class World:
     """The fake network and the files the fake minecraft-launcher-lib writes: one Fabric library
     with a sha1 and one (fabric-loader) without, one Mojang library allowed on Windows and one
-    osx-only, the client jar, two assets, the log config; three Modrinth files, a JDK zip and a
-    PresentMon. `republish` moves the asset index as Mojang did on 2026-10-06 (P6)."""
+    osx-only, the client jar, two assets, the log config; three Modrinth files, a JDK zip, a
+    PresentMon and a zip tool. `republish` moves the asset index as Mojang did on 2026-10-06
+    (P6)."""
 
     def __init__(self) -> None:
         self.jars = {
@@ -78,6 +85,7 @@ class World:
         }
         self.jdk = zipped(JDK_BUILD)
         self.presentmon = b"MZ fake presentmon"
+        self.glslang = archive(GLSLANG_FILES)
         self.profile = {
             "id": PROFILE_ID,
             "inheritsFrom": "26.3",
@@ -202,6 +210,8 @@ class World:
             data = self.jdk
         elif url == "https://github.test/presentmon.exe":
             data = self.presentmon
+        elif url == "https://github.test/glslang.zip":
+            data = self.glslang
         else:
             version_id = url.rsplit("/", 1)[-1]
             assert url.startswith("https://cdn.test/"), f"unexpected download of {url}"
@@ -288,6 +298,14 @@ def write_config(root: Path, world: World) -> None:
             "sha256": sha256(world.presentmon),
             "source": "https://github.test/presentmon.exe",
         },
+        "glslang": {
+            "file": GLSLANG,
+            "sha256": sha256(world.glslang),
+            "source": "https://github.test/glslang.zip",
+            "unpack": "glslang-fixture",
+            "exe": "bin/glslang.exe",
+        },
+        "later": "a note, skipped",
     }
     (config / "tools.json").write_text(json.dumps(tools))
 
@@ -325,9 +343,9 @@ def test_the_first_install_writes_everything(tmp_path: Path, world: World) -> No
     outcome = install.install(tmp_path, "bench", False, said.append)
     assert outcome.ok and (outcome.platform, outcome.tier) == (PLATFORM, "bench")
     # The version JSON, 4 jars (the osx one excluded), the index, 2 assets, the log; 3 store
-    # files; the archive; the tool. Fresh copies are written, not hashed.
-    assert outcome.hashes == 1 + 4 + 1 + 2 + 1 + 3 + 1 + 1
-    assert outcome.downloaded == 1 + 8 + 3 + 1 + 1  # the lib fetched 4 jars, index, 2 assets, log
+    # files; the archive; the two tools. Fresh copies are written, not hashed.
+    assert outcome.hashes == 1 + 4 + 1 + 2 + 1 + 3 + 1 + 2
+    assert outcome.downloaded == 1 + 8 + 3 + 1 + 2  # the lib fetched 4 jars, index, 2 assets, log
     assert outcome.minecraft == {
         "version": "26.3",
         "profile": PROFILE_ID,
@@ -359,8 +377,22 @@ def test_the_first_install_writes_everything(tmp_path: Path, world: World) -> No
         "home": f"runtime/java/{JDK_BUILD}",
         "unpacked": "unpacked",
     }
-    assert (tmp_path / "runtime" / "tools" / PRESENTMON).read_bytes() == world.presentmon
-    assert outcome.tools == [{"tool": "presentmon", "file": PRESENTMON, "state": "downloaded"}]
+    tools = tmp_path / "runtime" / "tools"
+    assert (tools / PRESENTMON).read_bytes() == world.presentmon
+    assert (tools / GLSLANG).read_bytes() == world.glslang
+    for name, data in GLSLANG_FILES.items():  # the zip's tree as it is, under its own folder
+        assert (tools / "glslang-fixture" / name).read_bytes() == data
+    assert sorted(p.name for p in tools.iterdir()) == [PRESENTMON, "glslang-fixture", GLSLANG]
+    assert outcome.tools == [
+        {"tool": "presentmon", "file": PRESENTMON, "state": "downloaded"},
+        {
+            "tool": "glslang",
+            "file": GLSLANG,
+            "state": "downloaded",
+            "exe": "runtime/tools/glslang-fixture/bin/glslang.exe",
+            "unpacked": "unpacked",
+        },
+    ]
     spec_file = tmp_path / "config" / "platforms" / f"{PLATFORM}.launch.json"
     assert outcome.spec == {
         "path": f"config/platforms/{PLATFORM}.launch.json",
@@ -395,6 +427,8 @@ def test_the_first_install_writes_everything(tmp_path: Path, world: World) -> No
         f"java: fetching {JDK_ARCHIVE} from the Adoptium API",
         f"java: unpacking {JDK_ARCHIVE} into runtime/java/{JDK_BUILD}",
         f"tools: fetching {PRESENTMON}",
+        f"tools: fetching {GLSLANG}",
+        f"tools: unpacking {GLSLANG} into runtime/tools/glslang-fixture",
     ]
     assert untouched(tmp_path) == (b"level", b"version:5023\n")
 
@@ -407,10 +441,12 @@ def test_a_second_install_rehashes_everything_and_downloads_nothing(
     said: list[str] = []
     outcome = install.install(tmp_path, "bench", False, said.append)
     assert outcome.ok and outcome.downloaded == 0 and world.downloads == []
-    assert outcome.hashes == 1 + 4 + 1 + 2 + 1 + 3 + 2 + 1 + 1  # the two copies hashed too
+    assert outcome.hashes == 1 + 4 + 1 + 2 + 1 + 3 + 2 + 1 + 2  # the two copies hashed too
     assert {f["state"] for f in outcome.files} == {"equal"}
     assert {f["copyState"] for f in outcome.files if f["copy"]} == {"equal"}
-    assert outcome.java["unpacked"] == "present" and outcome.tools[0]["state"] == "equal"
+    assert outcome.java["unpacked"] == "present"
+    assert {t["state"] for t in outcome.tools} == {"equal"}
+    assert outcome.tools[1]["unpacked"] == "present"
     assert outcome.spec["state"] == "equal" and outcome.spec["diff"] == []
     assert said == [f"minecraft: installing 26.3 and {PROFILE_ID} into runtime/{PLATFORM}"]
     # A differing game copy is replaced from the store, a missing one re-copied.
@@ -555,6 +591,50 @@ def test_java_and_tool_pins_are_checked(tmp_path: Path, world: World) -> None:
     assert not tool.exists()
 
 
+def test_a_zip_tool_is_checked_before_and_after_its_unpack(tmp_path: Path, world: World) -> None:
+    """glslang's and RGA's zips: the zip against its sha256 on every install, refused naming the
+    file; unpacked again when its folder lacks the exe; a zip without the exe refused, nothing
+    left at its folder."""
+    install.install(tmp_path, "bench", False, quiet)
+    tools = tmp_path / "runtime" / "tools"
+    home = tools / "glslang-fixture"
+    (home / "bin" / "glslang.exe").unlink()  # a partial unpack
+    said: list[str] = []
+    outcome = install.install(tmp_path, "bench", False, said.append)
+    assert (outcome.tools[1]["state"], outcome.tools[1]["unpacked"]) == ("equal", "unpacked")
+    assert said[-1] == f"tools: unpacking {GLSLANG} into runtime/tools/glslang-fixture"
+    assert (home / "bin" / "glslang.exe").read_bytes() == GLSLANG_FILES["bin/glslang.exe"]
+    (tools / GLSLANG).write_bytes(b"tampered")
+    with pytest.raises(
+        install.InstallError, match=f"tool glslang runtime/tools/{GLSLANG}: sha256 .* differs"
+    ):
+        install.install(tmp_path, "bench", False, quiet)
+    (tools / GLSLANG).unlink()
+    world.glslang = b"served wrong"
+    with pytest.raises(install.InstallError, match=f"tool glslang runtime/tools/{GLSLANG}: sha256"):
+        install.install(tmp_path, "bench", False, quiet)
+    assert not (tools / GLSLANG).exists()
+    # A pinned zip that lacks the exe: refused, no folder and no .part left.
+    shutil.rmtree(home)
+    world.glslang = archive({"glslang.exe": b"MZ at the root"})
+    pins_path = tmp_path / "config" / "tools.json"
+    pins = json.loads(pins_path.read_text(encoding="utf-8"))
+    pins["glslang"]["sha256"] = sha256(world.glslang)
+    pins_path.write_text(json.dumps(pins), encoding="utf-8")
+    with pytest.raises(install.InstallError, match=r"unpacks without bin/glslang.exe; fix: make"):
+        install.install(tmp_path, "bench", False, quiet)
+    assert sorted(p.name for p in tools.iterdir()) == [PRESENTMON, GLSLANG]
+    # `unpack` and `exe` come together; the exe's every part stays under the folder.
+    del pins["glslang"]["exe"]
+    pins_path.write_text(json.dumps(pins), encoding="utf-8")
+    with pytest.raises(install.InstallError, match="give `unpack` and `exe` together"):
+        install.install(tmp_path, "bench", False, quiet)
+    pins["glslang"]["exe"] = "../escaped.exe"
+    pins_path.write_text(json.dumps(pins), encoding="utf-8")
+    with pytest.raises(install.InstallError, match=r"'\.\.' is no plain file name"):
+        install.install(tmp_path, "bench", False, quiet)
+
+
 def test_an_archive_with_another_top_folder_is_refused(tmp_path: Path, world: World) -> None:
     world.jdk = zipped("elsewhere")
     (tmp_path / "config" / "java" / "bench.json").write_text(
@@ -600,10 +680,14 @@ def test_cli_text_json_and_exit_codes(
     )
     assert f"tools: {PRESENTMON} sha256-equal (downloaded)" in lines
     assert (
+        f"tools: {GLSLANG} sha256-equal (downloaded), unpacked at "
+        "runtime/tools/glslang-fixture/bin/glslang.exe"
+    ) in lines
+    assert (
         f"launch spec: written to config/platforms/{PLATFORM}.launch.json (the first install)"
         in lines
     )
-    assert lines[-1] == "optilux install: ok; 14 hashes checked, 14 files downloaded"
+    assert lines[-1] == "optilux install: ok; 15 hashes checked, 15 files downloaded"
     assert cli.main(["install", "--tier", "lod", "--json"]) == 0
     out, err = capsys.readouterr()
     found = json.loads(out)
@@ -615,7 +699,7 @@ def test_cli_text_json_and_exit_codes(
     assert "launch spec: differs from config/platforms/mc-fixture.launch.json in 4 facts:" in out
     assert out.count("\n  ") == 4 and '  assetIndex.sha1: "' in out
     assert err == (
-        "optilux install: the launch spec moved; 17 hashes checked, 3 files downloaded; "
+        "optilux install: the launch spec moved; 18 hashes checked, 3 files downloaded; "
         f"fix: {install.REFRESH_FIX}\n"
     )
     assert cli.main(["install", "--json"]) == 1
