@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from conftest import copy_config
+from conftest import copy_config, git
 
 from optilux import (
     REPO_ROOT,
@@ -155,6 +155,9 @@ REFUSALS = [
     (put("world", "../spike"), "no folder"),
     (put("variants", [{"pack": "other.zip", "profile": None}]), "one variant"),
     (put("variants", [{"pack": PACK, "profile": "played"}]), "without a mode has one variant"),
+    (put("variants", [{"pack": "optilux", "profile": "played"}]), "at its pack's defaults"),
+    (put("variants", [{"pack": "optilux@-x", "profile": None}]), "no ref a spec may name"),
+    (put("variants", [{"pack": "optilux@no-such-ref", "profile": None}]), "names no commit"),
     (put("items", ["A8"]), "runs on a measured schedule"),
     (put("resourcePacks", "deterministic"), "standard set only"),
     (put("items", []), "no acceptance item"),
@@ -178,6 +181,34 @@ def test_each_refusal_names_its_fix(fixture_root, change, says: str) -> None:
         check(root, saves, data)
     assert says in str(refused.value)
     assert "fix:" in str(refused.value)
+
+
+def test_an_acceptance_run_takes_the_optilux_pack_from_the_tree_or_a_commit(fixture_root) -> None:
+    """plans/m3.md D63: `optilux` (the working tree) and `optilux@<ref>` (the commit the ref names
+    when the spec is checked); A4 breaks the reference pack's own program, so it is refused."""
+    root, saves = fixture_root
+    found = check(root, saves, {**spec(), "variants": [{"pack": "optilux", "profile": None}]})
+    assert found.optilux == {"variant": "optilux", "ref": None, "commit": None}
+    assert check(root, saves, spec()).optilux is None  # the reference pack
+    git(root, "init", "-q", "-b", "m3")
+    git(
+        root,
+        "-c",
+        "user.name=F",
+        "-c",
+        "user.email=f@x.invalid",
+        "commit",
+        "-q",
+        "--allow-empty",
+        "-m",
+        "chore: a commit",
+    )
+    sha = git(root, "rev-parse", "HEAD").stdout.strip()
+    found = check(root, saves, {**spec(), "variants": [{"pack": "optilux@HEAD", "profile": None}]})
+    assert found.optilux == {"variant": "optilux@HEAD", "ref": "HEAD", "commit": sha}
+    data = {**spec(), "variants": [{"pack": "optilux", "profile": None}], "items": ["A4", "A10"]}
+    with pytest.raises(record.RecordError, match="A4 breaks the reference pack's own program"):
+        check(root, saves, data)
 
 
 def test_a_spec_that_is_no_object_is_refused(fixture_root) -> None:
@@ -493,6 +524,7 @@ MEASURED = {
     "optilux.launch",
     "optilux.measure",
     "optilux.modclient",
+    "optilux.packzip",
     "optilux.platform",
     "optilux.presentmon",
     "optilux.record",

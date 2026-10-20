@@ -125,6 +125,54 @@ def test_version_from_the_version_file_at_a_ref(packed_repo: Path) -> None:
         pack.version_from_git(empty)
 
 
+def test_a_ref_zips_its_commit_not_the_working_tree(packed_repo: Path, tmp_path: Path) -> None:
+    sha = git(packed_repo, "rev-parse", "HEAD").stdout.strip()
+    (packed_repo / "shader/shaders/composite.fsh").write_bytes(b"void main() { }\n")
+    (packed_repo / "shader/shaders/new.vsh").write_bytes(b"void main() {}\n")  # untracked
+    (packed_repo / "README.md").write_bytes(b"# Changed\n")
+    git(packed_repo, "add", "README.md")  # staged: the index plays no part either
+    committed = pack.build(packed_repo, tmp_path / "ref", "0.2.0", "HEAD")
+    assert committed.commit == sha and committed.entries == tuple(sorted(EXPECTED))
+    assert unzipped(committed.path, tmp_path / "a") == EXPECTED
+    tree = pack.build(packed_repo, tmp_path / "tree", "0.2.0")
+    content = unzipped(tree.path, tmp_path / "b")
+    assert tree.commit is None and content["shaders/new.vsh"] == b"void main() {}\n"
+    assert content["README.md"] == b"# Changed\n"
+    # On a clean tree both read the same files, and the bytes are the same.
+    git(packed_repo, "checkout", "-q", "HEAD", "--", ".")
+    (packed_repo / "shader/shaders/new.vsh").unlink()
+    clean = pack.build(packed_repo, tmp_path / "clean", "0.2.0")
+    assert clean.path.read_bytes() == committed.path.read_bytes()
+
+
+def test_a_ref_without_the_packs_files_is_refused(packed_repo: Path, tmp_path: Path) -> None:
+    with pytest.raises(pack.PackError, match=r"'nope' names no commit in .*; fix: a branch"):
+        pack.build(packed_repo, tmp_path, "0.2.0", "nope")
+    commit_file(packed_repo, "shader/README.md", b"# clash\n", "feat: a clash")
+    with pytest.raises(pack.PackError, match=r"named like a root file: README.md; fix: rename"):
+        pack.build(packed_repo, tmp_path, "0.2.0", "HEAD")
+    git(packed_repo, "rm", "-q", "LICENSE")
+    git(packed_repo, "commit", "-q", "-m", "chore: drop the license")
+    with pytest.raises(
+        pack.PackError, match=r"LICENSE is missing at HEAD \(\w{7}\); fix: a commit"
+    ):
+        pack.build(packed_repo, tmp_path, "0.2.0", "HEAD")
+    git(packed_repo, "rm", "-q", "-r", "shader")
+    git(packed_repo, "commit", "-q", "-m", "chore: drop the pack")
+    with pytest.raises(pack.PackError, match=r"shader/ at HEAD \(\w{7}\) holds no file; fix: "):
+        pack.build(packed_repo, tmp_path, "0.2.0", "HEAD")
+
+
+def test_the_cli_names_the_commit_a_ref_zipped(
+    packed_repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(pack, "REPO_ROOT", packed_repo)
+    sha = git(packed_repo, "rev-parse", "HEAD").stdout.strip()
+    assert cli.main(["pack", "build", "--ref", "HEAD"]) == 0
+    out = capsys.readouterr().out
+    assert f"wrote build/optilux-0.2.0.zip (5 entries from {sha[:7]}, version 0.2.0)" in out
+
+
 def test_check_version() -> None:
     for good in ("0.2.0", "0.2.1", "0.10.0", "1.0.0"):
         assert pack.check_version(good) == good
@@ -181,6 +229,17 @@ def test_this_checkout_builds(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     )
     assert b"inspired by Complementary Shaders by EminGT" in content["README.md"]
     assert content["LICENSE"].startswith(b"MIT License\n\nCopyright (c) 2026 Joseph Gibson\n")
+
+
+def test_this_checkouts_pack_zips_as_its_commit_will() -> None:
+    """`pack build` and `run`'s variant `optilux` zip shader/ as it is on disk; git commits it LF
+    (.gitattributes) and never commits an ignored file, so neither may sit there, or the
+    working tree's zip and its commit's (`optilux@HEAD`, `pack build --ref`) would differ."""
+    files = [path for path in (REPO_ROOT / "shader").rglob("*") if path.is_file()]
+    assert files
+    assert [path for path in files if b"\r" in path.read_bytes()] == []
+    ignored = git(REPO_ROOT, "ls-files", "--others", "--ignored", "--exclude-standard", "shader")
+    assert ignored.stdout == ""
 
 
 def test_pack_needs_a_target(capsys: pytest.CaptureFixture[str]) -> None:

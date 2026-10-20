@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from optilux import platform, presentmon
+from optilux import platform, presentmon, repo
 
 RECORDS = "results/records"
 RAW = "results/raw"
@@ -87,6 +87,13 @@ TWIN = "twin"
 # no profile, options or timers; the harness builds it (measure.passthrough_zip) and its median
 # FrameTime is a view's CPU floor (measurement.md#validity).
 PASSTHROUGH = "optilux-passthrough.zip"
+# The Optilux pack as an acceptance run's variant (plans/m3.md D63): `optilux`, the zip `pack build`
+# makes from the working tree's shader/, or `optilux@<ref>`, the one `pack build --ref <ref>` makes
+# from that commit; `run` writes it into shaderpacks/ and records its sha512.
+OPTILUX = "optilux"
+OPTILUX_AT = "optilux@"
+# A ref as a spec may name it: a branch, a tag, a sha or HEAD with ~ and ^, never an option.
+GIT_REF = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_./~^-]{0,99}")
 PROFILES = "config/profiles"
 OPTION_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
 # F4's table (roadmap.md#findings-assigned): heap after GC and private bytes every RELOAD_EVERY
@@ -264,6 +271,7 @@ class Spec:
     warmup: bool = True  # this launch runs the warm-up pass
     groups: tuple[tuple[str, ...], ...] = ()  # a split session's views per launch
     split: dict | None = None  # a part's: its session, part, parts and views
+    optilux: dict | None = None  # an acceptance run's Optilux variant: its name, ref and commit
 
 
 def candidates(kind: str, variants: tuple[dict, ...] | list[dict], suite: dict) -> int:
@@ -580,7 +588,7 @@ def check_spec(
     items = data.get("items", [] if mode is not None else None)
     cap = suite["capture"]["reloadCap"]
     if mode is None:
-        return check_acceptance_spec(data, suite, pack, views, world, notes, items, cap)
+        return check_acceptance_spec(root, data, suite, pack, views, world, notes, items, cap)
     allowed = MEASURED_ITEMS if kind == "acceptance" else ()
     if not isinstance(items, list) or (kind == "acceptance" and not items):
         raise RecordError(
@@ -852,7 +860,48 @@ def check_budget(
     return rounds, ids, alone, windows
 
 
+def acceptance_variant(root: Path, variants: Any, pack: str) -> dict | None:
+    """An acceptance run's one variant, at its pack's defaults (profile null): the reference pack
+    `pack` (None), or the Optilux pack (plans/m3.md D63): `optilux` from the working tree, or
+    `optilux@<ref>` from the commit the ref names in this checkout, resolved here, so `--check`
+    refuses a ref git does not know and the run builds the commit it checked."""
+    wanted = [{"pack": pack, "profile": None}]
+    shaped = (
+        isinstance(variants, list)
+        and len(variants) == 1
+        and isinstance(variants[0], dict)
+        and set(variants[0]) == {"pack", "profile"}
+        and variants[0]["profile"] is None
+        and isinstance(variants[0]["pack"], str)
+    )
+    name = variants[0]["pack"] if shaped else None
+    if name is None or not (name in (pack, OPTILUX) or name.startswith(OPTILUX_AT)):
+        raise RecordError(
+            f"variants {json.dumps(variants)}: an acceptance run without a mode has one variant at "
+            f"its pack's defaults: the reference pack, {OPTILUX} or {OPTILUX_AT}<ref> (plans/m3.md "
+            f"D63); fix: {json.dumps(wanted)}"
+        )
+    if name == pack:
+        return None
+    if name == OPTILUX:
+        return {"variant": name, "ref": None, "commit": None}
+    ref = name.removeprefix(OPTILUX_AT)
+    if not GIT_REF.fullmatch(ref):
+        raise RecordError(
+            f"pack {name!r}: {ref!r} is no ref a spec may name; fix: {OPTILUX_AT} and a branch, a "
+            "tag or a sha"
+        )
+    commit = repo.resolve(root, ref)
+    if commit is None:
+        raise RecordError(
+            f"pack {name!r}: {ref} names no commit in {root}; fix: a ref `git rev-parse {ref}` "
+            "resolves here"
+        )
+    return {"variant": name, "ref": ref, "commit": commit}
+
+
 def check_acceptance_spec(
+    root: Path,
     data: dict,
     suite: dict,
     pack: str,
@@ -862,17 +911,12 @@ def check_acceptance_spec(
     items: Any,
     cap: int,
 ) -> Spec:
-    """An acceptance run without a mode (M1's items): one variant, items, F4's reloads."""
+    """An acceptance run without a mode (M1's items): one variant at its pack's defaults (the
+    reference pack or the Optilux pack: acceptance_variant), items, F4's reloads."""
     for key in ("calibration", "heap", *BUDGET, "warmup", "remeasures"):
         if key in data:
             raise RecordError(f"{key} is for measured runs; fix: drop it from an acceptance run")
-    variants = data["variants"]
-    wanted = [{"pack": pack, "profile": None}]
-    if variants != wanted:
-        raise RecordError(
-            f"variants {json.dumps(variants)}: an acceptance run without a mode has one variant, "
-            f"the reference pack at its defaults; fix: {json.dumps(wanted)}"
-        )
+    optilux = acceptance_variant(root, data["variants"], pack)
     runnable = ", ".join(RUNNABLE)
     if not isinstance(items, list) or not items:
         raise RecordError(f"items lists no acceptance item; fix: name some of {runnable}")
@@ -885,6 +929,11 @@ def check_acceptance_spec(
             raise RecordError(f"item {item} runs on a measured schedule; fix: give a mode")
         if item not in RUNNABLE:
             raise RecordError(f"item {item} comes in a later milestone; fix: drop it")
+    if optilux is not None and "A4" in items:
+        raise RecordError(
+            f"A4 breaks the reference pack's own program (shaders/world0/final.fsh, plans/m1.md "
+            f"D25), which {optilux['variant']} lacks; fix: drop A4, or run it on the reference pack"
+        )
     reloads = data.get("reloads", 0)
     if (
         isinstance(reloads, bool)
@@ -916,6 +965,7 @@ def check_acceptance_spec(
         data,
         reloads,
         planned=planned,
+        optilux=optilux,
     )
 
 
