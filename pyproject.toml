@@ -6,8 +6,14 @@ version = "0.0.0"
 description = "Shader and runtime benchmark harness for Minecraft."
 requires-python = ">=3.12"
 dependencies = [
+    # flip-evaluator, numpy, pillow and scikit-image: the visual tiers' decode, diff, FLIP and
+    # SSIM, each the newest with a cp312 win_amd64 wheel on 2026-10-20 (docs/plans/m3.md D59).
+    "flip-evaluator==1.7",
     "minecraft-launcher-lib==8.0",
+    "numpy==2.5.4",
+    "pillow==13.0.0",
     "psutil==7.2.2",
+    "scikit-image==0.26.0",
 ]
 
 [project.scripts]
