@@ -16,6 +16,8 @@ from optilux import REPO_ROOT, docs_check, prompts, repo
 
 # main moves only by the user's rebase merge of a PR (docs/workflow.md#git).
 MAIN = repo.MAIN
+# The similarity check's rule (optilux.verbs.verify, imported only when a commit needs it).
+SIMILARITY = "config/similarity.json"
 # docs/workflow.md#git (roadmap.md D33): one line, at most 72 characters, a Conventional Commits
 # subject `type(scope)!: summary`, the scope optional and lowercase.
 MAX_MESSAGE = 72
@@ -283,7 +285,9 @@ def doc_findings(root: Path) -> list[str]:
 
 
 def staged(root: Path) -> list[str]:
-    command = ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"]
+    """The paths a commit adds or changes: added, copied, modified, renamed or retyped (a link
+    become a file, say); a deleted file is judged by nothing."""
+    command = ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMRT", "-z"]
     result = subprocess.run(command, cwd=root, capture_output=True, text=True, check=True)  # noqa: S603 constant argv
     return [name for name in result.stdout.split("\0") if name]
 
@@ -343,10 +347,57 @@ def record_findings(root: Path) -> list[str]:
     return [f"{violation}; {fix}" for violation in ledger.violations]
 
 
+def staged_texts(root: Path, folder: str) -> dict[str, str]:
+    """The files under `folder` as the index holds them (the tree being committed, not the
+    working tree): path -> text. Inside the hook git's GIT_INDEX_FILE names that index, so a
+    `commit -a` or `commit <path>` is read as it will be committed."""
+    from optilux.verbs import verify  # the verb's decoding, kept out of the runner's closure
+
+    listing = ["git", "ls-files", "--stage", "-z", "--", f"{folder}/"]
+    result = subprocess.run(listing, cwd=root, capture_output=True, check=True)  # noqa: S603 constant argv
+    entries = []
+    for entry in result.stdout.split(b"\0"):
+        if entry:
+            info, _, path = entry.partition(b"\t")
+            mode, blob, _stage = info.split()
+            if mode != b"160000":  # a submodule's commit is no file
+                entries.append((path.decode("utf-8"), blob))
+    if not entries:
+        return {}
+    batch = b"".join(blob + b"\n" for _, blob in entries)
+    command = ["git", "cat-file", "--batch"]
+    output = subprocess.run(command, cwd=root, input=batch, capture_output=True, check=True)  # noqa: S603 constant argv
+    texts, offset = {}, 0
+    for path, _ in entries:
+        header_end = output.stdout.index(b"\n", offset)
+        size = int(output.stdout[offset:header_end].split()[2])  # "<blob> blob <size>"
+        start = header_end + 1
+        texts[path] = verify.text(output.stdout[start : start + size])
+        offset = start + size + 1  # the blob's content ends with a newline of cat-file's
+    return texts
+
+
+def similarity_findings(root: Path, home: Path | None = None) -> list[str]:
+    """`verify similarity` on the staged shader/ tree by the staged config/similarity.json,
+    both as committed (the index), against the reference copy under `home` (this checkout,
+    where `install` put it; its own config when the index has none): a match of t tokens or
+    more, or a copy missing or off its pin, each with its fix."""
+    from optilux.verbs import verify  # deferred like record_findings'
+
+    texts = staged_texts(root, verify.SHADER)
+    staged_config = repo.file_at(root, "", verify.SIMILARITY)
+    try:
+        config = None if staged_config is None else verify.parse_config(staged_config)
+        found = verify.check_similarity(home or REPO_ROOT, texts, config)
+    except verify.SimilarityError as error:
+        return [f"similarity: {error}"]
+    return [f"similarity: {verify.flagged_text(match, found.t)}" for match in found.flagged]
+
+
 def pre_commit(root: Path) -> list[str]:
     """ruff on the staged .py files, the doc rules when a .md is staged, `verify records` when a
-    record is staged, the handoff's `Last phase:` line and VERSION against origin/main's; empty
-    when clean."""
+    record is staged, the handoff's `Last phase:` line, the similarity check when shader/ is
+    staged and VERSION against origin/main's; empty when clean."""
     files = staged(root)
     sources = [root / name for name in files if name.endswith(".py")]
     findings = ruff(sources, root) if sources else []
@@ -358,6 +409,11 @@ def pre_commit(root: Path) -> list[str]:
         findings += record_findings(root)
     if prompts.HANDOFF in files:
         findings += handoff_findings(root)
+    from optilux.verbs import pack  # deferred as in version_findings: pack imports this module
+
+    # The pack or the rule it is judged by: a staged config is judged with the tree it holds.
+    if any(name.startswith(f"{pack.PACK_DIR}/") or name == SIMILARITY for name in files):
+        findings += similarity_findings(root)
     return findings + version_findings(root)
 
 

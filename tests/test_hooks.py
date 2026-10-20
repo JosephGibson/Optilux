@@ -4,12 +4,14 @@ end in a throwaway repo, and the Claude Code settings that wire them."""
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
-from conftest import fresh_repo
+from conftest import fresh_repo, similarity_home
+from test_similarity import COPIED, RENAMED
 
 from optilux import REPO_ROOT, hooks
 
@@ -420,3 +422,113 @@ def test_pre_commit_refuses_a_first_commit_without_its_version(repo: Path, tmp_p
     stage(repo, "CHANGELOG.md", "# Changelog\n\n## 0.3.0 Perf loop\nPerf.\n\n## 0.2.0 G\nG.\n")
     accepted = commit(repo, "docs: plan the next milestone")
     assert accepted.returncode == 0, accepted.stderr
+
+
+# The similarity check on the staged shader/ tree (plans/m3.md M3.P02).
+
+CLEAN = "void main() {\n    gl_FragColor = vec4(1.0);\n}\n"
+
+
+def similarity_repo(tmp_path: Path) -> tuple[Path, Path]:
+    """A throwaway repo and a checkout's similarity inputs (k 5, t 30) beside it."""
+    home = similarity_home(tmp_path / "home", {"shaders/lib/blend.glsl": COPIED}, 5, 30)
+    return fresh_repo(tmp_path / "repo", "m3"), home
+
+
+def test_the_similarity_hook_reads_the_index_not_the_working_tree(tmp_path: Path) -> None:
+    root, home = similarity_repo(tmp_path)
+    stage(root, "shader/shaders/final.fsh", RENAMED)
+    (root / "shader" / "shaders" / "final.fsh").write_text(CLEAN)  # the working tree is clean
+    assert hooks.similarity_findings(root, home) == [
+        "similarity: shader/shaders/final.fsh:2-3 matches reference/studied-1/shaders/lib/"
+        "blend.glsl:2-3 (37 tokens), t 30; fix: write it fresh in your own structure "
+        "(docs/shader.md#policy)"
+    ]
+    stage(root, "shader/shaders/final.fsh", CLEAN)
+    (root / "shader" / "shaders" / "final.fsh").write_text(RENAMED)  # the copy is unstaged
+    (root / "shader" / "shaders" / "untracked.fsh").write_text(RENAMED)
+    assert hooks.similarity_findings(root, home) == []
+
+
+def test_staged_texts_are_the_index_blobs_byte_for_byte(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = fresh_repo(tmp_path / "repo", "m3")
+    blobs = {
+        "shader/a.fsh": b"float a;\r\n",
+        "shader/b/c.glsl": b"",
+        "shader/d.vsh": b"x\xff",
+        "shader/e f/été.glsl": b"tab\tline\n",
+    }
+    for name, data in blobs.items():
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_bytes(data)
+        git(root, "add", name)
+    stage(root, "outside.fsh", RENAMED)
+    assert hooks.staged_texts(root, "shader") == {
+        "shader/a.fsh": "float a;\r\n",
+        "shader/b/c.glsl": "",
+        "shader/d.vsh": "x\ufffd",
+        "shader/e f/\u00e9t\u00e9.glsl": "tab\tline\n",
+    }
+    # git hands the hook of `commit -a` or `commit <path>` a temporary index through
+    # GIT_INDEX_FILE: set here by hand, as a real commit through the shim would need this
+    # checkout's reference copy.
+    other = tmp_path / "other-index"
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env["GIT_INDEX_FILE"] = str(other)
+    (root / "shader" / "a.fsh").write_bytes(b"float other;\n")
+    command = ["git", "add", "shader/a.fsh"]
+    subprocess.run(command, cwd=root, env=env, check=True)  # noqa: S603 constant argv
+    monkeypatch.setenv("GIT_INDEX_FILE", str(other))
+    assert hooks.staged_texts(root, "shader") == {"shader/a.fsh": "float other;\n"}
+
+
+def test_pre_commit_runs_similarity_when_shader_is_staged_and_needs_the_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, home = similarity_repo(tmp_path)
+    shutil.rmtree(home / "reference")
+    monkeypatch.setattr(hooks, "REPO_ROOT", home)
+    stage(root, "notes.txt", "notes\n")
+    assert hooks.pre_commit(root) == []  # no shader/ staged: no check, no copy needed
+    stage(root, "shader/shaders/shaders.properties", "x=1\n")
+    assert hooks.pre_commit(root) == [
+        "similarity: reference/studied-1/ is missing; fix: `uv run optilux install` unpacks it"
+    ]
+
+
+def test_the_similarity_hook_judges_by_the_staged_config(tmp_path: Path) -> None:
+    """The rule committed with the tree, not an unstaged edit of it; staging the rule alone
+    runs the check too."""
+    root, home = similarity_repo(tmp_path)
+    config = json.loads((home / "config" / "similarity.json").read_text())
+    stage(root, "shader/shaders/final.fsh", RENAMED)
+    git(root, "commit", "-q", "-m", "test: the copy, before any rule")
+    stage(root, hooks.SIMILARITY, json.dumps({**config, "t": 500}))
+    (root / hooks.SIMILARITY).write_text(json.dumps(config))  # t 30, unstaged
+    assert hooks.similarity_findings(root, home) == []  # 37 tokens under the staged t 500
+    stage(root, hooks.SIMILARITY, json.dumps(config))
+    (root / hooks.SIMILARITY).write_text(json.dumps({**config, "t": 500}))
+    assert len(hooks.similarity_findings(root, home)) == 1  # the staged t 30 holds
+    stage(root, hooks.SIMILARITY, json.dumps({**config, "k": 0}))
+    assert hooks.similarity_findings(root, home) == [
+        "similarity: config/similarity.json: k 0 and t 30; fix: whole numbers, k <= t"
+    ]
+
+
+def test_pre_commit_runs_similarity_when_only_its_config_is_staged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root, home = similarity_repo(tmp_path)
+    monkeypatch.setattr(hooks, "REPO_ROOT", home)
+    stage(root, "shader/shaders/final.fsh", RENAMED)
+    git(root, "commit", "-q", "-m", "test: the copy, before any rule")
+    stage(root, hooks.SIMILARITY, (home / "config" / "similarity.json").read_text())
+    assert [finding.split(":")[0] for finding in hooks.pre_commit(root)] == ["similarity"]
+
+
+def test_the_hooks_config_path_is_installs() -> None:
+    from optilux.verbs import install
+
+    assert hooks.SIMILARITY == install.SIMILARITY
