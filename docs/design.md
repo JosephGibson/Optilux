@@ -43,12 +43,12 @@ user / Claude Code --skills--> optilux CLI (Python)
 - shader pack `optilux`: backend iris-gl; a backend-neutral pipeline spec (shader.md#pipeline-spec) so an Aperture backend can follow.
 - platform layer: config/platforms/<id>.json, the mod adapter and the world snapshot (platform.md). At M1 platform facts also sit outside it, each with its reason and source at its definition: suite.json's display block (options.txt's version and keys, Sodium's options) and, in the harness (chiefly launch.py, session.py, acceptance.py, sendinput.py and install.py), facts read from the pinned 26.3, Fabric Loader and Sodium jars, their logs and answers: the join line, the dropped arguments, Sodium's file layout, the time-set answer, the chat screen and the mouse grab among them. A platform change re-reads each.
 - data:
-  - config/: tracked inputs (platforms with their launch specs, suite, profiles, java, tools, views; pipeline.json from M3) and calibrations/ (committed, from M2).
+  - config/: tracked inputs (platforms with their launch specs, suite, profiles, java, tools, similarity, views; pipeline.json from M3) and calibrations/ (committed, from M2).
   - results/records/: run records, committed (the ledger; per-capture summaries, ~200 KB budget); results/raw/: frame samples and heavy artifacts, ignored and disposable.
     - Records are append-only, so git stores each once, compressed; growth is linear. `verify records` (M2) enforces the budget. Past 100 MB of records (~500 sessions, est.), stop and choose an archive for older ones.
   - runtime/: installed games, ignored.
   - snapshots/: worlds, ignored.
-  - reference/: Complementary source for study, ignored, never redistributed.
+  - reference/: written by `install` alone, as config/similarity.json pins: Complementary Unbound r5.9.3, unpacked from the store, for study, and Wisdom Shaders Build3300 (Apache-2.0), the similarity check's unrelated control, each tree-hashed on every install; ignored, never redistributed.
 - Experts (draft v0 roles; of their skills and modules only optilux-bench is built, M2) are bundles, not programs:
   - Shader Expert = main session + optilux-bench and optilux-research skills + read-only researcher agent + `optilux.shader` + Viewfinder's MCP in dev sessions (offline.md).
   - JVM Expert = `optilux.jvm` reporter (rank, graph, recommend) + JVM scenarios (post-1.0).
@@ -58,7 +58,7 @@ user / Claude Code --skills--> optilux CLI (Python)
 
   | Verb | Does | From |
   |---|---|---|
-  | install | Minecraft, Fabric, the tier's mods, Java and tools (config/tools.json) into runtime/, hash-checked; write or check the launch spec | M1 |
+  | install | Minecraft, Fabric, the tier's mods, Java and tools (config/tools.json) into runtime/ and the reference copies into reference/, hash-checked; write or check the launch spec | M1 |
   | launch | check the launch spec's hashes, start the game directly (token on the command line) | M1 |
   | run | validate a run spec, run the session (over the reload cap as launches of views, M2), write the run record | M1 |
   | mod build / test | Gradle through the pinned wrapper, no daemon left | M1 |

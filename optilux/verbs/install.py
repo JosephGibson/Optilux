@@ -5,10 +5,11 @@ the Fabric profile through minecraft-launcher-lib, then install's own pass over 
 jar, the asset index, every asset and the log config; the tier's Modrinth files into the store
 runtime/<platform>/files/ by sha512, resource and shader packs copied into their game folders;
 Temurin and the tools (PresentMon, glslang, RGA) by sha256, each zip unpacked into its own
-folder. The launch spec is built from Mojang's and Fabric's JSON and
-compared with the committed one: a difference exits 1 naming it, and --refresh rewrites the file.
-A hash that differs from its pin is refused with the file named, never repaired
-(docs/plans/m1.md#7-stop-conditions). game/saves/ and the game's option files are never touched.
+folder; the reference copies into reference/, each tree-hashed against config/similarity.json.
+The launch spec is built from Mojang's and Fabric's JSON and compared with the committed one: a
+difference exits 1 naming it, and --refresh rewrites the file. A hash that differs from its pin
+is refused with the file named, never repaired (docs/plans/m1.md#7-stop-conditions). game/saves/
+and the game's option files are never touched.
 """
 
 import argparse
@@ -27,7 +28,7 @@ from pathlib import Path
 from minecraft_launcher_lib.exceptions import InvalidChecksum, VersionNotFound
 from minecraft_launcher_lib.install import install_minecraft_version
 
-from optilux import REPO_ROOT, platform
+from optilux import REPO_ROOT, platform, record
 from optilux.verbs import Verb
 
 PREFIX = "optilux install"
@@ -39,6 +40,10 @@ JAVA_DIR = "runtime/java"
 TOOLS_DIR = "runtime/tools"
 JAVA_PROFILE = "config/java/bench.json"
 TOOLS = "config/tools.json"
+# The copies `verify similarity` reads (docs/plans/m3.md D54): gitignored, written by install alone.
+REFERENCE = "reference"
+SIMILARITY = "config/similarity.json"
+ROLES = ("studied", "control")
 # The sources (docs/platform.md#install-and-launch): Mojang's manifest names the version JSON
 # and its sha1; Fabric's meta serves the profile; Modrinth's version endpoint gives a file's URL
 # and sha512; Adoptium's assets endpoint gives the archive's link and checksum.
@@ -67,6 +72,7 @@ REFRESH_FIX = (
 )
 # A hash that differs from its pin is a stop condition (docs/plans/m1.md#7-stop-conditions).
 MISMATCH_FIX = "never work around it: re-pin from the source, or delete the file and rerun"
+TREE_FIX = "never work around it: re-pin from the source, or delete the folder and rerun"
 
 
 class InstallError(RuntimeError):
@@ -86,6 +92,7 @@ class Outcome:
     pending: list[str] = field(default_factory=list)
     java: dict = field(default_factory=dict)
     tools: list[dict] = field(default_factory=list)
+    references: list[dict] = field(default_factory=list)
     spec: dict = field(default_factory=dict)
 
     @property
@@ -419,6 +426,85 @@ def unpack_tool(root: Path, name: str, archive: Path, folder: str, exe: str, say
     return {"exe": shown(home / exe, root), "unpacked": "present" if present else "unpacked"}
 
 
+def check_tree(folder: Path, pin: dict, what: str, outcome: Outcome) -> None:
+    """A folder's tree hash and file count (record.tree_hash) against its pin; InstallError
+    naming the copy on a mismatch."""
+    try:
+        digest, count = record.tree_hash(folder)
+    except record.RecordError as error:
+        raise InstallError(f"{what}: {error}") from None
+    outcome.hashes += 1
+    if (digest, count) != (pin["treeSha256"], pin["files"]):
+        raise InstallError(
+            f"{what}: tree sha256 {digest} ({count} files) differs from its pin "
+            f"{pin['treeSha256']} ({pin['files']} files); fix: {TREE_FIX}"
+        )
+
+
+def references(root: Path, plat: platform.Platform, tier: str, outcome: Outcome, say: Say) -> None:
+    """The copies config/similarity.json pins into reference/ (docs/plans/m3.md D54): the
+    studied pack from the store's zip, which tier_files checked by sha512 in this install, and
+    the control's zip fetched into reference/ by sha256. Each folder is unpacked when absent and
+    tree-hashed against its pin on every run; a folder off its pin is refused, never repaired."""
+    pins = json.loads((root / SIMILARITY).read_text(encoding="utf-8"))
+    for role in ROLES:
+        pin = pins[role]
+        for name in [pin["folder"], *([pin["file"]] if role == "control" else [])]:
+            if not platform.plain_name(name):
+                raise InstallError(f"{SIMILARITY} {role}: {name!r} is no plain file name")
+        archive_state = None
+        if role == "studied":
+            packs = [p for p in plat.tier_files(tier) if p.kind == "referencePack"]
+            pinned = next((p for p in packs if p.slug == pin["slug"]), None)
+            if pinned is None:
+                raise InstallError(
+                    f"{SIMILARITY} studied slug {pin['slug']!r} is no referencePacks entry of "
+                    f"{plat.path.name}; fix: name the reference pack's slug"
+                )
+            archive = root / RUNTIME / plat.id / STORE / pinned.file
+        else:
+            archive = root / REFERENCE / pin["file"]
+            archive_state = EQUAL
+            if not archive.is_file():
+                say(f"reference: fetching {pin['file']}")
+                download(pin["source"], archive)
+                outcome.downloaded += 1
+                archive_state = "downloaded"
+            try:
+                check_hash(archive, "sha256", pin["sha256"], f"{role} pack", outcome, root)
+            except InstallError:
+                if archive_state == "downloaded":
+                    archive.unlink()  # nothing refused stays in reference/
+                raise
+        outcome.references.append(
+            {
+                "role": role,
+                "archive": shown(archive, root),
+                "archiveState": archive_state,
+                **reference_copy(root, archive, pin, outcome, say),
+            }
+        )
+
+
+def reference_copy(root: Path, archive: Path, pin: dict, outcome: Outcome, say: Say) -> dict:
+    """One copy's folder under reference/: tree-hashed when present, else unpacked from its zip
+    and tree-hashed before the rename, so a refused unpack leaves no folder."""
+    home = root / REFERENCE / pin["folder"]
+    what = f"reference copy {shown(home, root)}"
+    present = home.is_dir()
+    if present:
+        check_tree(home, pin, what, outcome)
+    else:
+        say(f"reference: unpacking {archive.name} into {shown(home, root)}")
+        unpack(archive, home, None, lambda found: check_tree(found, pin, what, outcome))
+    return {
+        "folder": shown(home, root),
+        "files": pin["files"],
+        "treeSha256": pin["treeSha256"],
+        "state": EQUAL if present else "unpacked",
+    }
+
+
 def launch_spec(
     root: Path, plat: platform.Platform, built: dict, refresh: bool, outcome: Outcome
 ) -> None:
@@ -463,6 +549,7 @@ def install(root: Path, tier: str, refresh: bool, say: Say) -> Outcome:
     tier_files(root, plat, tier, outcome, say)
     java(root, outcome, say)
     tools(root, outcome, say)
+    references(root, plat, tier, outcome, say)
     launch_spec(root, plat, built, refresh, outcome)
     return outcome
 
@@ -490,6 +577,16 @@ def report(outcome: Outcome) -> list[str]:
         + (f", {tool['unpacked']} at {tool['exe']}" if "exe" in tool else "")
         for tool in outcome.tools
     ]
+    for ref in outcome.references:
+        archive = (
+            f"{ref['archive']} sha256-equal ({ref['archiveState']}); "
+            if ref["archiveState"]
+            else ""
+        )
+        lines.append(
+            f"reference ({ref['role']}): {archive}{ref['folder']}/ tree sha256-equal, "
+            f"{ref['files']} files ({ref['state']})"
+        )
     spec = outcome.spec
     count = len(spec["diff"])
     facts = f"{count} fact{'s' if count != 1 else ''}"
