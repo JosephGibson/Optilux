@@ -1,0 +1,132 @@
+{
+  "schema": 0,
+  "why": "Pipeline spec v0 (docs/shader.md#pipeline-spec, plans/m3.md D57): one pass per program of the hello pack under shader/shaders/, each with its program file pair. tests/test_pipeline.py keeps it equal to the pack: the programs, each pass's samplers and uniforms as its stages declare them in the default build (every option as written: under BENCH_DETERMINISTIC off, gbuffers passes also read fogStart and fogEnd, the textured ones textureMatrix, and the lit pass no entityId), its outputs and the option that changes its code. Iris feeds entityId per vertex on entity draws. M4 completes it.",
+  "pack": "optilux",
+  "cycle": 1,
+  "cycleWhy": "BENCH_DETERMINISTIC's cycle in frames: the pack reads no term that moves from frame to frame, so a frame repeats every frame (docs/shader.md#determinism-and-taa).",
+  "views": "bench_263",
+  "viewsWhy": "v0: a pass lists every view of its dimensions in config/views/bench_263.json; M4's coverage list narrows each to the views whose frames show it (docs/shader.md#coverage-list).",
+  "formatWhy": "colortex0's format is Iris's default, RGBA8 (InternalTextureFormat.RGBA, 1.11.7), as the pack sets none; the screen is the game's own framebuffer, whose format the pack does not set.",
+  "passes": [
+    {
+      "name": "surface-basic",
+      "program": "gbuffers_basic",
+      "stage": "gbuffers",
+      "dimensions": ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"],
+      "inputs": {
+        "samplers": [],
+        "uniforms": ["alphaTestRef", "chunkOffset", "far", "fogColor", "modelViewMatrix", "projectionMatrix"]
+      },
+      "outputs": [{"buffer": "colortex0", "format": "RGBA8", "scale": 1.0}],
+      "feature": "surface",
+      "option": "BENCH_DETERMINISTIC",
+      "budget": null,
+      "views": ["forest_noon", "ocean_sunset", "cave", "rain", "nether_crimson", "end_dragon", "night", "underwater", "nether_soul", "entities", "end_city"]
+    },
+    {
+      "name": "surface-textured",
+      "program": "gbuffers_textured",
+      "stage": "gbuffers",
+      "dimensions": ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"],
+      "inputs": {
+        "samplers": ["gtexture"],
+        "uniforms": ["alphaTestRef", "chunkOffset", "far", "fogColor", "modelViewMatrix", "projectionMatrix"]
+      },
+      "outputs": [{"buffer": "colortex0", "format": "RGBA8", "scale": 1.0}],
+      "feature": "surface",
+      "option": "BENCH_DETERMINISTIC",
+      "budget": null,
+      "views": ["forest_noon", "ocean_sunset", "cave", "rain", "nether_crimson", "end_dragon", "night", "underwater", "nether_soul", "entities", "end_city"]
+    },
+    {
+      "name": "surface-lit",
+      "program": "gbuffers_textured_lit",
+      "stage": "gbuffers",
+      "dimensions": ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"],
+      "inputs": {
+        "samplers": ["gtexture", "lightmap"],
+        "uniforms": ["alphaTestRef", "chunkOffset", "entityId", "far", "fogColor", "modelViewMatrix", "projectionMatrix"]
+      },
+      "outputs": [{"buffer": "colortex0", "format": "RGBA8", "scale": 1.0}],
+      "feature": "surface",
+      "option": "BENCH_DETERMINISTIC",
+      "budget": null,
+      "views": ["forest_noon", "ocean_sunset", "cave", "rain", "nether_crimson", "end_dragon", "night", "underwater", "nether_soul", "entities", "end_city"]
+    },
+    {
+      "name": "particles",
+      "program": "gbuffers_particles",
+      "stage": "gbuffers",
+      "dimensions": ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"],
+      "inputs": {
+        "samplers": ["gtexture", "lightmap"],
+        "uniforms": ["alphaTestRef", "chunkOffset", "far", "fogColor", "modelViewMatrix", "projectionMatrix"]
+      },
+      "outputs": [{"buffer": "colortex0", "format": "RGBA8", "scale": 1.0}],
+      "feature": "particles",
+      "option": "BENCH_DETERMINISTIC",
+      "budget": null,
+      "views": ["forest_noon", "ocean_sunset", "cave", "rain", "nether_crimson", "end_dragon", "night", "underwater", "nether_soul", "entities", "end_city"]
+    },
+    {
+      "name": "weather",
+      "program": "gbuffers_weather",
+      "stage": "gbuffers",
+      "dimensions": ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"],
+      "inputs": {
+        "samplers": ["gtexture", "lightmap"],
+        "uniforms": ["alphaTestRef", "chunkOffset", "far", "fogColor", "modelViewMatrix", "projectionMatrix"]
+      },
+      "outputs": [{"buffer": "colortex0", "format": "RGBA8", "scale": 1.0}],
+      "feature": "weather",
+      "option": "BENCH_DETERMINISTIC",
+      "budget": null,
+      "views": ["forest_noon", "ocean_sunset", "cave", "rain", "nether_crimson", "end_dragon", "night", "underwater", "nether_soul", "entities", "end_city"]
+    },
+    {
+      "name": "lightning",
+      "program": "gbuffers_lightning",
+      "stage": "gbuffers",
+      "dimensions": ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"],
+      "inputs": {
+        "samplers": [],
+        "uniforms": ["alphaTestRef", "chunkOffset", "far", "fogColor", "modelViewMatrix", "projectionMatrix"]
+      },
+      "outputs": [{"buffer": "colortex0", "format": "RGBA8", "scale": 1.0}],
+      "feature": "lightning",
+      "option": "BENCH_DETERMINISTIC",
+      "budget": null,
+      "views": ["forest_noon", "ocean_sunset", "cave", "rain", "nether_crimson", "end_dragon", "night", "underwater", "nether_soul", "entities", "end_city"]
+    },
+    {
+      "name": "clouds",
+      "program": "gbuffers_clouds",
+      "stage": "gbuffers",
+      "dimensions": ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"],
+      "inputs": {
+        "samplers": [],
+        "uniforms": ["alphaTestRef", "chunkOffset", "far", "fogColor", "modelViewMatrix", "projectionMatrix"]
+      },
+      "outputs": [{"buffer": "colortex0", "format": "RGBA8", "scale": 1.0}],
+      "feature": "clouds",
+      "option": "BENCH_DETERMINISTIC",
+      "budget": null,
+      "views": ["forest_noon", "ocean_sunset", "cave", "rain", "nether_crimson", "end_dragon", "night", "underwater", "nether_soul", "entities", "end_city"]
+    },
+    {
+      "name": "present",
+      "program": "final",
+      "stage": "final",
+      "dimensions": ["minecraft:overworld", "minecraft:the_nether", "minecraft:the_end"],
+      "inputs": {
+        "samplers": ["colortex0"],
+        "uniforms": ["modelViewMatrix", "projectionMatrix"]
+      },
+      "outputs": [{"buffer": "screen", "format": null, "scale": 1.0}],
+      "feature": "present",
+      "option": null,
+      "budget": null,
+      "views": ["forest_noon", "ocean_sunset", "cave", "rain", "nether_crimson", "end_dragon", "night", "underwater", "nether_soul", "entities", "end_city"]
+    }
+  ]
+}
