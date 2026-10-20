@@ -1,5 +1,5 @@
 # Offline testing
-Status: rough spec, 2026-10-05; L0-L2 are built in M3, L3-L4 in M4, run with `optilux check <level>` (design.md#5-interfaces). Each method is ranked by what ALC recorded about it.
+Status: rough spec, 2026-10-05; L0 built in M3.P04 (optilux/offline.py), L1-L2 in M3, L3-L4 in M4, run with `optilux check <level>` (design.md#5-interfaces). Each method is ranked by what ALC recorded about it.
 
 ## Contents
 Rules · Levels · Decision powers · ALC evidence · Tools · Costs · Verify
@@ -19,7 +19,7 @@ Cheapest first; a change climbs only as far as it needs.
 
 | Level | Method | Needs | Power |
 |---|---|---|---|
-| L0 static | glslang compile + link (`-l`) + reflection (`-q`) for every stage over a variant matrix (each option on/off, each dimension, Voxy defined); similarity check; profile check (every key in config/profiles/ exists in the pack's declared options) | source only | close (broken builds) |
+| L0 static | glslang preprocess (`-E`) under Iris's macros, then compile + link (`-l`) + reflection (`-q`) + cross-stage check (`--validate-io`) per program over a variant matrix (the defaults, each option switched alone, each dimension); similarity check; profile check (every key in config/profiles/ declared by its pack, its value listed or the default) | source only | close (broken builds) |
 | L1 Iris-faithful | Iris dumps (`patched_shaders`, via `shaders.dump` or Viewfinder). Then: premise check (is the code compiled and executed at these settings?), dump equality / took-effect, impact matrix and pipeline audit from the pipeline spec | one launch per settings set | close |
 | L2 compiler view | RGA OpenGL gfx1101 on dump stages: ISA, VGPR, `--livereg`, `--livereg-sgpr`, `--cfg`; uniform-work scan (PB) | dumps | explain |
 | L3 function tests | Iris-free includes (shader.md#pipeline-spec) run standalone with moderngl on synthetic inputs: tonemap, packing, noise, TAA maths; golden values. Custom uniforms evaluated in Iris's own expression engine (gpu-iris.md#custom-uniforms) | source only | close (function correctness) |
@@ -27,6 +27,12 @@ Cheapest first; a change climbs only as far as it needs.
 | L5 in-game dev | Viewfinder MCP (dev tier): shader hot-swap with compiler diagnostics, pass-output dumps, texture/SSBO inspection, program reflection, per-pass GPU timings | a dev session; not evidence until E5 (design.md#8-open-decisions) | explain; dumps become L3/L4 fixtures |
 
 - Variant matrix: generated from the pack's option list and the pipeline spec, not hand-written. ALC verified only its played settings, and a "profiles x dimensions" check was planned but never built.
+- L0 as built (M3.P04, `optilux check L0 [<pack>]`: shader/, a folder holding shaders/, a zip, or - for a zip on stdin):
+  - Iris 1.11.7's rules, read in the pinned jar with javap: a dimension takes its world0, world-1 or world1 folder when it holds a program (a file of Iris's program names), else the base set, world0's when that folder exists, else the root's; never a merge (a dimension.properties that maps anything is refused). Includes expanded, absolute from shaders/ or relative to the file, a missing one failing as Iris refuses the pack. Options as OptionAnnotatedSource registers and edits them: an on/off `#define` or const that a bare `#ifdef`/`#ifndef` in its include-graph component tests, a value `#define` with its `//[...]` list and default, Iris's 81 const names; declarations with different defaults dropped.
+  - Iris's defines from StandardMacros and IrisDefines: MC_VERSION 260300 and IRIS_VERSION 11107 from the pins, MC_MIPMAP_LEVEL from options.txt, MC_GL_VERSION 330 (the game's "3.3.0 Core Profile Context", m3-hello-1's log), MC_OS_WINDOWS, IS_IRIS, the render stages, the biome categories; no dimension macro exists. A stage fails as unchecked when it names what only the running game knows (the driver's GLSL version, vendor, renderer and extensions, biome ids, feature flags, texture formats, colour spaces) or, in a conditional, a macro of glslang's own (`__VERSION__`, GL_core_profile, GL_<extension>), which Iris's preprocessor (JCPP) never has.
+  - Not built yet, so refused: tessellation stages (Iris reads them only under the TESSELLATION_SHADERS flag) and compute programs.
+  - The matrix: the defaults, then each option alone at each of its other values; each pass's program in each of its dimensions, a stage file no pass names failing. The hello pack: 8 programs x 3 dimensions x 2 variants = 48 builds, 16 compiled (the dimensions share the root), 48 glslang runs in 0.3 s.
+  - A failure names the program, the stage file and the line glslang's error maps back to, the option values and the dimensions, under the defines printed once.
 - Impact matrix: changed files -> includes -> passes (pipeline spec) -> views that exercise them. This replaces ALC's text-walk `deps`, which over-reported (enderBeams reached 37 files; 5 were really kept) and missed Voxy wrappers.
 
 ## Decision powers
@@ -60,6 +66,7 @@ ALC never rendered anything offline: glfw and PyOpenGL were only a GL-capability
 ## Tools
 glslang and RGA are pinned in config/tools.json (file, sha256, source), which `install` unpacks into runtime/tools/; RenderDoc is pinned there in M4.
 - glslang 16.6.0, runtime/tools/glslang-16.6.0/bin/glslang.exe (`-E` preprocess, `-l` link, `-q` reflection). It is not AMD's compiler and can accept code the driver rejects; the in-game reload is the final compile check.
+  - `-l` alone links a fragment input no vertex output writes, which the driver refuses (gpu-iris.md#programs-and-alpha-tests); `--validate-io` refuses it and mismatched types, and still links unread outputs (M3.P04). `-E` keeps the input's line numbers.
 - Iris dumps: `enableDebugOptions=true` (iris.properties) writes `patched_shaders/` per pipeline build. They are fully preprocessed, and debug mode may change performance.
   - Iris's patcher is the Java library glsl-transformer (1.11.7 bundles glsl-transformer-3.0.0-pre3 and jcpp-1.4.14). Running it outside the game could produce dumps with no launch [verify].
 - Shadesmith (GPL-3.0; expands includes and options, then glslang -> spirv-opt -> spirv-cross): unused, as glslang on the pack's own source covers L0 (plans/m3.md D58).

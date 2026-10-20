@@ -8,6 +8,7 @@ from typing import NoReturn
 from optilux.verbs import (
     Verb,
     calibrate,
+    check,
     compare,
     install,
     launch,
@@ -26,6 +27,7 @@ from optilux.verbs import (
 VERBS: tuple[Verb, ...] = (
     test.VERB,
     verify.VERB,
+    check.VERB,
     status.VERB,
     milestone.VERB,
     pack.VERB,
