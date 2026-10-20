@@ -395,6 +395,32 @@ def test_java_split_drops_every_trailing_empty_value() -> None:
     assert offline.allowed_values("[ ]", "1") == ("1",)
 
 
+def test_the_iso_profile_holds_played_s_options_and_every_dropped_key() -> None:
+    """plans/m3.md P15: iso v1's `options` is played's, each dropped key, and the four set off
+    (RAIN_STYLE 1: the default, as no off exists); bloom's key is BLOOM_ENABLED in both."""
+    folder = REPO_ROOT / "config" / "profiles"
+    played, iso = (
+        json.loads(
+            (folder / f"complementary-unbound-{n}.json").read_text(), parse_float=str, parse_int=str
+        )
+        for n in ("played", "iso")
+    )
+    assert iso["version"] == "1" and "unresolved" not in iso
+    assert {
+        k: v for k, v in iso["options"].items() if k in played["options"] and k != "RAIN_STYLE"
+    } == {k: v for k, v in played["options"].items() if k != "RAIN_STYLE"}
+    assert set(iso["dropped"]) <= set(iso["options"])
+    for name in ("AURORA_STYLE_DEFINE", "SKY_EFFECT_REFLECTION_DEFINE", "IMPROVED_RAIN_DEFINE"):
+        assert iso["options"][name] == "0"
+    assert iso["options"]["RAIN_STYLE"] == "1"
+    assert all(
+        isinstance(v, bool) or v.lstrip("-").replace(".", "").isdigit()
+        for v in iso["options"].values()
+    )
+    assert "BLOOM_ENABLED" in iso["kept"]["keys"] and "BLOOM_STRENGTH" not in iso["kept"]["keys"]
+    assert any(row["set"].startswith("BLOOM_ENABLED=") for row in played["ablations"]["rows"])
+
+
 # glslang's runs.
 
 
