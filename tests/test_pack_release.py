@@ -209,13 +209,16 @@ def test_build_takes_the_version_from_ref(
     merged: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     assert cli.main(["pack", "build", "--ref", "HEAD^2"]) == 0
-    wrote = "wrote build/optilux-0.2.0.zip (3 entries, version 0.2.0)"
+    second = head(merged, "HEAD^2")[:7]  # the PR head: its tree is zipped, not the merge's
+    wrote = f"wrote build/optilux-0.2.0.zip (3 entries from {second}, version 0.2.0)"
     assert wrote in capsys.readouterr().out
     assert cli.main(["pack", "build", "--ref", "main"]) == 1  # main predates VERSION
     assert "main has no VERSION; fix: add it" in capsys.readouterr().err
-    with pytest.raises(SystemExit) as caught:
-        cli.main(["pack", "build", "--ref", "HEAD^2", "--version", "0.2.0"])
-    assert caught.value.code == 1 and "not allowed with argument" in capsys.readouterr().err
+    # Its fix, --version, names the zip while --ref still picks the commit zipped: main's, which
+    # predates the pack.
+    assert cli.main(["pack", "build", "--ref", "main", "--version", "0.1.9"]) == 1
+    first = head(merged, "main")[:7]
+    assert f"shader/ at main ({first}) holds no file" in capsys.readouterr().err
 
 
 def test_check_refuses_a_version_tagged_elsewhere_or_a_draft(

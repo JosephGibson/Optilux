@@ -609,6 +609,8 @@ def record_status(
         problems.append("selftest failed at the session start")  # A10 holds at every start
     if facts.get("a4Cleanup", {}).get("kept"):
         problems.append(f"A4's copy was not deleted: {facts['a4Cleanup']['kept']}")
+    if facts.get("filesCleanup", {}).get("kept"):  # an Optilux variant's zip and settings file
+        problems.append(f"the run's files were not deleted: {facts['filesCleanup']['kept']}")
     if reloads and table is None:
         problems.append(f"F4's table of {reloads} reloads was not completed")
     acceptance = []

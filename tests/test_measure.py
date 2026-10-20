@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import copy_config
+from conftest import copy_config, git
 
 from optilux import (
     REPO_ROOT,
@@ -36,6 +36,7 @@ from optilux import (
 )
 from optilux.verbs import calibrate as calibrate_verb
 from optilux.verbs import compare as compare_verb
+from optilux.verbs import pack as pack_verb
 from optilux.verbs import run as run_verb
 
 PLAT = platform.load(REPO_ROOT)
@@ -2520,3 +2521,167 @@ def test_calibrate_recalibrates_its_identity_as_a_new_generation(fake_run, monke
     said.clear()
     calibrate_verb.calibrate(root, "quick", host, FakeMachine(), said.append, print)
     assert f"{again['calibration']}.json exists for this identity" in said[0]
+
+
+# An acceptance run's Optilux variant (plans/m3.md D63).
+
+OPTILUX_TREE = {
+    "shader/shaders/shaders.properties": b"# a fixture pack\n",
+    "shader/shaders/final.fsh": b"void main() {}\n",
+    "LICENSE": b"MIT\n",
+    "README.md": b"# Fixture\n",
+}
+
+
+def optilux_tree(root: Path) -> str:
+    """The fake root as a repo holding a pack, committed, then its final program edited in the
+    working tree, so `optilux` and `optilux@HEAD` build different zips; the commit's sha."""
+    for name, data in OPTILUX_TREE.items():
+        (root / name).parent.mkdir(parents=True, exist_ok=True)
+        (root / name).write_bytes(data)
+    git(root, "init", "-q", "-b", "m3")
+    for key, value in (
+        ("user.name", "Fixture"),
+        ("user.email", "fixture@example.invalid"),
+        ("core.autocrlf", "false"),
+        ("core.hooksPath", (root.parent / "no-hooks").as_posix()),  # absent dir: no hooks
+    ):
+        git(root, "config", "--local", key, value)
+    git(root, "add", *OPTILUX_TREE)
+    git(root, "commit", "-q", "-m", "feat: a fixture pack")
+    (root / "shader/shaders/final.fsh").write_bytes(b"void main() { }\n")
+    return git(root, "rev-parse", "HEAD").stdout.strip()
+
+
+def optilux_spec(variant: str, **changes: Any) -> dict:
+    return {
+        "name": "m3-optilux-test",
+        "kind": "acceptance",
+        "views": "bench_263",
+        "world": "bench_263",
+        "variants": [{"pack": variant, "profile": None}],
+        "tier": "bench",
+        "resourcePacks": "standard",
+        "items": ["A10"],
+        **changes,
+    }
+
+
+@pytest.mark.parametrize(("variant", "ref"), [("optilux", None), ("optilux@HEAD", "HEAD")])
+def test_an_acceptance_run_loads_the_zip_pack_build_makes(
+    fake_run, tmp_path: Path, variant: str, ref: str | None
+) -> None:
+    """The zip `pack build` (or `pack build --ref`) makes, written to shaderpacks/ before the
+    launch, named in iris.properties with an empty settings file before the start-of-run reload,
+    its sha512 recorded, and both files deleted after the quit."""
+    root, spec_path, fake, host = fake_run
+    commit = optilux_tree(root)
+    spec_path.write_text(json.dumps(optilux_spec(variant)), encoding="utf-8")
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "ok", found["reason"]
+    built = pack_verb.build(root, tmp_path / "built", "0.4.0", ref)
+    other = pack_verb.build(root, tmp_path / "other", "0.4.0", "HEAD" if ref is None else None)
+    assert built.path.read_bytes() != other.path.read_bytes()  # the edit tells the two apart
+    name = "optilux.zip" if ref is None else f"optilux-{commit[:12]}.zip"
+    (entry,) = found["variants"]
+    assert entry["pack"] == name
+    assert entry["sha512"] == hashlib.sha512(built.path.read_bytes()).hexdigest()
+    assert entry["build"] == {"variant": variant, "ref": ref, "commit": ref and commit}
+    assert found["session"]["optilux"]["sha512"] == entry["sha512"]
+    reload = found["session"]["reload"]  # the start-of-run reload, after the variant's files
+    assert reload["pack"] == name and fake.game["pack"] == name
+    assert found["session"]["readBack"]["ok"] is True  # iris.properties still names the zip
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert found["session"]["filesCleanup"] == {"removed": [name, f"{name}.txt"], "kept": []}
+    assert sorted(path.name for path in packs.iterdir()) == [PACK]
+
+
+def test_an_optilux_variant_already_in_shaderpacks_is_refused(fake_run) -> None:
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    stale = root / "runtime" / PLAT.id / "game" / "shaderpacks" / "optilux.zip.txt"
+    stale.write_text("BENCH_DETERMINISTIC=false\n", encoding="utf-8")
+    spec_path.write_text(json.dumps(optilux_spec("optilux")), encoding="utf-8")
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert (
+        found["status"] == "failed" and "optilux.zip.txt exists in shaderpacks/" in found["reason"]
+    )
+    assert stale.read_text(encoding="utf-8") == "BENCH_DETERMINISTIC=false\n"  # not the run's
+    assert not (stale.parent / "optilux.zip").exists()
+
+
+def test_an_optilux_ref_builds_the_commit_it_named_when_checked(fake_run, tmp_path: Path) -> None:
+    """The ref is resolved once, at the check: a commit made after it does not reach the zip."""
+    root, _, _, _ = fake_run
+    checked = optilux_tree(root)
+    git(root, "commit", "-q", "-am", "feat: the edited program, committed")
+    moved = git(root, "rev-parse", "HEAD").stdout.strip()
+    assert moved != checked
+    build = {"variant": "optilux@HEAD", "ref": "HEAD", "commit": checked}
+    zipped = run_verb.optilux_zip(root, build)
+    assert zipped["file"] == f"optilux-{checked[:12]}.zip"
+    built = pack_verb.build(root, tmp_path / "checked", "0.4.0", checked)
+    assert zipped["data"] == built.path.read_bytes()
+    assert zipped["sha512"] == hashlib.sha512(zipped["data"]).hexdigest()
+
+
+def test_f4s_reloads_reload_the_optilux_variant(fake_run, monkeypatch) -> None:
+    root, spec_path, fake, host = fake_run
+    optilux_tree(root)
+    spec_path.write_text(json.dumps(optilux_spec("optilux", reloads=10)), encoding="utf-8")
+    heap = (FIXTURES / "gc-heap-info.txt").read_text(encoding="utf-8")
+    monkeypatch.setattr(host, "jcmd", lambda path, pid, command: heap, raising=False)
+    monkeypatch.setattr(host, "private_bytes", lambda pid: 900 * 1024**2, raising=False)
+    monkeypatch.setattr(host, "available_memory", lambda: 16 * 1024**3, raising=False)
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "ok", found["reason"]
+    assert found["reloadTable"]["pack"] == "optilux.zip" and fake.game["pack"] == "optilux.zip"
+    assert reloads(fake) == 1 + 10  # the start-of-run switch, F4's ten (selftest's is the mod's)
+
+
+def test_a_refused_launch_deletes_the_optilux_zip(fake_run, monkeypatch) -> None:
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    spec_path.write_text(json.dumps(optilux_spec("optilux")), encoding="utf-8")
+
+    def refused(*args: object, **kwargs: object) -> launch.Launched:
+        assert (packs / "optilux.zip").is_file()  # written before the launch
+        raise launch.LaunchError("the gate is closed in a test")
+
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    monkeypatch.setattr(launch, "launch", refused)
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "failed" and "the gate is closed in a test" in found["reason"]
+    assert found["session"]["filesCleanup"] == {"removed": ["optilux.zip"], "kept": []}
+    assert sorted(path.name for path in packs.iterdir()) == [PACK]
+
+
+def test_the_switch_reads_an_empty_settings_file_and_every_file_is_journaled(fake_run) -> None:
+    """The start-of-run reload loads the variant at its defaults: its settings file empty when
+    Iris reads it, the options read back recorded; the zip, its part file and the settings file
+    journaled (D41), so a run that dies leaves none of them to the next."""
+    root, spec_path, fake, host = fake_run
+    optilux_tree(root)
+    spec_path.write_text(json.dumps(optilux_spec("optilux")), encoding="utf-8")
+    read: list[str] = []
+    switch = fake._switch
+
+    def reading(game_dir: Path) -> None:
+        settings = game_dir / "shaderpacks" / "optilux.zip.txt"
+        if settings.is_file():
+            read.append(settings.read_text(encoding="utf-8"))
+        switch(game_dir)
+
+    fake._switch = reading
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "ok", found["reason"]
+    assert read == [""]  # the switch reload; the selftest's reloaded the reference pack
+    (entry,) = found["variants"]
+    assert entry["options"]["values"] == DEFAULTS and entry["profile"] is None
+    journal = json.loads((root / found["raw"] / "partial.json").read_text(encoding="utf-8"))
+    folder = f"runtime/{PLAT.id}/game/shaderpacks"
+    assert journal["files"] == [
+        f"{folder}/optilux.zip",
+        f"{folder}/optilux.zip.part",
+        f"{folder}/optilux.zip.txt",
+    ]

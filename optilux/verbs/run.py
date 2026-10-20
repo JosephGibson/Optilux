@@ -43,6 +43,7 @@ results/raw/<name>/. Exit 0 when the status is ok.
 
 import argparse
 import dataclasses
+import hashlib
 import json
 import os
 import shutil
@@ -60,6 +61,7 @@ from optilux import (
     launch,
     measure,
     modclient,
+    packzip,
     platform,
     presentmon,
     record,
@@ -113,6 +115,10 @@ PREFIX = "optilux run"
 STEPS = "steps.json"
 EVENTS = "events.json"
 CAPTURES = "captures.json"
+# An acceptance run's Optilux variant under shaderpacks/ (plans/m3.md D63): the working tree's
+# zip, or a commit's, named by its sha.
+OPTILUX_ZIP = "optilux.zip"
+OPTILUX_COMMIT_ZIP = "optilux-{commit}.zip"
 
 
 @dataclass(frozen=True)
@@ -132,6 +138,26 @@ class Prepared:
     presentmon: Path
     identity: dict
     recorded: dict
+    optilux: dict | None = None  # an Optilux variant's zip, built in memory (optilux_zip)
+
+
+def optilux_zip(root: Path, build: dict) -> dict:
+    """An Optilux variant's zip (plans/m3.md D63), built in memory before anything is written, so
+    `--check` refuses one that cannot build: `pack build`'s bytes from the working tree, or `pack
+    build --ref`'s from the commit the spec's ref named when it was checked (never the ref again:
+    it may have moved since). Its file name under shaderpacks/, bytes, entries and sha512."""
+    commit = build["commit"]
+    try:
+        if commit is None:
+            sources, name = packzip.tree_sources(root), OPTILUX_ZIP
+        else:
+            sources = packzip.commit_sources(root, commit, build["variant"])
+            name = OPTILUX_COMMIT_ZIP.format(commit=commit[:12])
+    except packzip.PackError as error:
+        raise record.RecordError(f"{build['variant']}: {error}") from None
+    data = packzip.zip_bytes(sources)
+    digest = hashlib.sha512(data).hexdigest()
+    return {"file": name, "data": data, "entries": len(sources), "sha512": digest}
 
 
 def prepare(
@@ -208,8 +234,9 @@ def prepare(
                 "this identity, then name its id"
             )
     recorded = {"platformFile": record.file_sha256(plat.path), **system_recorded}
+    optilux = optilux_zip(root, spec.optilux) if spec.optilux is not None else None
     return Prepared(
-        spec, plat, suite, pack, views, base, java_home, snapshot, pm_exe, found, recorded
+        spec, plat, suite, pack, views, base, java_home, snapshot, pm_exe, found, recorded, optilux
     )
 
 
@@ -325,6 +352,10 @@ class Runner:
         self.m: measure.Measured | None = None
         self.found = measure.variants(self.spec, ready.suite) if self.spec.mode else []
         self.created: list[Path] = []  # the files under shaderpacks/ this run wrote
+        # An acceptance session's pack: the reference pack, or its Optilux variant's zip once
+        # written (write_optilux), which iris.properties names from the start-of-run reload on.
+        self.pack_file, self.pack_sha512 = ready.pack.file, ready.pack.sha512
+        self.iris_pack: str | None = None
         self.journal = Journal(
             self.raw,
             {
@@ -444,8 +475,10 @@ class Runner:
         the last capture wrote it, naming its variant's pack), latest.log copied to raw/ and its
         helper lines counted (a hook failure there makes the record invalid)."""
         pre = launched.prelaunch
+        last = self.iris_pack
         if self.m is not None and self.m.last_written is not None:
             last = self.m.last_written.pack
+        if last is not None:
             pre = dataclasses.replace(
                 pre, iris=launch.iris_properties(self.ready.suite["display"], self.spec.tier, last)
             )
@@ -504,11 +537,12 @@ def acceptance_body(run: Runner, s: Session) -> None:
     try:
         session_start(
             s,
-            ready.pack.file,
+            run.pack_file,
             suite["capture"]["gpuWarmupS"],
             system["resolution"],
             suite["display"]["resolution"],
             start,
+            before_reload=(lambda: optilux_files(run, s)) if spec.optilux else None,
         )
     finally:
         if "selftest" in start:  # A10 holds at every start; a failed one ends the session (c5)
@@ -519,8 +553,9 @@ def acceptance_body(run: Runner, s: Session) -> None:
             }
     run.variants.append(
         {
-            "pack": ready.pack.file,
-            "sha512": ready.pack.sha512,
+            "pack": run.pack_file,
+            "sha512": run.pack_sha512,
+            **({"build": spec.optilux} if spec.optilux else {}),
             "profile": None,
             "options": {
                 "count": len(start["options"]["values"]),
@@ -574,10 +609,56 @@ def acceptance_body(run: Runner, s: Session) -> None:
             items[item]["pass"] = all(v["pass"] for v in done_views)
             items[item]["complete"] = True
     if spec.reloads:
-        run.table = reload_table(s, jcmd, ready.pack.file, spec.reloads)
+        run.table = reload_table(s, jcmd, run.pack_file, spec.reloads)
     home = view_pose(views["views"][0])
     s.step("camera.place home", lambda: client.camera_place(home, PLACE_TIMEOUT))
     s.step("input.block off", lambda: client.input_block(False))
+
+
+def write_optilux(run: Runner) -> dict:
+    """An Optilux variant's zip under shaderpacks/ before the launch (plans/m3.md D63), the bytes
+    prepare built (optilux_zip): journaled before it exists, its part file too (D41), written
+    through that part name and its sha512 checked against the bytes built. A file of its name
+    already there, or its settings file, is refused: the run deletes only what it wrote."""
+    build, zipped = run.spec.optilux, run.ready.optilux
+    if build is None or zipped is None:
+        raise RunError("the spec names no Optilux variant")
+    name = zipped["file"]
+    packs = run.ready.base / launch.GAME / launch.SHADER_PACKS
+    target = packs / name
+    part = target.with_name(target.name + ".part")
+    for path in (target, part, packs / measure.SETTINGS.format(pack=name)):
+        if path.exists():
+            raise RunError(f"{path.name} exists in shaderpacks/; fix: delete it, then rerun")
+    run.own(target)
+    run.own(part)
+    part.write_bytes(zipped["data"])
+    part.replace(target)
+    digest = platform.sha512(target)
+    if digest != zipped["sha512"]:
+        raise RunError(f"{name} hashes {digest[:12]}..., built {zipped['sha512'][:12]}...")
+    run.pack_file, run.pack_sha512 = name, digest
+    run.say(
+        f"{build['variant']}: wrote shaderpacks/{name} ({zipped['entries']} entries, sha512 "
+        f"{digest[:12]}...)"
+    )
+    return {"file": name, "sha512": digest, "entries": zipped["entries"], **build}
+
+
+def optilux_files(run: Runner, s: Session) -> None:
+    """Before the start-of-run reload: iris.properties naming the Optilux variant's zip and its
+    settings file written empty, so the reload loads it at its defaults (measure.variant_files;
+    Iris re-reads both at a reload, spike R4); the settings file journaled first, as the zip."""
+    name = run.pack_file
+    variant = measure.Variant(OPTILUX_ZIP, "baseline", name, name, None, {}, False)
+    display = run.ready.suite["display"]
+    for path, data in measure.variant_files(
+        s.launched.game, display, run.spec.tier, variant
+    ).items():
+        if path.parent.name == launch.SHADER_PACKS:
+            run.own(path)
+        path.write_bytes(data)
+    run.iris_pack = name
 
 
 def acceptance_after(run: Runner) -> None:
@@ -887,9 +968,12 @@ def perform(
         run.facts["displays"] = displays
     try:
         if spec.mode is None:
+            pack = f"unmodified {ready.pack.file}"
+            if spec.optilux is not None:
+                run.facts["optilux"] = write_optilux(run)
+                pack = f"{spec.optilux['variant']} as {run.pack_file}"
             run.session(
-                f"unmodified {ready.pack.file}: {session_plan(spec, ready.views)}",
-                lambda s: acceptance_body(run, s),
+                f"{pack}: {session_plan(spec, ready.views)}", lambda s: acceptance_body(run, s)
             )
             acceptance_after(run)
         else:
@@ -969,12 +1053,18 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 
 def check(ready: Prepared, as_json: bool) -> int:
-    """`--check`: the identity `run` would record, key by key, the calibration that matched it
-    and a split session's launches; nothing launched or written."""
+    """`--check`: the identity `run` would record, key by key, the calibration that matched it,
+    a split session's launches and an Optilux variant's zip as built; nothing launched or
+    written."""
     cid = ready.spec.calibration
     groups = [list(g) for g in ready.spec.groups]
+    zipped = None
+    if ready.optilux is not None:
+        zipped = {k: v for k, v in ready.optilux.items() if k != "data"}
+        zipped["build"] = ready.spec.optilux
     if as_json:
         found = {"ok": True, "name": ready.spec.name, "launched": False, "calibration": cid}
+        found["optilux"] = zipped
         print(json.dumps({**found, "groups": groups, "identity": ready.identity}))
         return 0
     judged = f"; calibration {cid[:24]}... matches it key by key" if cid else ""
@@ -985,6 +1075,8 @@ def check(ready: Prepared, as_json: bool) -> int:
     if groups:
         launches = "; ".join(", ".join(g) for g in groups)
         print(f"split: {len(groups)} launches of views (D43): {launches}")
+    if zipped is not None:
+        print(f"optilux: {json.dumps(zipped)}")
     for key, value in ready.identity.items():
         print(f"{key}: {json.dumps(value)}")  # ASCII: a piped stdout may be cp1252
     return 0
