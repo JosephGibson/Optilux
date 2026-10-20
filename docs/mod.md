@@ -1,5 +1,5 @@
 # Helper mod (optilux-helper)
-Status: spec, built through M1 and accepted (m1-acceptance-10); full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the MC 26.3 game adapter, ticks, poses, input and HUD (4, 6, 9), 0.01.06; the Sodium and Iris adapters, readiness, capture and selftest (6-8, 11), 0.01.07; `window.measure` and F23's fixes (4, 6, 8), M2.P02; the per-pass timers (4, 11), M2.P03; the rest is still spec.
+Status: spec, built through M1 and accepted (m1-acceptance-10); full redesign and rewrite (user decision), wire contract in mod-protocol.md. As built: the inert gate (5) and build and test (11), 0.01.04; the pipe, the protocol core and the state owner (4, 5), 0.01.05; the MC 26.3 game adapter, ticks, poses, input and HUD (4, 6, 9), 0.01.06; the Sodium and Iris adapters, readiness, capture and selftest (6-8, 11), 0.01.07; `window.measure` and F23's fixes (4, 6, 8), M2.P02; the per-pass timers (4, 11), M2.P03; aligned, ready-triggered and image-less captures (6, 8, 11), M3.P05; the rest is still spec.
 
 ## Contents
 1 Stance · 2 Consumers · 3 Non-goals · 4 Architecture · 5 Safety · 6 Time and determinism · 7 Readiness · 8 Capture · 9 Input and HUD · 10 Adapter surface · 11 Build and test · 12 Acceptance · 13 Lessons · 14 Open questions
@@ -75,13 +75,12 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 ## 6. Time and determinism
 - Clocks: every result, event and frame stamp carries `frameIndex` (frames since mod start), `sinceReload` and `qpcNs`. Frame stamps are taken at the HEAD of the frame hook; `window.measure` and the capture manifest carry that stamp.
   - `sinceReload` = frames since the last pipeline creation (reload, dimension change, join). This equals Iris's own frameCounter, which resets then and wraps at 720720 (gpu-iris.md#frame-counters-and-reload), so mod and shader agree on phase; cycles must divide 720720 so phase survives the wrap.
-  - `qpcNs` = QueryPerformanceCounter ticks x 1e9 / QueryPerformanceFrequency, read through the JNA the game ships (the pipe already uses it). Not `System.nanoTime()` (origin unspecified). PresentMon's clock: qpcNs = CPUStartQPCTime x 1e6 (measurement.md#tools).
+  - `qpcNs` = QueryPerformanceCounter ticks x 1e9 / QueryPerformanceFrequency, read through the JNA the game ships. Not `System.nanoTime()` (origin unspecified). PresentMon's clock: qpcNs = CPUStartQPCTime x 1e6 (measurement.md#tools).
   - As built (0.01.07): a frame stamp also carries swapQpcNs, the previous frame's swap return (after `GpuSurface.present` in Minecraft.renderFrame; 26.3 has no Window.updateDisplay), for D26 (plans/m1.md); sinceReload is SystemTimeUniforms.COUNTER.
 - Measurement windows (M2.P02): `window.measure` (mod-protocol.md#commands) times its skip and its window on the QPC clock from HEAD stamps, the rows the harness cuts lying between its two stamps; a reload, a dimension change, a join or a leave inside it fails it and drops the reload anchor.
 - Determinism support:
-  - `frames.index` reports Iris's frameCounter next to the mod's index;
-  - alignment, history flush and capture are scheduled together inside the mod: `frames.capture` takes `align` and `flush`; `camera.path` carries its own capture. Never across a request round trip: rendering advances during one;
-  - phase = sinceReload mod cycle;
+  - readiness, alignment, history flush and capture are scheduled together inside the mod: `frames.capture` takes `ready`, `align` and `flush`; `camera.path` carries its own capture. Never across a request round trip: rendering advances during one;
+  - phase = sinceReload mod cycle, judged at the capture point, where the counter holds what the frame's shaders read (M3.P05; Iris advances it at GameRenderer.render HEAD); `ready` waits as the command does, minSeconds from the request, and takes the frame whose head found the predicate held;
   - flush: sessions run with hideGUI true (`hud.set` at session start); the mod sets it false for exactly one frame on the render thread, and BENCH_DETERMINISTIC treats TAA history as invalid in any frame where the hideGUI uniform reads 0; a toggle before beginLevelRendering lands in the same frame (platform.md#mod-adapter-surface, R6);
   - `camera.path` sets the pose at the top of each rendered frame from frames since the path start;
   - a reload clears every buffer (TAA history included) and re-meshes all chunks (Iris 1.10.7 bytecode; re-verified in the spike, R5).
@@ -100,28 +99,27 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 - Why not Sodium's own check: `isTerrainRenderComplete()` reads only the queue. A worker holds a dequeued job before it counts as busy (found by disassembling Sodium 0.8.12).
 - A held predicate is not a final frame: in ALC, 2 of 34 first frames were not final.
   - Static captures add the determinism check (measurement.md#visual-protocol).
-  - The calibrated settle stays the floor until A5 shows predicate-ready -> frame-final (the predicate-ready frame equals a later settled reference) over at least 30 waits.
+  - The calibrated settle stays the floor until A5 passes (12).
 - Report: seconds, predicateSeconds, limitedBy, and the renderer's own check side by side (it found ALC's gap).
 - Re-read every Sodium 0.9.2 field and method by disassembly before relying on it.
 - As built (0.01.07), read on the render thread at each frame head while a wait runs: getTotalSections; the builder's queue and busy count; buildResults; each loaded section's runningJobs; taskLists (absent before the first cull); the tasks the last updateChunks submitted; needsGraphUpdate and the cull task. importantTasks is left out: it keeps sections the render tree does not show. limitedBy: minSeconds, the term that failed last, or stableFrames; the renderer's check reports its own seconds and gapFrames, the frames it held while the predicate did not.
 
 ## 8. Capture
 - Point: after the world render returns and before the GUI (ALC: after `renderLevel` in `GameRenderer.render`). Iris's final pass is done by then.
-- Path: the same screenshot readback and PNG writer F2 uses, so equal pixels give equal bytes.
-- Files are written on a writer pool. Images may arrive frames later, so in-flight frames are tracked.
 - Accumulation (per-pixel sums for a temporal metric) is not built until such a metric passes its positive control (measurement.md#visual-protocol; user, 2026-10-06). ALC's uint16 sums wrapped above 257 frames, so it would use uint32.
 - Manifest: capture.json per capture, with every frame's name, sha256, frameIndex, sinceReload and qpcNs, and the dropped frames. The response carries the same data, so the harness need not re-read it to proceed.
 - Retry-safe: each attempt writes to a new subfolder. ALC's refused non-empty folders and a late frame could land in a cleared one.
 - Live pass: a low-stall mode (readback queued, written later). Measure its frame-time cost before relying on it.
-- As built (0.01.07): the point is right after GameRenderer.render's applyPostEffects call (frames that render the level); Screenshot.takeScreenshot's readback arrives on the render thread frames later and 4 writers write it with NativeImage.writeToFile, F2's writer; at the cap the render thread waits only while a writer holds a frame, as a readback in flight needs the render thread. Layout: mod-protocol.md#commands.
-- Limits: at most 4096 frames per capture (ALC), one capture at a time (`busy`). F2 itself takes at most 64 frames per capture. Pending readbacks: at most 16 (CaptureAdapter.MAX_PENDING, in the jar; ~530 MB at 4K). At the cap a deterministic capture stalls the render thread until a writer frees a slot (time, not correctness); the live pass drops the frame and lists it under `dropped`. On cancel or disconnect, pending frames are still written and the manifest marked incomplete; the resource is freed after them.
+- As built (0.01.07): the point is right after GameRenderer.render's applyPostEffects call (frames that render the level); Screenshot.takeScreenshot's readback arrives on the render thread frames later and 4 writers write it with NativeImage.writeToFile, F2's writer, so equal pixels give equal bytes; at the cap the render thread waits only while a writer holds a frame, as a readback in flight needs the render thread. Layout: mod-protocol.md#commands.
+- As built (M3.P05): `images: false` keeps a frame's stamps only: no readback, PNG or capture.frame.
+- Limits: at most 4096 frames per capture (ALC), one capture at a time (`busy`). F2 itself takes at most 64 frames per capture. Pending readbacks: at most 16 (CaptureAdapter.MAX_PENDING, in the jar; ~530 MB at 4K). At the cap a deterministic capture stalls the render thread (time, not correctness); the live pass drops the frame and lists it under `dropped`. On cancel or disconnect, pending frames are still written and the manifest marked incomplete; the resource is freed after them.
 
 ## 9. Input and HUD
 - `input.block`: cancel mouse movement and button and key handling in the game while on. Include raw mouse input: ALC's OS lock missed raw input.
-  - pauseOnLostFocus is written false by the harness; the mod also refuses the pause screen while blocked.
+  - pauseOnLostFocus is written false by the harness.
 - `hud.set`: hide GUI (F1) through Hud.toggle() and isHidden() (26.3 has no hideGui option) and the debug overlay (F3), not keystrokes.
 - Events for focus lost and screen opened, so a session can mark captures invalid instead of guessing.
-- As built (0.01.06): SDL3 hands every mouse event to MouseHandler.onMove (the grabbed relative motion and the absolute cursor alike), onButton and onScroll, and every key to KeyboardHandler.keyPress, textInput and textEditing; `input.block` cancels all six at HEAD and Minecraft.pauseGame, the pause screen's one door, and releases held keys (KeyMapping.releaseAll) when it turns on; it changes the flag only while its request is live, under the state owner's lock, so a disconnect cannot leave a block without its 10 s release. The game turns the camera from mouse motion only while the mouse is grabbed (MouseHandler.handleAccumulatedMovement); grabMouse does nothing while the window is inactive, and only a click (onButton) or a closing screen calls it; `state` does not report the grab. `hud.set` toggles Gui.hud when its flag differs; F3 is no option on 26.3 but DebugScreenEntryList's overlay flag (`debugEntries.setOverlayVisible`).
+- As built (0.01.06): SDL3 hands every mouse event to MouseHandler.onMove (the grabbed relative motion and the absolute cursor alike), onButton and onScroll, and every key to KeyboardHandler.keyPress, textInput and textEditing; `input.block` cancels all six at HEAD and Minecraft.pauseGame, the pause screen's one door, and releases held keys (KeyMapping.releaseAll) when it turns on; it changes the flag only while its request is live, under the state owner's lock, so a disconnect cannot leave a block without its 10 s release. The game turns the camera from mouse motion only while the mouse is grabbed (MouseHandler.handleAccumulatedMovement); grabMouse does nothing while the window is inactive, and only a click (onButton) or a closing screen calls it; `state` does not report the grab. F3 is no option on 26.3 but DebugScreenEntryList's overlay flag (`debugEntries.setOverlayVisible`).
 
 ## 10. Adapter surface
 What each platform's adapter must provide, and where ALC hooked it: platform.md#mod-adapter-surface.
@@ -147,11 +145,11 @@ What each platform's adapter must provide, and where ALC hooked it: platform.md#
   - core unit tests (no game): the token rule, the mixin config plugin with and without a token, the frame clock, strict JSON, the framing, the protocol core (envelope, codes, out-of-order answers, cancel, timeout, busy, the state reset, a reconnect), every answer against commands.json; a real-pipe test (the DACL read back, a second instance refused); the timers on a fake GPU that fails a GL call off the render thread, a query reused while pending or a result read before it is in;
   - metadata test: reads the built jar; `depends` is derived on its own from the platform file and the pinned jars;
   - mixin-target test: ASM reads every target class, injected method (name and descriptor), INVOKE and accessor field (name and type) from the hash-checked pinned jars, and each call the adapters make into Sodium and Iris, and Iris's group calls around its passes; a mixin annotation it does not read fails it;
-  - capture: the decoded PNG equals the read-back pixels;
+  - capture: the decoded PNG equals the read-back pixels; align, ready and images false on fakes;
   - commands.json, the command table in machine form (mod-protocol.md#commands);
-  - in-game `selftest` (0.01.07: the clock and swap stamps, a renderer reading, a real reload, one frame to a temp folder, the input mixins);
+  - in-game `selftest` (0.01.07: the clock and swap stamps, a renderer reading, a real reload, one frame to a temp folder, ready-triggered and aligned from M3.P05, the input mixins);
   - acceptance launches (12).
-- Tests write only under mod/build/ (working folder build/test-work/, java.io.tmpdir inside it; ALC's test JVM wrote logs/ into mod/). `.npy` fixtures are marked binary in .gitattributes.
+- Tests write only under mod/build/ (working folder build/test-work/, java.io.tmpdir inside it; ALC's test JVM wrote logs/ into mod/).
 
 ## 12. Acceptance
 Each item is recorded in an acceptance run record (run-record.md#record); design.md#6-milestones says which milestone exits on which items.
@@ -162,7 +160,7 @@ Each item is recorded in an acceptance run record (run-record.md#record); design
 - A5 readiness: over >= 30 waits on the hello pack (TAA off), the first frame after predicate-ready equals a reference taken after the view's calibrated visual settle plus 2 s (decoded pixels), 30 of 30; only then may the predicate replace the settle as the visual floor (section 7); any miss keeps the settle and reports the rate. It runs in M3, on a deterministic pack.
 - A6 motion: one `camera.path` sequence identical across 2 sessions (hello pack, TAA on, flushed).
 - A7 input: mouse (26.3's one path, plans/m1.md D24) and keys move nothing and open nothing while blocked.
-- A8 overhead: in one session, the same variant with per-pass timers on vs off, judged by the in-session threshold; pass = no effect beyond it. The mod sits in both arms of every verdict, so additive cost cancels. The presence arm (mod present vs no jar, launch-level bracketing) and the known-effect arm (the shadows-off ratio through the mod equals a mod-free one) move to the JVM track's J1, where launch-level bracketing exists (jvm.md#build-order; user, 2026-10-06). M2.P10: passed (m2-a8-2, geo-mean +0.18 %).
+- A8 overhead: in one session, the same variant with per-pass timers on vs off, judged by the in-session threshold; pass = no effect beyond it. The mod sits in both arms of every verdict, so additive cost cancels. The presence arm (mod present vs no jar, launch-level bracketing) and the known-effect arm (the shadows-off ratio through the mod equals a mod-free one) move to the JVM track's J1 (jvm.md#build-order; user, 2026-10-06). M2.P10: passed (m2-a8-2, geo-mean +0.18 %).
 - A9 clocks: PresentMon's CPUStartQPCTime x 1e6 (the previous Present's return) against both frame stamps (section 6), matched by order over one capture: the swap-return stamp differs by under 1 ms at the median and the maximum, under half the shortest frame, so each frame maps to one row; the HEAD stamp's offset is reported beside it (plans/m1.md D26; measurement.md#tools).
 - A10 `selftest` passes at every session start, after `world.wait` (mod-protocol.md#choreography).
 - A11 timers: on GPU-bound captures, the residual GPUBusy minus pass sum (median over the window) moves by less than the view's calibrated threshold between the variants of one session (the sum never equals GPUBusy: Iris's depth copies and non-pack draws lie outside pack passes), and the shadows-off delta from timers matches the GPUBusy delta within the same threshold. Only then, and per pass after the submission control, may timers carry cost rows below the CPU floor (measurement.md#verdicts-and-cost-rows); otherwise they are dropped. M2.P10: failed at underwater (m2-a11-1), dropped (design.md E3).

@@ -72,7 +72,12 @@ class WindowTest {
         });
         handlers.put("frames.capture", request -> {
             capturing.await();
-            return Map.of("frames", List.of(), "dropped", List.of(), "manifest", "capture.json");
+            Map<String, Object> answer = new HashMap<>();
+            answer.put("frames", List.of());
+            answer.put("dropped", List.of());
+            answer.put("ready", null);
+            answer.put("manifest", "capture.json");
+            return answer;
         });
         Protocol.Stamps stamps = new Protocol.Stamps() {
             @Override

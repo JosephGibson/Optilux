@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * render thread (what the window's close button does: Window.shouldClose, then stop() in
  * Minecraft.runTick of 26.3); the game, renderer, shader-loader and capture adapters, the window
  * clock, the timers and selftest answer the rest, the game adapter owns the world leave, and one
- * poll runs them at each frame, the window clock's first.
+ * poll runs them at each frame, the window clock's first and the capture's ready gate last.
  */
 final class Session {
     private static final Logger LOG = LoggerFactory.getLogger("optilux-helper");
@@ -88,7 +88,7 @@ final class Session {
         IrisAdapter iris = new IrisAdapter(clock, game::inWorldNow, events, window);
         ExecutorService writers = Executors.newFixedThreadPool(WRITERS, daemons("optilux-writer"));
         CaptureAdapter capture = new CaptureAdapter(clock, iris::sinceReload, game::inWorldNow,
-            writers, events);
+            renderer::reading, System::nanoTime, writers, events);
         Selftest selftest = new Selftest(clock, game::inWorldNow, state::inputBlocked, renderer,
             iris, capture);
         Timers gpuTimers = new Timers(new GlQueries(), game::inWorldNow, events);
@@ -139,7 +139,8 @@ final class Session {
         Hooks.attach(List.of(new Hooks.Poll("window", () -> window.frame(clock.last(),
             iris.sinceReload())), new Hooks.Poll("timers", () -> gpuTimers.frame(
             clock.last().frameIndex())), new Hooks.Poll("game", game::frame),
-            new Hooks.Poll("renderer", renderer::frame), new Hooks.Poll("iris", iris::frame)), () -> {
+            new Hooks.Poll("renderer", renderer::frame), new Hooks.Poll("iris", iris::frame),
+            new Hooks.Poll("capture", capture::frame)), () -> {
             try {
                 capture.capturePoint();
             } catch (InterruptedException interrupted) {

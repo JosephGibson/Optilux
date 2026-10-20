@@ -17,30 +17,92 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * One `frames.capture` (docs/mod.md#8-capture): which frames to take, the frames in flight, and
- * the manifest. The capture point asks {@link #wants} once per frame on the render thread, then
- * {@link #take}s the frame; its readback arrives frames later ({@link #arrived}) and a writer
- * thread writes the PNG ({@link #written} or {@link #dropped}). When every taken frame is resolved
- * and the count is reached, or after {@link #stop}, capture.json is written beside the frames and
- * {@link #done} completes with the answer's fields: frames (name, sha256, frameIndex, sinceReload,
- * qpcNs, swapQpcNs), dropped and the manifest's path. Each attempt writes to a new subfolder of the
- * requested directory ({@link #attemptFolder}), so a retry never meets an earlier attempt's files.
+ * the manifest. With a ready gate the frame poll judges the readiness predicate at each frame head
+ * ({@link #ready}) until it holds; no frame is taken before. The capture point asks {@link #wants}
+ * once per frame on the render thread, only a frame at the {@link Align} phase when aligned, then
+ * {@link #take}s the frame. With images its readback arrives frames later ({@link #arrived}) and
+ * a writer thread writes the PNG ({@link #written} or {@link #dropped}); without, the frame's
+ * stamps are its whole record. When every taken frame is resolved and the count is reached, or
+ * after {@link #stop}, capture.json is written beside the frames and {@link #done} completes with
+ * the answer's fields: frames (name, sha256, frameIndex, sinceReload, qpcNs, swapQpcNs; the
+ * stamps alone without images), dropped, ready's report and the manifest's path. Each attempt
+ * writes to a new subfolder of the requested directory ({@link #attemptFolder}), so a retry never
+ * meets an earlier attempt's files.
  */
 public final class Capture {
     public static final String MANIFEST = "capture.json";
     static final String ATTEMPT = "attempt-";
+    /** Iris's frame counter wraps here (SystemTimeUniforms.FrameCounter.beginFrame). */
+    public static final int WRAP = 720720;
 
-    /** A taken frame: its file name and the stamp of the frame it shows. */
+    /** A taken frame: its file name (null without images) and the stamp of the frame it shows. */
     public record Frame(int ordinal, String name, long frameIndex, Long sinceReload, long qpcNs,
         long swapQpcNs) {
+    }
+
+    /**
+     * Frames whose sinceReload mod cycle is phase. The cycle divides {@link #WRAP}, so the phase
+     * survives the counter's wrap (docs/mod.md#6-time-and-determinism).
+     */
+    public record Align(int cycle, int phase) {
+        public Align {
+            if (cycle < 1 || WRAP % cycle != 0 || phase < 0 || phase >= cycle) {
+                throw new IllegalArgumentException("cycle " + cycle + " must divide " + WRAP
+                    + " and phase " + phase + " lie in 0.." + (cycle - 1));
+            }
+        }
+
+        /** frames.capture's align {cycle, phase}; bad-request names what is wrong. */
+        public static Align of(Object value) throws Errors.Refused {
+            String where = "frames.capture.align";
+            Map<?, ?> fields = nested(value, where, "cycle", "phase");
+            long cycle = integer(fields, where, "cycle", 1, WRAP);
+            if (WRAP % cycle != 0) {
+                throw bad(where + ".cycle " + cycle + " does not divide " + WRAP
+                    + ", where Iris's frame counter wraps; fix: a divisor such as 2, 4, 8 or 16");
+            }
+            long phase = integer(fields, where, "phase", 0, cycle - 1);
+            return new Align((int) cycle, (int) phase);
+        }
+
+        public boolean holds(long sinceReload) {
+            return sinceReload % cycle == phase;
+        }
+
+        public Map<String, Object> fields() {
+            Map<String, Object> found = new LinkedHashMap<>();
+            found.put("cycle", cycle);
+            found.put("phase", phase);
+            return found;
+        }
+    }
+
+    /**
+     * frames.capture's ready {stableFrames, minSeconds}, the `ready` command's arguments: a wait
+     * whose minSeconds count from `startNanos`, the request; bad-request names what is wrong.
+     */
+    public static Readiness readiness(Object value, long startNanos) throws Errors.Refused {
+        String where = "frames.capture.ready";
+        Map<?, ?> fields = nested(value, where, "stableFrames", "minSeconds");
+        long stableFrames = integer(fields, where, "stableFrames", 1, 10_000);
+        if (!(fields.get("minSeconds") instanceof Json.Num num) || !Double.isFinite(num.doubleValue())
+            || num.doubleValue() < 0 || num.doubleValue() > 3600) {
+            throw bad(where + ".minSeconds must be a number in 0..3600");
+        }
+        return new Readiness((int) stableFrames, num.doubleValue(), startNanos);
     }
 
     private final Path folder;
     private final int count;
     private final int every;
     private final long intervalNs;
+    private final Align align;
+    private final Readiness ready;
+    private final boolean images;
     private final List<Map<String, Object>> frames = new ArrayList<>();
     private final List<Map<String, Object>> dropped = new ArrayList<>();
     private final CompletableFuture<Map<String, Object>> done = new CompletableFuture<>();
+    private Map<String, Object> readyReport;
     private int taken;
     private long nextFrame = -1;
     private long nextQpcNs = -1;
@@ -48,8 +110,14 @@ public final class Capture {
     private int writing;
     private String stopped;
 
-    /** `every` frames apart, or `intervalNs` apart when it is positive. */
+    /** `every` frames apart, or `intervalNs` apart when it is positive; PNGs, no gate, no align. */
     public Capture(Path folder, int count, int every, long intervalNs) {
+        this(folder, count, every, intervalNs, null, null, true);
+    }
+
+    /** As above, each frame at `align`'s phase when set, none before `ready` holds when set. */
+    public Capture(Path folder, int count, int every, long intervalNs, Align align,
+        Readiness ready, boolean images) {
         if (count < 1 || every < 1) {
             throw new IllegalArgumentException("count " + count + " and every " + every + " must be positive");
         }
@@ -57,15 +125,51 @@ public final class Capture {
         this.count = count;
         this.every = every;
         this.intervalNs = intervalNs;
+        this.align = align;
+        this.ready = ready;
+        this.images = images;
     }
 
     public Path folder() {
         return folder;
     }
 
-    /** Whether the frame with this stamp is one to take (render thread). */
-    public synchronized boolean wants(long frameIndex, long qpcNs) {
-        if (stopped != null || taken >= count) {
+    public boolean images() {
+        return images;
+    }
+
+    /** Whether a ready gate is set and has neither opened nor been stopped. */
+    public synchronized boolean awaitingReady() {
+        return ready != null && readyReport == null && stopped == null;
+    }
+
+    /**
+     * One frame head while the gate is closed (render thread): the predicate judged on this
+     * reading. At the first head where the wait is over the gate opens, and this frame, the first
+     * rendered after the predicate held, is the first the capture may take. ready's report with
+     * that frame's index when the gate opened here, else null.
+     */
+    public synchronized Map<String, Object> ready(Readiness.Reading reading, long nowNanos,
+        long frameIndex) {
+        if (!awaitingReady()) {
+            return null;
+        }
+        Map<String, Object> answer = ready.frame(reading, nowNanos);
+        if (answer == null) {
+            return null;
+        }
+        readyReport = new LinkedHashMap<>(answer);
+        readyReport.put("frameIndex", frameIndex);
+        nextFrame = Math.max(nextFrame, frameIndex);
+        return readyReport;
+    }
+
+    /** Whether the frame with this stamp and counter is one to take (render thread). */
+    public synchronized boolean wants(long frameIndex, long qpcNs, Long sinceReload) {
+        if (stopped != null || taken >= count || awaitingReady()) {
+            return false;
+        }
+        if (align != null && (sinceReload == null || !align.holds(sinceReload))) {
             return false;
         }
         if (intervalNs > 0) {
@@ -75,10 +179,11 @@ public final class Capture {
     }
 
     /**
-     * Take the frame with this stamp: its file name and stamp, counted in flight; null when the
-     * capture stopped or reached its count since {@link #wants} (a stop may land in between, and
-     * after it the manifest may already be written). The next frame is due `every` frames or
-     * `intervalNs` after this one, so a long frame never makes a burst of catch-up frames.
+     * Take the frame with this stamp: its file name and stamp, counted in flight, or without
+     * images recorded at once; null when the capture stopped or reached its count since
+     * {@link #wants} (a stop may land in between, and after it the manifest may already be
+     * written). The next frame is due `every` frames or `intervalNs` after this one, so a long
+     * frame never makes a burst of catch-up frames.
      */
     public synchronized Frame take(FrameClock.Stamp stamp, Long sinceReload) {
         if (stopped != null || taken >= count || done.isDone()) {
@@ -87,9 +192,15 @@ public final class Capture {
         taken++;
         nextFrame = stamp.frameIndex() + every;
         nextQpcNs = stamp.qpcNs() + intervalNs;
-        inFlight++;
-        return new Frame(taken, String.format("frame-%05d.png", taken), stamp.frameIndex(),
-            sinceReload, stamp.qpcNs(), stamp.swapQpcNs());
+        Frame frame = new Frame(taken, images ? String.format("frame-%05d.png", taken) : null,
+            stamp.frameIndex(), sinceReload, stamp.qpcNs(), stamp.swapQpcNs());
+        if (images) {
+            inFlight++;
+        } else {
+            frames.add(entry(frame, null));
+            settle();
+        }
+        return frame;
     }
 
     /** The frame's readback arrived; a writer takes it next. */
@@ -116,14 +227,7 @@ public final class Capture {
 
     public synchronized void written(Frame frame, String sha256) {
         writing--;
-        Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("name", frame.name());
-        entry.put("sha256", sha256);
-        entry.put("frameIndex", frame.frameIndex());
-        entry.put("sinceReload", frame.sinceReload());
-        entry.put("qpcNs", frame.qpcNs());
-        entry.put("swapQpcNs", frame.swapQpcNs());
-        frames.add(entry);
+        frames.add(entry(frame, sha256));
         settle();
     }
 
@@ -154,6 +258,20 @@ public final class Capture {
         return done;
     }
 
+    /** A frame's manifest entry: its file and hash with images, then its stamps. */
+    private Map<String, Object> entry(Frame frame, String sha256) {
+        Map<String, Object> entry = new LinkedHashMap<>();
+        if (images) {
+            entry.put("name", frame.name());
+            entry.put("sha256", sha256);
+        }
+        entry.put("frameIndex", frame.frameIndex());
+        entry.put("sinceReload", frame.sinceReload());
+        entry.put("qpcNs", frame.qpcNs());
+        entry.put("swapQpcNs", frame.swapQpcNs());
+        return entry;
+    }
+
     private void settle() {
         notifyAll();
         if (done.isDone() || inFlight + writing > 0 || (stopped == null && taken < count)) {
@@ -170,6 +288,9 @@ public final class Capture {
         } else {
             manifest.put("every", every); // a frame count: an integer, never widened to a double
         }
+        manifest.put("align", align == null ? null : align.fields());
+        manifest.put("ready", readyReport);
+        manifest.put("images", images);
         manifest.put("frames", frames);
         manifest.put("dropped", dropped);
         Path path = folder.resolve(MANIFEST);
@@ -182,8 +303,51 @@ public final class Capture {
         Map<String, Object> answer = new LinkedHashMap<>();
         answer.put("frames", List.copyOf(frames));
         answer.put("dropped", List.copyOf(dropped));
+        answer.put("ready", readyReport);
         answer.put("manifest", path.toString());
         done.complete(answer);
+    }
+
+    /** A nested argument's fields: an object holding exactly `names` (bad-request otherwise). */
+    private static Map<?, ?> nested(Object value, String where, String... names)
+        throws Errors.Refused {
+        if (!(value instanceof Map<?, ?> fields)) {
+            throw bad(where + " must be an object");
+        }
+        List<String> wanted = List.of(names);
+        for (Object key : fields.keySet()) {
+            if (!wanted.contains(key)) {
+                throw bad(where + ": unknown field " + key + "; it takes " + String.join(", ", names));
+            }
+        }
+        for (String name : names) {
+            if (!fields.containsKey(name)) {
+                throw bad(where + ": missing field " + name);
+            }
+        }
+        return fields;
+    }
+
+    private static long integer(Map<?, ?> fields, String where, String name, long min, long max)
+        throws Errors.Refused {
+        Object value = fields.get(name);
+        long number;
+        try {
+            if (!(value instanceof Json.Num num) || !num.isInteger()) {
+                throw bad(where + "." + name + " must be an integer");
+            }
+            number = num.longValue();
+        } catch (ArithmeticException error) {
+            throw bad(where + "." + name + " is outside the 64-bit range");
+        }
+        if (number < min || number > max) {
+            throw bad(where + "." + name + " must lie in " + min + ".." + max);
+        }
+        return number;
+    }
+
+    private static Errors.Refused bad(String message) {
+        return new Errors.Refused(Errors.BAD_REQUEST, message);
     }
 
     /**
