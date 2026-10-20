@@ -75,7 +75,7 @@ glslang and RGA are pinned in config/tools.json (file, sha256, source), which `i
   - Claude Code can connect to it directly during shader work.
   - Its per-pass GPU timings may replace building GL timers in optilux-helper (E3).
   - Overhead unknown; under Iris's debug context it reported 30 fps where the bench tier ran 141 (confounded, spike L2).
-- Image metrics: FLIP 1.7 (frames). ColorVideoVDP 0.5.7 is the candidate metric for a temporal gate; it must first flag the positive controls (measurement.md#visual-protocol).
+- Image metrics, pinned in pyproject.toml: flip-evaluator 1.7 (FLIP on frames), scikit-image 0.26.0 (SSIM), with pillow 13.0.0 and numpy 2.5.4 decoding. ColorVideoVDP 0.5.7 is the candidate metric for a temporal gate; it must first flag the positive controls (measurement.md#visual-protocol).
 
 ## Costs
 ALC timings, for planning:

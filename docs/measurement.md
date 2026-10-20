@@ -106,4 +106,4 @@ The identity contract (every input that can move a measurement), the record's fi
   - AMD Software's own PresentMon runs beside every game (roadmap.md#findings-assigned F2): recorded, never waited on.
 - FLIP (flip-evaluator), LDR, sRGB inputs, ppd from suite.json. SSIM and PSNR via scikit-image.
 - RenderDoc 1.46 (debug tier): injected by gfx-debuggers (`-Ddebugger=renderdoc`, forward-slash path); what replay may decide: offline.md#decision-powers.
-- Python deps: locked in uv.lock (workflow.md#code-conventions). ALC's set is the candidate list for the analysis verbs: numpy, pillow, scikit-image, scipy, flip-evaluator, nbtlib.
+- Python deps: locked in uv.lock (workflow.md#code-conventions); the tiers' numpy, pillow, scikit-image (scipy with it) and flip-evaluator (plans/m3.md D59); nbtlib a candidate.
