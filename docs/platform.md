@@ -72,7 +72,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   - Fabric Loader: its profile JSON from meta.fabricmc.net under versions/; libraries from Fabric's Maven against the SHA-1 the profile carries, fabric-loader's own against Maven's .sha1;
   - mods and packs: the tier's Modrinth files (through `extends`) and the reference pack into the store runtime/<platform>/files/, against the platform file's sha512; resource and shader packs copied into game/resourcepacks/ and game/shaderpacks/;
   - Java: Temurin from the Adoptium API, against the archive sha256 pinned in config/java/bench.json, unpacked under runtime/java/<build>/;
-  - tools: PresentMon's console build from its GitHub release, against config/tools.json, into runtime/tools/.
+  - tools: PresentMon, glslang and RGA from their GitHub releases, against config/tools.json, into runtime/tools/, a zip unpacked into its own folder.
 - The launch spec, config/platforms/<id>.launch.json (committed), is written by the first install and compared fact by fact by every later one (its three note keys excepted):
   - main class (Fabric's KnotClient), the classpath in order with each jar's SHA-1, the asset index id and SHA-1;
   - the JVM options and game-argument template from Mojang's and Fabric's JSON;
@@ -90,7 +90,6 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   5. `--username optilux`, `--uuid` from the world's players/data/<uuid>.dat, else the platform file's `offlinePlayer` (F8), which `world snapshot` records;
   6. the started command line (psutil) equal to the built one and to the profile and the spec, the token's value excepted (fresh per launch, never identity);
   7. the join in this session's latest.log within 120 s (F11), Fabric's mod list equal to the tier; a failed check ends the game; `--quit-after S` holds S s, quits through the mod's `quit` (WM_CLOSE without a mod session) and reads the files back: every written key, the Iris keys, Sodium's text (`--set` and `--no-token`: run-record.md#identity).
-- Cross-check, once per platform: minecraft-launcher-lib's own command for the same versions must match the spec's main class, asset index and jars by content.
 
 ## mc-26.3 verified
 The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform change step 3 reruns these checks on a new platform. Evidence is quoted; the raw records live under runtime/ (ignored). 0.01.10 closed the deferred rows; the user's look review passed.
@@ -141,7 +140,7 @@ The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform c
 
 ## Platform change
 1. New platform file: pins + sha512.
-2. install, which writes the new launch spec.
+2. install, which writes the new launch spec, checked once against minecraft-launcher-lib's own command (S5).
 3. The checklist above: formats, gamerule names, the OpenGL option key, MC_VERSION; Iris reload, frame state, hideGUI, translucency, depth; the adapter surface in the pinned source; every [MC] item in lessons.md.
 4. Port the world: copy the snapshot, open it on the new version, re-check every camera, re-snapshot and hash.
 5. Recalibrate every mode.

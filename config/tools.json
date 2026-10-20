@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "id": "tools",
- "use": "pins for the external tools the harness runs; install fetches each against its hash into runtime/tools/",
+ "use": "pins for the external tools the harness runs; install fetches each against its hash into runtime/tools/, a zip with `unpack` unpacked into runtime/tools/<unpack>/, holding `exe`",
  "presentmon": {
   "version": "2.6.0",
   "file": "PresentMon-2.6.0-x64.exe",
@@ -10,5 +10,25 @@
   "why": "console build; one continuous ETW session per run (measurement.md#tools); file and sha256 pinned by the Phase -1 spike (platform.md#mc-263-verified, S6)",
   "sha256Why": "GitHub publishes no checksum for the release asset; the sha256 is of the file downloaded on 2026-10-06 (980320 bytes) and pins later installs to it"
  },
- "later": "RenderDoc, RGA and glslang are pinned here in M3 (offline.md#tools)"
+ "glslang": {
+  "version": "16.6.0",
+  "file": "glslang-16.6.0-windows-x86_64-release.zip",
+  "sha256": "82bf434e69b9bb4829de7e2b4bc2c5e7a7861e53d66cf75e5cc70f5f694a8d9b",
+  "source": "https://github.com/KhronosGroup/glslang/releases/download/16.6.0/glslang-16.6.0-windows-x86_64-release.zip",
+  "unpack": "glslang-16.6.0",
+  "exe": "bin/glslang.exe",
+  "why": "L0's preprocess (-E), compile and link (-l) and reflection (-q) of the pack's own source (offline.md#tools); the newest release, 2026-09-11 (plans/m3.md D58)",
+  "sha256Why": "GitHub's asset digest, equal to the sha256 of the file downloaded on 2026-10-20 (13734779 bytes)"
+ },
+ "rga": {
+  "version": "2.15",
+  "file": "rga-windows-x64-2.15.zip",
+  "sha256": "1dd6fc63baa3ea00f0c4daf208b6139ca924566dd4305a77da0b6c5e52df2377",
+  "source": "https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/2.15/rga-windows-x64-2.15.zip",
+  "unpack": "rga-2.15",
+  "exe": "rga.exe",
+  "why": "L2's command line (-s opengl -c gfx1101): registers, ISA, live registers and the CFG of dumped stages; explains, never gates (offline.md#tools); the newest release, 2026-10-06 (plans/m3.md D58)",
+  "sha256Why": "GitHub's asset digest, equal to the sha256 of the file downloaded on 2026-10-20 (268732151 bytes)"
+ },
+ "later": "RenderDoc is pinned here in M4, for L4 (offline.md#tools)"
 }
