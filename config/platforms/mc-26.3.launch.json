@@ -5,8 +5,8 @@
  "sources": {
   "versionJson": {
    "id": "26.3",
-   "url": "https://piston-meta.mojang.com/v1/packages/702fe59163c6ee6578607daa85811d9bc9c7cc40/26.3.json",
-   "sha1": "702fe59163c6ee6578607daa85811d9bc9c7cc40"
+   "url": "https://piston-meta.mojang.com/v1/packages/11f1aefe473eefba0af62e3286c33b692807b2eb/26.3.json",
+   "sha1": "11f1aefe473eefba0af62e3286c33b692807b2eb"
   },
   "fabricProfile": {
    "id": "fabric-loader-0.19.5-26.3",
@@ -16,8 +16,8 @@
  "mainClass": "net.fabricmc.loader.impl.launch.knot.KnotClient",
  "assetIndex": {
   "id": "34",
-  "sha1": "1e4e4a68dece1c0f51b8f93b45da8fe8da51bcd3",
-  "url": "https://piston-meta.mojang.com/v1/packages/1e4e4a68dece1c0f51b8f93b45da8fe8da51bcd3/34.json"
+  "sha1": "e787e8afd149a4cefa89d341b91f5aed8f5d93a0",
+  "url": "https://piston-meta.mojang.com/v1/packages/e787e8afd149a4cefa89d341b91f5aed8f5d93a0/34.json"
  },
  "logging": {
   "id": "client-1.21.2.xml",
