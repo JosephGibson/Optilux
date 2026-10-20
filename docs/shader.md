@@ -20,7 +20,7 @@ Policy · Look and scope · Dropped features · Method · Pipeline spec · Deter
 - License: MIT. README credits Complementary Shaders as the inspiration (wording: design.md D7). No "Complementary" in any Optilux name.
 
 ## Look and scope
-- Look: Complementary Unbound style, starting from a similar tonemap. Judged side by side against Unbound reference frames (`played` profile) at perf and coverage views.
+- Look: Optilux's own, next-generation and heavily inspired by Complementary Unbound, starting from a similar tonemap (user, 2026-10-20). Unbound's reference frames (`played` profile) at perf and coverage views stay the side-by-side reference, not the target; the look target and the feature list come from roadmap.md#decisions D72.
 - In scope (user, 2026-10-05):
   - lighting: sun, sky and block light (uncolored), held-item light, block-light flicker;
   - shadows, entity shadows, AO;
@@ -32,12 +32,12 @@ Policy · Look and scope · Dropped features · Method · Pipeline spec · Deter
   - post: bloom, tonemap, TAA, image sharpening;
   - selection outline as vanilla draws it. This is Complementary's "Default" mode, which leaves the line color untouched and is what the played settings use.
 - Minimal material map: block reflections and puddles need to know which blocks are smooth. A small block-ID map (block.properties groups such as glass, ice, metal, polished stone) sets smoothness. No generated normals, coated textures or per-texture analysis.
-- Everything else is dropped (next section).
+- Everything else waits on the not-yet list (next section).
 - Settings: most features Off / Low / Medium / High; fewer look knobs than Unbound. Option profiles are JSON (config/profiles/), written to the pack's settings file (shaderpacks/<pack>.txt) by the harness from M2; until then a run takes the pack's defaults (run-record.md#run-spec).
 - Textures: built and tested on Faithful 64x; no texture assets ship.
 
 ## Dropped features
-The user's list of 2026-10-05. Unbound's switch for each, where known, is in config/profiles/complementary-unbound-iso.json; its `unresolved` block lists the switches still to confirm, dropped and kept (bloom), against r5.9.3 before the first M2 capture.
+The user's list of 2026-10-05, now a not-yet list (user, 2026-10-20): each feature stays out until roadmap.md#decisions D72 takes it back. Unbound's switch for each, where known, is in config/profiles/complementary-unbound-iso.json; its `unresolved` block lists the switches still to confirm, dropped and kept (bloom), against r5.9.3 before the first M2 capture.
 - Anti-aliasing: FXAA. TAA is the only anti-aliasing.
 - Colored light: Advanced Color Tracing (voxel floodfill colored block light) and all its extras:
   - colored light fog, saturation, torch warmth, colored candles;

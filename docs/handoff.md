@@ -34,6 +34,7 @@ Not named by the prompt or the plan, each the reading taken:
 - CI green on 776964c, 7aa3e2f, 5237ecb, 32845d9 and 5d87e5b, each watched to its end before the next push.
 
 ## Open questions
+- D72 (roadmap.md#decisions): what next-generation means for Optilux (the look target, the features back from the not-yet list, a 4K frame-time budget, M6's ratio), the user's, at M4's Plan prompt. D71 set the direction after M3.P01 (user, 2026-10-20); M3 runs as planned.
 - D66: the driver at M3.P10's go, as found (32.0.31041.3013) or updated first.
 - What the ticks before /tick freeze leave varying at a perf view (M3.P09); spider eyes and the world's difficulty (M4); M2's carried list (git 7dfc2fa's handoff).
 

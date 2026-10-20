@@ -1,6 +1,6 @@
 # Optilux
 
-A lean Minecraft shader pack and a benchmark suite for measuring it.
+A Minecraft shader pack aiming at a next-generation look of its own, and the benchmark suite that measures what each of its features costs.
 
 Status: in development. The benchmark harness runs in the repository; the release zip still holds a placeholder pack with no programs, and the first real pack arrives in a later release.
 
