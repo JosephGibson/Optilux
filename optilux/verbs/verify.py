@@ -1,5 +1,7 @@
 """`optilux verify <target>`: static checks. `docs`: the doc rules of optilux.docs_check.
-`records`: every committed record parses against its kind (plans/m2.md D51, F13).
+`records`: every committed record parses against its kind (plans/m2.md D51, F13). `similarity`:
+shader/'s GLSL against the studied reference copy (plans/m3.md D55), `--controls` the figures
+that set its threshold.
 
 `records` reads results/records/*.json: each an object of the schema, named as its file, with a
 kind, a status (a reason beside any but ok) and an identity of the record's era (null only when
@@ -13,12 +15,15 @@ identity (plans/m2.md D36). CI runs it, and the pre-commit hook when a record is
 
 import argparse
 import json
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from optilux import REPO_ROOT, docs_check, record
+from optilux import REPO_ROOT, docs_check, platform, record, similarity
 from optilux.verbs import Verb
+from optilux.verbs.install import REFERENCE, SIMILARITY
+from optilux.verbs.pack import PACK_DIR
 
 # run-record.md#record's budget, D51: ~200 KB a measurement or calibration record (frame-level
 # samples live in results/raw/); M1's full acceptance records run to 238 KB (F13).
@@ -46,6 +51,21 @@ def configure(parser: argparse.ArgumentParser) -> None:
         description="Check results/records/*.json (plans/m2.md D51).",
     )
     records.add_argument("--json", action="store_true", help="print JSON instead of text")
+    similar = targets.add_parser(
+        "similarity",
+        help="shader/'s GLSL against the studied reference copy",
+        description=(
+            "Exit 1 on a run of t normalized tokens or more that a GLSL file under shader/ "
+            "shares with the studied copy under reference/ (config/similarity.json; "
+            "plans/m3.md D55). --controls recomputes the figures that set t instead."
+        ),
+    )
+    similar.add_argument(
+        "--controls",
+        action="store_true",
+        help="the studied copy against itself and the control pack against it",
+    )
+    similar.add_argument("--json", action="store_true", help="print JSON instead of text")
 
 
 def print_text(report: docs_check.Report) -> None:
@@ -229,7 +249,232 @@ def run_records(args: argparse.Namespace) -> int:
     return 1 if ledger.violations else 0
 
 
-TARGETS = {"docs": run_docs, "records": run_records}
+# Similarity (docs/shader.md#policy, plans/m3.md D55).
+
+# The pack's source: what `pack build` zips and the pre-commit hook reads from the index.
+SHADER = PACK_DIR
+POLICY = "docs/shader.md#policy"
+
+
+class SimilarityError(RuntimeError):
+    """The check cannot run: its config or a reference copy is missing or off its pin."""
+
+
+@dataclass
+class Similarity:
+    """One check: the GLSL files and tokens on each side, k and t, every match of t or more."""
+
+    files: int
+    tokens: int
+    reference: str
+    references: int
+    k: int
+    t: int
+    flagged: list[similarity.Match]
+
+    def line(self) -> str:
+        return (
+            f"optilux verify similarity: {self.files} GLSL files under {SHADER}/ ({self.tokens} "
+            f"tokens) against {self.references} of {self.reference} (k {self.k}, t {self.t}): "
+            f"{len(self.flagged)} matches of {self.t} tokens or more"
+        )
+
+
+def similarity_config(root: Path) -> dict:
+    """The working tree's config/similarity.json, parsed and checked (parse_config)."""
+    try:
+        text = (root / SIMILARITY).read_text(encoding="utf-8")
+    except OSError as error:
+        raise SimilarityError(f"{SIMILARITY}: {error}; fix: restore it from git") from None
+    return parse_config(text)
+
+
+def parse_config(text: str) -> dict:
+    """config/similarity.json's text with k and t checked (whole numbers, 1 <= k <= t) and the
+    studied copy's pin (its folder a plain name, its tree hash and file count)."""
+    try:
+        config = json.loads(text)
+    except ValueError as error:
+        raise SimilarityError(f"{SIMILARITY}: {error}; fix: restore it from git") from None
+    if not isinstance(config, dict):
+        raise SimilarityError(f"{SIMILARITY}: no JSON object; fix: restore it from git")
+    k, t = config.get("k"), config.get("t")
+    if not (isinstance(k, int) and isinstance(t, int) and 1 <= k <= t):
+        raise SimilarityError(f"{SIMILARITY}: k {k!r} and t {t!r}; fix: whole numbers, k <= t")
+    pin_of(config, "studied")
+    return config
+
+
+def pin_of(config: dict, role: str) -> dict:
+    """A copy's pin in config/similarity.json: its folder under reference/, tree hash and
+    file count."""
+    pin = config.get(role)
+    if not (
+        isinstance(pin, dict)
+        and isinstance(pin.get("folder"), str)
+        and platform.plain_name(pin["folder"])
+        and isinstance(pin.get("treeSha256"), str)
+        and isinstance(pin.get("files"), int)
+    ):
+        raise SimilarityError(
+            f"{SIMILARITY} {role}: no plain folder, treeSha256 and files; fix: restore it from git"
+        )
+    return pin
+
+
+def reference_texts(root: Path, pin: dict) -> dict[str, str]:
+    """A reference copy's GLSL texts by their path from the repository root, read only after
+    its tree hash matches its pin (record.tree_hash; plans/m3.md D54), so an edit under
+    reference/ never passes as Complementary's code."""
+    home = root / REFERENCE / pin["folder"]
+    shown = f"{REFERENCE}/{pin['folder']}/"
+    if not home.is_dir():
+        raise SimilarityError(f"{shown} is missing; fix: `uv run optilux install` unpacks it")
+    try:
+        digest, count = record.tree_hash(home)
+    except record.RecordError as error:  # a link or an unreadable file: no copy install made
+        raise SimilarityError(
+            f"{shown}: {error}; fix: delete the folder and run `uv run optilux install`"
+        ) from None
+    if (digest, count) != (pin["treeSha256"], pin["files"]):
+        raise SimilarityError(
+            f"{shown}: tree sha256 {digest} ({count} files) differs from its pin "
+            f"{pin['treeSha256']} ({pin['files']} files); fix: delete the folder and run "
+            "`uv run optilux install`"
+        )
+    return {
+        f"{shown}{path.relative_to(home).as_posix()}": text(path.read_bytes())
+        for path in sorted(home.rglob("*"))
+        if path.is_file() and similarity.is_source(path.name)
+    }
+
+
+def text(data: bytes) -> str:
+    # A byte outside UTF-8 sits in a comment in practice; as U+FFFD elsewhere it is one token.
+    return data.decode("utf-8", errors="replace")
+
+
+def shader_texts(root: Path) -> dict[str, str]:
+    """The working tree's files under shader/, by their path from the repository root."""
+    folder = root / SHADER
+    if not folder.is_dir():
+        return {}
+    return {
+        path.relative_to(root).as_posix(): text(path.read_bytes())
+        for path in sorted(folder.rglob("*"))
+        if path.is_file()
+    }
+
+
+def check_similarity(
+    root: Path, texts: Mapping[str, str], config: dict | None = None
+) -> Similarity:
+    """The GLSL files among `texts` (the working tree's shader/ or the index's) against the
+    studied copy under root, winnowed with w = t - k + 1: every run of t tokens or more is
+    flagged. `config` is the parsed config/similarity.json to judge by (the hook's is the
+    index's); None reads root's."""
+    config = config if config is not None else similarity_config(root)
+    k, t = config["k"], config["t"]
+    candidates = similarity.sources(texts)
+    references = similarity.sources(reference_texts(root, config["studied"]))
+    found = similarity.matches(candidates, references, k, t - k + 1)
+    return Similarity(
+        files=len(candidates),
+        tokens=sum(len(source.tokens) for source in candidates),
+        reference=f"{REFERENCE}/{config['studied']['folder']}/",
+        references=len(references),
+        k=k,
+        t=t,
+        flagged=[match for match in found if match.length >= t],
+    )
+
+
+def flagged_text(match: similarity.Match, t: int) -> str:
+    return f"{match.text()}, t {t}; fix: write it fresh in your own structure ({POLICY})"
+
+
+def control_figures(root: Path) -> dict:
+    """The figures that set t (D55): the studied copy against itself, winnowed as the check
+    runs, flags every file of t tokens or more; the control pack against the studied copy over
+    every k-gram (w = 1), so its longest run is exact whenever it reaches k tokens."""
+    config = similarity_config(root)
+    k, t = config["k"], config["t"]
+    studied = similarity.sources(reference_texts(root, config["studied"]))
+    control = similarity.sources(reference_texts(root, pin_of(config, "control")))
+    long = {source.name for source in studied if len(source.tokens) >= t}
+    own = similarity.matches(studied, studied, k, t - k + 1)
+    flagged = {match.candidate for match in own if match.length >= t}
+    shared = similarity.matches(control, studied, k, 1)
+    return {
+        "self": {"files": len(long), "flagged": len(long & flagged)},
+        "control": {
+            "longest": shared[0].length if shared else 0,
+            "at": shared[0].text() if shared else None,
+        },
+    }
+
+
+def control_problems(figures: dict, config: dict) -> list[str]:
+    """The rule the figures must keep, and their difference from config/similarity.json."""
+    t = config["t"]
+    problems = []
+    if figures["self"]["flagged"] != figures["self"]["files"]:
+        problems.append(
+            f"the studied copy against itself flags {figures['self']['flagged']} of its "
+            f"{figures['self']['files']} files of {t} tokens or more, not every one"
+        )
+    if figures["control"]["longest"] >= t:
+        problems.append(
+            f"the control pack shares {figures['control']['longest']} tokens with the studied "
+            f"copy, not under t {t}: a rule change is the user's (plans/m3.md section 7)"
+        )
+    recorded = config.get("controls") or {}
+    for group, values in figures.items():
+        for key, value in values.items():
+            if (recorded.get(group) or {}).get(key) != value:
+                problems.append(
+                    f"controls.{group}.{key} is {(recorded.get(group) or {}).get(key)!r} in "
+                    f"{SIMILARITY}, measured {value!r}; fix: record the measured figure"
+                )
+    return problems
+
+
+def run_similarity(args: argparse.Namespace) -> int:
+    try:
+        if args.controls:
+            config = similarity_config(REPO_ROOT)
+            figures = control_figures(REPO_ROOT)
+            problems = control_problems(figures, config)
+            if args.json:
+                print(json.dumps({"ok": not problems, **figures, "problems": problems}))
+                return 1 if problems else 0
+            own, shared = figures["self"], figures["control"]
+            print(
+                f"self: {own['flagged']} of {own['files']} files of {config['t']} tokens or "
+                "more flagged"
+            )
+            print(f"control: longest {shared['longest']} tokens, {shared['at']}")
+            for problem in problems:
+                print(problem)
+            print(f"optilux verify similarity --controls: {len(problems)} problems")
+            return 1 if problems else 0
+        found = check_similarity(REPO_ROOT, shader_texts(REPO_ROOT))
+    except SimilarityError as error:
+        if args.json:
+            print(json.dumps({"ok": False, "error": str(error)}))
+        else:
+            print(f"optilux verify similarity: {error}")
+        return 1
+    if args.json:
+        print(json.dumps({"ok": not found.flagged, **asdict(found)}))
+    else:
+        for match in found.flagged:
+            print(flagged_text(match, found.t))
+        print(found.line())
+    return 1 if found.flagged else 0
+
+
+TARGETS = {"docs": run_docs, "records": run_records, "similarity": run_similarity}
 
 
 def run(args: argparse.Namespace) -> int:
@@ -238,7 +483,7 @@ def run(args: argparse.Namespace) -> int:
 
 VERB = Verb(
     name="verify",
-    help="static checks (docs: the doc rules; records: the run records)",
+    help="static checks (docs: the doc rules; records: the run records; similarity: shader/)",
     run=run,
     configure=configure,
 )

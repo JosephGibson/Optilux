@@ -13,10 +13,11 @@ Policy · Look and scope · Dropped features · Method · Pipeline spec · Deter
 - Write:
   - Every Optilux line is written fresh: own structure, names and decomposition.
   - Describe a technique in your own words in docs/research/ before implementing it.
-- `optilux verify similarity` (built in M3; not yet a verb):
-  - method: normalized-token fingerprints (winnowing) of Optilux shader files against reference/; spans over the threshold are flagged.
-  - Runs locally before each commit; CI has no reference copy.
-  - The threshold is set in M3 from controls: Complementary against itself, and against an unrelated pack.
+- `optilux verify similarity` (plans/m3.md D55):
+  - method: each GLSL file under shader/ (named by a stage suffix or .glsl; others are not read) against Unbound's in reference/, read once its tree hash matches config/similarity.json's pin. Tokens drop comments, whitespace and directives but keep a `#define`'s replacement unless it is a value (one token or a signed number: Unbound's options give 111 NUM in a row); identifiers become ID, numbers NUM, true and false BOOL. k-grams are winnowed in a window w = t - k + 1, and each shared fingerprint is extended over both files to its whole run: a run of t tokens or more is always flagged, naming both files and their lines; none under k is.
+  - Threshold (config/similarity.json): k 20, t 72. Controls: Unbound against itself flags all 129 of its files of 72 tokens or more; the unrelated pack (Wisdom Shaders Build3300) shares at most 71 tokens with Unbound, over every k-gram: 18 sampler2D uniforms in a row. `verify similarity --controls` recomputes both.
+  - Pitfall: unrelated packs share repetitions (declaration lists, offset tables, runs of constants); a long run of same-type declarations can be flagged, and is written another way (grouped, reordered).
+  - CI has no reference copy and leaves it out.
 - License: MIT. README credits Complementary Shaders as the inspiration (wording: design.md D7). No "Complementary" in any Optilux name.
 
 ## Look and scope

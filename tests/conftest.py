@@ -1,7 +1,9 @@
 """Shared test helpers: git without leaked GIT_* variables, throwaway repos that prove they are
 not this checkout before anything is written (docs/workflow.md#testing), the repo's config for a
-fake root, and the skip of Windows-only tests on other systems (docs/plans/m1.md D19)."""
+fake root, a fake root's similarity inputs, and the skip of Windows-only tests on other systems
+(docs/plans/m1.md D19)."""
 
+import json
 import os
 import shutil
 import signal
@@ -11,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from optilux import REPO_ROOT
+from optilux import REPO_ROOT, record
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -75,6 +77,21 @@ def copy_config(root: Path) -> None:
     shutil.copytree(
         REPO_ROOT / "config", root / "config", ignore=shutil.ignore_patterns("calibrations")
     )
+
+
+def similarity_home(path: Path, files: dict[str, str], k: int, t: int) -> Path:
+    """A checkout's similarity inputs under path: the studied copy's files in reference/,
+    config/similarity.json pinning its tree hash, with k and t."""
+    folder = path / "reference" / "studied-1"
+    for name, text in files.items():
+        (folder / name).parent.mkdir(parents=True, exist_ok=True)
+        (folder / name).write_bytes(text.encode("utf-8"))
+    digest, count = record.tree_hash(folder)
+    studied = {"slug": "studied", "folder": "studied-1", "treeSha256": digest, "files": count}
+    config = {"schema": 1, "id": "similarity", "studied": studied, "k": k, "t": t}
+    (path / "config").mkdir(parents=True, exist_ok=True)
+    (path / "config" / "similarity.json").write_text(json.dumps(config), encoding="utf-8")
+    return path
 
 
 @pytest.fixture

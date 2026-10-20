@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "id": "similarity",
- "use": "the copies `verify similarity` reads (shader.md#policy): install unpacks each into reference/<folder>/ and tree-hashes it (record.tree_hash) against `treeSha256` and `files` on every run, a copy off its pin refused (plans/m3.md D54); k, t and the controls' figures join in M3.P02 (D55)",
+ "use": "the copies `verify similarity` reads and its threshold (shader.md#policy): install unpacks each into reference/<folder>/ and tree-hashes it (record.tree_hash) against `treeSha256` and `files` on every run, as the check does before it reads one, a copy off its pin refused (plans/m3.md D54); k and t set from the controls, whose figures `verify similarity --controls` recomputes (D55)",
  "studied": {
   "slug": "complementary-unbound",
   "folder": "complementary-unbound-r5.9.3",
@@ -23,5 +23,21 @@
   "why": "the negative control (plans/m3.md P9): \"V3 Revived for Iris\" (2026-08-11), not a fork and crediting no pack, so the longest span it shares with Unbound bounds t from below (D55); Photon credits Complementary",
   "sha256Why": "GitHub's asset digest, equal to the sha256 of the file downloaded on 2026-10-20 (1484299 bytes)",
   "treeWhy": "the zip's 60 files as unpacked on 2026-10-20"
+ },
+ "k": 20,
+ "kWhy": "the noise threshold: no run under k normalized tokens shares a fingerprint. The control pack shares runs under 20 tokens with Unbound by the thousand (34,247 of its 34,746 maximal runs of 10 tokens or more, measured over every 10-gram on 2026-10-20), idioms every pack writes; k sets only the window w = t - k + 1 = 53, as each shared fingerprint is extended to its whole run and t alone decides",
+ "t": 72,
+ "tWhy": "the guarantee threshold: every run of t normalized tokens or more is flagged. One above the control pack's longest run with Unbound (controls.control), the strictest t the negative control allows (D55); its longest runs are repetitions every pack writes: 18 sampler2D uniforms in a row, offset tables, runs of constants",
+ "controls": {
+  "self": {
+   "files": 129,
+   "flagged": 129,
+   "why": "the positive control: Unbound r5.9.3 against itself, winnowed as the check runs, flags every one of its files of t tokens or more (2026-10-20)"
+  },
+  "control": {
+   "longest": 71,
+   "at": "reference/wisdom-shaders-v3-build3300/shaders/CompositeUniform.glsl.frag:17-40 matches reference/complementary-unbound-r5.9.3/shaders/lib/uniforms.glsl:73-92 (71 tokens)",
+   "why": "the negative control: Wisdom Shaders Build3300 against Unbound over every k-gram (w = 1), so its longest run is exact, under t (2026-10-20)"
+  }
  }
 }
