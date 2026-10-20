@@ -119,6 +119,10 @@ CAPTURES = "captures.json"
 # zip, or a commit's, named by its sha.
 OPTILUX_ZIP = "optilux.zip"
 OPTILUX_COMMIT_ZIP = "optilux-{commit}.zip"
+# `check L0` on that zip (plans/m3.md M3.P04): a child process reading the zip on its stdin, so
+# the check's modules stay out of the measured closure (run-record.md#identity: harness).
+L0_COMMAND = ("-m", "optilux.cli", "check", "L0", "-", "--json")
+L0_TIMEOUT = 600
 
 
 @dataclass(frozen=True)
@@ -158,6 +162,60 @@ def optilux_zip(root: Path, build: dict) -> dict:
     data = packzip.zip_bytes(sources)
     digest = hashlib.sha512(data).hexdigest()
     return {"file": name, "data": data, "entries": len(sources), "sha512": digest}
+
+
+def check_l0(root: Path, zipped: dict, variant: str) -> dict:
+    """`check L0` on an Optilux variant's zip (plans/m3.md M3.P04): run in a child process, the
+    bytes built on its stdin, so no check module enters the harness hash; its verdict held to the
+    zip's sha512, a verdict on other bytes refused; RecordError naming the first problems when the
+    zip fails it. Its summary, recorded with the variant."""
+    try:
+        done = subprocess.run(  # noqa: S603 this interpreter and the CLI, no shell
+            [sys.executable, *L0_COMMAND],
+            cwd=root,
+            input=zipped["data"],
+            capture_output=True,
+            timeout=L0_TIMEOUT,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise record.RecordError(
+            f"{variant}: `check L0` did not run ({error}); fix: `uv run optilux check L0`"
+        ) from None
+    try:
+        found = json.loads(done.stdout.decode("utf-8"))
+    except ValueError:
+        found = None
+    if not isinstance(found, dict):
+        why = done.stderr.decode("utf-8", "replace").strip().splitlines() or ["no output"]
+        raise record.RecordError(
+            f"{variant}: `check L0` printed no verdict (exit {done.returncode}: {why[-1]}); fix: "
+            "`uv run optilux check L0` shows why"
+        )
+    if "error" in found:
+        raise record.RecordError(f"{variant}: `check L0` cannot check its zip: {found['error']}")
+    if found.get("sha512") != zipped["sha512"]:
+        raise record.RecordError(
+            f"{variant}: `check L0` judged other bytes (sha512 {str(found.get('sha512'))[:12]}..., "
+            f"built {zipped['sha512'][:12]}...); fix: rerun"
+        )
+    if found.get("ok") is not True:
+        problems = found.get("problems") or ["no problem named"]
+        more = f" and {len(problems) - 3} more" if len(problems) > 3 else ""
+        raise record.RecordError(
+            f"{variant}: its zip (sha512 {zipped['sha512'][:12]}...) fails `check L0`: "
+            f"{'; '.join(problems[:3])}{more}; fix: the pack, until `optilux check L0` passes"
+        )
+    matrix = found["matrix"]
+    return {
+        "ok": True,
+        "sha512": found["sha512"],
+        "glslang": found["glslang"],
+        "pipeline": found["pipeline"],
+        "builds": matrix["builds"],
+        "variants": matrix["variants"],
+        "profiles": [p["profile"] for p in found["profiles"]],
+    }
 
 
 def prepare(
@@ -234,7 +292,10 @@ def prepare(
                 "this identity, then name its id"
             )
     recorded = {"platformFile": record.file_sha256(plat.path), **system_recorded}
-    optilux = optilux_zip(root, spec.optilux) if spec.optilux is not None else None
+    optilux = None
+    if spec.optilux is not None:  # built, then refused unless it passes L0
+        optilux = optilux_zip(root, spec.optilux)
+        optilux["l0"] = check_l0(root, optilux, spec.optilux["variant"])
     return Prepared(
         spec, plat, suite, pack, views, base, java_home, snapshot, pm_exe, found, recorded, optilux
     )
@@ -640,9 +701,15 @@ def write_optilux(run: Runner) -> dict:
     run.pack_file, run.pack_sha512 = name, digest
     run.say(
         f"{build['variant']}: wrote shaderpacks/{name} ({zipped['entries']} entries, sha512 "
-        f"{digest[:12]}...)"
+        f"{digest[:12]}..., check L0 passed)"
     )
-    return {"file": name, "sha512": digest, "entries": zipped["entries"], **build}
+    return {
+        "file": name,
+        "sha512": digest,
+        "entries": zipped["entries"],
+        **build,
+        "l0": zipped["l0"],
+    }
 
 
 def optilux_files(run: Runner, s: Session) -> None:
