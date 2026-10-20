@@ -31,6 +31,7 @@ import optilux.helper.core.Errors;
 import optilux.helper.core.FrameClock;
 import optilux.helper.core.Json;
 import optilux.helper.core.Protocol;
+import optilux.helper.core.Readiness;
 import optilux.helper.core.State;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,7 +91,12 @@ class ProtocolTest {
         });
         handlers.put("frames.capture", request -> {
             release.await();
-            return Map.of("frames", List.of(), "dropped", List.of(), "manifest", "capture.json");
+            Map<String, Object> answer = new LinkedHashMap<>();
+            answer.put("frames", List.of());
+            answer.put("dropped", List.of());
+            answer.put("ready", null);
+            answer.put("manifest", "capture.json");
+            return answer;
         });
         handlers.put("camera.place", request -> Map.of("pose", Map.of(
             "xInteger", request.integerLiteral("x"), "zInteger", request.integerLiteral("z"),
@@ -634,8 +640,8 @@ class ProtocolTest {
         Capture.Frame frame = capture.take(new FrameClock.Stamp(5, 35_000_000L, 34_900_000L), 1L);
         ExecutorService writers = Executors.newSingleThreadExecutor();
         CaptureAdapter adapter = new CaptureAdapter(new FrameClock(() -> 0L, 1), () -> 0L,
-            () -> true, writers, (name, data) -> { });
-        handlers.put("frames.capture", request -> adapter.run(capture));
+            () -> true, () -> null, System::nanoTime, writers, (name, data) -> { });
+        handlers.put("frames.capture", request -> adapter.run(capture, request::live));
         protocol = new Protocol(Wire.COMMANDS, TOKEN, handlers, () -> FACTS, stamps, state, workers,
             timers);
         connect();
@@ -685,5 +691,128 @@ class ProtocolTest {
         assertTrue(state.anyHeld());
         disconnect();
         assertFalse(state.anyHeld());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void aCaptureWaitingForReadyHoldsItsResourceUntilItEnds(@TempDir Path temp) throws Exception {
+        // The ready wait runs inside frames.capture on the capture resource, so a mutation and a
+        // second capture answer busy while it waits, as beside any capture; a cancel, its own
+        // timeout and a disconnect each end it with an incomplete manifest and no further
+        // renderer reading; once the predicate holds, the first frame after it is taken.
+        AtomicBoolean holds = new AtomicBoolean();
+        AtomicInteger readings = new AtomicInteger();
+        AtomicLong ticks = new AtomicLong();
+        FrameClock clock = new FrameClock(ticks::get, 1000);
+        ExecutorService writers = Executors.newSingleThreadExecutor();
+        CaptureAdapter adapter = new CaptureAdapter(clock, () -> clock.last().frameIndex(),
+            () -> true, () -> {
+                readings.incrementAndGet();
+                boolean on = holds.get();
+                return new Readiness.Reading(true, true, 100, on ? 0 : 3, 0, 0, 0, 0, 0, true, on);
+            }, System::nanoTime, writers, (name, data) -> { });
+        handlers.putAll(adapter.handlers());
+        handlers.put("window.measure", request -> Map.of()); // only its busy answer is asked
+        protocol = new Protocol(Wire.COMMANDS, TOKEN, handlers, () -> FACTS, stamps, state, workers,
+            timers);
+        connect();
+        hello();
+        AtomicBoolean rendering = new AtomicBoolean(true);
+        Thread render = new Thread(() -> {
+            while (rendering.get()) {
+                ticks.incrementAndGet();
+                clock.head();
+                adapter.frame();
+                try {
+                    adapter.capturePoint();
+                    Thread.sleep(1);
+                } catch (InterruptedException stopped) {
+                    return;
+                }
+            }
+        }, "render");
+        render.start();
+        try {
+            String args = "{\"directory\":\"" + temp.toString().replace("\\", "\\\\")
+                + "\",\"count\":1,\"ready\":{\"stableFrames\":3,\"minSeconds\":0},"
+                + "\"images\":false,\"timeoutSeconds\":";
+            send(1, "frames.capture", args + "30}");
+            awaitReadings(readings);
+            send(2, "command", "{\"text\":\"/tick freeze\",\"timeoutSeconds\":5}");
+            assertEquals(Errors.BUSY, code(next()));
+            send(3, "frames.capture", args + "30}");
+            assertEquals(Errors.BUSY, code(next()));
+            send(33, "window.measure", "{\"after\":\"now\",\"skipSeconds\":0,\"seconds\":1}");
+            assertEquals(Errors.BUSY, code(next()));
+            send(4, "cancel", "{\"id\":1}");
+            Map<String, Object> first = next();
+            Map<String, Object> second = next();
+            assertEquals(Errors.CANCELLED, code(id(first).equals(1L) ? first : second));
+            assertStoppedUnread(temp.resolve("attempt-001"), readings);
+
+            // 1 s, not less: a request that times out before its worker starts never runs.
+            send(5, "frames.capture", args + "1.0}");
+            assertEquals(Errors.TIMEOUT, code(next()));
+            assertStoppedUnread(temp.resolve("attempt-002"), readings);
+
+            send(6, "frames.capture", args + "30}");
+            awaitReadings(readings);
+            disconnect();
+            assertStoppedUnread(temp.resolve("attempt-003"), readings);
+
+            connect();
+            hello();
+            send(8, "frames.capture", args + "30}");
+            awaitReadings(readings);
+            protocol.worldLeft();
+            assertEquals(Errors.FAILED, code(next()));
+            assertStoppedUnread(temp.resolve("attempt-004"), readings);
+
+            holds.set(true);
+            send(7, "frames.capture", args + "30}");
+            Map<String, Object> answer = result(next());
+            Map<String, Object> ready = (Map<String, Object>) answer.get("ready");
+            List<Map<String, Object>> frames = (List<Map<String, Object>>) answer.get("frames");
+            assertEquals(1, frames.size());
+            assertEquals(ready.get("frameIndex").toString(), frames.get(0).get("frameIndex").toString(),
+                "the frame whose head found the predicate held is the one taken");
+            assertEquals("stableFrames", ready.get("limitedBy"));
+        } finally {
+            rendering.set(false);
+            render.join(5000);
+            writers.shutdownNow();
+        }
+    }
+
+    /** Wait for the renderer to be read again: a ready wait is being judged. */
+    private static void awaitReadings(AtomicInteger readings) throws InterruptedException {
+        int seen = readings.get();
+        long until = System.nanoTime() + 5_000_000_000L;
+        while (readings.get() <= seen + 2 && System.nanoTime() < until) {
+            Thread.sleep(2);
+        }
+        assertTrue(readings.get() > seen + 2, "the ready wait never read the renderer");
+    }
+
+    /**
+     * A stopped ready wait: its resource freed, its manifest written incomplete with no ready
+     * report and no frame, and the renderer read no more once a frame poll in progress ended.
+     */
+    @SuppressWarnings("unchecked")
+    private void assertStoppedUnread(Path folder, AtomicInteger readings) throws Exception {
+        Path written = folder.resolve(Capture.MANIFEST);
+        long until = System.nanoTime() + 5_000_000_000L;
+        while ((state.anyHeld() || !Files.exists(written)) && System.nanoTime() < until) {
+            Thread.sleep(5);
+        }
+        assertFalse(state.anyHeld(), "the capture kept its resource");
+        Thread.sleep(20);
+        Map<String, Object> manifest = (Map<String, Object>) Json.parse(Files.readString(written));
+        assertEquals(false, manifest.get("complete"));
+        assertNull(manifest.get("ready"));
+        assertEquals(List.of(), manifest.get("frames"));
+        int seen = readings.get();
+        Thread.sleep(50);
+        assertEquals(seen, readings.get(), "the renderer was read after the wait ended");
     }
 }

@@ -182,14 +182,6 @@
       "result": {"pack": "string", "values": "object"}
     },
     {
-      "name": "shaders.dump",
-      "phase": "M3",
-      "args": {
-        "on": {"type": "boolean", "required": true}
-      },
-      "result": {"folder": "string|null", "fileList": "array"}
-    },
-    {
       "name": "frames.index",
       "phase": "M1",
       "args": {},
@@ -206,11 +198,13 @@
         "every": {"type": "integer", "min": 1, "max": 1000000},
         "intervalMs": {"type": "number", "gt": 0, "max": 3600000},
         "align": {"type": "object"},
+        "ready": {"type": "object"},
+        "images": {"type": "boolean", "default": true},
         "flush": {"type": "boolean", "default": false},
         "after": {"type": "integer", "min": 0, "max": 1000000},
         "timeoutSeconds": {"type": "number", "required": true, "gt": 0, "max": 3600}
       },
-      "result": {"frames": "array", "dropped": "array", "manifest": "string"}
+      "result": {"frames": "array", "dropped": "array", "ready": "object|null", "manifest": "string"}
     },
     {
       "name": "window.measure",

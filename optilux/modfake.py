@@ -698,7 +698,7 @@ class Fake:
         }
         path = folder / modclient.MANIFEST
         path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
-        return {"frames": frames, "dropped": [], "manifest": str(path)}
+        return {"frames": frames, "dropped": [], "ready": None, "manifest": str(path)}
 
     def _game(self, name: str, args: dict) -> dict:
         """The game adapter's answers from the model."""
