@@ -3,7 +3,7 @@
  "pack": "complementary-unbound r5.9.3",
  "id": "played",
  "source": "ALC tools/bench/profiles/PLAYED.txt (the user's settings, recorded 2026-09-28)",
- "verify": "keys were recorded against Reimagined r5.9.2 run as SHADER_STYLE 4; check each key exists in Unbound r5.9.3 before the first M2 capture",
+ "verify": "keys were recorded against Reimagined r5.9.2 run as SHADER_STYLE 4; `optilux check L0`'s profile check holds each name and value against Unbound r5.9.3 (plans/m3.md M3.P04)",
  "options": {
   "ANISOTROPIC_FILTER": 4,
   "ATM_FOG_MULT": 0.50,

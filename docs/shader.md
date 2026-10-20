@@ -38,7 +38,7 @@ Policy · Look and scope · Dropped features · Method · Pipeline spec · Deter
 - Textures: built and tested on Faithful 64x; no texture assets ship.
 
 ## Dropped features
-The user's list of 2026-10-05, now a not-yet list (user, 2026-10-20): each feature stays out until roadmap.md#decisions D72 takes it back. Unbound's switch for each, where known, is in config/profiles/complementary-unbound-iso.json; its `unresolved` block lists the switches still to confirm, dropped and kept (bloom), against r5.9.3 before the first M2 capture.
+The user's list of 2026-10-05, now a not-yet list (user, 2026-10-20): each feature stays out until roadmap.md#decisions D72 takes it back. Unbound's switch for each is in config/profiles/complementary-unbound-iso.json (v1: its `dropped` list, each switch set off in its `options` over played's; RAIN_STYLE and WEATHER_TEX_OPACITY at their defaults, as neither has an off value), every name and value held against r5.9.3 by `check L0`'s profile check.
 - Anti-aliasing: FXAA. TAA is the only anti-aliasing.
 - Colored light: Advanced Color Tracing (voxel floodfill colored block light) and all its extras:
   - colored light fog, saturation, torch warmth, colored candles;
