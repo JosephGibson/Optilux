@@ -166,12 +166,12 @@ STATE_KEYS = ("inWorld", "dimension", "gamemode", "screen", "paused", "focused")
 
 
 # A9 (docs/mod.md#12-acceptance, plans/m1.md D26): 120 frames, every one, inside one PresentMon
-# run; the PNGs are deleted after the manifest is verified (2 GB at 4K; the record keeps the
-# stamps and capture.json keeps the hashes).
+# run, captured without images (plans/m3.md D61, F17): the stamps are all A9 reads, so no readback
+# or PNG holds the capture (44.5 s for 120 4K PNGs in 0.01.13); capture.json keeps the stamps.
 A9_FRAMES = 120
 
 
-A9_CAPTURE_TIMEOUT = 120.0
+A9_CAPTURE_TIMEOUT = 30.0
 
 
 # After the capture: the CSV must reach a row past the last stamp (rows arrive in ETW's buffers).
@@ -850,12 +850,9 @@ def a7_verdicts(control: dict, blocked: dict, after: dict) -> tuple[bool, bool, 
     return control_ok, blocked_ok, after_ok
 
 
-def delete_pngs(folder: Path) -> int:
-    """The captured frames under `folder` deleted; how many."""
-    pngs = sorted(folder.rglob("frame-*.png")) if folder.is_dir() else []
-    for png in pngs:
-        png.unlink(missing_ok=True)
-    return len(pngs)
+def a9_capture(c: modclient.Client, folder: Path) -> dict:
+    """A9's capture: A9_FRAMES frames, every one, stamps alone (no readback, no PNG)."""
+    return c.frames_capture(folder, A9_FRAMES, A9_CAPTURE_TIMEOUT, every=1, images=False)
 
 
 def a9_pass(match: dict, complete: bool, stop_exit: int, left: list, bad: list) -> bool:
@@ -870,8 +867,9 @@ def a9(s: Session, exe: Path, session: str, evidence: dict) -> None:
     started on the game; once its CSV holds rows, A9_FRAMES frames captured with every 1; once a
     row lies past the last stamp, PresentMon stopped (CTRL_BREAK_EVENT) and its ETW session gone;
     the game's rows matched to the stamps (presentmon.a9_match: both offsets, the pass on the swap
-    stamp). A PresentMon that dies or must be killed fails the run (RunError). The PNGs are
-    deleted after the match; capture.json and the CSV stay under raw/a9/."""
+    stamp). A PresentMon that dies or must be killed fails the run (RunError). The capture is
+    stamps alone (a9_capture), its seconds recorded; capture.json and the CSV stay under
+    raw/a9/."""
     c = s.client
     pm = s.host.presentmon()
     pid = s.launched.pid
@@ -885,46 +883,43 @@ def a9(s: Session, exe: Path, session: str, evidence: dict) -> None:
         evidence["problem"] = str(error)
         raise RunError(f"A9: {error}") from None
     try:
-        try:
-            arguments = found.command[1:]
-            evidence["presentmon"] = {
-                "exe": exe.name,
-                "arguments": [shown(output, s.root) if a == str(output) else a for a in arguments],
-                "session": session,
-            }
-            s.say(f"A9: PresentMon recording pid {pid} as {session} into {shown(output, s.root)}")
-            rows = presentmon.wait_rows(found, pm, None, presentmon.FIRST_ROW_TIMEOUT)
-            evidence["firstRows"] = {"rows": rows, "seconds": round(pm.clock() - found.started, 2)}
-            s.say(f"A9: first rows after {evidence['firstRows']['seconds']:.1f} s")
-            s.drain()
-            mark = len(s.events)
-            shot = s.step(
-                "A9 frames.capture",
-                lambda: c.frames_capture(folder / "frames", A9_FRAMES, A9_CAPTURE_TIMEOUT, every=1),
-                lambda a: f"{len(a['frames'])} frames, {len(a['dropped'])} dropped",
-            )
-            last = max(f["qpcNs"] for f in shot["frames"]) if shot["frames"] else 0
-            evidence["cover"] = presentmon.wait_rows(found, pm, last, A9_COVER_TIMEOUT)
-        except BaseException as error:
-            try:
-                evidence["stop"] = presentmon.stop(found, pm)
-            except presentmon.PresentMonError as stopped:
-                evidence["stopProblem"] = str(stopped)
-            if isinstance(error, presentmon.PresentMonError) or (
-                isinstance(error, Exception) and "stopProblem" in evidence
-            ):
-                evidence["problem"] = str(error)
-                more = f"; the stop: {evidence['stopProblem']}" if "stopProblem" in evidence else ""
-                raise RunError(f"A9: {error}{more}") from None
-            raise
+        arguments = found.command[1:]
+        evidence["presentmon"] = {
+            "exe": exe.name,
+            "arguments": [shown(output, s.root) if a == str(output) else a for a in arguments],
+            "session": session,
+        }
+        s.say(f"A9: PresentMon recording pid {pid} as {session} into {shown(output, s.root)}")
+        rows = presentmon.wait_rows(found, pm, None, presentmon.FIRST_ROW_TIMEOUT)
+        evidence["firstRows"] = {"rows": rows, "seconds": round(pm.clock() - found.started, 2)}
+        s.say(f"A9: first rows after {evidence['firstRows']['seconds']:.1f} s")
+        s.drain()
+        mark = len(s.events)
+        shot = s.step(
+            "A9 frames.capture",
+            lambda: a9_capture(c, folder / "frames"),
+            lambda a: f"{len(a['frames'])} frames, {len(a['dropped'])} dropped",
+        )
+        capture_seconds = s.steps[-1]["seconds"]
+        last = max(f["qpcNs"] for f in shot["frames"]) if shot["frames"] else 0
+        evidence["cover"] = presentmon.wait_rows(found, pm, last, A9_COVER_TIMEOUT)
+    except BaseException as error:
         try:
             evidence["stop"] = presentmon.stop(found, pm)
-        except presentmon.PresentMonError as error:
+        except presentmon.PresentMonError as stopped:
+            evidence["stopProblem"] = str(stopped)
+        if isinstance(error, presentmon.PresentMonError) or (
+            isinstance(error, Exception) and "stopProblem" in evidence
+        ):
             evidence["problem"] = str(error)
-            raise RunError(f"A9: {error}") from None
-    finally:
-        # A9_FRAMES 4K PNGs (about 2 GB); capture.json keeps their hashes.
-        evidence["pngsDeleted"] = delete_pngs(folder / "frames")
+            more = f"; the stop: {evidence['stopProblem']}" if "stopProblem" in evidence else ""
+            raise RunError(f"A9: {error}{more}") from None
+        raise
+    try:
+        evidence["stop"] = presentmon.stop(found, pm)
+    except presentmon.PresentMonError as error:
+        evidence["problem"] = str(error)
+        raise RunError(f"A9: {error}") from None
     left = [name for name in launch.etw_sessions(s.host.logman()) if name == session]
     header, rows_all = presentmon.read_rows(output, complete=True)
     mine = [row for row in rows_all if row.get(presentmon.PROCESS_ID) == str(pid)]
@@ -941,6 +936,8 @@ def a9(s: Session, exe: Path, session: str, evidence: dict) -> None:
         capture={
             "manifest": shown(Path(shot["manifest"]), s.root),
             "complete": shot["verified"]["complete"],
+            "images": shot["verified"]["images"],
+            "seconds": capture_seconds,
             "dropped": shot["dropped"],
         },
         match=match,

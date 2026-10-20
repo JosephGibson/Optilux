@@ -58,7 +58,8 @@ POSE_KEYS = ("x", "y", "z", "yaw", "pitch")
 # A capture's manifest beside its frames, and each frame's fields (docs/mod.md#8-capture).
 MANIFEST = "capture.json"
 FRAME_KEYS = ("name", "sha256", "frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
-# A measurement window's start and end: frame-hook HEAD stamps (docs/mod.md#6-time-and-determinism).
+# A measurement window's start and end: frame-hook HEAD stamps (docs/mod.md#6-time-and-determinism);
+# a frame captured without images is these alone.
 MARK_KEYS = ("frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
 # The per-pass timers' answers: a pass's fields, the dropped frames' reasons, the counts.
 PASS_KEYS = ("name", "depth", "gpuNanos")
@@ -486,17 +487,32 @@ class Client:
         timeout: float,
         every: int | None = None,
         interval_ms: float | None = None,
+        align: tuple[int, int] | None = None,
+        ready: tuple[int, float] | None = None,
+        images: bool = True,
     ) -> dict:
-        """`count` frames into a new attempt folder under `directory` (absolute), judged by the
-        files (verify_manifest); the answer with the check's facts under `verified`."""
+        """`count` frames into a new attempt folder under `directory` (absolute): with `align`
+        (cycle, phase) only frames at the phase, with `ready` (stableFrames, minSeconds) after the
+        mod's own wait for the readiness predicate, its report in the answer, and without images
+        the stamps alone. Judged by the files (verify_manifest) and the schedule
+        (check_schedule); the answer with the check's facts under `verified`."""
         args: dict[str, Any] = {"directory": str(directory), "count": count}
         if every is not None:
             args["every"] = every
         if interval_ms is not None:
             args["intervalMs"] = interval_ms
+        if align is not None:
+            args["align"] = {"cycle": align[0], "phase": align[1]}
+        if ready is not None:
+            args["ready"] = {"stableFrames": ready[0], "minSeconds": ready[1]}
+        args["images"] = images
         args["timeoutSeconds"] = timeout
         result = self.answer("frames.capture", args)
-        return {**result, "verified": verify_manifest(result)}
+        verified = verify_manifest(result)
+        if verified["images"] is not images:
+            raise ModError(f"frames.capture: asked images {images}, its manifest says otherwise")
+        check_schedule(result, align, ready is not None)
+        return {**result, "verified": verified}
 
     def selftest(self, timeout: float) -> dict:
         """Each capability tried in the game (A10); the answer, pass or not."""
@@ -708,9 +724,11 @@ def top_level_nanos(frame: dict) -> int:
 
 def verify_manifest(result: dict) -> dict:
     """Judge a capture by its files (docs/mod-protocol.md#client-rules: the answer is used to
-    proceed, the files to judge): capture.json read back holds the answer's frames and dropped;
-    each frame's file beside it is a PNG whose SHA-256 equals the manifest's; the folder holds no
-    other file. The facts (folder, frames, bytes, complete); ModError naming the first mismatch."""
+    proceed, the files to judge): capture.json read back holds the answer's frames, dropped
+    and ready report; each frame's file beside it is a PNG whose SHA-256 equals the manifest's,
+    or, the manifest's images false, each frame is its stamps alone; the folder holds no other
+    file. The facts (folder, frames, bytes, complete, images); ModError naming the first
+    mismatch."""
     path = Path(result["manifest"])
     folder = path.parent
     try:
@@ -719,12 +737,17 @@ def verify_manifest(result: dict) -> dict:
         raise ModError(f"the capture manifest {path}: {error}") from None
     if not isinstance(manifest, dict):
         raise ModError(f"the capture manifest {path} is no JSON object")
-    for key in ("frames", "dropped"):
-        if manifest.get(key) != result[key]:
+    for key in ("frames", "dropped", "ready"):
+        if manifest.get(key) != result.get(key):
             raise ModError(f"{path}: its {key} differ from the answer's")
     listed = {MANIFEST}
     size = 0
+    images = manifest.get("images") is not False
     for frame in manifest["frames"]:
+        if not images:
+            if not isinstance(frame, dict) or sorted(frame) != sorted(MARK_KEYS):
+                raise ModError(f"{path}: a frame without images is not its stamps alone")
+            continue
         missing = [key for key in FRAME_KEYS if key not in frame]
         if missing:
             raise ModError(f"{path}: a frame lacks {', '.join(missing)}")
@@ -753,7 +776,42 @@ def verify_manifest(result: dict) -> dict:
         "frames": len(manifest["frames"]),
         "bytes": size,
         "complete": manifest.get("complete"),
+        "images": images,
     }
+
+
+def check_schedule(result: dict, align: tuple[int, int] | None, ready: bool) -> None:
+    """A capture's frames against what it asked (plans/m3.md section 7 stops a run on an aligned
+    frame off its phase, or a ready-triggered frame not the first after the predicate): with
+    `align` each frame's sinceReload at the phase; with `ready` a report naming the frame whose
+    head found the predicate held, and the first frame taken (written or dropped) that frame or,
+    aligned, within one cycle of it; without, no report. ModError naming the first miss."""
+    frames = result["frames"]
+    if align is not None:
+        cycle, phase = align
+        for frame in frames:
+            if frame["sinceReload"] % cycle != phase:
+                raise ModError(
+                    f"frames.capture: frame {frame['frameIndex']} at sinceReload "
+                    f"{frame['sinceReload']} lies off phase {phase} of cycle {cycle}"
+                )
+    report = result["ready"]
+    if not ready:
+        if report is not None:
+            raise ModError("frames.capture: a ready report for a capture that asked none")
+        return
+    start = report.get("frameIndex") if isinstance(report, dict) else None
+    if isinstance(start, bool) or not isinstance(start, int):
+        raise ModError("frames.capture: asked ready, its answer holds no report with a frameIndex")
+    taken = [entry["frameIndex"] for entry in [*frames, *result["dropped"]]]
+    if taken:
+        first = min(taken)
+        if not 0 <= first - start < (align[0] if align is not None else 1):
+            raise ModError(
+                f"frames.capture: its first frame {first} is not the first "
+                f"{'at the phase ' if align is not None else ''}from frame {start}, whose head "
+                "found the predicate held"
+            )
 
 
 def encode(message: dict) -> bytes:
