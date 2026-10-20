@@ -1,7 +1,7 @@
 """optilux.platform on the committed platform file and the saved 26.3 JSONs: every tier resolves
 through `extends` with well-formed pins; the digests; Mojang's rules for Windows x64; the launch
-spec built from Mojang's republished JSON equals the committed spec byte for byte, and the one
-built from the first JSON differs in exactly the asset index and the version JSON's sha1 and URL
+spec built from Mojang's newest JSON equals the committed spec byte for byte, and each republish
+differs from the JSON before it in exactly the asset index and the version JSON's sha1 and URL
 (docs/plans/m1.md P6, D20). Nothing here reads runtime/ or the network."""
 
 import hashlib
@@ -13,15 +13,18 @@ import pytest
 from optilux import REPO_ROOT, platform
 
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "mc-26.3"
-# Mojang's two 26.3 version JSONs: released 2026-09-15, republished 2026-10-06 (P6).
+# Mojang's three 26.3 version JSONs: released 2026-09-15, republished 2026-10-06 (P6) and on
+# 2026-10-13 (142 language files in the index), each refreshed into the committed spec.
 OLD = "4fe1aa1ef8da1cb95c5bad1fb98890ca56dd8ca3"
 NEW = "702fe59163c6ee6578607daa85811d9bc9c7cc40"
+NEWEST = "11f1aefe473eefba0af62e3286c33b692807b2eb"
 PACKAGES = "https://piston-meta.mojang.com/v1/packages/{sha1}/26.3.json"
 PROFILE_URL = "https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/profile/json"
 # Maven's .sha1 for fabric-loader 0.19.5, the one library the profile lists without a sha1.
 LOADER_SHA1 = "ff9e65cffca4a67f31523e1807fe0855940fcbfa"
 OLD_INDEX = "abfaa525f923f807df8b4e4d29c1b5e3a104adbe"
 NEW_INDEX = "1e4e4a68dece1c0f51b8f93b45da8fe8da51bcd3"
+NEWEST_INDEX = "e787e8afd149a4cefa89d341b91f5aed8f5d93a0"
 
 
 def version_json(sha1: str) -> dict:
@@ -194,7 +197,7 @@ def test_maven_path() -> None:
 
 
 def test_arguments_from_mojangs_json() -> None:
-    version = version_json(NEW)
+    version = version_json(NEWEST)
     jvm = platform.flatten_arguments(version["arguments"]["jvm"])
     assert jvm[0].startswith("-XX:HeapDumpPath=")  # the windows-only rule
     assert "-XstartOnFirstThread" not in jvm and "-Xss1M" not in jvm  # osx, 32-bit
@@ -211,8 +214,8 @@ def test_arguments_from_mojangs_json() -> None:
         platform.feature_arguments(game, "nothing")
 
 
-def test_the_spec_from_the_republished_json_is_the_committed_spec() -> None:
-    built = build(NEW)
+def test_the_spec_from_the_newest_json_is_the_committed_spec() -> None:
+    built = build(NEWEST)
     committed = (REPO_ROOT / "config" / "platforms" / "mc-26.3.launch.json").read_bytes()
     assert platform.spec_text(built).encode("utf-8") == committed
     assert len(built["classpath"]) == 82 and built["classpath"][-1]["from"] == "mojang:client"
@@ -225,15 +228,24 @@ def test_the_spec_from_the_republished_json_is_the_committed_spec() -> None:
     assert built["mainClass"] == "net.fabricmc.loader.impl.launch.knot.KnotClient"
     assert built["assetIndex"] == {
         "id": "34",
-        "sha1": NEW_INDEX,
-        "url": PACKAGES.format(sha1=NEW_INDEX).replace("26.3.json", "34.json"),
+        "sha1": NEWEST_INDEX,
+        "url": PACKAGES.format(sha1=NEWEST_INDEX).replace("26.3.json", "34.json"),
     }
     assert platform.spec_diff(platform.load_spec(REPO_ROOT, "mc-26.3"), built) == []
 
 
-def test_mojangs_republished_json_moved_only_the_asset_index() -> None:
-    """P6, D20: the refresh of 0.01.02 changed the asset index and the version JSON's sha1."""
-    old, new = build(OLD), build(NEW)
+@pytest.mark.parametrize(
+    ("before", "after", "indexes", "grown"),
+    [
+        (OLD, NEW, (OLD_INDEX, NEW_INDEX), 105_275),
+        (NEW, NEWEST, (NEW_INDEX, NEWEST_INDEX), 941_887),
+    ],
+)
+def test_mojangs_republished_json_moved_only_the_asset_index(
+    before: str, after: str, indexes: tuple[str, str], grown: int
+) -> None:
+    """P6, D20: each refresh changed the asset index and the version JSON's sha1 alone."""
+    old, new = build(before), build(after)
     diff = platform.spec_diff(old, new)
     assert [difference.path for difference in diff] == [
         "sources.versionJson.url",
@@ -241,14 +253,14 @@ def test_mojangs_republished_json_moved_only_the_asset_index() -> None:
         "assetIndex.sha1",
         "assetIndex.url",
     ]
-    assert (diff[1].committed, diff[1].built) == (OLD, NEW)
-    assert (diff[2].committed, diff[2].built) == (OLD_INDEX, NEW_INDEX)
-    assert diff[2].text() == f'assetIndex.sha1: "{OLD_INDEX}" -> "{NEW_INDEX}"'
+    assert (diff[1].committed, diff[1].built) == (before, after)
+    assert (diff[2].committed, diff[2].built) == indexes
+    assert diff[2].text() == f'assetIndex.sha1: "{indexes[0]}" -> "{indexes[1]}"'
     for key in ("classpath", "jvmOptions", "gameArguments", "featureArguments", "logging"):
         assert old[key] == new[key]
     assert (
-        version_json(OLD)["assetIndex"]["totalSize"] + 105_275
-        == version_json(NEW)["assetIndex"]["totalSize"]
+        version_json(before)["assetIndex"]["totalSize"] + grown
+        == version_json(after)["assetIndex"]["totalSize"]
     )
 
 
@@ -280,10 +292,10 @@ def test_spec_diff_skips_notes_and_names_added_and_removed_facts() -> None:
 def test_build_spec_refuses_a_bad_profile() -> None:
     bare = json.loads((FIXTURES / "fabric-loader-0.19.5-26.3.json").read_text(encoding="utf-8"))
     with pytest.raises(platform.PlatformError, match=r"fabric-loader:0.19.5 carries no sha1; fix"):
-        platform.build_spec("mc-26.3", version_json(NEW), source(NEW), bare, PROFILE_URL)
+        platform.build_spec("mc-26.3", version_json(NEWEST), source(NEWEST), bare, PROFILE_URL)
     other = {**profile(), "inheritsFrom": "26.4"}
     with pytest.raises(platform.PlatformError, match=r"inherits from '26.4', not version '26.3'"):
-        platform.build_spec("mc-26.3", version_json(NEW), source(NEW), other, PROFILE_URL)
+        platform.build_spec("mc-26.3", version_json(NEWEST), source(NEWEST), other, PROFILE_URL)
 
 
 def test_load_spec(tmp_path: Path) -> None:
