@@ -1,60 +1,54 @@
 # Handoff
-Status: the latest stop: M3.P04 done, `check L0` and the iso profile v1 built, `run` refusing an Optilux zip that fails L0, and what M3.P05 starts from.
+Status: the latest stop: M3.P05 stopped at its exit, the jar's aligned, ready-triggered and image-less captures built, reviewed and committed, the exit run failed on A9 with the displays off; what the rerun of the exit starts from.
 
 ## Contents
 Outcome · What changed · Review · Choices · Checks · Open questions · Weak points · Commits and time · Next
 
 ## Outcome
 Last phase: M3.P04
-- The exit holds, shown in this session (2026-10-20, ADT):
-  - `uv run optilux check L0` (15:47): pass on shader/, 23 files, its zip sha512 d86371b7... (M3.P03's). The matrix: 8 programs x 3 dimensions x 2 variants (defaults, BENCH_DETERMINISTIC false) = 48 builds, 16 compiled as the dimensions share the root's programs, 48 glslang runs in 0.3 s; verify similarity 0 matches of 72 tokens (21 GLSL files, 629 tokens); the profile check ok for complementary-unbound-iso.json (119 names) and -played.json (26) against reference/complementary-unbound-r5.9.3/. The whole check under 1 s.
-  - A broken copy of one stage in a scratch copy (final.fsh reading colortex9): exit 1, at both variants "FAIL final, its fragment stage shaders/final.fsh (compile and link), at BENCH_DETERMINISTIC true, in minecraft:overworld, minecraft:the_nether, minecraft:the_end, under the 78 macros above: shaders/final.fsh:9: 'colortex9' : undeclared identifier", the 78 defines printed once (-DMC_VERSION=260300 ... -DPPT_SNOW=2). A broken shared include (lib/surface_fragment.glsl:52) failed the 4 programs that compile that line, at both variants.
-  - `run --check` of an acceptance spec with the `optilux` variant (in the scratchpad, never launched): the child's verdict on the zip's bytes passed, bound to its sha512, with pipeline.json's sha256 939b4bf0....
-- No launch. runtime/tools/ only read (glslang; the Iris jar read with javap into the scratchpad). No system setting. reference/ read by `check L0` and by the reviewer agent on the iso profile.
+- Stopped (prompt: a Done-when not met; one launch allowed, no rerun unasked): m3-capture-1 (results/records/m3-capture-1.json, committed) ended `failed`: A10 pass, A9 FAIL, A2 FAIL (not run).
+  - A9: PresentMon (2.6.0, session optilux-m3-capture-1) wrote 0 rows within FIRST_ROW_TIMEOUT 30 s, before A9's capture began; the session ended there (WM_CLOSE, exit 0), so A2 never ran.
+  - Cause: the displays were off. GetLastInputInfo read 3,594 s idle at 17:14:29 ADT (the launch 17:11), the AC display timeout 600 s (powercfg 0x258), so they went off near 16:24 while the code was written; displays off give 0 rows (memory, f402c8c). `run` holds the displays on and refuses them off only for a spec with a mode (optilux/verbs/run.py, the runner's `spec.mode is None` branch), so an acceptance spec with A9 launches unguarded. AMD's PresentMon (RSXTraceSession) ran after the join as in m1-acceptance-10 and m2-a8-2-p1, whose rows came, so it is not the cause.
+  - A10 in game, the new selftest (record: session start, selftest): pass in 5.80 s; capture: frame 420, sinceReload 285 = 420 - reloadFrame 135, at phase 1 of 4; ready held at frame 418 after 3.30 s (limitedBy graph, 277 frames judged; Sodium's check held at 2.51 s with 81 gap frames), 420 the first frame at the phase from it; 3840x2160 decoded at the target's size.
+- The jar: optilux-helper-0.1.0.jar sha512 ed1f2a39e4300fec8adf94b0bc06d8fea4ae7bcf6efeeed6f568ed601d21157052897afecf5fa0bfe5cfab2d74ea245fb3f352a395dfaba5464486dbe1ac86a5 (174,481 bytes), `mod build` into the store, `mod test` 125 passed against it; the run's identity carries it.
+- Not shown: A9's offsets and its capture time on stamps alone (F17's figure), A2 on the new jar. runtime/ written only by `mod build`, the run's world restore, launch and the game; no system setting.
 
 ## What changed
-- `optilux check L0 [<pack>]` (optilux/offline.py, optilux/verbs/check.py): shader/ by default, a folder holding shaders/, a zip, or - for a zip on stdin. Iris 1.11.7's rules read in the pinned jar with javap: the dimension folders (world0 the base set once it exists), includes, options as OptionAnnotatedSource registers and edits them (on/off options per include-graph component, 81 const names), the 78 environment defines. Per program glslang -E, then -l -q --validate-io, its errors mapped back to the pack's file and line. A stage naming what only the game sets (the driver's macros, biome ids, feature flags, glslang's own macros in a conditional) fails as unchecked; tessellation, compute and dimension.properties are refused. Then verify similarity and the profile check of every config/profiles/*.json.
-- The iso profile v1 (config/profiles/complementary-unbound-iso.json): `options` (48: played's 13, RAIN_STYLE 1 over played's 2, each dropped switch), `dropped` (41 names, three added by the review), `droppedNotes`, `kept` with BLOOM_ENABLED for bloom (as played's ablation row) and refraction and End switches added; `unresolved` gone. record.profile_options reads 48 options.
-- `run` (optilux/verbs/run.py check_l0): prepare runs `python -m optilux.cli check L0 - --json` on an Optilux variant's zip in a child process, so the check stays out of the harness hash (record.module_closure holds 18 modules, none of them offline or check); a verdict on other bytes is refused; the summary (sha512, glslang, pipeline.json's hash, builds, variants, profiles) goes to the record's session.optilux.l0.
-- Docs: offline.md (Status, Levels: L0 as built, Tools: --validate-io), design.md's verb row, shader.md#dropped-features, run-record.md#run-spec, played.json's `verify` note, CHANGELOG.md's 0.4.0 entry (three bullets).
+- The jar (077ebc4): frames.capture's `align {cycle, phase}` (core/Capture.Align: a cycle dividing 720720, phase below it, judged at the capture point on Iris's counter, which Iris advances at GameRenderer.render HEAD and resets in preparePipeline, read in the pinned jar with javap), `ready {stableFrames, minSeconds}` (core/Capture.readiness: a Readiness from the request's time, judged by the new "capture" frame poll on RendererAdapter.reading(); the gate opens at the frame head where it holds and that frame is the first taken; its report plus that frameIndex in the answer and capture.json) and `images` (default true; false: stamps only, no readback, PNG or capture.frame, the manifest written at the last take); flush and after `unsupported` (M5); the capture point and the poll skip a capture whose request was answered; selftest's capture ready-triggered (10 stable frames) and aligned (4, 1), its counter checked against the reload check's reloadFrame, bounded at 60 s; commands.json without shaders.dump, frames.capture with ready, images and the `ready` result. JUnit 117 to 125.
+- The client (8fa6ebb): frames_capture's align, ready and images; verify_manifest for image-less captures and the ready report; check_schedule (an aligned frame off its phase, a ready-triggered first frame not the first after the predicate: plans/m3.md section 7's stops); the fake mirrors the mod (its refusals in the mod's order, ready modelled on 7 ms frames, the clock at the last frame taken); A9 on stamps alone (a9_capture, A9_CAPTURE_TIMEOUT 30 s, the capture's seconds and images in its evidence, the PNG deletion gone). Tests 903 to 908.
+- Docs: mod-protocol.md (Status, Commands, capture layout, Choreography's static capture), mod.md (Status, 6, 8, 11, 12; 298 bytes of duplicates cut first, 62 left), offline.md's L1 row (D60), CHANGELOG.md's 0.4.0 entry.
 
 ## Review
-- L0 (reviewer agent, correctness: the macros, the matrix, a false pass): 16 findings (1 high, 3 medium, 12 low), all latent for the hello pack; each verified in the jar (javap) or with glslang.
-  - Fixed: H1 glslang's own macros (__VERSION__, GL_core_profile, GL_<extension>), which JCPP never has, refused in a conditional; M1 world0 the base set, a folder holding a program only under Iris's names; M2 tessellation (read under a feature flag) and compute refused; M3 a const bool needs an #ifdef too; L1 the 56 numbered const names; L2 references per include-graph component; L3 a missing include fails, as Iris refuses the pack; L4 any unset MC_ name; L6 the lone .fsh message; L7 an unknown dimension crashed; L8 Java's split; L10 a real failing verdict through the child (a test, skipped without glslang); L11 pipeline.json's hash recorded; L12 the copy must be the platform's reference pack.
-  - Reported: L5 MC_GL_VERSION 330 rests on the game's log, "3.3.0 Core Profile Context 26.8.1.260810" in m3-hello-1's latest.log today, and nothing re-reads it; L9 a name declared on/off in one file and valued in another fails L0, while Iris keeps both (a false fail only).
-- iso v1 (reviewer agent, against the unpacked pinned zip): 8 findings (4 medium, 4 low); every key and value valid, each value off by its en_US.lang label.
-  - Fixed: 2 RP_MODE 0 also gates screen-space block reflections (noted); 3 WEATHER_TEX_OPACITY has no off, 100 draws rain at a quarter of the texture's alpha (note fixed, shader.md says so); 5 the End keeps its light-shaft pass for its End beams (noted); 6 WB_ANAMORPHIC, SELECT_OUTLINE_AUTO_HIDE and IPBR_EMISSIVE_MODE added to `dropped`; 7 DETAIL_QUALITY (refraction), END_FLASHES and END_BEAM_INTENSITY added to `kept`; 8 the kept notes say which are off at played's values.
-  - Reported: 1 and 4 (Open questions).
+Three reviewer agents, each finding read at its source.
+- Jar, correctness: 6 (1 high, 5 low). The high (the doc table behind commands.json) was read before the docs were written; fixed in the same commit. Fixed: selftest's aligned check judged the capture's own filter (now against reloadFrame); selftest's capture had no bound of its own; no test of `ready: null` present; untested align with ready, every and an interval, and readiness's parsed values; a test race.
+- Jar, concurrency: 5 low. Fixed: 1 the gate could open and frames be taken between the early answer and the interrupt (the request's liveness checked); 2 a stopped capture's gate still read the renderer; 3 the test's 0.3 s timeout and sampling race, plus a world-leave case and the window's busy. Reported: 4 and 5 (Weak points).
+- Client, fake and A9: 5 low. Fixed: 1 the fake's ready report ignored minSeconds; 2 the ready report not compared with capture.json; 3 the fake's refusal order; 4 the fake took `after: 0` (it predates); 5 the images guard tested. Reported: a9()'s PresentMon flow has no offline test.
 
 ## Choices
 Neither the prompt nor the plan names these:
-- "The dimension's" macros: Iris 1.11.7 defines none (StandardMacros, IrisDefines, ShaderPack); a dimension changes only its folder, so the dimensions sharing a folder share one build.
-- --validate-io beside -l -q: plain -l links a fragment input no vertex output writes, which the driver refuses (gpu-iris.md#programs-and-alpha-tests).
-- A value option is switched alone to each of its other values.
-- What L0 cannot set fails a stage that names it, rather than passing on a guess; MC_GL_VERSION 330 from the game's log, MC_MIPMAP_LEVEL from suite.json's options.txt, MC_VERSION and IRIS_VERSION from the pins, all guarded by the bench tier's Iris sha512.
-- The profile check reads options, defaultsKept, dropped, droppedNotes, kept.keys and the ablation rows; a missing reference copy is a problem in its verdict, not an abort.
-- iso's `dropped` holds names, their values once in `options`.
-- An `optilux@<ref>` zip is judged against the working tree's pipeline.json and profiles; the verdict records which pipeline.json.
+- Commit 077ebc4 carries the fake's `ready: null` so the suite stays green on the jar's commit; A9's sentences in mod.md and the CHANGELOG land with A9 (8fa6ebb).
+- The exit's variant: ComplementaryUnbound_r5.9.3.zip at its defaults (profile null), as m1-acceptance-10's A9.
+- The ready report names the frame whose head found the predicate held (`frameIndex`); capture.json records align, ready and images; every request states images.
+- Selftest: stableFrames 10 (the session start's), align (4, 1), 60 s inside session.py's 120 s.
 
 ## Checks
-- Start (14:17 ADT): branch m3 clean at 643f270; 851 passed; verify docs 0 violations.
-- Before each commit, on a tree equal to it: 899, 900, then 903 passed; ruff, ruff format and pyright clean; verify docs 0 violations; check L0 pass.
-- CI green on b0d570d, 165c36e and 610736a, each watched to its end before the next push.
+- Start (16:12 ADT): branch m3 clean at f90192a; 903 passed; mod test 117 passed, the store's jar equal; verify docs 0 violations.
+- Before each commit, on a tree equal to it: 903, 908, 908 passed; ruff, ruff format, pyright clean; verify docs 0 violations; mod test 125; verify records 225 records, 0 violations.
+- CI green on 077ebc4, 8fa6ebb and 501d67f, each watched to its end before the next push.
 
 ## Open questions
-- Nether fog in iso (review finding 1): BORDER_FOG false (played's, and border fog is on the not-yet list) is Unbound's only distance fog in the Nether, as it undefines its atmospheric and cave fog there (lib/common.glsl), while Nether fog is in scope (shader.md#look-and-scope). nether_crimson and nether_soul compare unequal fog until the user decides which list wins there.
-- Features on neither list (review finding 4): Unbound's waving foliage, leaves, lava, water and rain and its special portal effects stay on in iso; shader.md#look-and-scope sends everything not in scope to the not-yet list. The user's call, with D72.
-- Carried: the water fog colour (M3.P06, M3.P09); D66, the driver 32.0.31041.1004 since 2026-10-20; D72; the ticks before /tick freeze; spider eyes and the world's difficulty (M4); M2's carried list (git 7dfc2fa's handoff).
+- The display guard for A9 (user's call): `run` could hold the displays on and refuse them off for a spec whose items need PresentMon (A9, as for a mode), so a run like m3-capture-1 is refused with nothing launched. Recommended: yes, a change to run.py, a measured module (harness identity), so before M3.P10's calibration. Without it the rerun's session takes a display hold from its start.
+- Carried: Nether fog and the features on neither list (M3.P04's review findings 1 and 4); the water fog colour (M3.P06, M3.P09); D66, the driver 32.0.31041.1004 since 2026-10-20; D72; the ticks before /tick freeze; spider eyes and the world's difficulty (M4); M2's carried list (git 7dfc2fa's handoff).
 
 ## Weak points
-- MC_GL_VERSION 330 is a fixed fact: a driver giving another context version would move Iris's value unseen (L5).
-- L0 models the bench tier only, and refuses rather than builds tessellation, compute and dimension.properties; a name both on/off and valued fails (L9).
-- glslang is not AMD's compiler; the in-game reload stays the final check (offline.md#tools).
-- Margins: AGENTS.md 26 bytes; measurement.md 23; platform.md 56; workflow.md 199.
+- Concurrency 4: an image-less capture writes capture.json on the render thread at its last frame, under the capture's lock, after every stamp it records.
+- Concurrency 5 (predates): a capture whose worker stalls before `run` across a world leave and rejoin could take a newer capture's slot; not reachable in practice.
+- A9's flow is tested live only; the fake's ready is a model on 7 ms frames.
+- Margins: AGENTS.md 26 bytes; measurement.md 23; platform.md 56; mod.md 62; workflow.md 199.
 
 ## Commits and time
-- b0d570d: check L0 with its tests. 165c36e: the iso profile v1. 610736a: run's gate with its tests. Then this handoff.
-- 2026-10-20 14:17 to about 16:10 ADT: M3.P04 took about 1.9 h against 2 h. Tripwire: actuals about 52.3 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, M3.P01 about 0.8, M3.P02 about 0.8, M3.P03 about 1.9, M3.P04 about 1.9); the trip is at 174.6 h.
+- 077ebc4: the jar with its JUnit tests, commands.json and docs. 8fa6ebb: the client, the fake and A9 with their tests. 501d67f: m3-capture-1's record. Then this handoff.
+- 2026-10-20 16:12 to about 17:25 ADT: M3.P05 took about 1.2 h of its 3 h so far, the exit undone. Tripwire: actuals about 53.5 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, M3.P01 about 0.8, M3.P02 about 0.8, M3.P03 about 1.9, M3.P04 about 1.9, M3.P05 about 1.2); the trip at 174.6 h.
 
 ## Next
-/optilux-next prints M3.P05's prompt: the mod's aligned, ready-triggered and image-less captures, 3 h (L), one launch with A2. `check L0` now gates every Optilux variant before its launch.
+/optilux-next prints M3.P05's prompt again. Its steps 1-4, 6 and 7 are done and committed; what is left is step 5's exit (an announced acceptance run of A2, A9 and A10 on bench_263, the next name m3-capture-2, with the displays on: the guard above, or a display hold from the session's start), then steps 8 and 9 and this handoff with `Last phase: M3.P05`.
