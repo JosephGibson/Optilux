@@ -6,7 +6,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - The loop is the product (docs/design.md#3-core-rule). Build only what makes it faster or its verdicts more trustworthy.
 - Python core (`optilux` package); Java only for the helper mod; PowerShell only where Windows forces it.
 - Configs are JSON under config/. Platform specifics live in config/platforms/, the mod adapter, the world snapshot and suite.json's display block, plus some 26.3 facts in code (docs/design.md#4-architecture).
-- Shader: full rewrite. Complementary source may be studied (reference/, gitignored, never committed). No 1-1 copies; `optilux verify similarity` (M3) must pass.
+- Shader: full rewrite. Complementary source may be studied (reference/, never committed). No 1-1 copies; `optilux verify similarity` (M3) must pass.
 - Never compare runs with different identities. Never fabricate, estimate silently or pass a missing measurement.
 - Never change system settings. Never touch the user's played Minecraft instance. Graphics drivers are assumed good: no workarounds, never part of identity (records note the version).
 - Announce every game launch.
@@ -21,7 +21,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - .github/: workflows/ci.yml (push and pull_request) and release.yml (push to main), both windows-latest (docs/workflow.md#release).
 - mod/: optilux-helper (Fabric), a Gradle project (Loom, wrapper pinned by sha256); `mod build` puts its jar into runtime/<platform>/files/, `mod test` runs its JUnit tests.
 - shader/: the pack, zipped by `pack build` and released by `pack release` (docs/workflow.md#release). M0's placeholder stays until M3's hello pack.
-- config/: platforms (+ launch specs), suite, profiles, java, tools, views, calibrations; pipeline planned.
+- config/: platforms (+ launch specs), suite, profiles, java, tools, similarity, views, calibrations; pipeline planned.
 - snapshots/<world>/: world copies, tree-hashed; results/: records/<run>.json and raw/<run>/.
 - docs/.
 - VERSION: the release version (docs/workflow.md#release). Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/, .coverage.

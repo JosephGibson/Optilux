@@ -1,0 +1,27 @@
+{
+ "schema": 1,
+ "id": "similarity",
+ "use": "the copies `verify similarity` reads (shader.md#policy): install unpacks each into reference/<folder>/ and tree-hashes it (record.tree_hash) against `treeSha256` and `files` on every run, a copy off its pin refused (plans/m3.md D54); k, t and the controls' figures join in M3.P02 (D55)",
+ "studied": {
+  "slug": "complementary-unbound",
+  "folder": "complementary-unbound-r5.9.3",
+  "treeSha256": "e68482ed5783caaac6a367505509572d377e97425627941a2f5f8559c0377b6d",
+  "files": 436,
+  "why": "the source Optilux may study and must not copy: the platform file's reference pack, unpacked from the store, where its zip is pinned by sha512",
+  "treeWhy": "ComplementaryUnbound_r5.9.3.zip's 436 files as unpacked on 2026-10-20"
+ },
+ "control": {
+  "name": "Wisdom Shaders",
+  "version": "Build3300",
+  "file": "Wisdom-Shaders-V3-Build3300.zip",
+  "sha256": "5f3b0cfb41d59bb419bc4f0e80561d6da0e6b46098fc1e8da9e30381da5c052c",
+  "source": "https://github.com/bobcao3/Wisdom-Shaders/releases/download/Build3300/Wisdom-Shaders-V3-Build3300.zip",
+  "license": "Apache-2.0",
+  "folder": "wisdom-shaders-v3-build3300",
+  "treeSha256": "ede1518ffdb01b829d6b6928cd7c68321d32da98851e4f2b2941fe9a3a396e69",
+  "files": 60,
+  "why": "the negative control (plans/m3.md P9): \"V3 Revived for Iris\" (2026-08-11), not a fork and crediting no pack, so the longest span it shares with Unbound bounds t from below (D55); Photon credits Complementary",
+  "sha256Why": "GitHub's asset digest, equal to the sha256 of the file downloaded on 2026-10-20 (1484299 bytes)",
+  "treeWhy": "the zip's 60 files as unpacked on 2026-10-20"
+ }
+}

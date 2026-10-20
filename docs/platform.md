@@ -67,7 +67,7 @@ What optilux-helper's adapter must provide on each platform (mod.md#4-architectu
 
 ## Install and launch
 No launcher (lessons.md#game-control). Nothing is installed system-wide; no Microsoft account is used or read (singleplayer only).
-- `install [--tier bench] [--refresh]` fills runtime/<platform>/ (suite.json's `platform`) from the network and re-hashes every file on every run; a hash off its pin is refused with the file named; game/saves/ and the option files are never touched:
+- `install [--tier bench] [--refresh]` fills runtime/<platform>/ (suite.json's `platform`) and reference/ (design.md#4-architecture) from the network and re-hashes every file on every run; a hash off its pin is refused with the file named; game/saves/ and the option files are never touched:
   - Minecraft: Mojang's manifest -> version JSON (re-fetched when its SHA-1 moved) -> client jar, libraries, natives, asset index and assets through minecraft-launcher-lib 8.0 (it installs the local Fabric profile with inheritsFrom, repairs a SHA-1 mismatch, checks none of Fabric's libraries, and adds Mojang's unused java-runtime-epsilon under runtime/<platform>/runtime/); install's own pass then hashes every classpath jar, the asset index, every asset and the log config against the spec it built;
   - Fabric Loader: its profile JSON from meta.fabricmc.net under versions/; libraries from Fabric's Maven against the SHA-1 the profile carries, fabric-loader's own against Maven's .sha1;
   - mods and packs: the tier's Modrinth files (through `extends`) and the reference pack into the store runtime/<platform>/files/, against the platform file's sha512; resource and shader packs copied into game/resourcepacks/ and game/shaderpacks/;

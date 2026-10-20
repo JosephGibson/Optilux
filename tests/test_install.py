@@ -1,9 +1,10 @@
 """`optilux install` in a throwaway root with the network and minecraft-launcher-lib replaced by a
-fake world: the first install writes the store, the copies, Temurin, PresentMon and the launch
-spec; a second one re-hashes everything and downloads nothing; a tier adds its files; Mojang
-republishing the version JSON makes the spec differ in P6's four facts until --refresh; a hash
-that differs from its pin is refused with the file named; game/saves/ and options.txt are never
-touched. Nothing here reads runtime/ or the network (docs/workflow.md#testing)."""
+fake world: the first install writes the store, the copies, Temurin, the tools, the reference
+copies and the launch spec; a second one re-hashes everything and downloads nothing; a tier adds
+its files; Mojang republishing the version JSON makes the spec differ in P6's four facts until
+--refresh; a hash that differs from its pin is refused with the file named; game/saves/ and
+options.txt are never touched. Nothing here reads runtime/ or the network
+(docs/workflow.md#testing)."""
 
 import hashlib
 import io
@@ -14,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from optilux import cli, platform
+from optilux import REPO_ROOT, cli, platform, record, repo
 from optilux.verbs import install
 
 PLATFORM = "mc-fixture"
@@ -29,6 +30,14 @@ PRESENTMON = "PresentMon-fixture.exe"
 # A zip tool as glslang's: no top folder, its exe under bin/.
 GLSLANG = "glslang-fixture.zip"
 GLSLANG_FILES = {"bin/glslang.exe": b"MZ fake glslang", "include/glslang/build_info.h": b"#if 1\n"}
+# The reference pack's and the control's trees, unpacked under reference/ (plans/m3.md D54).
+REF_FILES = {
+    "License.txt": b"the reference pack's license\n",
+    "shaders/final.fsh": b"void main() {}\n",
+    "shaders/lib/common.glsl": b"#define SHADOW_QUALITY 2\n",
+}
+CONTROL = "Control-fixture.zip"
+CONTROL_FILES = {"LICENSE.TXT": b"Apache License\n", "shaders/composite.fsh": b"void main() {}\n"}
 
 
 def sha1(data: bytes) -> str:
@@ -53,6 +62,13 @@ def archive(files: dict[str, bytes]) -> bytes:
     return buffer.getvalue()
 
 
+def tree_pin(files: dict[str, bytes]) -> str:
+    """The tree hash a folder holding `files` must have, written out here rather than taken from
+    record.tree_hash: the sha256 of `<sha256>  <path>` lines in the paths' byte order."""
+    lines = sorted((name.encode(), sha256(data)) for name, data in files.items())
+    return sha256(b"".join(f"{digest}  ".encode() + name + b"\n" for name, digest in lines))
+
+
 def zipped(folder: str) -> bytes:
     """A JDK archive under one top folder."""
     return archive(
@@ -63,9 +79,9 @@ def zipped(folder: str) -> bytes:
 class World:
     """The fake network and the files the fake minecraft-launcher-lib writes: one Fabric library
     with a sha1 and one (fabric-loader) without, one Mojang library allowed on Windows and one
-    osx-only, the client jar, two assets, the log config; three Modrinth files, a JDK zip, a
-    PresentMon and a zip tool. `republish` moves the asset index as Mojang did on 2026-10-06
-    (P6)."""
+    osx-only, the client jar, two assets, the log config; three Modrinth files (the reference
+    pack a zip), a JDK zip, a PresentMon, a zip tool and the control pack. `republish` moves the
+    asset index as Mojang did on 2026-10-06 (P6)."""
 
     def __init__(self) -> None:
         self.jars = {
@@ -81,11 +97,12 @@ class World:
             "AAAAAAAA": ("mod-a.jar", b"mod a jar"),
             "BBBBBBBB": ("mod-b.jar", b"mod b jar"),
             "PPPPPPPP": ("Pack 1.zip", b"PK resource pack"),
-            "RRRRRRRR": ("Ref.zip", b"PK shader pack"),
+            "RRRRRRRR": ("Ref.zip", archive(REF_FILES)),
         }
         self.jdk = zipped(JDK_BUILD)
         self.presentmon = b"MZ fake presentmon"
         self.glslang = archive(GLSLANG_FILES)
+        self.control = archive(CONTROL_FILES)
         self.profile = {
             "id": PROFILE_ID,
             "inheritsFrom": "26.3",
@@ -212,6 +229,8 @@ class World:
             data = self.presentmon
         elif url == "https://github.test/glslang.zip":
             data = self.glslang
+        elif url == "https://github.test/control.zip":
+            data = self.control
         else:
             version_id = url.rsplit("/", 1)[-1]
             assert url.startswith("https://cdn.test/"), f"unexpected download of {url}"
@@ -308,6 +327,24 @@ def write_config(root: Path, world: World) -> None:
         "later": "a note, skipped",
     }
     (config / "tools.json").write_text(json.dumps(tools))
+    similarity = {
+        "schema": 1,
+        "studied": {
+            "slug": "ref",
+            "folder": "ref-1",
+            "treeSha256": tree_pin(REF_FILES),
+            "files": len(REF_FILES),
+        },
+        "control": {
+            "file": CONTROL,
+            "sha256": sha256(world.control),
+            "source": "https://github.test/control.zip",
+            "folder": "control-1",
+            "treeSha256": tree_pin(CONTROL_FILES),
+            "files": len(CONTROL_FILES),
+        },
+    }
+    (config / "similarity.json").write_text(json.dumps(similarity))
 
 
 @pytest.fixture
@@ -343,9 +380,10 @@ def test_the_first_install_writes_everything(tmp_path: Path, world: World) -> No
     outcome = install.install(tmp_path, "bench", False, said.append)
     assert outcome.ok and (outcome.platform, outcome.tier) == (PLATFORM, "bench")
     # The version JSON, 4 jars (the osx one excluded), the index, 2 assets, the log; 3 store
-    # files; the archive; the two tools. Fresh copies are written, not hashed.
-    assert outcome.hashes == 1 + 4 + 1 + 2 + 1 + 3 + 1 + 2
-    assert outcome.downloaded == 1 + 8 + 3 + 1 + 2  # the lib fetched 4 jars, index, 2 assets, log
+    # files; the archive; the two tools; the control's zip and the two trees. Fresh copies are
+    # written, not hashed.
+    assert outcome.hashes == 1 + 4 + 1 + 2 + 1 + 3 + 1 + 2 + 3
+    assert outcome.downloaded == 1 + 8 + 3 + 1 + 2 + 1  # the lib: 4 jars, index, 2 assets, log
     assert outcome.minecraft == {
         "version": "26.3",
         "profile": PROFILE_ID,
@@ -359,7 +397,7 @@ def test_the_first_install_writes_everything(tmp_path: Path, world: World) -> No
     assert (store / "mod-a.jar").read_bytes() == b"mod a jar"
     game = tmp_path / "runtime" / PLATFORM / "game"
     assert (game / "resourcepacks" / "Pack 1.zip").read_bytes() == b"PK resource pack"
-    assert (game / "shaderpacks" / "Ref.zip").read_bytes() == b"PK shader pack"
+    assert (game / "shaderpacks" / "Ref.zip").read_bytes() == world.modrinth["RRRRRRRR"][1]
     assert not (game / "mods").exists()  # mods are placed by launch (0.01.03)
     assert [(f["file"], f["state"], f["copyState"]) for f in outcome.files] == [
         ("mod-a.jar", "downloaded", None),
@@ -391,6 +429,34 @@ def test_the_first_install_writes_everything(tmp_path: Path, world: World) -> No
             "state": "downloaded",
             "exe": "runtime/tools/glslang-fixture/bin/glslang.exe",
             "unpacked": "unpacked",
+        },
+    ]
+    reference = tmp_path / "reference"
+    assert sorted(p.name for p in reference.iterdir()) == [CONTROL, "control-1", "ref-1"]
+    for folder, files in (("ref-1", REF_FILES), ("control-1", CONTROL_FILES)):
+        home = reference / folder
+        found = [p for p in home.rglob("*") if p.is_file()]
+        assert {p.relative_to(home).as_posix(): p.read_bytes() for p in found} == files
+    # The unpack's tree hash: record.tree_hash agrees with the pin written out by hand.
+    assert record.tree_hash(reference / "ref-1") == (tree_pin(REF_FILES), len(REF_FILES))
+    assert outcome.references == [
+        {
+            "role": "studied",
+            "archive": f"runtime/{PLATFORM}/files/Ref.zip",
+            "archiveState": None,
+            "folder": "reference/ref-1",
+            "files": 3,
+            "treeSha256": tree_pin(REF_FILES),
+            "state": "unpacked",
+        },
+        {
+            "role": "control",
+            "archive": f"reference/{CONTROL}",
+            "archiveState": "downloaded",
+            "folder": "reference/control-1",
+            "files": 2,
+            "treeSha256": tree_pin(CONTROL_FILES),
+            "state": "unpacked",
         },
     ]
     spec_file = tmp_path / "config" / "platforms" / f"{PLATFORM}.launch.json"
@@ -429,6 +495,9 @@ def test_the_first_install_writes_everything(tmp_path: Path, world: World) -> No
         f"tools: fetching {PRESENTMON}",
         f"tools: fetching {GLSLANG}",
         f"tools: unpacking {GLSLANG} into runtime/tools/glslang-fixture",
+        "reference: unpacking Ref.zip into reference/ref-1",
+        f"reference: fetching {CONTROL}",
+        "reference: unpacking Control-fixture.zip into reference/control-1",
     ]
     assert untouched(tmp_path) == (b"level", b"version:5023\n")
 
@@ -441,12 +510,16 @@ def test_a_second_install_rehashes_everything_and_downloads_nothing(
     said: list[str] = []
     outcome = install.install(tmp_path, "bench", False, said.append)
     assert outcome.ok and outcome.downloaded == 0 and world.downloads == []
-    assert outcome.hashes == 1 + 4 + 1 + 2 + 1 + 3 + 2 + 1 + 2  # the two copies hashed too
+    assert outcome.hashes == 1 + 4 + 1 + 2 + 1 + 3 + 2 + 1 + 2 + 3  # the two game copies too
     assert {f["state"] for f in outcome.files} == {"equal"}
     assert {f["copyState"] for f in outcome.files if f["copy"]} == {"equal"}
     assert outcome.java["unpacked"] == "present"
     assert {t["state"] for t in outcome.tools} == {"equal"}
     assert outcome.tools[1]["unpacked"] == "present"
+    assert [(r["archiveState"], r["state"]) for r in outcome.references] == [
+        (None, "equal"),
+        ("equal", "equal"),
+    ]
     assert outcome.spec["state"] == "equal" and outcome.spec["diff"] == []
     assert said == [f"minecraft: installing 26.3 and {PROFILE_ID} into runtime/{PLATFORM}"]
     # A differing game copy is replaced from the store, a missing one re-copied.
@@ -635,6 +708,75 @@ def test_a_zip_tool_is_checked_before_and_after_its_unpack(tmp_path: Path, world
         install.install(tmp_path, "bench", False, quiet)
 
 
+def test_a_reference_copy_off_its_pin_is_refused_never_repaired(
+    tmp_path: Path, world: World
+) -> None:
+    """plans/m3.md D54: a copy's tree is hashed on every install, an edited or added file
+    refused naming the folder and left as found; the control's zip against its sha256, a served
+    zip off it removed; a zip whose tree is off the pin leaves no folder; the studied slug must
+    name a reference pack."""
+    install.install(tmp_path, "bench", False, quiet)
+    reference = tmp_path / "reference"
+    edited = reference / "ref-1" / "shaders" / "final.fsh"
+    edited.write_bytes(b"void main() { edited(); }\n")
+    with pytest.raises(install.InstallError) as caught:
+        install.install(tmp_path, "bench", False, quiet)
+    assert str(caught.value).startswith("reference copy reference/ref-1: tree sha256 ")
+    assert f"differs from its pin {tree_pin(REF_FILES)} (3 files)" in str(caught.value)
+    assert str(caught.value).endswith(f"; fix: {install.TREE_FIX}")
+    assert edited.read_bytes() == b"void main() { edited(); }\n"  # never repaired
+    edited.write_bytes(REF_FILES["shaders/final.fsh"])
+    (reference / "control-1" / "extra.glsl").write_bytes(b"")
+    with pytest.raises(install.InstallError, match=r"control-1: tree sha256 \w+ \(3 files\)"):
+        install.install(tmp_path, "bench", False, quiet)
+    (reference / "control-1" / "extra.glsl").unlink()
+    assert install.install(tmp_path, "bench", False, quiet).ok
+    # The control's zip: checked on every install; a served zip off its pin is removed.
+    (reference / CONTROL).write_bytes(b"tampered")
+    with pytest.raises(
+        install.InstallError, match=f"control pack reference/{CONTROL}: sha256 .* differs"
+    ):
+        install.install(tmp_path, "bench", False, quiet)
+    (reference / CONTROL).unlink()
+    world.control = b"served wrong"
+    with pytest.raises(install.InstallError, match=f"control pack reference/{CONTROL}: sha256"):
+        install.install(tmp_path, "bench", False, quiet)
+    assert not (reference / CONTROL).exists()
+    # A zip matching its sha256 whose tree is not the pinned one: no folder, no .part left.
+    world.control = archive({**CONTROL_FILES, "shaders/added.glsl": b"// more\n"})
+    path = tmp_path / "config" / "similarity.json"
+    pins = json.loads(path.read_text(encoding="utf-8"))
+    pins["control"]["sha256"] = sha256(world.control)
+    path.write_text(json.dumps(pins), encoding="utf-8")
+    shutil.rmtree(reference / "control-1")
+    with pytest.raises(install.InstallError, match=r"control-1: tree sha256 \w+ \(3 files\)"):
+        install.install(tmp_path, "bench", False, quiet)
+    assert sorted(p.name for p in reference.iterdir()) == [CONTROL, "ref-1"]
+    # The studied slug names a reference pack; folder names stay under reference/.
+    pins["studied"]["slug"] = "nope"
+    path.write_text(json.dumps(pins), encoding="utf-8")
+    with pytest.raises(install.InstallError, match="studied slug 'nope' is no referencePacks"):
+        install.install(tmp_path, "bench", False, quiet)
+    pins["studied"] |= {"slug": "ref", "folder": ".."}
+    path.write_text(json.dumps(pins), encoding="utf-8")
+    with pytest.raises(install.InstallError, match=r"studied: '\.\.' is no plain file name"):
+        install.install(tmp_path, "bench", False, quiet)
+
+
+def test_the_reference_copies_are_ignored_and_never_tracked() -> None:
+    """reference/ stays out of git (shader.md#policy): each copy's folder and the control's zip,
+    as this repository's config/similarity.json names them, are ignored and nothing under
+    reference/ is tracked."""
+    pins = json.loads((REPO_ROOT / install.SIMILARITY).read_text(encoding="utf-8"))
+    paths = [f"{install.REFERENCE}/{pins['control']['file']}"]
+    paths += [
+        f"{install.REFERENCE}/{pins[role]['folder']}/shaders/final.fsh" for role in install.ROLES
+    ]
+    for path in paths:
+        assert repo.git(REPO_ROOT, "check-ignore", "-q", path).returncode == 0, path
+    assert repo.git(REPO_ROOT, "ls-files", install.REFERENCE).stdout == ""
+
+
 def test_an_archive_with_another_top_folder_is_refused(tmp_path: Path, world: World) -> None:
     world.jdk = zipped("elsewhere")
     (tmp_path / "config" / "java" / "bench.json").write_text(
@@ -687,7 +829,12 @@ def test_cli_text_json_and_exit_codes(
         f"launch spec: written to config/platforms/{PLATFORM}.launch.json (the first install)"
         in lines
     )
-    assert lines[-1] == "optilux install: ok; 15 hashes checked, 15 files downloaded"
+    assert "reference (studied): reference/ref-1/ tree sha256-equal, 3 files (unpacked)" in lines
+    assert (
+        f"reference (control): reference/{CONTROL} sha256-equal (downloaded); "
+        "reference/control-1/ tree sha256-equal, 2 files (unpacked)"
+    ) in lines
+    assert lines[-1] == "optilux install: ok; 18 hashes checked, 16 files downloaded"
     assert cli.main(["install", "--tier", "lod", "--json"]) == 0
     out, err = capsys.readouterr()
     found = json.loads(out)
@@ -699,7 +846,7 @@ def test_cli_text_json_and_exit_codes(
     assert "launch spec: differs from config/platforms/mc-fixture.launch.json in 4 facts:" in out
     assert out.count("\n  ") == 4 and '  assetIndex.sha1: "' in out
     assert err == (
-        "optilux install: the launch spec moved; 18 hashes checked, 3 files downloaded; "
+        "optilux install: the launch spec moved; 21 hashes checked, 3 files downloaded; "
         f"fix: {install.REFRESH_FIX}\n"
     )
     assert cli.main(["install", "--json"]) == 1
