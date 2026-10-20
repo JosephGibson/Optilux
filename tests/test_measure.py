@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import threading
 import time
 import zipfile
@@ -1151,10 +1152,19 @@ def fake_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr(launch, "launch", fake_launch)
     monkeypatch.setattr(launch, "open_mod", fake_open_mod)
+    monkeypatch.setattr(run_verb, "check_l0", passing_l0)  # the fixture pack is no GLSL
     monkeypatch.setattr(run_verb, "REPO_ROOT", root)
     monkeypatch.setattr(run_verb, "RunHost", lambda: host)
     monkeypatch.setattr(record, "Machine", FakeMachine)
     return root, spec_path, fake, host
+
+
+REAL_CHECK_L0 = run_verb.check_l0
+
+
+def passing_l0(root: Path, zipped: dict, variant: str) -> dict:
+    """`check L0`'s summary for a zip that passes it, bound to the zip's sha512."""
+    return {"ok": True, "sha512": zipped["sha512"], "glslang": "16.6.0", "builds": 0}
 
 
 class FakeMachine(record.Machine):
@@ -2594,6 +2604,91 @@ def test_an_acceptance_run_loads_the_zip_pack_build_makes(
     packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
     assert found["session"]["filesCleanup"] == {"removed": [name, f"{name}.txt"], "kept": []}
     assert sorted(path.name for path in packs.iterdir()) == [PACK]
+
+
+def test_run_refuses_an_optilux_zip_check_l0_cannot_check(fake_run, monkeypatch) -> None:
+    """plans/m3.md M3.P04: `check L0` runs on the zip in a child process (the fake root's own CLI,
+    the bytes on its stdin) before anything is written; the fake root has no glslang, so the
+    check cannot run and the run is refused naming why, shaderpacks/ keeping the reference pack."""
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    spec_path.write_text(json.dumps(optilux_spec("optilux")), encoding="utf-8")
+    monkeypatch.setattr(run_verb, "check_l0", REAL_CHECK_L0)
+    with pytest.raises(
+        record.RecordError, match=r"optilux: `check L0` cannot check its zip: .*glslang"
+    ):
+        run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert sorted(path.name for path in packs.iterdir()) == [PACK]
+    assert "optilux.offline" not in record.module_closure(root)  # the child's, not the run's
+
+
+GLSLANG_PIN = json.loads((REPO_ROOT / "config" / "tools.json").read_text(encoding="utf-8"))[
+    "glslang"
+]
+GLSLANG_HOME = REPO_ROOT / "runtime" / "tools" / GLSLANG_PIN["unpack"]
+
+
+@pytest.mark.skipif(
+    not (GLSLANG_HOME / GLSLANG_PIN["exe"]).is_file(), reason="no glslang under runtime/tools/"
+)
+def test_run_refuses_an_optilux_zip_that_fails_check_l0(fake_run, monkeypatch) -> None:
+    """The child's verdict itself: with glslang in the fake root, `check L0` judges the fixture
+    pack (a final.fsh no pass of pipeline.json's matches), fails it, and the run is refused naming
+    its first problems before anything is written."""
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    shutil.copytree(GLSLANG_HOME, root / "runtime" / "tools" / GLSLANG_PIN["unpack"])
+    spec_path.write_text(json.dumps(optilux_spec("optilux")), encoding="utf-8")
+    monkeypatch.setattr(run_verb, "check_l0", REAL_CHECK_L0)
+    with pytest.raises(
+        record.RecordError,
+        match=r"optilux: its zip \(sha512 [0-9a-f]{12}\.\.\.\) fails `check L0`: ",
+    ) as refused:
+        run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert "lacks its .vsh or .fsh" in str(refused.value)
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert sorted(path.name for path in packs.iterdir()) == [PACK]
+
+
+def test_check_l0s_verdict_is_bound_to_the_zips_sha512(fake_run, monkeypatch) -> None:
+    root, _, _, _ = fake_run
+    optilux_tree(root)
+    zipped = run_verb.optilux_zip(root, {"variant": "optilux", "ref": None, "commit": None})
+    verdicts: list[dict] = []
+
+    def child(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        assert command[1:] == list(run_verb.L0_COMMAND) and kwargs["input"] == zipped["data"]
+        return subprocess.CompletedProcess(command, 0, json.dumps(verdicts.pop()).encode(), b"")
+
+    monkeypatch.setattr(run_verb.subprocess, "run", child)
+    pipeline = {"file": "config/pipeline.json", "sha256": "1" * 64}
+    passed = {
+        "ok": True,
+        "sha512": zipped["sha512"],
+        "glslang": "16.6.0",
+        "pipeline": pipeline,
+        "matrix": {"builds": 48, "variants": ["defaults", "BENCH_DETERMINISTIC false"]},
+        "profiles": [{"profile": "config/profiles/complementary-unbound-iso.json"}],
+        "problems": [],
+    }
+    verdicts.append(passed)
+    assert REAL_CHECK_L0(root, zipped, "optilux") == {
+        "ok": True,
+        "sha512": zipped["sha512"],
+        "glslang": "16.6.0",
+        "pipeline": pipeline,
+        "builds": 48,
+        "variants": ["defaults", "BENCH_DETERMINISTIC false"],
+        "profiles": ["config/profiles/complementary-unbound-iso.json"],
+    }
+    verdicts.append({**passed, "sha512": "0" * 128})
+    with pytest.raises(record.RecordError, match="judged other bytes"):
+        REAL_CHECK_L0(root, zipped, "optilux")
+    problems = [f"final: shaders/final.fsh (compile and link): line {n}" for n in range(5)]
+    verdicts.append({**passed, "ok": False, "problems": problems})
+    with pytest.raises(record.RecordError, match=r"fails `check L0`: final: .*line 2 and 2 more"):
+        REAL_CHECK_L0(root, zipped, "optilux")
 
 
 def test_an_optilux_variant_already_in_shaderpacks_is_refused(fake_run) -> None:
