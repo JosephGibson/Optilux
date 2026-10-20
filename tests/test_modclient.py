@@ -952,13 +952,138 @@ def test_an_answer_the_reader_takes_as_the_wait_ends_is_returned(tmp_path: Path)
 
 
 def test_the_fake_refuses_the_capture_arguments_the_mod_refuses(tmp_path: Path) -> None:
+    """flush and after wait for M5; align and ready are refused as the mod's Capture refuses
+    them (CaptureTest): a cycle not dividing 720720, a phase outside it, a field unknown or
+    missing, ready outside the ready command's ranges."""
     client, _ = session(tmp_path)
     client.hello()
-    for later in ({"flush": True}, {"align": {"after": 1}}, {"after": 3}):
+    refusals = [
+        ({"flush": True}, "unsupported"),
+        ({"after": 3}, "unsupported"),
+        ({"after": 0}, "unsupported"),
+        ({"align": {"cycle": 32, "phase": 0}}, "bad-request"),
+        ({"align": {"cycle": 4, "phase": 4}}, "bad-request"),
+        ({"align": {"cycle": 4, "phase": True}}, "bad-request"),
+        ({"align": {"after": 1}}, "bad-request"),
+        ({"align": {"cycle": 4}}, "bad-request"),
+        ({"ready": {"stableFrames": 0, "minSeconds": 0}}, "bad-request"),
+        ({"ready": {"stableFrames": 10}}, "bad-request"),
+        ({"ready": {"stableFrames": 10, "minSeconds": 3601}}, "bad-request"),
+        ({"ready": {"stableFrames": 10, "minSeconds": "1"}}, "bad-request"),
+    ]
+    for later, code in refusals:
         args = {"directory": str(tmp_path / "c"), "count": 1, "timeoutSeconds": 10.0, **later}
         with pytest.raises(modclient.ModRefused) as refused:
             client.request("frames.capture", args)
-        assert refused.value.code == "unsupported", later
+        assert refused.value.code == code, later
+    with pytest.raises(modclient.ModRefused, match="32 does not divide 720720"):
+        client.frames_capture(tmp_path / "c", 1, 10.0, align=(32, 0))
+    client.close()
+
+
+def test_aligned_ready_and_imageless_captures_against_the_fake(tmp_path: Path) -> None:
+    """align takes only frames at the phase; ready answers its report, whose frame is the
+    first taken (the fake's predicate holds at once); without images the frames are stamps
+    alone, with no file beside capture.json."""
+    client, fake = session(tmp_path)
+    client.hello()
+    client.shaders_reload(30)
+    aligned = client.frames_capture(tmp_path / "c", 3, 30.0, every=1, align=(4, 1))
+    assert [f["sinceReload"] % 4 for f in aligned["frames"]] == [1, 1, 1]
+    assert aligned["ready"] is None
+    before = client.request("frames.index")["frameIndex"]
+    shot = client.frames_capture(tmp_path / "c", 2, 30.0, ready=(10, 1.0), images=False)
+    assert shot["ready"]["frameIndex"] == shot["frames"][0]["frameIndex"]
+    # 1 s of 7 ms frames outlasts 10 stable ones, as the mod's Readiness reports it.
+    assert shot["ready"]["limitedBy"] == "minSeconds" and shot["ready"]["frames"] == 143
+    assert shot["frames"][0]["frameIndex"] == before + 143
+    quick = client.frames_capture(tmp_path / "c", 1, 30.0, ready=(10, 0.0), images=False)
+    assert quick["ready"]["limitedBy"] == "stableFrames" and quick["ready"]["frames"] == 10
+    assert [sorted(f) for f in shot["frames"]] == [sorted(modclient.MARK_KEYS)] * 2
+    assert shot["verified"] == {
+        "folder": str(Path(shot["manifest"]).parent),
+        "frames": 2,
+        "bytes": 0,
+        "complete": True,
+        "images": False,
+    }
+    assert [p.name for p in Path(shot["manifest"]).parent.iterdir()] == [modclient.MANIFEST]
+    both = client.frames_capture(tmp_path / "c", 1, 30.0, align=(16, 5), ready=(3, 0.0))
+    first = both["frames"][0]
+    assert first["sinceReload"] % 16 == 5
+    assert 0 <= first["frameIndex"] - both["ready"]["frameIndex"] < 16
+    sent = [m["args"] for m in fake.received if m.get("cmd") == "frames.capture"]
+    assert sent[-1]["align"] == {"cycle": 16, "phase": 5}
+    assert sent[-1]["ready"] == {"stableFrames": 3, "minSeconds": 0.0}
+    assert sent[1]["images"] is False and sent[0]["images"] is True
+    client.close()
+
+
+def test_the_schedule_check_refuses_what_the_capture_did_not_ask() -> None:
+    """check_schedule (plans/m3.md section 7): an aligned frame off its phase; a ready capture
+    without a report, or whose first frame (written or dropped) is not the first after it; a
+    report for a capture that asked none."""
+
+    def frame(index: int, since: int) -> dict:
+        return {"frameIndex": index, "sinceReload": since}
+
+    report = {"frameIndex": 50, "limitedBy": "stableFrames"}
+    good = {"frames": [frame(52, 9), frame(56, 13)], "dropped": [], "ready": report}
+    modclient.check_schedule(good, (4, 1), True)
+    modclient.check_schedule({**good, "ready": None}, (4, 1), False)
+    with pytest.raises(modclient.ModError, match="frame 53 at sinceReload 10 lies off phase 1"):
+        modclient.check_schedule({**good, "frames": [frame(53, 10)]}, (4, 1), True)
+    with pytest.raises(modclient.ModError, match="no report"):
+        modclient.check_schedule({**good, "ready": None}, (4, 1), True)
+    with pytest.raises(modclient.ModError, match="asked none"):
+        modclient.check_schedule(good, (4, 1), False)
+    late = {"frames": [frame(51, 4)], "dropped": [], "ready": report}
+    with pytest.raises(modclient.ModError, match="first frame 51 is not the first from frame 50"):
+        modclient.check_schedule(late, None, True)
+    modclient.check_schedule({**late, "dropped": [{"frameIndex": 50}]}, None, True)
+    with pytest.raises(modclient.ModError, match="not the first at the phase"):
+        modclient.check_schedule({**good, "frames": [frame(56, 13)]}, (4, 1), True)
+    early = {"frames": [frame(49, 4)], "dropped": [], "ready": report}
+    with pytest.raises(modclient.ModError, match="first frame 49"):
+        modclient.check_schedule(early, None, True)
+
+
+def test_a_capture_whose_manifest_disagrees_with_its_request_is_refused(tmp_path: Path) -> None:
+    """The client judges what the mod wrote against what it asked: images, and the ready report
+    the answer and capture.json both carry."""
+
+    class Pictures(modfake.Fake):
+        def _capture(self, args: dict) -> dict:
+            return super()._capture({**args, "images": True})
+
+    client, _ = session(tmp_path, Pictures(TOKEN))
+    client.hello()
+    with pytest.raises(modclient.ModError, match="asked images False"):
+        client.frames_capture(tmp_path / "c", 1, 10.0, images=False)
+    shot = client.frames_capture(tmp_path / "c", 1, 10.0, ready=(3, 0.0))
+    manifest = json.loads(Path(shot["manifest"]).read_text(encoding="utf-8"))
+    manifest["ready"]["frameIndex"] += 1
+    Path(shot["manifest"]).write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(modclient.ModError, match="its ready differ"):
+        modclient.verify_manifest(shot)
+    client.close()
+
+
+def test_an_imageless_capture_is_judged_by_its_manifest(tmp_path: Path) -> None:
+    """Without images the folder holds capture.json alone and each frame is its stamps."""
+    client, _ = session(tmp_path)
+    client.hello()
+    shot = client.frames_capture(tmp_path / "c", 2, 10.0, images=False)
+    folder = Path(shot["manifest"]).parent
+    (folder / "frame-00001.png").write_bytes(modfake.png(1, 1, bytes(4)))
+    with pytest.raises(modclient.ModError, match=r"does not list: frame-00001\.png"):
+        modclient.verify_manifest(shot)
+    (folder / "frame-00001.png").unlink()
+    manifest = json.loads((folder / modclient.MANIFEST).read_text(encoding="utf-8"))
+    manifest["frames"][0]["name"] = "frame-00001.png"
+    (folder / modclient.MANIFEST).write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(modclient.ModError, match="not its stamps alone"):
+        modclient.verify_manifest({**shot, "frames": manifest["frames"]})
     client.close()
 
 

@@ -44,6 +44,31 @@ def test_a9_fails_on_an_event_that_invalidates_its_capture() -> None:
     assert acceptance.a9_pass({"pass": False}, True, 0, [], []) is False
 
 
+def test_a9_captures_stamps_alone(tmp_path: Path) -> None:
+    """A9 reads stamps only (plans/m3.md D61, F17): its capture asks no images, so no PNG is
+    written and capture.json holds each frame's stamps."""
+    fake = modfake.Fake("T" * 43)
+    stream, _ = modfake.serve_streams(fake)
+    client = modclient.Client(stream, "T" * 43, tmp_path / "requests.jsonl", os.getpid())
+    client.hello()
+    shot = acceptance.a9_capture(client, tmp_path / "a9" / "frames")
+    assert len(shot["frames"]) == acceptance.A9_FRAMES
+    assert shot["verified"]["images"] is False and shot["verified"]["bytes"] == 0
+    assert all("qpcNs" in f and "swapQpcNs" in f and "name" not in f for f in shot["frames"])
+    assert not list((tmp_path / "a9").rglob("*.png"))
+    asked = [m["args"] for m in fake.received if m.get("cmd") == "frames.capture"]
+    assert asked == [
+        {
+            "directory": str(tmp_path / "a9" / "frames"),
+            "count": acceptance.A9_FRAMES,
+            "every": 1,
+            "images": False,
+            "timeoutSeconds": acceptance.A9_CAPTURE_TIMEOUT,
+        }
+    ]
+    client.close()
+
+
 def test_the_helper_log_counts_hook_failures_and_iris_failures_outside_a_reload() -> None:
     log = "\n".join(
         [

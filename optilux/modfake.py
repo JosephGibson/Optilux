@@ -17,8 +17,11 @@ switches packs as Iris does at a reload: iris.properties' shaderPack, then that 
 file over the pack's defaults (`defaults`), a value of no option or of the wrong kind ignored;
 a dimension change also shows the loading screen and the quit the saving screens, as the game's
 do;
-shaders.options reads the model's options; frames.capture writes `count` small PNGs and
-capture.json into a new attempt folder under an absolute directory, as the mod does;
+shaders.options reads the model's options; frames.capture writes `count` small PNGs (none
+without images) and capture.json into a new attempt folder under an absolute directory, as the
+mod does, with align only frames at the phase and with ready a report naming the first frame
+taken (its predicate holds from the next frame, the wait stableFrames or minSeconds of 7 ms
+frames), align and ready refused as the mod refuses them, the clock then at the last frame;
 window.measure times its window on 7 ms frames from the
 last reload's frame (none after a dimension change: not-ready) or from now, pushes window.start
 and window.end and moves the frames to its end; state reports the model's framebuffer; selftest
@@ -150,6 +153,8 @@ FRAME_SIZE = 2
 # The fake's frame time: frame n's HEAD stamp at n x 7 ms; a window's swap stamps 0.1 ms before.
 FRAME_NS = 7_000_000
 SWAP_LEAD_NS = 100_000
+# Iris's frame counter wraps here; an aligned capture's cycle divides it (the mod's Capture.WRAP).
+WRAP = 720720
 
 
 def png(width: int, height: int, rgba: bytes) -> bytes:
@@ -180,6 +185,49 @@ def attempt_folder(directory: Path) -> Path:
             folder.mkdir()
             return folder
     raise AssertionError("unreachable")
+
+
+def nested(where: str, value: Any, names: tuple[str, ...]) -> dict:
+    """A capture argument's fields as the mod reads them: an object holding exactly `names`."""
+    if not isinstance(value, dict):
+        raise Refusal("bad-request", f"{where} must be an object")
+    unknown = [key for key in value if key not in names]
+    if unknown:
+        raise Refusal("bad-request", f"{where}: unknown field {unknown[0]}")
+    missing = [name for name in names if name not in value]
+    if missing:
+        raise Refusal("bad-request", f"{where}: missing field {missing[0]}")
+    return value
+
+
+def whole(where: str, value: Any, low: int, high: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        raise Refusal("bad-request", f"{where} must be an integer in {low}..{high}")
+    return value
+
+
+def capture_align(value: Any) -> tuple[int, int] | None:
+    """frames.capture's align as (cycle, phase), refused as the mod's Capture.Align.of refuses."""
+    if value is None:
+        return None
+    fields = nested("frames.capture.align", value, ("cycle", "phase"))
+    cycle = whole("frames.capture.align.cycle", fields["cycle"], 1, WRAP)
+    if WRAP % cycle:
+        raise Refusal("bad-request", f"frames.capture.align.cycle {cycle} does not divide {WRAP}")
+    return cycle, whole("frames.capture.align.phase", fields["phase"], 0, cycle - 1)
+
+
+def capture_ready(value: Any) -> tuple[int, float] | None:
+    """frames.capture's ready as (stableFrames, minSeconds), refused as the mod refuses it."""
+    if value is None:
+        return None
+    fields = nested("frames.capture.ready", value, ("stableFrames", "minSeconds"))
+    stable = whole("frames.capture.ready.stableFrames", fields["stableFrames"], 1, 10_000)
+    seconds = fields["minSeconds"]
+    number = isinstance(seconds, int | float) and not isinstance(seconds, bool)
+    if not number or not 0 <= seconds <= 3600:
+        raise Refusal("bad-request", "frames.capture.ready.minSeconds must be a number in 0..3600")
+    return stable, float(seconds)
 
 
 def sample(kind: str) -> Any:
@@ -654,35 +702,61 @@ class Fake:
         }
 
     def _capture(self, args: dict) -> dict:
-        """frames.capture as the mod writes it: PNGs and capture.json in a new attempt folder."""
-        for later in ("align", "flush", "after"):
-            if args.get(later) not in (None, False):
+        """frames.capture as the mod writes it, its refusals in the mod's order: PNGs (none
+        without images) and capture.json in a new attempt folder. Without ready from the current
+        frame on; with ready the predicate holds from the next frame head, so the wait ends after
+        stableFrames frames or minSeconds of FRAME_NS frames, whichever is longer, and that
+        frame is the first taken; with align only frames at the phase. The clock then stands at
+        the last frame taken."""
+        for later in ("flush", "after"):
+            if args.get(later) is not None and args.get(later) is not False:
                 raise Refusal(
-                    "unsupported",
-                    f"frames.capture.{later} is not built in this mod (align M3, flush M5)",
+                    "unsupported", f"frames.capture.{later} is not built in this mod (M5)"
                 )
+        if "every" in args and "intervalMs" in args:
+            raise Refusal("bad-request", "frames.capture takes every or intervalMs, not both")
+        align = capture_align(args.get("align"))
+        ready = capture_ready(args.get("ready"))
         directory = Path(args["directory"])
         if not directory.is_absolute():
             raise Refusal("bad-request", f"frames.capture.directory {directory} is not absolute")
-        if "every" in args and "intervalMs" in args:
-            raise Refusal("bad-request", "frames.capture takes every or intervalMs, not both")
+        images = args.get("images", True)
         folder = attempt_folder(directory)
-        frames = []
-        for n in range(1, args["count"] + 1):
-            name = f"frame-{n:05d}.png"
-            data = png(FRAME_SIZE, FRAME_SIZE, bytes([n % 256, 0, 0, 255]) * FRAME_SIZE**2)
-            (folder / name).write_bytes(data)
-            index = self._frame + (n - 1) * args.get("every", 1)
-            frames.append(
-                {
-                    "name": name,
-                    "sha256": hashlib.sha256(data).hexdigest(),
+        report = None
+        start = self._frame
+        if ready is not None:
+            stable, seconds = ready
+            judged = max(stable, -(-round(seconds * 1e9) // FRAME_NS))
+            start = self._frame + judged
+            check = {"name": "fake", "holds": True, "seconds": 0.0, "gapFrames": 0}
+            report = {
+                "seconds": judged * FRAME_NS / 1e9,
+                "predicateSeconds": stable * FRAME_NS / 1e9,
+                "limitedBy": "minSeconds" if judged > stable else "stableFrames",
+                "rendererCheck": check,
+                "frames": judged,
+                "frameIndex": start,
+            }
+        frames: list[dict] = []
+        index = due = start
+        while len(frames) < args["count"]:
+            since = index - self.game["reloadFrame"]
+            if index >= due and (align is None or since % align[0] == align[1]):
+                n = len(frames) + 1
+                frame = {
                     "frameIndex": index,
-                    "sinceReload": index - self.game["reloadFrame"],
+                    "sinceReload": since,
                     "qpcNs": index * 7_000_000,
                     "swapQpcNs": index * 7_000_000 - 1_000_000,
                 }
-            )
+                if images:
+                    name = f"frame-{n:05d}.png"
+                    data = png(FRAME_SIZE, FRAME_SIZE, bytes([n % 256, 0, 0, 255]) * FRAME_SIZE**2)
+                    (folder / name).write_bytes(data)
+                    frame = {"name": name, "sha256": hashlib.sha256(data).hexdigest(), **frame}
+                frames.append(frame)
+                due = index + args.get("every", 1)
+            index += 1
         manifest = {
             "schema": 1,
             "complete": True,
@@ -693,12 +767,17 @@ class Fake:
                 if "intervalMs" in args
                 else {"every": args.get("every", 1)}
             ),
+            "align": None if align is None else {"cycle": align[0], "phase": align[1]},
+            "ready": report,
+            "images": images,
             "frames": frames,
             "dropped": [],
         }
         path = folder / modclient.MANIFEST
         path.write_text(json.dumps(manifest) + "\n", encoding="utf-8")
-        return {"frames": frames, "dropped": [], "ready": None, "manifest": str(path)}
+        self._frame = frames[-1]["frameIndex"]
+        self._frames = itertools.count(self._frame + FRAMES_PER_CALL, FRAMES_PER_CALL)
+        return {"frames": frames, "dropped": [], "ready": report, "manifest": str(path)}
 
     def _game(self, name: str, args: dict) -> dict:
         """The game adapter's answers from the model."""
