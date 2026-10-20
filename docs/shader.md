@@ -1,5 +1,5 @@
 # Shader
-Status: design only; no pack code yet.
+Status: the hello pack (shader/shaders/) and pipeline spec v0 (config/pipeline.json) built in M3.P03; the rest is design.
 
 ## Contents
 Policy · Look and scope · Dropped features · Method · Pipeline spec · Determinism and TAA · Facts · Coverage list · LOD · Research
@@ -98,13 +98,23 @@ The user's list of 2026-10-05, now a not-yet list (user, 2026-10-20): each featu
   - coverage check: a changed pass that no view draws needs a written waiver (ALC);
   - pipeline audit: every producer -> buffer -> reader and uniform -> reader pair is enabled under the same conditions, per option and dimension (playbook.md#3-workflow);
   - the Aperture port maps pass by pass.
-- Format: config/pipeline.json; v0 with the hello pack in M3, complete in M4. The iris-gl backend maps passes to Iris programs (gbuffers_*, shadow, deferred*, composite*, final).
+- Format: config/pipeline.json, v0 as built with the hello pack (M3.P03, plans/m3.md D57), complete in M4:
+  - top level: schema 0, pack, cycle (BENCH_DETERMINISTIC's, in frames: 1), views (the views file);
+  - per pass: name (backend-neutral), program (the iris-gl backend's Iris program: gbuffers_*, shadow, deferred*, composite*, final), stage, dimensions, inputs (samplers, uniforms), outputs (buffer, format, scale), feature, option, budget (null until M4), views (until M4's coverage list, every view of its dimensions);
+  - tests/test_pipeline.py keeps it equal to the pack: one pass per program file pair; its samplers and uniforms as its two stages declare them under the program's switches; its outputs from the fragment stage's RENDERTARGETS (the screen for final), at Iris's default RGBA8 when the pack sets no format; the option whose setting changes its code.
 - Portability rules:
   - use explicit ping-pong textures instead of reading and writing one texture (Aperture has no buffer flipping);
   - keep algorithms in includes free of Iris built-in names, with thin per-backend glue.
 
 ## Determinism and TAA
 - BENCH_DETERMINISTIC from M3's hello pack, the first with programs (measurement.md#visual-protocol; roadmap.md#decisions D9).
+- As built in the hello pack (M3.P03; shaders/lib/options.glsl), on by default, cycle 1: nothing reads frameCounter, and no wall-clock or smoothed uniform is read (plans/m3.md P19). Under it:
+  - gbuffers_particles, weather, lightning and clouds discard every fragment: their state moves with the ticks before /tick freeze and the stepped ones (P22). Off, each draws its surface: particles and weather texture x colour x light, lightning and clouds their vertex colour;
+  - gbuffers_textured_lit discards the end crystals by entityId (entity.properties: entity.1 = minecraft:end_crystal): a crystal's spin starts at a random angle every launch;
+  - the lightmap's block light flickers by a random step every client tick, /tick freeze or not (26.3: GameRenderer.tick, called while a level is loaded and the game is not paused, ticks LightmapRenderStateExtractor; blockFactor = flicker + 1.4). The pack reads only the lightmap's column without block light, which holds still, and adds block light at the flicker's rest (1.4) with vanilla's curve and default tint (#FFD88C, which no 26.3 dimension or biome overrides); vanilla's brightness curve is not applied to that part. Off, it reads vanilla's lightmap;
+  - the texture matrix is not applied: it scrolls the enchantment glint by the wall clock (26.3's TextureTransform reads Util.getMillis());
+  - only the edge fog is drawn, from far: fogStart and fogEnd are not read. 26.3 eases them by each frame's wall-clock length, under /tick freeze too: AtmosphericFogEnvironment's rain fog multiplier moves by (target - m) x getGameTimeDeltaTicks() x 0.2 a frame, the delta counted from Util.getMillis() whether frozen or not, and one instance carries it across views and dimensions; the water fog's end follows the player's water vision. Off, both fogs are drawn.
+- Still moving and the session's to hold: animated textures (the static-textures pack, M3.P06), the End flash (the End's clock, which the End views' functions set: plans/m3.md D56), and fogColor in water: it follows the player's water vision, which a spectator gains 10 a tick up to 600 (LocalPlayer.aiStep; /tick freeze never freezes players), so it holds after 3 s in water, longer than underwater's 2.0 s visual settle (suite.json capture). Iris clears colortex0 to fogColor.
 - Every frame-varying term (jitter, dither, noise offsets) derives from frameCounter modulo one short cycle. frameCounter resets at every reload (gpu-iris.md#frame-counters-and-reload).
   - Complementary's dithers use frameCounter mod 3600, so its bitwise cycle would be 3600 frames, not its 8-step jitter.
 - History: zero marks it invalid, as in Complementary's TAA. A reload clears it. BENCH_DETERMINISTIC also invalidates it in the flush frame, the one frame where the hideGUI uniform reads 0 (mod.md#6-time-and-determinism).
@@ -121,7 +131,15 @@ The user's list of 2026-10-05, now a not-yet list (user, 2026-10-20): each featu
 - GPU and Iris facts, evidence-tagged, conflicts marked: gpu-iris.md.
 - Techniques, design defaults and checklists: playbook.md.
 - 26.3: with a pack active Iris disables the OIT option, translucent terrain and water run through `gbuffers_water`, and depthtex0/1/2 and shadowtex0 hold forward depth (platform.md#mc-263).
-- GLSL version: Iris 1.11.7 writes `#version 330 core` for Unbound's `#version 130` (spike V4) on a 3.3.0 Core Profile context; M3 picks the pack's version from that.
+- GLSL version: Iris 1.11.7 writes `#version 330 core` for Unbound's `#version 130` (spike V4) on a 3.3.0 Core Profile context; the hello pack is written in `#version 330 core` (plans/m3.md D56).
+- Iris 1.11.7's core-profile path, read in the pinned jar with javap (M3.P03; plans/m3.md P14):
+  - vertex inputs: vaPosition (vec3), vaColor (vec4: the vertex colour times ColorModulator), vaUV0 (vec2), vaUV1 and vaUV2 (ivec2: 26.3 binds UV1 and UV2 as RG16_SINT; vaUV2 is 16 x the block and the sky light level), vaNormal; uniforms modelViewMatrix, projectionMatrix (forward Z), textureMatrix, normalMatrix, chunkOffset; vaPosition + chunkOffset is the vertex relative to the camera. Sodium's terrain feeds the same names from its own attributes (vaUV2 its light bytes, textureMatrix the identity). In composite and final, vaPosition and vaUV0 are the full-screen quad's (0 to 1), modelViewMatrix the identity, projectionMatrix 0..1 to clip space;
+  - no alpha test is injected into a core program: alphaTestRef holds the draw's cutoff (0, or GREATER than 1e-4, 0.1 or 0.5; a sentinel above 1 for entity-alpha draws), and the pack applies it, on the texture's alpha as vanilla 26.3 does;
+  - samplers gtexture (also tex, texture), lightmap, colortex0 and up; a colortex the pack gives no format is RGBA8;
+  - fog: fogColor, fogStart and fogEnd (the environment's fog, through Sodium: eased by the wall clock, Determinism and TAA), fogDensity, fogMode, fogShape. The render-distance fog is only in Iris's injected block: the pack rebuilds it from far (render distance x 16), ending at far after a band of clamp(far / 10, 4, 64), over max(length(xz), |y|), as 26.3's FogRenderer does;
+  - entityId: in a vertex format with an overlay (entities) Iris replaces the uniform by the entity's id written into its vertices (entity.properties: entity.<int> = namespace:name ..., default namespace minecraft; an unlisted entity -1), the id kept with each deferred model submit and set again when it is drawn (MixinModelSubmit, MixinModelFeatureRenderer); elsewhere it is the uniform, 0 between entities;
+  - glint: 26.3 draws an item's glint in one pass with an entity or the hand; Iris hands it to a core program only through mc_sampleGlint(), which the hello pack does not call, so only the separate glint draw shows it;
+  - options: a bare `#define NAME` with only a comment after it is an on/off option once any file of the pack tests NAME; a define with a value and no [list] in its comment is none.
 - Loops are bounded. Fetch-heavy loops take their count from an int custom uniform (gpu-iris.md#occupancy).
 
 ## Coverage list

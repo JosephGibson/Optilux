@@ -43,7 +43,7 @@ user / Claude Code --skills--> optilux CLI (Python)
 - shader pack `optilux`: backend iris-gl; a backend-neutral pipeline spec (shader.md#pipeline-spec) so an Aperture backend can follow.
 - platform layer: config/platforms/<id>.json, the mod adapter and the world snapshot (platform.md). At M1 platform facts also sit outside it, each with its reason and source at its definition: suite.json's display block (options.txt's version and keys, Sodium's options) and, in the harness (chiefly launch.py, session.py, acceptance.py, sendinput.py and install.py), facts read from the pinned 26.3, Fabric Loader and Sodium jars, their logs and answers: the join line, the dropped arguments, Sodium's file layout, the time-set answer, the chat screen and the mouse grab among them. A platform change re-reads each.
 - data:
-  - config/: tracked inputs (platforms with their launch specs, suite, profiles, java, tools, similarity, views; pipeline.json from M3) and calibrations/ (committed, from M2).
+  - config/: tracked inputs (platforms with their launch specs, suite, profiles, java, tools, similarity, views; pipeline.json, the pipeline spec, v0 from M3.P03: a pass per program of the pack, which a test keeps equal to shader/) and calibrations/ (committed, from M2).
   - results/records/: run records, committed (the ledger; per-capture summaries, ~200 KB budget); results/raw/: frame samples and heavy artifacts, ignored and disposable.
     - Records are append-only, so git stores each once, compressed; growth is linear. `verify records` (M2) enforces the budget. Past 100 MB of records (~500 sessions, est.), stop and choose an archive for older ones.
   - runtime/: installed games, ignored.
