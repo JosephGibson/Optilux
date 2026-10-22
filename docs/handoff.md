@@ -1,5 +1,5 @@
 # Handoff
-Status: the latest stop: M3.P08 done, the dump kind, `check L1` and `check L2` built and run on m3-dump-1, its closure spot-checked live by m3-closure-1, and what M3.P09 starts from.
+Status: the latest stop: M3.P08 closed out: the dump kind, `check L1` (its audit's uniform -> reader included) and `check L2` built and run on m3-dump-1, its closure spot-checked live by m3-closure-1, and what M3.P09 starts from.
 
 ## Contents
 Outcome · What changed · Review · Choices · Checks · Open questions · Weak points · Commits and time · Next
@@ -16,6 +16,7 @@ Last phase: M3.P08
     - Its premise holds: withFog is defined in 414 dumped stages and reached from main in 207 (69 per dimension).
     - The impact matrix: lib/fog.glsl -> 14 program files -> the 7 gbuffers passes -> 11 views; option BENCH_DETERMINISTIC -> the same 7 passes.
     - The audit: 0 problems. The record's offline field agrees.
+    - Its uniform -> reader (the close-out, d322d67): head's prints read entityId, far and fogColor, off's far, fogColor, fogStart and fogEnd, each Iris's; the pack's other five declared uniforms (modelViewMatrix, projectionMatrix, chunkOffset, textureMatrix, alphaTestRef) are replaced by Iris's transformers and read in no print. The record's own audit field predates the check (records are never edited); `check L1` prints it now.
   - m3-closure-1 (18:51:25-18:52:59): a visual run of `change` against `head` on quick mode's views, the live spot check (offline.md#rules). It ended ok, 6 of 6 valid, no pair moving.
     - `compare` tiers `change` against `head` identical at forest_noon, nether_crimson and end_dragon.
   - `check L2 m3-dump-1` (RGA 2.15.0.30, gfx1101): 38 distinct programs, 364 stages each with its VGPRs, 0 known offline failures, 1.57 s.
@@ -37,6 +38,9 @@ Last phase: M3.P08
 - 04ca9ce: `check L2` (optilux/l2.py; check.py), RGA's output fixtures from the hello pack's final program.
 - 1a111b5 and 34ebd37: the reviews' fixes (Review).
 - 2a0f3cb: the two records.
+- The close-out, at the user's request after the first handoff ("Can you fix what's not fixed if it's in the scope P8 and close out P8?"):
+  - 357dc1f: config/tools.json's rga pin names what its exe prints (`printed` 2.15.0.30); check L2 holds it exactly.
+  - d322d67: the audit's uniform -> reader: l1.IRIS_UNIFORMS (195 names), pack_uniforms, read_uniforms, uniform_problems; check.iris_pinned refuses another Iris jar.
 - Docs:
   - offline.md: L1 and L2 as built, the dumps' print and Iris's transform cache.
   - design.md's check row; run-record.md: the dump kind, its spec, the `offline` field.
@@ -72,7 +76,7 @@ The reviewer agent on L1 (correctness): 13 findings, 2 high, 4 medium and 7 low.
   - compute stages listed;
   - an ok record required;
   - run_l2 tested.
-- Reported, not changed: the version check accepts any 2.15.x printed by the sha256-pinned install.
+- The twelfth, the version check accepting any 2.15.x, is fixed in the close-out (357dc1f).
 
 ## Choices
 Neither the prompt nor the plan names these:
@@ -81,18 +85,22 @@ Neither the prompt nor the plan names these:
 - Before each reload the run empties patched_shaders/ and game/'s two properties files, so no file is stale; Iris's own clear spares *.properties. The old Unbound print from 2026-10-07 went at the first print.
 - The flag is on from the start-of-run reload (measure.TRANSFORM_CACHE). D60 names each dump's reload; the plan is not edited.
 - `dumps` holds each manifest's files once (2 of 9 here; 9 distinct would near the 200 KB budget).
-- The audit's uniform -> reader covers custom uniforms only; Iris's own wait for a list read from its jar (M4).
+- The audit's uniform -> reader (D69's audit, shader.md#pipeline-spec):
+  - Its list comes from the pinned jar with javap (scratchpad uniform_scan.py, not committed): the String constant each of UniformHolder's 16 registering calls receives (174 names), MatrixUniforms' 8 recipes over ModelView and Projection (13), ExternallyManagedUniforms' helpers' names.
+  - It reads the uniforms the pack's own GLSL declares, as its prints still read them: Iris's own programs (the shadow_* keys) read Iris-internal names (AlphaTestValue, FogDensity, FogIsExp2) that are not the pack's.
+  - Samplers and images are left to the buffer pairs and Iris's sampler binding.
 - The exit's change lived only in the working tree and is reverted; both records say dirty true and name it in `notes`.
 
 ## Checks
 - Start (17:44 ADT): branch m3 clean at ac45c84; 977 passed; verify docs 0 violations.
-- Before each commit, on a tree equal to it: 986, 1002, 1006, 1007, 1012 and 1012 passed; ruff, ruff format and pyright clean; verify docs 0 violations; verify records 0 violations (233 records at the end).
-- CI green on b4f4165, fe0f6fd, 04ca9ce, 1a111b5, 34ebd37 and 2a0f3cb, each watched to its end before the next push.
+- Before each commit, on a tree equal to it: 986, 1002, 1006, 1007, 1012, 1012, then 1014 and 1016 passed; ruff, ruff format and pyright clean; verify docs 0 violations; verify records 0 violations (233 records at the end).
+- CI green on b4f4165, fe0f6fd, 04ca9ce, 1a111b5, 34ebd37, 2a0f3cb, 9dfad33, 357dc1f and d322d67, each watched to its end before the next push.
 
 ## Open questions
 - `screen = BENCH_DETERMINISTIC` reads `screen = 1` with the option on (Outcome): a pack fix, such as an option list that names no macro. Whose phase is the user's call; it changes no frame.
-- Iris's built-in uniforms for the audit's uniform -> reader (M4).
-- Not verified: RGA 2.15's --geom/--tesc/--tese outputs (the hello pack has none); whether IrisConfig.load() calls Iris.setDebug (P13 names init and setDebug).
+- Settled in the close-out:
+  - RGA 2.15 names its geometry and tessellation outputs geom, tesc and tese (a vert-geom-frag and a vert-tesc-tese-frag program of Claude's own, built 2026-10-22; a needs_rga test keeps the geom case).
+  - Iris.setDebug is called by duringRenderSystemInit, and IrisConfig.load() calls no Iris method (javap), so a reload under the flag never makes the KHR debug context (P13, D60).
 - Carried:
   - the beacon beam and clouds across launches (P22), for M3.P09's diagnosis;
   - the moving coverage items (D64);
@@ -105,12 +113,13 @@ Neither the prompt nor the plan names these:
 ## Weak points
 - The premise check reads GLSL by tokens, not with a parser; it closes only under its guards, and on m3-dump-1 nothing closed by it.
 - The fake prints sources verbatim. Real prints were read once, in m3-dump-1.
-- M3.P07's unnamed flaky test: 8 full runs this session, all passed.
+- M3.P07's unnamed flaky test: 12 full runs this session, all passed.
+- IRIS_UNIFORMS is a superset in one way: a name registered under a condition (a DH or a feature flag) counts as defined everywhere.
 - Margins: run-record.md 32 bytes; measurement.md 20; platform.md 7; AGENTS.md 16; mod.md 62; workflow.md 199.
 
 ## Commits and time
-- b4f4165, fe0f6fd, 04ca9ce, 1a111b5, 34ebd37, 2a0f3cb; then this handoff.
-- 2026-10-22, 17:44-19:00 ADT: about 1.3 h against 3 h. Tripwire: actuals about 59.2 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, P01 0.8, P02 0.8, P03 1.9, P04 1.9, P05 1.4, P06 2.1, P07 2.1, P08 1.3); the trip at 174.6 h.
+- b4f4165, fe0f6fd, 04ca9ce, 1a111b5, 34ebd37, 2a0f3cb, 9dfad33 (the first handoff); 357dc1f and d322d67; then this handoff.
+- 2026-10-22, 17:44-19:00 ADT, then the close-out after 19:05 to 19:32: at most about 1.8 h against 3 h. Tripwire: actuals about 59.7 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, P01 0.8, P02 0.8, P03 1.9, P04 1.9, P05 1.4, P06 2.1, P07 2.1, P08 1.8); the trip at 174.6 h.
 
 ## Next
 /optilux-next prints M3.P09's prompt: A5 and the determinism exit, 2.5 h, 4 launches.
