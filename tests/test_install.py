@@ -962,24 +962,25 @@ FAITHFUL = {
     f"{TEXTURES}/block/prismarine.png": b"prismarine 64x",
     f"{TEXTURES}/gui/sprites/frame.png.mcmeta": b'{"gui": {"scaling": {"type": "tile"}}}\r\na',
 }
-# The four textures held: each its metadata with the animation on frame 0 at the size the
+# The four textures held: each its metadata with the animation on frame 0, twice (a one-frame
+# list makes 26.3 upload the whole strip as one frame: install.HELD_FRAMES), at the size the
 # applying metadata sets.
 HELD = {
-    f"{TEXTURES}/block/fire_0.png.mcmeta": {"animation": {"frames": [0], "height": 16}},
+    f"{TEXTURES}/block/fire_0.png.mcmeta": {"animation": {"frames": [0, 0], "height": 16}},
     f"{TEXTURES}/block/kelp.png.mcmeta": {
-        "animation": {"frames": [0]},
+        "animation": {"frames": [0, 0]},
         "texture": {"alpha_cutoff_bias": 0.1},
     },
-    f"{TEXTURES}/block/water_still.png.mcmeta": {"animation": {"frames": [0]}},
+    f"{TEXTURES}/block/water_still.png.mcmeta": {"animation": {"frames": [0, 0]}},
     f"{TEXTURES}/entity/conduit/wind.png.mcmeta": {
-        "animation": {"frames": [0], "width": 8, "height": 4}
+        "animation": {"frames": [0, 0], "width": 8, "height": 4}
     },
 }
 # The pack's sha512 from these fixtures: its bytes are a function of its inputs alone (packzip's
 # rules), so a change to the builder shows here, as it moves the identity's resourcePacks.
 STATIC_SHA512 = (
-    "fbbc64ba8fc57d5ceaf8497c8015f4e61e17c9085fcd8783108e339567363139"
-    "ff2e1f1c4276433553fa1a0aceadc503d3f97de143ea340eee80e7e408a31355"
+    "d871a1f0595f7ac15f472953591faa664cd617dd134e06a130fbd2a794337c98"
+    "ef6acfe464455599ef95f18025d5c5d48cad40866998c428e29ad5abb13ec4aa"
 )
 
 
