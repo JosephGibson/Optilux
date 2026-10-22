@@ -229,8 +229,9 @@ def prepare(
     built from what the session will use, nothing launched or written (`--check` stops here): the
     spec (a file, or its data from `calibrate`), the views and the snapshot's tree hash, the
     display and HAGS, PresentMon's pin, no copy left by an earlier A4, then the launch spec, the
-    views file and the JDK's release file hashed, the jars launch places, the pinned resource
-    packs, the options file as the launch would write it, the measured modules; a calibration the
+    views file and the JDK's release file hashed, the jars launch places, the resource-pack set's
+    packs (the static-textures pack by the store's copy), the options file as the launch would
+    write it, the measured modules; a calibration the
     spec names matched key by key on that identity. A failed launch records this identity (id7,
     id9). `fresh` False: the spec's name may be taken (record.check_spec); `match` False: the
     calibration's identity is left unmatched (a split session's own check comes first)."""
@@ -249,7 +250,9 @@ def prepare(
             f"{spec.views}.json for {', '.join(stale)}; fix: `optilux world prep {spec.views}`"
         )
     snapshot = record.tree(root / record.SNAPSHOTS / spec.views)
-    options = launch.written_options(suite["display"], {})
+    packs = launch.set_packs(base, plat, spec.tier, suite, record.PACK_SET)
+    files = [p["file"] for p in packs]
+    options = launch.written_options(suite["display"], {}, files)
     system, system_recorded = record.system_facts(machine, options, suite["display"])
     pm_exe = check_presentmon(root)
     leftover = broken_copies(game)
@@ -260,10 +263,9 @@ def prepare(
         )
     if platform.load_spec(root, plat.id) is None:
         raise record.RecordError(f"no launch spec for {plat.id}; fix: run `optilux install`")
-    pre = launch.prelaunch(suite["display"], spec.tier, pack.file, {})
+    pre = launch.prelaunch(suite["display"], spec.tier, pack.file, {}, files)
     _, options_file = launch.planned_options(game, pre)
     java_home = root / JAVA_DIR / java_profile["runtime"]["build"]
-    packs = [p for p in plat.tier_files(spec.tier) if p.kind == "resourcePack"]
     found = record.identity(
         plat=plat,
         tier=spec.tier,
@@ -275,7 +277,7 @@ def prepare(
             "files": snapshot[1],
         },
         views_path=views_path,
-        packs=[{"file": p.file, "sha512": p.sha512} for p in packs],
+        packs=[{"file": p["file"], "sha512": p["sha512"]} for p in packs],
         settings=record.settings_identity(launch.settings_facts(pre, True), options_file),
         suite=suite,
         java=record.java_identity(java_home, java_profile),

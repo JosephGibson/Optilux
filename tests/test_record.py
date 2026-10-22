@@ -29,12 +29,16 @@ from optilux import (
     record,
     session,
 )
+from optilux.verbs import install
 from optilux.verbs import run as run_verb
 
 PLAT = platform.load(REPO_ROOT)
 SUITE = json.loads((REPO_ROOT / platform.SUITE).read_text(encoding="utf-8"))
 PACK = launch.reference_pack(PLAT).file
 VIEWS = REPO_ROOT / record.VIEWS / "provisional.json"
+# The session's resource-pack set as launch writes its files, bottom to top.
+PINNED = {p.slug: p.file for p in PLAT.tier_files("bench") if p.kind == "resourcePack"}
+FILES = [PINNED.get(s, install.STATIC_FILE) for s in SUITE["resourcePacks"][record.PACK_SET]]
 
 
 # The tree hash.
@@ -87,7 +91,7 @@ def spec() -> dict:
         "world": "spike",
         "variants": [{"pack": PACK, "profile": None}],
         "tier": "bench",
-        "resourcePacks": "standard",
+        "resourcePacks": record.PACK_SET,
         "items": ["A10", "A1", "A2", "A3"],
         "notes": "a fixture",
     }
@@ -119,7 +123,7 @@ def test_a_valid_spec_is_taken_with_its_items_in_run_order(fixture_root) -> None
         "spike",
     )
     assert found.items == ("A1", "A2", "A3", "A10")
-    assert (found.pack, found.tier, found.resource_packs) == (PACK, "bench", "standard")
+    assert (found.pack, found.tier, found.resource_packs) == (PACK, "bench", record.PACK_SET)
 
 
 def drop(key: str):
@@ -159,7 +163,8 @@ REFUSALS = [
     (put("variants", [{"pack": "optilux@-x", "profile": None}]), "no ref a spec may name"),
     (put("variants", [{"pack": "optilux@no-such-ref", "profile": None}]), "names no commit"),
     (put("items", ["A8"]), "runs on a measured schedule"),
-    (put("resourcePacks", "deterministic"), "standard set only"),
+    (put("resourcePacks", "standard"), "every session runs the deterministic set"),
+    (put("resourcePacks", "nope"), "no set of suite.json"),
     (put("items", []), "no acceptance item"),
     (put("items", ["A1", "A1"]), "twice"),
     (put("items", ["A13"]), "no acceptance item"),
@@ -349,7 +354,7 @@ class FakeMachine(record.Machine):
 
 
 def options() -> dict[str, str]:
-    return launch.written_options(SUITE["display"], {})
+    return launch.written_options(SUITE["display"], {}, FILES)
 
 
 def test_the_system_facts_come_from_the_primary_display() -> None:
@@ -427,7 +432,7 @@ def test_the_java_identity_is_read_before_the_launch(tmp_path: Path) -> None:
 
 def built_identity(**changes) -> dict:
     system, _ = record.system_facts(FakeMachine(), options(), SUITE["display"])
-    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {})
+    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {}, FILES)
     settings = record.settings_identity(
         launch.settings_facts(pre, True), {"sha256": "e" * 64, "unwritten": {"ao": "true"}}
     )
@@ -492,7 +497,7 @@ def test_the_platform_identity_leaves_out_the_reference_pack_and_world_prep() ->
 
 
 def planned_settings(game: Path, pack: str = PACK) -> dict:
-    pre = launch.prelaunch(SUITE["display"], "bench", pack, {})
+    pre = launch.prelaunch(SUITE["display"], "bench", pack, {}, FILES)
     _, options_file = launch.planned_options(game, pre)
     return record.settings_identity(launch.settings_facts(pre, True), options_file)
 
@@ -685,7 +690,7 @@ def test_a_failed_d3dkmt_call_refuses_the_run_and_closes_what_it_opened() -> Non
 
 
 def launch_facts(identity: dict, unwritten: dict | None = None) -> dict:
-    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {})
+    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {}, FILES)
     return {
         "hashes": {
             "packs": [
@@ -983,6 +988,7 @@ def check_root(tmp_path: Path) -> tuple[Path, Path]:
     game = root / "runtime" / PLAT.id / "game"
     tree(game, {"saves/spike/level.dat": b"L", "options.txt": b"version:4892\nao:true\n"})
     tree(root / "runtime" / "tools", {"PresentMon.exe": b"MZ"})
+    tree(root / "runtime" / PLAT.id / "files", {install.STATIC_FILE: b"PK static"})
     tools = json.loads((root / "config" / "tools.json").read_text(encoding="utf-8"))
     tools["presentmon"].update(file="PresentMon.exe", sha256=hashlib.sha256(b"MZ").hexdigest())
     (root / "config" / "tools.json").write_text(json.dumps(tools), encoding="utf-8")
@@ -1084,7 +1090,7 @@ class Ended:
 
 def launched_like(root: Path, facts: dict) -> launch.Launched:
     game = root / "runtime" / PLAT.id / "game"
-    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {})
+    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {}, FILES)
     found = {
         "gate": {"amd": {}, "java": []},
         "command": {"arguments": ["java"], "check": "equal"},
@@ -1096,7 +1102,7 @@ def launched_like(root: Path, facts: dict) -> launch.Launched:
 def matching_facts(ready) -> dict:
     """Launch facts that agree with the identity prepare built on check_root."""
     packs = ready.identity["resourcePacks"]["packs"]
-    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {})
+    pre = launch.prelaunch(SUITE["display"], "bench", PACK, {}, FILES)
     return {
         "hashes": {"packs": [{**p, "kind": "resourcePack"} for p in packs]},
         "mods": {"sha512": list(ready.identity["mods"])},

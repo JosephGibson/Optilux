@@ -71,8 +71,9 @@ RUNNABLE = ("A1", "A2", "A3", "A4", "A7", "A9", "A10")
 # The items a measured schedule carries (plans/m2.md M2.P05, M2.P10): the timers' overhead and
 # their agreement with GPUBusy, judged by M2.P07's statistics.
 MEASURED_ITEMS = ("A8", "A11")
-# The resource-pack set launch writes (suite.json resourcePacks; M3 adds the deterministic one).
-PACK_SET = "standard"
+# The resource-pack set every session runs and launch writes (suite.json resourcePacks): Faithful
+# 64x under the static-textures pack, every animated texture held still (plans/m3.md M3.P06, D62).
+PACK_SET = "deterministic"
 # An acceptance session reloads twice: selftest's reload and the start-of-run reload; A4 twice
 # more (the broken copy, then the recovery). A measured session starts with the same two.
 ACCEPTANCE_RELOADS = 2
@@ -576,11 +577,16 @@ def check_spec(
             "snapshot's live copy"
         )
     sets = suite.get("resourcePacks", {})
-    if data["resourcePacks"] != PACK_SET:
-        known = ", ".join(key for key, value in sets.items() if isinstance(value, list))
+    known = [key for key, value in sets.items() if isinstance(value, list)]
+    if data["resourcePacks"] not in known:
         raise RecordError(
-            f"resourcePacks {data['resourcePacks']!r}: launch writes the {PACK_SET} set only "
-            f"(of {known}); fix: set {PACK_SET} (M3 adds the deterministic set)"
+            f"resourcePacks {data['resourcePacks']!r} is no set of suite.json's "
+            f"({', '.join(known)}); fix: set {PACK_SET}"
+        )
+    if data["resourcePacks"] != PACK_SET:
+        raise RecordError(
+            f"resourcePacks {data['resourcePacks']!r}: every session runs the {PACK_SET} set, the "
+            f"one launch writes (plans/m3.md M3.P06); fix: set {PACK_SET}"
         )
     notes = data.get("notes")
     if notes is not None and not isinstance(notes, str):
