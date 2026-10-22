@@ -46,6 +46,7 @@ import os
 import struct
 import threading
 import time
+import zipfile
 import zlib
 from collections.abc import Callable
 from pathlib import Path
@@ -286,6 +287,7 @@ class Fake:
         # The packs whose frames move from frame to frame (a TAA pack's jitter): every other pack
         # draws one frame per pose (frame_rgba).
         self.moving: set[str] = set()
+        self.prints = 0  # Iris's debug prints at reloads (_print)
 
     def frame_rgba(self, index: int) -> bytes:
         """A captured frame's one pixel: the loaded pack and the pose decide it, as a pack whose
@@ -671,6 +673,43 @@ class Fake:
                 values[name] = value
         self.game["pack"] = pack
         self.game["options"] = values
+        if launch.properties_values(iris).get(launch.DEBUG_OPTIONS) == "true":
+            self._print(game_dir, game_dir / "shaderpacks" / pack, values)
+
+    def _print(self, game_dir: Path, pack: Path, values: dict) -> None:
+        """Iris's debug print at a reload (plans/m3.md D60, measure.PATCHED): game/'s two
+        properties, an ID map's patched copy under Properties.store's date (a new one each print),
+        patched_shaders/ cleared but for its *.properties, then each program file of the pack's
+        shaders/ as NNN_<stem><ending>, its text after a line of the option values, and a .json
+        per program."""
+        with zipfile.ZipFile(pack) as archive:
+            files = {
+                name.removeprefix("shaders/"): archive.read(name)
+                for name in archive.namelist()
+                if name.startswith("shaders/") and not name.endswith("/")
+            }
+        options = "".join(f"// {k}={v}\n" for k, v in sorted(values.items())).encode()
+        properties = files.get("shaders.properties", b"")
+        (game_dir / "original.properties").write_bytes(properties)
+        (game_dir / "preprocessed.properties").write_bytes(options + properties)
+        folder = game_dir / "patched_shaders"
+        folder.mkdir(exist_ok=True)
+        self.prints += 1
+        if "entity.properties" in files:
+            dated = f"#Thu Oct 22 17:{self.prints % 60:02d}:00 ADT 2026\r\n".encode()
+            (folder / "entity.properties").write_bytes(dated + files["entity.properties"])
+        for path in folder.iterdir():
+            if "properties" not in path.suffix:
+                path.unlink()
+        stems = sorted(
+            {name.rsplit(".", 1)[0] for name in files if name.endswith((".vsh", ".fsh"))}
+        )
+        for n, stem in enumerate(stems, start=1):
+            for ending in (".vsh", ".fsh"):
+                if f"{stem}{ending}" in files:
+                    text = b"#version 330 core\n" + options + files[f"{stem}{ending}"]
+                    (folder / f"{n:03d}_{stem}{ending}").write_bytes(text)
+            (folder / f"{n:03d}_{stem}.json").write_bytes(f'{{"vertex": "{stem}"}}\n'.encode())
 
     def _window(self, args: dict) -> dict:
         """window.measure as the mod times it, on the fake's frame clock: the skip from the last

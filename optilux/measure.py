@@ -129,6 +129,20 @@ PAIR = record.VISUAL_PAIR
 PAIR_MS = 2000
 FRAMES = "frames"
 VISUAL_CAPTURE_TIMEOUT = READY_TIMEOUT + 30.0
+# A dump run's prints (plans/m3.md D60; Iris 1.11.7, javap): with enableDebugOptions on, a reload
+# writes game/preprocessed.properties and original.properties (ShaderProperties: the pack's
+# shaders.properties after and before its preprocessor), patched_shaders/<id>.properties for each
+# ID map the pack has (IdMap, through Properties.store), then the new pipeline's every program as
+# patched_shaders/NNN_<name><stage> and NNN_<name>.json (ShaderPrinter, a counter per pipeline).
+# The print clears patched_shaders/ but spares its *.properties, and an ID map the next pack lacks
+# is never rewritten, so the run empties both places before each reload: a file there after it
+# is that reload's. Copied under raw/<run>/dumps/<dimension>/<variant>/ by the same names.
+PATCHED = "patched_shaders"
+GAME_PROPERTIES = ("preprocessed.properties", "original.properties")
+DUMPS = "dumps"
+# Properties.store's first line, the print's date (`#Wed Oct 07 01:52:48 ADT 2026`): the one part
+# of a dump that moves between two prints of a pack, so dump equality compares the file without it.
+STORE_DATE = re.compile(rb"#[A-Z][a-z]{2} [A-Z][a-z]{2} \d\d \d\d:\d\d:\d\d [^\r\n]+ \d{4}\r?\n")
 
 
 def ends(event: dict) -> bool:
@@ -246,10 +260,13 @@ def settings_text(options: dict) -> bytes:
     return "".join(lines).encode("ascii")
 
 
-def variant_files(game: Path, display: dict, tier: str, variant: Variant) -> dict[Path, bytes]:
+def variant_files(
+    game: Path, display: dict, tier: str, variant: Variant, debug: bool = False
+) -> dict[Path, bytes]:
     """The two files a variant's reload reads, by path: the pack's settings file and
-    config/iris.properties as launch writes it, naming the variant's pack."""
-    iris = launch.iris_text(launch.iris_properties(display, tier, variant.pack))
+    config/iris.properties as launch writes it, naming the variant's pack (with `debug`, a dump
+    run's: Iris's debug flag on)."""
+    iris = launch.iris_text(launch.iris_properties(display, tier, variant.pack, debug))
     return {
         game / launch.SHADER_PACKS / SETTINGS.format(pack=variant.pack): settings_text(
             variant.options
@@ -744,6 +761,7 @@ class Measured:
     gui: bool = False
     last_end: int | None = None
     last_written: Variant | None = None
+    last_debug: bool = False  # iris.properties' debug flag as last written (a dump run's reload)
     cycle: int = 1  # a visual run's align: the Optilux pack's cycle (config/pipeline.json)
 
     @property
@@ -757,14 +775,15 @@ class Measured:
     def mark(self, phase: str) -> None:
         self.marks[phase] = time.monotonic()
 
-    def write_files(self, variant: Variant) -> None:
+    def write_files(self, variant: Variant, debug: bool = False) -> None:
         for path, data in variant_files(
-            self.game, self.suite["display"], self.spec.tier, variant
+            self.game, self.suite["display"], self.spec.tier, variant, debug
         ).items():
             if path.parent.name == launch.SHADER_PACKS:
                 self.own(path)  # the settings file is the run's; iris.properties is launch's
             path.write_bytes(data)
         self.last_written = variant
+        self.last_debug = debug
 
     def check_options(self, variant: Variant, answer: dict) -> None:
         """The reload's options against the variant's (RunError naming each one that differs);
@@ -781,7 +800,7 @@ class Measured:
         if first is None:
             self.effective[variant.id] = {"sha256": digest, "values": values}
             kept = {"sha256": digest, "count": len(values)}
-            if variant.role == "baseline" or self.spec.kind == record.VISUAL:  # D63: each in full
+            if variant.role == "baseline" or self.spec.kind in (record.VISUAL, record.DUMP):
                 kept["values"] = values
             self.journal.set(
                 "effective", {**self.journal.data.get("effective", {}), variant.id: kept}
@@ -1191,6 +1210,171 @@ def visual_problems(entries: list[dict], planned: int, laps_done: bool) -> list[
     return problems
 
 
+# A dump run (plans/m3.md D60).
+
+
+def dump_body(m: Measured) -> None:
+    """A dump session after hello (plans/m3.md D60): the session start as a visual run's, the first
+    variant's files written before the start-of-run reload with Iris's debug flag off, as launched;
+    then per dimension its first view (record.dump_views), reached as a measured pass reaches it
+    (arrive), and there per variant its dump (dump_capture); input.block off. No PresentMon."""
+    s, c = m.s, m.c
+    s.stop_on = ends
+    m.mark("start")
+    base = m.found[0]
+    start: dict = {}
+    m.facts["start"] = start
+    session_start(
+        s,
+        base.pack,
+        m.suite["capture"]["gpuWarmupS"],
+        m.display_mode,
+        m.suite["display"]["resolution"],
+        start,
+        lambda: m.write_files(base),
+    )
+    m.reloads = record.ACCEPTANCE_RELOADS
+    m.check_options(base, start["options"])
+    m.previous = start["joined"]["pose"]["dimension"]
+    m.mark("views")
+    m.facts["laps"] = [[v["id"] for v in m.views]]
+    for view in m.views:
+        arrive(m, view)
+        for variant in m.found:
+            dump_capture(m, view, variant)
+    if m.gui:
+        leave_gui(m, "end")
+    s.step("input.block off", lambda: c.input_block(False))
+
+
+def dump_sources(game: Path) -> list[tuple[str, Path]]:
+    """What a reload's print leaves (PATCHED's files, GAME_PROPERTIES), each by its name from
+    game/: what dump_capture empties before the reload and copies after it."""
+    found = [(name, game / name) for name in GAME_PROPERTIES if (game / name).is_file()]
+    folder = game / PATCHED
+    if folder.is_dir():
+        found += [(f"{PATCHED}/{p.name}", p) for p in sorted(folder.iterdir()) if p.is_file()]
+    return found
+
+
+def compared_sha256(name: str, data: bytes) -> str:
+    """The sha256 dump equality compares: the file's, an ID map's patched copy without its first
+    line when that is Properties.store's date (STORE_DATE)."""
+    if name.startswith(f"{PATCHED}/") and name.endswith(".properties"):
+        dated = STORE_DATE.match(data)
+        if dated is not None:
+            data = data[dated.end() :]
+    return hashlib.sha256(data).hexdigest()
+
+
+def copy_dump(game: Path, folder: Path) -> tuple[dict[str, dict], list[str]]:
+    """The reload's print copied under `folder` by its names from game/, each copy hashed, then its
+    source hashed again; a file that changed or appeared during the copy is a problem. The files
+    (name: its sha256, bytes and compared sha256) and the problems."""
+    files: dict[str, dict] = {}
+    problems = []
+    for name, path in dump_sources(game):
+        target = folder / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(path, target)
+        data = target.read_bytes()
+        digest = hashlib.sha256(data).hexdigest()
+        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            problems.append(f"{name} changed while it was copied")
+        files[name] = {
+            "sha256": digest,
+            "bytes": len(data),
+            "compared": compared_sha256(name, data),
+        }
+    later = sorted({name for name, _ in dump_sources(game)} - set(files))
+    if later:
+        problems.append(f"{', '.join(later)} appeared while the print was copied")
+    return files, problems
+
+
+def dump_capture(m: Measured, view: dict, variant: Variant) -> None:
+    """One variant's dump in one dimension (plans/m3.md D60): the print's places emptied, its
+    files written with Iris's debug flag on, shaders.reload and its pack (the pipeline, every
+    program in it, built before the answer: ShaderMap is filled at its creation), the options
+    read back, the pose held, the print copied (copy_dump). Its entry: the files' count, bytes
+    and manifest (record.dump_manifest over the compared sha256), an ID map's own sha256 beside
+    its compared one, and every file's hashes, which the record keeps once per manifest."""
+    s, c = m.s, m.c
+    m.index += 1
+    label = f"{m.index:03d} {view['dim']} {variant.id}"
+    game = m.game
+    emptied = []
+    for name, path in dump_sources(game):
+        try:
+            path.unlink()
+        except OSError as error:
+            raise RunError(f"{label}: {name} would not go before the reload ({error})") from None
+        emptied.append(name)
+    m.write_files(variant, debug=True)
+    m.reloads += 1
+    reload = s.step(
+        f"{label}: shaders.reload",
+        lambda: c.shaders_reload(RELOAD_TIMEOUT, 2, pack=variant.pack),
+        lambda a: f"{a['seconds']:.3f} s, reloadFrame {a['reloadFrame']}",
+    )
+    options = s.step(
+        f"{label}: shaders.options",
+        c.shaders_options,
+        keep=lambda a: {"pack": a["pack"], "values": len(a["values"])},
+    )
+    m.check_options(variant, options)
+    held = s.step(f"{label}: camera.get", c.camera_get)
+    moved = modclient.pose_differences(view_pose(view), held["pose"])
+    if moved:
+        raise RunError(f"{label}: the camera left the view: {moved}")
+    folder = s.raw / DUMPS / view["dim"].removeprefix("minecraft:") / variant.id
+    files, problems = copy_dump(game, folder)
+    programs = [name for name in files if name.startswith(f"{PATCHED}/")]
+    if not programs:
+        problems.append(f"{label}: Iris printed nothing into {PATCHED}/ at the reload")
+    compared = {name: f["compared"] for name, f in files.items()}
+    entry = {
+        "index": m.index,
+        "view": view["id"],
+        "dimension": view["dim"],
+        "variant": variant.id,
+        "reload": {k: reload[k] for k in ("seconds", "reloadFrame", "pack")},
+        "emptied": len(emptied),
+        "dump": {
+            "folder": folder.relative_to(s.raw).as_posix(),
+            "files": len(files),
+            "bytes": sum(f["bytes"] for f in files.values()),
+            "manifest": record.dump_manifest(compared),
+            "dated": {
+                name: {"sha256": f["sha256"], "compared": f["compared"]}
+                for name, f in files.items()
+                if f["sha256"] != f["compared"]
+            },
+        },
+        "valid": not problems,
+        "problems": problems,
+        "files": compared,
+    }
+    s.say(
+        f"{label}: {len(files)} files ({len(programs)} in {PATCHED}/), manifest "
+        f"{entry['dump']['manifest'][:12]}..."
+    )
+    m.entries.append(entry)
+    m.journal.append("captures", entry)  # its files too: an orphan's record keeps its dumps
+
+
+def dump_problems(entries: list[dict], planned: int, laps_done: bool) -> list[str]:
+    """What fails a dump record beside its session: a dump planned but never taken, or one
+    without its print (missing = fail)."""
+    problems = []
+    missing = planned - len(entries)
+    if missing > 0 and laps_done:
+        problems.append(f"{missing} planned dumps were not taken")
+    for entry in entries:
+        problems += entry["problems"]
+    return problems
+
+
 def gpu_memory(text: str, pid: int, luid: str) -> dict:
     """The game's dedicated and shared GPU memory and the adapter's, in MiB, on the adapter
     `luid` (0x...) from typeperf's one-sample CSV (M2.P06's diagnosis). RecordError when the
@@ -1522,10 +1706,11 @@ def orphan_record(root: Path, raw: Path, journal: dict, done: dict, complete: bo
     validity = journal.get("validity")  # the run's own suite: its identity hashed it
     pid = (journal.get("game") or {}).get("pid")
     visual = spec.get("kind") == record.VISUAL
+    dumped = spec.get("kind") == record.DUMP
     captures: list[dict] = []
     why = "PresentMon did not end by its session's stop: its CSV may lack its last rows"
-    if visual:  # each journaled pair as taken (whole or flagged), its frames under raw/: no CSV
-        captures = [{k: v for k, v in e.items() if k != "problems"} for e in entries]
+    if visual or dumped:  # each journaled pair or dump as taken, its files under raw/: no CSV
+        captures = [{k: v for k, v in e.items() if k not in ("problems", "files")} for e in entries]
         why = ""
     elif entries and complete and isinstance(pid, int) and validity is not None:
         try:
@@ -1564,6 +1749,15 @@ def orphan_record(root: Path, raw: Path, journal: dict, done: dict, complete: bo
                 {**v, "effective": effective.get(v["id"])} for v in journal.get("variants", [])
             ],
             captures=captures,
+        )
+    if dumped:
+        effective = journal.get("effective", {})
+        found.update(
+            variants=[
+                {**v, "effective": effective.get(v["id"])} for v in journal.get("variants", [])
+            ],
+            captures=captures,
+            dumps={e["dump"]["manifest"]: e["files"] for e in entries if "files" in e},
         )
     if spec["kind"] == "acceptance":
         part = journal.get("split")

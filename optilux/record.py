@@ -66,9 +66,14 @@ SURVEY = ("rounds", "warmup")
 # A visual run (plans/m3.md D63): a mode's perf views, or the views file's coverage views (mode
 # `coverage`, D64), each variant's frames taken at each.
 VISUAL = "visual"
-KINDS = ("measurement", "calibration", "acceptance", VISUAL)
+# A dump run (plans/m3.md D60): per dimension its first view (dump_views), per variant there a
+# reload with Iris's debug flag on and game/patched_shaders/ copied under raw/, each file hashed.
+DUMP = "dump"
+KINDS = ("measurement", "calibration", "acceptance", VISUAL, DUMP)
 # A visual run's own keys are the required ones, its mode and notes: none of these.
 VISUAL_REFUSED = ("items", "calibration", "heap", *BUDGET, "warmup", "remeasures", "reloads")
+# A dump run's: the required ones and notes; its views come from the views file, not a mode.
+DUMP_REFUSED = ("mode", *VISUAL_REFUSED)
 # A visual capture is a pair of frames (optilux/measure.py's visual_capture), flagged `moving`
 # when its frames' PNGs differ, `event` for an invalidating event among its frames, `incomplete`
 # for a frame missing; the last two invalidate it.
@@ -200,6 +205,13 @@ def tree(folder: Path) -> tuple[str, int, str]:
     files = tree_files(folder)
     text = tree_text(files)
     return hashlib.sha256(text.encode("utf-8")).hexdigest(), len(files), text
+
+
+def dump_manifest(files: dict[str, str]) -> str:
+    """A dump's manifest hash (plans/m3.md D60): tree_text's over its files by name, each the
+    sha256 dump equality compares; two dumps are equal when their manifests are."""
+    ordered = sorted(files.items(), key=lambda item: item[0].encode("utf-8"))
+    return hashlib.sha256(tree_text(ordered).encode("utf-8")).hexdigest()
 
 
 # The views file.
@@ -625,10 +637,10 @@ def check_spec(
             "a visual run takes a mode's perf views or the coverage views; fix: mode quick, full "
             f"or {COVERAGE}"
         )
-    if kind != "acceptance" and mode is None:
+    if kind not in ("acceptance", DUMP) and mode is None:
         raise RecordError(f"a {kind} run measures a mode's schedule; fix: mode quick or full")
     modes = VISUAL_MODES if kind == VISUAL else MODES
-    if mode is not None and mode not in modes:
+    if mode is not None and mode not in modes and kind != DUMP:
         raise RecordError(f"mode {mode!r}; fix: one of {', '.join(modes)}")
     if data.get("treatment") is not None:
         raise RecordError(
@@ -678,6 +690,8 @@ def check_spec(
     cap = suite["capture"]["reloadCap"]
     if kind == VISUAL:
         return check_visual_spec(root, data, suite, pack, views_file, world, notes, cap)
+    if kind == DUMP:
+        return check_dump_spec(root, data, suite, pack, views_file, world, notes, cap)
     if mode is None:
         return check_acceptance_spec(root, data, suite, pack, views, world, notes, items, cap)
     allowed = MEASURED_ITEMS if kind == "acceptance" else ()
@@ -1087,6 +1101,63 @@ def check_visual_spec(
         notes,
         data,
         mode=data["mode"],
+        variants=variants,
+        view_ids=ids,
+        planned=planned,
+    )
+
+
+def dump_views(views: dict) -> tuple[str, ...]:
+    """A dump run's views (plans/m3.md D60): per dimension, in DIMENSIONS' order, the views file's
+    first perf view there; Iris builds a pipeline per dimension, so one reload there dumps it."""
+    found = []
+    for dim in DIMENSIONS:
+        first = next((v["id"] for v in views["views"] if v["dim"] == dim), None)
+        if first is not None:
+            found.append(first)
+    return tuple(found)
+
+
+def check_dump_spec(
+    root: Path,
+    data: dict,
+    suite: dict,
+    pack: str,
+    views_file: dict,
+    world: str,
+    notes: str | None,
+    cap: int,
+) -> Spec:
+    """A dump run (plans/m3.md D60): a visual run's variants (check_visual_variants), at each
+    dimension's first view (dump_views) a reload per variant; selftest's and the start-of-run
+    reload, then one per dimension and variant, within capture.reloadCap and never split. No
+    mode, and no measured run's or acceptance run's keys."""
+    given = [key for key in DUMP_REFUSED if key in data]
+    if given:
+        raise RecordError(
+            f"{', '.join(given)}: no dump run's (plans/m3.md D60: one view per dimension); fix: "
+            + ("drop it" if len(given) == 1 else "drop them")
+        )
+    variants = check_visual_variants(root, data["variants"], suite, pack)
+    ids = dump_views(views_file)
+    planned = ACCEPTANCE_RELOADS + len(ids) * len(variants)
+    if planned > cap:
+        raise RecordError(
+            f"the dump session plans {planned} reloads ({ACCEPTANCE_RELOADS} + {len(ids)} "
+            f"dimensions x {len(variants)} variants), over capture.reloadCap {cap}, and a dump "
+            "session is never split (plans/m3.md D60); fix: fewer variants"
+        )
+    return Spec(
+        data["name"],
+        DUMP,
+        views_file["id"],
+        world,
+        pack,
+        "bench",
+        PACK_SET,
+        (),
+        notes,
+        data,
         variants=variants,
         view_ids=ids,
         planned=planned,
