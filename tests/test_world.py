@@ -439,6 +439,38 @@ def test_positions_are_read_per_mob_and_sorted() -> None:
         world.parse_positions(answer(True, ["Sheep has 3 legs"], []))
 
 
+def test_a_gamerule_already_at_its_value_counts_as_set() -> None:
+    """A prepared snapshot holds the gamerules: 26.3 answers setting one to its value with a
+    failure (the first prep of M3.P07, 2026-10-22), which counts as set; the read-back decides."""
+    rules = PLAT.data["gamerules"]
+    value = {"advanceTime": "false", "advanceWeather": "false", "spawnMobs": "false"}
+
+    def script(already: bool, other: str = ""):
+        def answer_it(text: str, client: FakeClient):
+            name, *rest = text.removeprefix("/gamerule ").split()
+            wanted = next(value.get(k, "0") for k, v in rules.items() if v == name)
+            if rest:
+                if other:
+                    return answer(False, [], [other]), []
+                if already:
+                    return answer(False, [], [f"Game rule {name} is already set to {wanted}"]), []
+                return answer(True, [f"Game rule {name} is now set to {wanted}"], []), []
+            return answer(True, [f"Game rule {name} is currently set to {wanted}"], []), []
+
+        return answer_it
+
+    for already in (False, True):
+        found = world.gamerules(kill_prep(FakeClient(script(already))), rules)
+        assert found == {
+            "advance_time": "false",
+            "advance_weather": "false",
+            "spawn_mobs": "false",
+            "random_tick_speed": "0",
+        }
+    with pytest.raises(world.WorldError, match="did not succeed"):
+        world.gamerules(kill_prep(FakeClient(script(False, "Unknown game rule"))), rules)
+
+
 def test_no_tick_is_stepped_beside_the_dragon_fight() -> None:
     by_id = {v["id"]: v for v in BENCH["views"]}
     assert world.ticks_allowed(by_id["end_dragon"]) is False
