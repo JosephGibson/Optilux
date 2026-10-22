@@ -603,11 +603,16 @@ def run_l2(root: Path, named: str) -> dict:
     started = time.perf_counter()
     try:
         found = dump_record(root, named)
+        taken = l1.prints(found)
     except l1.L1Error as error:
         raise l2.L2Error(str(error)) from None
+    if found.get("status") != "ok":
+        raise l2.L2Error(
+            f"{named} ended {found.get('status')}; L2 reads an ok dump record's prints, whose "
+            "every stage the game compiled; fix: a dump run that ended ok"
+        )
     exe, version = rga_exe(root)
     raw = root / found["raw"]
-    taken = l1.prints(found)
     by_manifest: dict[str, list[tuple[str, str]]] = {}
     for (vid, dim), dumped in taken.items():
         by_manifest.setdefault(dumped["capture"]["dump"]["manifest"], []).append((vid, dim))
@@ -615,24 +620,42 @@ def run_l2(root: Path, named: str) -> dict:
     prints_out = []
     for manifest, shared in by_manifest.items():
         dumped = taken[shared[0]]
-        found_programs = l2.programs(raw, dumped["capture"], dumped["files"])
+        found_programs, skipped = l2.programs(raw, dumped["capture"], dumped["files"])
         for program in found_programs:
             distinct.setdefault(program.digest, program)
         prints_out.append(
             {
                 "manifest": manifest,
                 "dumps": [{"variant": v, "dimension": d} for v, d in shared],
-                "programs": [{"program": p.name, "digest": p.digest} for p in found_programs],
+                "programs": [
+                    {"program": p.name, "stages": list(p.stages), "digest": p.digest}
+                    for p in found_programs
+                ],
+                "notBuilt": skipped,
             }
         )
     out = raw / L2_DIR
+    out.mkdir(parents=True, exist_ok=True)
 
     def one(program: l2.Program) -> dict:
-        return l2.analyze(exe, program, out / f"{program.name}-{program.digest[:12]}")
+        return l2.analyze(exe, program, out / program.digest[:16])
 
     with ThreadPoolExecutor(max_workers=max(1, min(8, (os.cpu_count() or 2) // 2))) as pool:
         results = dict(zip(distinct, pool.map(one, distinct.values()), strict=True))
-    failures = sorted(r["program"] for r in results.values() if r["failed"])
+    broken = [r for r in results.values() if r["tool"]]
+    if broken:
+        raise l2.L2Error(
+            f"RGA failed on {len(broken)} of {len(results)} programs, not a shader's failure: "
+            f"{broken[0]['tool']}; fix: `uv run optilux install`, then rerun"
+        )
+    failures = sorted(
+        {
+            f"{p['program']}.{ending}"
+            for found_print in prints_out
+            for p in found_print["programs"]
+            for ending in results[p["digest"]]["failed"]
+        }
+    )
     result = {
         "ok": True,
         "run": found["name"],
@@ -656,24 +679,29 @@ def print_l2(result: dict) -> None:
         f"{result['folder']}/"
     )
     short = {d: d.removeprefix("minecraft:") for d in record.DIMENSIONS}
+    stages = 0
     for found in result["prints"]:
         dumps = ", ".join(f"{d['variant']} in {short[d['dimension']]}" for d in found["dumps"])
         print(f"print {found['manifest'][:12]}... ({dumps}):")
         for entry in found["programs"]:
             done = results[entry["digest"]]
-            for ending, stage in done["stages"].items():
+            for ending in entry["stages"]:
+                stages += 1
+                name = f"{entry['program']}.{ending}"
+                if ending in done["failed"]:
+                    why = " | ".join(done["failed"][ending][:3])
+                    print(f"  {name}: known offline failure: {why}")
+                    continue
+                stage = done["stages"][ending]
                 print(
-                    f"  {done['program']}.{ending}: VGPRs {stage['vgprs']}, SGPRs "
-                    f"{stage['sgprs']}, live VGPRs {stage['liveVgprs']}, live SGPRs "
-                    f"{stage['liveSgprs']}, ISA {stage['isaBytes']} B, spills "
-                    f"{stage['vgprSpills']}/{stage['sgprSpills']}"
+                    f"  {name}: VGPRs {stage['vgprs']}, SGPRs {stage['sgprs']}, live VGPRs "
+                    f"{stage['liveVgprs']}, live SGPRs {stage['liveSgprs']}, ISA "
+                    f"{stage['isaBytes']} B, spills {stage['vgprSpills']}/{stage['sgprSpills']}"
                 )
-            if done["failed"]:
-                print(
-                    f"  {done['program']}: known offline failure: {' | '.join(done['failed'][:3])}"
-                )
+        for name in found["notBuilt"]:
+            print(f"  {name}: not built (a compute stage, which L2 does not build yet)")
     print(
-        f"{L2_PREFIX}: {len(results) - len(result['failures'])} programs built, "
+        f"{L2_PREFIX}: {stages} stages in {len(results)} distinct programs, "
         f"{len(result['failures'])} known offline failures"
         + (f" ({', '.join(result['failures'])})" if result["failures"] else "")
         + f"; explains only; in {result['seconds']} s"
