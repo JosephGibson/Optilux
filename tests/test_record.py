@@ -310,6 +310,86 @@ def test_a_bad_view_is_refused(tmp_path: Path, change, says: str) -> None:
     assert says in str(refused.value) and "fix:" in str(refused.value)
 
 
+# The coverage list (plans/m3.md D64).
+
+BENCH_VIEWS = REPO_ROOT / record.VIEWS / "bench_263.json"
+
+
+def test_the_coverage_views_load_beside_the_perf_views_which_alone_feed_the_modes() -> None:
+    data, _ = record.load_views(REPO_ROOT, "bench_263")
+    perf = [v["id"] for v in data["views"]]
+    cover = [v["id"] for v in data[record.COVERAGE]]
+    assert cover == ["coverage_items", "coverage_mobs", "coverage_beacon"]
+    assert [v["id"] for v in record.every_view(data)] == perf + cover
+    assert record.coverage_views(data) == tuple(cover)
+    assert record.mode_views(SUITE, "full", data) == tuple(perf)  # "all": the perf views alone
+    quick = ("forest_noon", "nether_crimson", "end_dragon")
+    assert record.mode_views(SUITE, "quick", data) == quick
+    for entry in data[record.COVERAGE]:
+        assert tuple(entry)[: len(record.VIEW_KEYS)] == record.VIEW_KEYS
+        assert [k for k in entry if k not in record.VIEW_KEYS] == [*record.COVERAGE_KEYS, "why"]
+        same = [v for v in data["views"] if v["dim"] == entry["dim"]]
+        assert min(record.apart(v, entry) for v in same) >= record.COVERAGE_APART == 512
+    beacon = data[record.COVERAGE][2]
+    assert (beacon["hand"], beacon["ticks"]) == (True, 100)
+
+
+def coverage_with(change) -> dict:
+    data = json.loads(BENCH_VIEWS.read_text(encoding="utf-8"))
+    change(data)
+    return data
+
+
+def first(data: dict) -> dict:
+    return data[record.COVERAGE][0]
+
+
+BAD_COVERAGE = [
+    (lambda d: d.update(coverage={}), "coverage is no list"),
+    (lambda d: first(d).pop("hand"), "missing ['hand']"),
+    (lambda d: first(d).update(seed=1), "unknown ['seed']"),
+    (lambda d: first(d).update(hand="yes"), "hand 'yes'"),
+    (lambda d: first(d).update(ticks=-1), "ticks -1 is no tick count"),
+    (lambda d: first(d).update(ticks=True), "ticks True is no tick count"),
+    (lambda d: first(d).update(ticks=2.5), "ticks 2.5 is no tick count"),
+    (lambda d: first(d).update(id="entities"), "id entities is listed twice"),
+    (lambda d: first(d).update(pitch=-95.0), "outside -90..90"),
+    # 511 blocks (Chebyshev) east of ocean_sunset, the nearest overworld view: in sight of it.
+    (lambda d: first(d).update(x=-218.4 + 511, z=779.9), "within 512 blocks (Chebyshev) of"),
+]
+
+
+@pytest.mark.parametrize(("change", "says"), BAD_COVERAGE)
+def test_a_bad_coverage_view_is_refused(tmp_path: Path, change, says: str) -> None:
+    folder = tmp_path / record.VIEWS
+    folder.mkdir(parents=True)
+    (folder / "bench_263.json").write_text(json.dumps(coverage_with(change)), encoding="utf-8")
+    with pytest.raises(record.RecordError) as refused:
+        record.load_views(tmp_path, "bench_263")
+    assert says in str(refused.value) and "fix:" in str(refused.value)
+
+
+def test_the_distance_rule_holds_per_dimension_and_on_both_axes(tmp_path: Path) -> None:
+    folder = tmp_path / record.VIEWS
+    folder.mkdir(parents=True)
+    path = folder / "bench_263.json"
+
+    def loads(change) -> bool:
+        path.write_text(json.dumps(coverage_with(change)), encoding="utf-8")
+        try:
+            record.load_views(tmp_path, "bench_263")
+        except record.RecordError as error:
+            assert "ocean_sunset" in str(error)
+            return False
+        return True
+
+    # At ocean_sunset's own pose but in the Nether: no Nether view lies near it.
+    assert loads(lambda d: first(d).update(dim="minecraft:the_nether", x=-218.4, z=779.9 + 2000))
+    assert not loads(lambda d: first(d).update(x=-218.4 + 400, z=779.9 + 511.9))  # z near, x too
+    assert loads(lambda d: first(d).update(x=-218.4 + 400, z=779.9 + 512))  # 512 apart on z
+    assert loads(lambda d: d.pop(record.COVERAGE))  # a views file without the list loads
+
+
 # The identity and the record.
 
 

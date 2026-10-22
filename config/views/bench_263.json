@@ -1,7 +1,7 @@
 {
  "schema": 1,
  "id": "bench_263",
- "use": "the baseline suite's eleven views (measurement.md#baseline-suite), one per suite.json view role in its order: each pose flown by the user in spectator, read with camera.get, rounded to 0.1 (yaw in -180..180), placed and captured at 4K with the role's time and weather, then kept by the user (0.01.11; end_city scouted then and made the eleventh role, D29)",
+ "use": "the baseline suite's eleven views (measurement.md#baseline-suite), one per suite.json view role in its order: each pose flown by the user in spectator, read with camera.get, rounded to 0.1 (yaw in -180..180), placed and captured at 4K with the role's time and weather, then kept by the user (0.01.11; end_city scouted then and made the eleventh role, D29); its coverage list (plans/m3.md D64): three views of the coverage site near (314, 1069), a floor at y 100 over terrain whose surface the snapshot's chunks there put at y 83 at most, which `world prep` builds and fills with suite.json coverageViews' content, framed by geometry from the floor's layout; no perf mode reads them",
  "world": "snapshots/bench_263/: a copy of runtime/mc-26.3/game/saves/bench_263 (seed 263), retaken after the flights",
  "views": [
   {
@@ -135,6 +135,50 @@
    "time": 6000,
    "weather": "clear",
    "why": "the End city nearest the main island, (368, ~, 992), 1,058 blocks out on an outer island: purpur towers and end rods against the End sky, chorus around; two closed shulkers at 56 and 62 m (they survive Peaceful); frame a2727557 kept in 0.01.11"
+  }
+ ],
+ "coverage": [
+  {
+   "id": "coverage_items",
+   "dim": "minecraft:overworld",
+   "x": 314.5,
+   "y": 102.0,
+   "z": 1067.5,
+   "yaw": 0.0,
+   "pitch": 25.0,
+   "time": 6000,
+   "weather": "clear",
+   "hand": false,
+   "ticks": 0,
+   "why": "south over the floor: the armor stand, the sign's text, the item frame's sword, the dropped diamond and the enchanted golden apple's glint, 5-7 m away"
+  },
+  {
+   "id": "coverage_mobs",
+   "dim": "minecraft:overworld",
+   "x": 313.5,
+   "y": 102.0,
+   "z": 1069.5,
+   "yaw": 90.0,
+   "pitch": 20.0,
+   "time": 6000,
+   "weather": "clear",
+   "hand": false,
+   "ticks": 0,
+   "why": "west over the floor: three NoAI mobs (mooshroom, polar bear, fox) 6 m away in noon sun"
+  },
+  {
+   "id": "coverage_beacon",
+   "dim": "minecraft:overworld",
+   "x": 314.5,
+   "y": 102.0,
+   "z": 1071.0,
+   "yaw": 180.0,
+   "pitch": 0.0,
+   "time": 6000,
+   "weather": "clear",
+   "hand": true,
+   "ticks": 100,
+   "why": "north over the floor: the beacon on its iron base, its beam up the frame, the campfire's smoke; creative, the torch in hand; 100 ticks stepped here, so the beam forms (its level set on a game tick divisible by 80, plans/m3.md P22)"
   }
  ]
 }
