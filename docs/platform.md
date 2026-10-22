@@ -18,7 +18,7 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 - Translucency: vanilla OIT is gated by the `improvedTransparency` option (GameRenderer.useImprovedTransparency); Iris sets it false whenever shaders are enabled (MixinDisableFabulousGraphics), so a pack never sees OIT. Translucent terrain and water go through Sodium's translucent pass to `gbuffers_water` (ShaderKey TERRAIN_TRANSLUCENT -> ProgramId.Water); IRIS_HAS_TRANSLUCENCY_SORTING is defined (R10).
 - Depth: 26.2 switched vanilla rendering to a reversed depth buffer [S9]. Iris 1.11.7 undoes it while a pack renders the level (five UndoReverseZ mixins: clip control reported absent, compare ops mirrored, near and far swapped, clear depth 1 - d), so depthtex0/1/2 and shadowtex0 hold forward depth with no copy or transform pass (R11); the GUI still renders reversed.
 - Save layout: dimensions/minecraft/<dim>/ (region, entities, poi), players/data/<uuid>.dat, data/minecraft/*.dat; no DIM-1 or DIM1, no Player tag in level.dat (S9, L1).
-- World: a new 26.3 world, not a port of ALC's (user, 2026-10-05). The port procedure below applies to later platforms.
+- World: a new 26.3 world, not a port of ALC's (user, 2026-10-05); later platforms port it (Platform change).
 
 ## Renderer transition
 - 26.4 Snapshot 1 (2026-09-22) makes Vulkan the default ("Default" behaves as "Prefer Vulkan") and removes the automatic Graphics API fallback after a startup crash [S11]. OpenGL goes once Mojang is satisfied; no date [S5].
@@ -68,9 +68,9 @@ What optilux-helper's adapter must provide on each platform (mod.md#4-architectu
 ## Install and launch
 No launcher (lessons.md#game-control). Nothing is installed system-wide; no Microsoft account is used or read (singleplayer only).
 - `install [--tier bench] [--refresh]` fills runtime/<platform>/ (suite.json's `platform`) and reference/ (design.md#4-architecture) from the network and re-hashes every file on every run; a hash off its pin is refused with the file named; game/saves/ and the option files are never touched:
-  - Minecraft: Mojang's manifest -> version JSON (re-fetched when its SHA-1 moved) -> client jar, libraries, natives, asset index and assets through minecraft-launcher-lib 8.0 (it installs the local Fabric profile with inheritsFrom, repairs a SHA-1 mismatch, checks none of Fabric's libraries, and adds Mojang's unused java-runtime-epsilon under runtime/<platform>/runtime/); install's own pass then hashes every classpath jar, the asset index, every asset and the log config against the spec it built;
+  - Minecraft: Mojang's manifest -> version JSON (re-fetched when its SHA-1 moved) -> client jar, libraries, natives, asset index and assets through minecraft-launcher-lib 8.0 (it installs the Fabric profile through inheritsFrom, repairs a SHA-1 mismatch, checks no Fabric library, adds Mojang's unused java-runtime-epsilon); install's own pass then hashes every classpath jar, the asset index, every asset and the log config against the spec it built;
   - Fabric Loader: its profile JSON from meta.fabricmc.net under versions/; libraries from Fabric's Maven against the SHA-1 the profile carries, fabric-loader's own against Maven's .sha1;
-  - mods and packs: the tier's Modrinth files (through `extends`) and the reference pack into the store runtime/<platform>/files/, against the platform file's sha512; resource and shader packs copied into game/resourcepacks/ and game/shaderpacks/;
+  - mods and packs: the tier's Modrinth files (through `extends`) and the reference pack into the store runtime/<platform>/files/, against the platform file's sha512; resource and shader packs copied into game/resourcepacks/ and game/shaderpacks/; beside them optilux-static-textures.zip, built from the client jar and the packs below it in its set, each animated texture held on frame 0 (plans/m3.md D62);
   - Java: Temurin from the Adoptium API, against the archive sha256 pinned in config/java/bench.json, unpacked under runtime/java/<build>/;
   - tools: PresentMon, glslang and RGA from their GitHub releases, against config/tools.json, into runtime/tools/, a zip unpacked into its own folder.
 - The launch spec, config/platforms/<id>.launch.json (committed), is written by the first install and compared fact by fact by every later one (its three note keys excepted):
@@ -92,7 +92,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   7. the join in this session's latest.log within 120 s (F11), Fabric's mod list equal to the tier; a failed check ends the game; `--quit-after S` holds S s, quits through the mod's `quit` (WM_CLOSE without a mod session) and reads the files back: every written key, the Iris keys, Sodium's text (`--set` and `--no-token`: run-record.md#identity).
 
 ## mc-26.3 verified
-The Phase -1 spike's results, approved as written (user, 2026-10-06); Platform change step 3 reruns these checks on a new platform. Evidence is quoted; the raw records live under runtime/ (ignored). 0.01.10 closed the deferred rows; the user's look review passed.
+Platform change step 3 reruns these checks on a new platform. Evidence is quoted; the raw records live under runtime/ (ignored). 0.01.10 closed the deferred rows; the user's look review passed.
 
 | Check | Result | Evidence |
 |---|---|---|
