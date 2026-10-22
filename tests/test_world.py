@@ -245,6 +245,32 @@ def test_the_view_function_sets_time_and_weather_in_the_overworld_and_returns_1(
     )
 
 
+def test_an_end_views_function_also_sets_the_ends_own_clock() -> None:
+    """plans/m3.md P22, D56: the End flash follows the End's clock, which `/time` names with
+    `of`; the overworld's and the Nether's views leave it alone."""
+    for view in record.every_view(BENCH):
+        lines = world.view_function(view, "bench_263").decode("utf-8").splitlines()
+        clock = [line for line in lines if "the_end" in line]
+        if view["dim"] == world.END:
+            assert clock == [f"time of minecraft:the_end set {view['time']}"], view["id"]
+            assert lines[-2:] == [clock[0], "return 1"]
+        else:
+            assert clock == [] and lines[-1] == "return 1", view["id"]
+    assert sum(v["dim"] == world.END for v in BENCH["views"]) == 2  # end_dragon, end_city
+
+
+def test_the_ends_clock_is_read_from_the_games_own_words() -> None:
+    said = answer(True, ["Clock minecraft:the_end is at 6000 tick(s)"], [])
+    assert world.parse_clock(said) == 6000
+    for bad in (
+        answer(True, ["Clock minecraft:overworld is at 6000 tick(s)"], []),
+        answer(True, ["The time is 6000"], []),
+        answer(False, [], ["Unknown clock"]),
+    ):
+        with pytest.raises(world.WorldError, match="fix: read"):
+            world.parse_clock(bad)
+
+
 def test_pack_mcmeta_declares_the_platforms_data_format_alone() -> None:
     data = world.pack_mcmeta(PLAT.data["formats"]["dataPack"], "bench_263")
     assert data == (
@@ -259,16 +285,16 @@ def test_pack_mcmeta_declares_the_platforms_data_format_alone() -> None:
 
 def test_the_pack_holds_one_function_per_view_and_prunes_stale_ones(tmp_path: Path) -> None:
     files = world.pack_files(BENCH, "121.0")
-    assert sorted(files) == sorted(
-        ["pack.mcmeta"]
-        + [f"data/optilux/function/view/{v['id']}.mcfunction" for v in BENCH["views"]]
+    every = record.every_view(BENCH)  # the coverage views' too (plans/m3.md D64)
+    assert len(every) == 14 and sorted(files) == sorted(
+        ["pack.mcmeta"] + [f"data/optilux/function/view/{v['id']}.mcfunction" for v in every]
     )
     live = tmp_path / "w"
     tree(live / "datapacks" / "optilux", {"data/optilux/function/view/gone.mcfunction": b"x"})
     found = world.write_pack(live, files)
     assert listing(live / "datapacks" / "optilux") == files
     assert found["pruned"] == ["data/optilux/function/view/gone.mcfunction"]
-    assert len(found["written"]) == 12
+    assert len(found["written"]) == 15
     again = world.write_pack(live, files)
     assert (again["written"], again["pruned"]) == ([], [])
 
@@ -279,15 +305,16 @@ def test_the_pack_holds_one_function_per_view_and_prunes_stale_ones(tmp_path: Pa
 def test_chunky_selections_cover_the_views_plus_the_render_distance() -> None:
     found = world.selections(BENCH)
     assert [(s.world, s.shape, s.x, s.z, s.radius_x, s.radius_z) for s in found] == [
-        ("minecraft:overworld", "rectangle", -169, 577, 486, 621),
+        ("minecraft:overworld", "rectangle", -26, 658, 629, 702),  # x -655..603, z -44..1360
         ("minecraft:the_nether", "rectangle", 111, -153, 408, 457),
         ("minecraft:the_end", "square", 57, -19, 289, 289),
         ("minecraft:the_end", "square", 318, 1055, 289, 289),
     ]
     assert found[2].views == ("end_dragon",) and found[3].views == ("end_city",)
-    assert len(found[0].views) == 7 and set(found[1].views) == {"nether_crimson", "nether_soul"}
+    assert len(found[0].views) == 10 and set(found[1].views) == {"nether_crimson", "nether_soul"}
+    assert found[0].views[7:] == ("coverage_items", "coverage_mobs", "coverage_beacon")
     for task in found:
-        for view in BENCH["views"]:
+        for view in record.every_view(BENCH):
             if view["id"] in task.views:
                 assert abs(view["x"] - task.x) + world.MARGIN <= task.radius_x
                 assert abs(view["z"] - task.z) + world.MARGIN <= task.radius_z
@@ -298,8 +325,8 @@ def test_chunky_commands_carry_the_lines_it_answers_with() -> None:
     assert overworld.commands() == [
         ("/chunky world minecraft:overworld", "World changed to "),
         ("/chunky shape rectangle", "Shape changed to "),
-        ("/chunky center -169 577", "Center changed to -169, 577."),
-        ("/chunky radius 486 621", "Radius changed for x to 486, and for z to 621."),
+        ("/chunky center -26 658", "Center changed to -26, 658."),
+        ("/chunky radius 629 702", "Radius changed for x to 629, and for z to 702."),
     ]
     assert end.commands()[-1] == ("/chunky radius 289", "Radius changed to 289.")
 
@@ -419,14 +446,29 @@ def test_no_tick_is_stepped_beside_the_dragon_fight() -> None:
     assert world.ticks_allowed(by_id["nether_soul"]) is True
 
 
+def held() -> dict:
+    """coverage_counts' answer for a site holding all its content."""
+    x, y, z = world.SIGN
+    return {
+        "entities": {item.name: 1 for item in world.CONTENT},
+        "blocks": dict.fromkeys((name for name, _ in world.block_tests()), True),
+        "sign": [f'{x}, {y}, {z} has the following block data: "Optilux"'],
+    }
+
+
 def test_the_counts_prep_must_hold() -> None:
     mobs = [{"name": f"m{i}", "x": 0.0, "y": 0.0, "z": float(i)} for i in range(7)]
     done = {"entities": {"tagged": 7}, "end_dragon": {"endCrystals": 10}}
-    assert world.check_counts(BENCH, done, mobs, mobs) == []
+    assert world.check_counts(BENCH, done, mobs, mobs, held()) == []
     moved = [*mobs[:6], {**mobs[6], "z": 9.5}]
-    assert "moved" in world.check_counts(BENCH, done, mobs, moved)[0]
+    assert "moved" in world.check_counts(BENCH, done, mobs, moved, held())[0]
     short = {"entities": {"tagged": 6}, "end_dragon": {"endCrystals": 9}}
-    assert len(world.check_counts(BENCH, short, mobs, mobs)) == 2
+    assert len(world.check_counts(BENCH, short, mobs, mobs, held())) == 2
+    assert world.check_counts(BENCH, done, mobs, mobs) == [
+        "coverage: the site was not counted after the sweep"
+    ]
+    perf = {k: v for k, v in BENCH.items() if k != record.COVERAGE}
+    assert world.check_counts(perf, done, mobs, mobs) == []  # no list, nothing to count
 
 
 # The world prep set.
@@ -472,7 +514,19 @@ class FakeClient:
 
     def ticks_step(self, n: int, timeout: float) -> dict:
         self.ticks.append(n)
+        self.sent.append(f"ticks {n}")  # its place among the commands
         return {"ticks": n}
+
+    def camera_place(self, pose: dict, timeout: float) -> dict:
+        self.sent.append(f"camera.place {pose['x']} {pose['z']}")
+        return {"pose": dict(pose), "arrivedSeconds": 0.0}
+
+    def ready(self, stable: int, settle: float, timeout: float) -> dict:
+        return {"seconds": settle}
+
+    def hud_set(self, hide_gui: bool) -> dict:
+        self.sent.append(f"hideGui {hide_gui}")
+        return {"hideGui": hide_gui}
 
 
 class FakeSession:
@@ -675,3 +729,249 @@ def test_the_selectors_split_debris_from_the_rest() -> None:
         "type=!minecraft:item,type=!minecraft:experience_orb,type=!minecraft:falling_block,"
         "tag=!optilux_bench,distance=..256]"
     )
+
+
+# The coverage site (plans/m3.md D64).
+
+SUITE = json.loads((REPO_ROOT / platform.SUITE).read_text(encoding="utf-8"))
+COVER = {v["id"]: v for v in BENCH[record.COVERAGE]}
+
+
+def test_the_site_holds_suite_jsons_content_inside_its_box_beneath_its_views() -> None:
+    """Each of suite.json coverageViews' items has its part: three NoAI mobs, the armor stand,
+    the item frame, the dropped item, the enchanted item, the sign, the beacon on its base, the
+    campfire, a view with the hand; each entity inside the site's box on the floor, each view
+    over the floor."""
+    names = {item.name for item in world.CONTENT} | {name for name, *_ in world.BLOCKS}
+    assert SUITE["coverageViews"]["content"] == [
+        "NoAI mobs",
+        "armor stand",
+        "item frame",
+        "dropped item",
+        "sign text",
+        "beacon",
+        "enchanted item",
+        "held torch (creative mode; spectator shows no hand)",
+        "particle source",
+    ]
+    assert {"armor stand", "item frame", "dropped item", "enchanted item"} <= names
+    assert {"sign", "beacon", "campfire"} <= names
+    mobs = [item for item in world.CONTENT if "NoAI:1b" in item.data]
+    assert [item.name for item in mobs] == ["mooshroom", "polar bear", "fox"]
+    assert [vid for vid, v in COVER.items() if v["hand"]] == ["coverage_beacon"]
+    (_, (x0, y0, z0), (x1, _, z1), _) = world.FILLS[0]
+    box = f"x={x0},y={y0},z={z0},dx={x1 - x0},dy=10,dz={z1 - z0}"
+    assert box == world.SITE
+    for item in world.CONTENT:
+        x, y, z = item.pos
+        assert x0 <= x <= x1 + 1 and z0 <= z <= z1 + 1 and y0 + 1 <= y <= y0 + 2, item.name
+    for name, (x, y, z), *_ in world.BLOCKS:
+        assert x0 <= x <= x1 and z0 <= z <= z1 and y == y0 + 1, name
+    for view in COVER.values():
+        assert view["dim"] == world.OVERWORLD and view["y"] > y0 + 1
+        assert x0 <= view["x"] <= x1 and z0 <= view["z"] <= z1, view["id"]
+
+
+def test_the_build_commands_carry_the_tag_and_decimal_positions() -> None:
+    commands = dict(world.coverage_commands())
+    assert list(commands)[:6] == ["floor", "beacon base", "beacon", "campfire", "planks", "sign"]
+    assert commands["floor"] == "/fill 306 100 1061 322 100 1077 minecraft:smooth_stone"
+    assert commands["beacon base"] == "/fill 313 100 1063 315 100 1065 minecraft:iron_block"
+    assert commands["sign"] == (
+        "/setblock 313 101 1072 minecraft:oak_sign[rotation=8]"
+        '{front_text:{messages:["Optilux","coverage","",""]}}'
+    )
+    assert commands["mooshroom"] == (
+        '/summon minecraft:mooshroom 308.0 101.0 1066.5 {Tags:["optilux_bench"],'
+        "PersistenceRequired:1b,Rotation:[-90.0f,0.0f],NoAI:1b,Silent:1b}"
+    )
+    assert commands["dropped item"] == (
+        '/summon minecraft:item 317.0 101.0 1072.0 {Tags:["optilux_bench"],'
+        'PersistenceRequired:1b,Rotation:[0.0f,0.0f],Item:{id:"minecraft:diamond",count:1},'
+        "NoGravity:1b,Age:-32768s,PickupDelay:32767s}"
+    )
+    assert "Facing:2b,Fixed:1b," in commands["item frame"]
+    assert "block_pos:[I;315,101,1072]" in commands["item frame"]
+    for item in world.CONTENT:
+        # A whole number would be centred on its block by the command (x 308 summons at 308.5).
+        assert all("." in part for part in commands[item.name].split()[2:5]), item.name
+        assert item.selector().startswith(f"@e[type={item.kind},tag=optilux_bench,x=306,")
+    assert world.sign_command() == "/data get block 313 101 1072 front_text.messages[0]"
+    tests = dict(world.block_tests())
+    assert len(tests) == 4 + 9 + 4
+    assert tests["campfire at 311 101 1064"] == (
+        "/execute if block 311 101 1064 minecraft:campfire[lit=true]"
+    )
+
+
+def test_a_block_test_is_read_from_the_games_own_words() -> None:
+    assert world.parse_test(answer(True, ["Test passed"], [])) is True
+    assert world.parse_test(answer(False, [], ["Test failed"])) is False
+    for bad in (answer(True, ["Test passed. Count: 1"], []), answer(False, [], ["Unknown block"])):
+        with pytest.raises(world.WorldError, match="fix: read"):
+            world.parse_test(bad)
+
+
+def test_the_site_must_hold_one_of_each_every_block_and_the_signs_text() -> None:
+    assert world.coverage_problems(held()) == []
+    found = held()
+    found["entities"].update(fox=0, mooshroom=2)
+    found["blocks"]["beacon at 314 101 1064"] = False
+    found["sign"] = ['313, 101, 1072 has the following block data: ""']
+    assert world.coverage_problems(found) == [
+        "coverage: 2 mooshroom counted, not 1",
+        "coverage: 0 fox counted, not 1",
+        "coverage: no beacon at 314 101 1064",
+        "coverage: the sign reads ['313, 101, 1072 has the following block data: \"\"'], not "
+        "'Optilux'",
+    ]
+
+
+def counted(n: int) -> dict:
+    if n == 0:
+        return answer(False, [], ["Test failed"])
+    return answer(True, [f"Test passed. Count: {n}"], [])
+
+
+def site(old: tuple[int, ...] = (0,), unchanged: bool = False, failing: str = "", kept: int = 0):
+    """A script for the coverage step: the bench-tagged entities in the site's box read in turn
+    from `old` (its last repeated, as entities load after their chunks), `kept` once they are
+    killed; nothing for the kill, each build command done (or its block already as asked), one of
+    each entity, every block and the sign's text."""
+    reads = list(old)
+
+    def script(text: str, client: FakeClient):
+        if text.startswith("/execute if entity @e[tag=optilux_bench,x="):
+            if any(sent.startswith("/kill @e[tag=optilux_bench,x=") for sent in client.sent):
+                return counted(kept), []
+            return counted(reads.pop(0) if len(reads) > 1 else reads[0]), []
+        if text.startswith("/execute if entity @e[type=!"):  # the kill's
+            return counted(0), []
+        if text.startswith("/execute if entity"):
+            return counted(1), []
+        if text.startswith("/execute if block"):
+            return answer(True, ["Test passed"], []), []
+        if text.startswith("/data get block"):
+            return answer(True, ['313, 101, 1072 has the following block data: "Optilux"'], []), []
+        if failing and text.startswith(failing):
+            return answer(False, [], ["Unable to summon entity"]), []
+        if unchanged and text.startswith("/fill"):
+            return answer(False, [], ["No blocks were filled"]), []
+        if unchanged and text.startswith("/setblock"):
+            return answer(False, [], ["Could not set the block"]), []
+        return answer(True, ["done"], []), []
+
+    return script
+
+
+def test_the_coverage_step_builds_the_site_then_counts_it(monkeypatch) -> None:
+    monkeypatch.setattr(world.time, "sleep", lambda seconds: None)
+    client = FakeClient(site())
+    found = world.build_coverage(kill_prep(client), COVER["coverage_items"])
+    assert found["old"] == 0 and not client.ticks
+    assert not any(text.startswith("/kill @e[tag=optilux_bench") for text in client.sent)
+    old = [text for text in client.sent if text.startswith("/execute if entity @e[tag=")]
+    assert len(old) == 1 + int(world.POSITIONS_WAIT)  # a new site: read once a second, none
+    built = [text for text in client.sent if text.startswith(("/fill", "/setblock", "/summon"))]
+    assert built == [text for _, text in world.coverage_commands()]
+    assert client.sent[0] == "camera.place 314.5 1067.5"  # the site's chunks loaded first
+    assert client.sent.index(built[0]) < client.sent.index(world.sign_command())
+    assert world.coverage_problems(found["counts"]) == []
+
+
+def test_a_rebuilt_site_kills_its_old_content_first_and_takes_blocks_as_they_are(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(world.time, "sleep", lambda seconds: None)
+    client = FakeClient(site(old=(0, 0, 7), unchanged=True))  # loaded two reads late
+    found = world.build_coverage(kill_prep(client), COVER["coverage_items"])
+    kill = f"/kill @e[tag=optilux_bench,{world.SITE}]"
+    assert found["old"] == 7 and client.ticks == [world.KILL_TICKS]
+    at = client.sent.index(kill)
+    assert client.sent[at + 1] == f"ticks {world.KILL_TICKS}"
+    assert at < client.sent.index(world.coverage_commands()[0][1])
+    assert found["placed"]["floor"] == ["No blocks were filled"]
+    client = FakeClient(site(old=(7,), kept=2))
+    with pytest.raises(world.WorldError, match="2 of the old content left after its kill"):
+        world.build_coverage(kill_prep(client), COVER["coverage_items"])
+
+
+def test_a_build_command_that_fails_stops_prep(monkeypatch) -> None:
+    monkeypatch.setattr(world.time, "sleep", lambda seconds: None)
+    client = FakeClient(site(failing="/summon minecraft:fox"))
+    with pytest.raises(world.WorldError, match=r"coverage: fox: /summon minecraft:fox .* did not"):
+        world.build_coverage(kill_prep(client), COVER["coverage_items"])
+
+
+def prep_view(
+    monkeypatch, client: FakeClient, view: dict, ramped: str | None = None
+) -> tuple[dict, str | None]:
+    monkeypatch.setattr(world.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(world, "frame", lambda p, view, raw, resolution: {"file": "f"})
+    prep = kill_prep(client)
+    return world.prepare_view(prep, view, ramped, world.OVERWORLD, SUITE, Path("raw"))
+
+
+def test_a_coverage_view_steps_its_ticks_at_its_pose_and_shows_its_hand(monkeypatch) -> None:
+    client = FakeClient(site())
+    facts, ramped = prep_view(monkeypatch, client, COVER["coverage_beacon"])
+    assert client.ticks == [SUITE["capture"]["ticksAfterWeatherChange"], 100]
+    assert (facts["viewTicks"], facts["gui"], ramped) == (100, True, "clear")
+    kinds = ("camera.place", "ticks", "hideGui", "/gamemode")
+    shown = [t for t in client.sent if t.startswith(kinds)]
+    assert shown == [
+        "camera.place 314.5 1071.0",
+        f"ticks {SUITE['capture']['ticksAfterWeatherChange']}",
+        "ticks 100",  # its own, with the camera there, after the weather's
+        "/gamemode creative",
+        "hideGui False",
+        "hideGui True",
+        "/gamemode spectator",
+    ]
+    client = FakeClient(site())
+    facts, _ = prep_view(monkeypatch, client, COVER["coverage_items"])
+    assert "viewTicks" not in facts and facts["gui"] is False
+
+
+def clocked(text: str, client: FakeClient):
+    """An End view's script: the End's clock at 6000, nothing for the kill, no dragon."""
+    if text == "/time of minecraft:the_end query time":
+        return answer(True, ["Clock minecraft:the_end is at 6000 tick(s)"], []), []
+    if text.startswith("/execute if entity @e[type=minecraft:ender_dragon"):
+        return counted(0), []
+    return site()(text, client)
+
+
+def test_a_views_own_ticks_never_step_beside_the_dragon_fight(monkeypatch) -> None:
+    client = FakeClient(clocked)
+    with pytest.raises(world.WorldError, match="100 ticks would be stepped beside the dragon"):
+        prep_view(monkeypatch, client, {**VIEW["end_dragon"], "hand": False, "ticks": 100})
+    assert not client.ticks
+
+
+def test_a_views_own_ticks_outside_the_overworld_leave_its_ramp_unknown(monkeypatch) -> None:
+    """Every view's function sets the overworld's weather; ticks stepped in another dimension
+    move it toward that weather, so the overworld's ramp is no longer known."""
+    client = FakeClient(clocked)
+    view = {**VIEW["end_city"], "hand": False, "ticks": 20}
+    assert prep_view(monkeypatch, client, view, "thunder")[1] is None and client.ticks == [20]
+    assert prep_view(monkeypatch, FakeClient(clocked), view, "clear")[1] == "clear"
+
+
+def test_an_end_view_reads_the_ends_clock_back_after_its_function(monkeypatch) -> None:
+    def script(time: int):
+        def answer_it(text: str, client: FakeClient):
+            if text == "/time of minecraft:the_end query time":
+                return answer(True, [f"Clock minecraft:the_end is at {time} tick(s)"], []), []
+            crystals = text.startswith("/execute if entity @e[type=minecraft:end_crystal,")
+            if text.startswith("/execute if entity"):
+                return counted(10 if crystals else 0), []
+            return answer(True, ["done"], []), []
+
+        return answer_it
+
+    end_city = VIEW["end_city"]
+    facts, _ = prep_view(monkeypatch, FakeClient(script(6000)), end_city)
+    assert facts["endClock"] == 6000
+    with pytest.raises(world.WorldError, match="the End's clock reads 0 after the view's function"):
+        prep_view(monkeypatch, FakeClient(script(0)), end_city)

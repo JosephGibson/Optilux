@@ -7,11 +7,12 @@ A snapshot is snapshots/<id>/, a copy of the game's saves/<world>/, beside it <i
 live world equal to its snapshot in place (D44): files that differ copied back, files the
 snapshot lacks deleted, the live tree hashed equal after. Both refuse while a game runs from
 runtime/<platform>/. `prep` builds the snapshot of a views file's world: the world prep set
-installed, the world restored, the data pack of view functions written, the game launched with
+installed, the world restored, the data pack of view functions written (the coverage views'
+too, plans/m3.md D64; an End view's setting the End's clock, D56), the game launched with
 Chunky; through the mod's `command` the gamerules, /tick freeze, a torch in the main hand, the
-pre-generation (D45, each task awaited in latest.log), then at every view the kill of
-suite.json world.setup until nothing it selects is counted, the counts and one 4K reference
-frame; the quit, then a new snapshot.
+pre-generation (D45, each task awaited in latest.log), the coverage site built and counted, then
+at every view the kill of suite.json world.setup until nothing it selects is counted, the counts
+and one 4K reference frame; the site counted again; the quit, then a new snapshot.
 """
 
 import contextlib
@@ -42,6 +43,7 @@ from optilux.session import (
     framebuffer_refusal,
     framebuffer_size,
     now,
+    shows_hand,
     view_pose,
 )
 from optilux.verbs.install import RUNTIME, Say, shown
@@ -139,8 +141,112 @@ ARENA_RADIUS = 192 + 64
 FRAMES = "frames"
 FRAME_TIMEOUT = 60.0
 # The GUI is hidden at every view but entities, which keeps the torch in frame in creative
-# (plans/m2.md D49); spectator elsewhere, as camera.place needs a spectator or a flyer.
+# (plans/m2.md D49), and a coverage view with `hand` (session.shows_hand); spectator elsewhere,
+# as camera.place needs a spectator or a flyer.
 TORCH = "minecraft:torch"
+# The End's own clock (plans/m3.md P22, D56): the End flash follows it, so an End view's function
+# sets it to the view's time and prep reads it back at the view (`time of <clock> query time`).
+END_CLOCK = "minecraft:the_end"
+CLOCK = re.compile(rf"^Clock {END_CLOCK} is at (?P<ticks>\d+) tick\(s\)$")
+
+# The coverage site (plans/m3.md D64): a floor of smooth stone at y 100 over x 306..322 and z
+# 1061..1077, near (314, 1069) in the overworld, whose views (the views file's coverage list) lie
+# over 512 blocks from every perf view; the snapshot's chunks under it reach y 83 at most (read
+# 2026-10-22), so nothing stands in its way. suite.json coverageViews' content stands on it, built
+# through `command` once Chunky has generated the area: NoAI mobs, an armor stand, an item frame,
+# a dropped item, an enchanted item (the enchanted golden apple's own glint), a sign's text, a
+# beacon on its iron base and a campfire as the particle source; the held torch is a view's `hand`.
+SITE = "x=306,y=100,z=1061,dx=16,dy=10,dz=16"  # a selector's box over the floor and above it
+FILLS = (
+    ("floor", (306, 100, 1061), (322, 100, 1077), "minecraft:smooth_stone"),
+    ("beacon base", (313, 100, 1063), (315, 100, 1065), "minecraft:iron_block"),
+)
+# Each block: its name, its position, what setblock places and the predicate `execute if block`
+# tests it by. The sign faces north (rotation 8), its text in front; the planks hold the frame.
+SIGN_TEXT = "Optilux"
+BLOCKS = (
+    ("beacon", (314, 101, 1064), "minecraft:beacon", "minecraft:beacon"),
+    ("campfire", (311, 101, 1064), "minecraft:campfire[lit=true]", "minecraft:campfire[lit=true]"),
+    ("planks", (315, 101, 1073), "minecraft:spruce_planks", "minecraft:spruce_planks"),
+    (
+        "sign",
+        (313, 101, 1072),
+        f'minecraft:oak_sign[rotation=8]{{front_text:{{messages:["{SIGN_TEXT}","coverage","",""]}}}}',
+        "minecraft:oak_sign[rotation=8]",
+    ),
+)
+SIGN = BLOCKS[3][1]
+# 26.3's answers to a block already as asked (en_us.json): the block is there, so neither fails.
+UNCHANGED = ("Could not set the block", "No blocks were filled")
+PASSED = "Test passed"
+SIGN_LINE = '{x}, {y}, {z} has the following block data: "{text}"'
+
+
+@dataclass(frozen=True)
+class Content:
+    """One entity of the coverage content: its name, type, position (a decimal, never centred by
+    the command), yaw and data beside the bench tag, and an nbt filter telling it from the site's
+    other entities of its type. Each carries PersistenceRequired, which only a mob reads; a mob is
+    NoAI and Silent, a dropped item keeps still and never despawns or is picked up."""
+
+    name: str
+    kind: str
+    pos: tuple[float, float, float]
+    yaw: float
+    data: str
+    match: str = ""
+
+    def summon(self) -> str:
+        x, y, z = self.pos
+        tags = f'Tags:["{TAG}"],PersistenceRequired:1b,Rotation:[{self.yaw:.1f}f,0.0f]'
+        return f"/summon {self.kind} {x:.1f} {y:.1f} {z:.1f} {{{tags},{self.data}}}"
+
+    def selector(self) -> str:
+        nbt = f",nbt={self.match}" if self.match else ""
+        return f"@e[type={self.kind},tag={TAG},{SITE}{nbt}]"
+
+
+MOB = "NoAI:1b,Silent:1b"
+ITEM = 'Item:{{id:"{id}",count:1}},NoGravity:1b,Age:-32768s,PickupDelay:32767s'
+CONTENT = (
+    Content("mooshroom", "minecraft:mooshroom", (308.0, 101.0, 1066.5), -90.0, MOB),
+    Content("polar bear", "minecraft:polar_bear", (307.5, 101.0, 1069.5), -70.0, MOB),
+    Content("fox", "minecraft:fox", (308.5, 101.0, 1072.5), -110.0, MOB),
+    Content(
+        "armor stand",
+        "minecraft:armor_stand",
+        (311.5, 101.0, 1072.5),
+        180.0,
+        'ShowArms:1b,equipment:{head:{id:"minecraft:iron_helmet",count:1},'
+        'chest:{id:"minecraft:diamond_chestplate",count:1}}',
+    ),
+    # Facing north on the planks behind it; Pos and block_pos given, so the frame loads at its
+    # block without "Block-attached entity at invalid position" in latest.log (BlockAttachedEntity).
+    Content(
+        "item frame",
+        "minecraft:item_frame",
+        (315.5, 101.5, 1072.5),
+        0.0,
+        'Facing:2b,Fixed:1b,Item:{id:"minecraft:diamond_sword",count:1},'
+        "Pos:[315.5d,101.5d,1072.5d],block_pos:[I;315,101,1072]",
+    ),
+    Content(
+        "dropped item",
+        "minecraft:item",
+        (317.0, 101.0, 1072.0),
+        0.0,
+        ITEM.format(id="minecraft:diamond"),
+        '{Item:{id:"minecraft:diamond"}}',
+    ),
+    Content(
+        "enchanted item",
+        "minecraft:item",
+        (318.0, 101.0, 1072.5),
+        0.0,
+        ITEM.format(id="minecraft:enchanted_golden_apple"),
+        '{Item:{id:"minecraft:enchanted_golden_apple"}}',
+    ),
+)
 
 
 class Processes(Protocol):
@@ -425,23 +531,27 @@ def pack_mcmeta(data_format: str, views_id: str) -> bytes:
 
 def view_function(view: dict, views_id: str) -> bytes:
     """A view's function: the overworld clock's time and the weather, both run in the overworld
-    (the Nether has no clock, session.set_time), then `return 1`, the only success a function
-    reports on 26.3 (P10). A time already at its value fails inside without failing the
+    (the Nether has no clock, session.set_time); an End view's also sets the End's own clock to
+    the view's time (END_CLOCK: plans/m3.md P22, D56); then `return 1`, the only success a
+    function reports on 26.3 (P10). A time already at its value fails inside without failing the
     function. LF."""
     lines = [
         f"# {FUNCTION.format(namespace=NAMESPACE, id=view['id'])} from config/views/"
         f"{views_id}.json (optilux world prep)",
         f"execute in {OVERWORLD} run time set {view['time']}",
         f"execute in {OVERWORLD} run weather {view['weather']}",
-        "return 1",
     ]
+    if view["dim"] == END:
+        lines.append(f"time of {END_CLOCK} set {view['time']}")
+    lines.append("return 1")
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
 def pack_files(views: dict, data_format: str) -> dict[str, bytes]:
-    """The data pack's files by their path under datapacks/<PACK>/."""
+    """The data pack's files by their path under datapacks/<PACK>/: a function per view, the
+    coverage views' too (plans/m3.md D64)."""
     files = {"pack.mcmeta": pack_mcmeta(data_format, views["id"])}
-    for view in views["views"]:
+    for view in record.every_view(views):
         files[f"{FUNCTIONS}/{view['id']}.mcfunction"] = view_function(view, views["id"])
     return files
 
@@ -514,14 +624,16 @@ def span(low: float, high: float) -> tuple[int, int]:
 
 def selections(views: dict) -> list[Selection]:
     """D45's tasks from the views file: one rectangle per dimension over its views' bounding box
-    plus MARGIN, in the file's order of first appearance; the End's one square per view."""
+    plus MARGIN, the coverage views among them (plans/m3.md D64), in the file's order of first
+    appearance; the End's one square per view."""
     found: list[Selection] = []
     dims: list[str] = []
-    for view in views["views"]:
+    every = record.every_view(views)
+    for view in every:
         if view["dim"] not in dims:
             dims.append(view["dim"])
     for dim in dims:
-        group = [v for v in views["views"] if v["dim"] == dim]
+        group = [v for v in every if v["dim"] == dim]
         parts = [[v] for v in group] if dim == END else [group]
         for part in parts:
             x, rx = span(min(v["x"] for v in part), max(v["x"] for v in part))
@@ -686,6 +798,75 @@ def ticks_allowed(view: dict) -> bool:
     if view["dim"] != END:
         return True
     return math.dist((view["x"], view["y"], view["z"]), ARENA) > ARENA_RADIUS
+
+
+def parse_clock(answer: dict) -> int:
+    """`time of <END_CLOCK> query time`'s ticks: "Clock minecraft:the_end is at 6000 tick(s)";
+    anything else is refused."""
+    if answer["succeeded"] is True and len(answer["messages"]) == 1:
+        m = CLOCK.match(answer["messages"][0])
+        if m:
+            return int(m.group("ticks"))
+    raise WorldError(f"the End's clock answered {answer}; fix: read the mod's command feedback")
+
+
+# The coverage site (plans/m3.md D64).
+
+
+def coverage_commands() -> list[tuple[str, str]]:
+    """The site's build in order, each as (name, command): the floor, the beacon's base, the
+    blocks, then the entities."""
+    found = [
+        (name, f"/fill {a[0]} {a[1]} {a[2]} {b[0]} {b[1]} {b[2]} {block}")
+        for name, a, b, block in FILLS
+    ]
+    found += [(name, f"/setblock {x} {y} {z} {block}") for name, (x, y, z), block, _ in BLOCKS]
+    return found + [(item.name, item.summon()) for item in CONTENT]
+
+
+def block_tests() -> list[tuple[str, str]]:
+    """Each block the site must hold, as (name, `execute if block` command): the floor's corners,
+    the beacon base's nine, then BLOCKS."""
+    (_, (x0, y0, z0), (x1, _, z1), floor), (_, (bx0, by, bz0), (bx1, _, bz1), base) = FILLS
+    spots = [("floor", (x, y0, z), floor) for x in (x0, x1) for z in (z0, z1)]
+    spots += [
+        ("beacon base", (x, by, z), base) for x in range(bx0, bx1 + 1) for z in range(bz0, bz1 + 1)
+    ]
+    spots += [(name, pos, predicate) for name, pos, _, predicate in BLOCKS]
+    return [
+        (f"{name} at {x} {y} {z}", f"/execute if block {x} {y} {z} {predicate}")
+        for name, (x, y, z), predicate in spots
+    ]
+
+
+def parse_test(answer: dict) -> bool:
+    """`execute if block`'s answer: "Test passed" (no count for a block) or the failure "Test
+    failed"; anything else is refused, never read as either."""
+    if answer["succeeded"] is True and answer["messages"] == [PASSED]:
+        return True
+    if answer["succeeded"] is False and answer["failures"] == [NO_COUNT]:
+        return False
+    raise WorldError(f"a block test answered {answer}; fix: read the mod's command feedback")
+
+
+def sign_command() -> str:
+    x, y, z = SIGN
+    return f"/data get block {x} {y} {z} front_text.messages[0]"
+
+
+def coverage_problems(found: dict) -> list[str]:
+    """What the site must hold (coverage_counts): one of each content entity, every block, the
+    sign's first line. The problems, empty when all hold."""
+    problems = [
+        f"coverage: {n} {name} counted, not 1" for name, n in found["entities"].items() if n != 1
+    ]
+    missing = [name for name, held in found["blocks"].items() if not held]
+    if missing:
+        problems.append(f"coverage: no {', '.join(missing)}")
+    x, y, z = SIGN
+    if found["sign"] != [SIGN_LINE.format(x=x, y=y, z=z, text=SIGN_TEXT)]:
+        problems.append(f"coverage: the sign reads {found['sign']}, not {SIGN_TEXT!r}")
+    return problems
 
 
 # The preparation.
@@ -881,6 +1062,79 @@ def count(p: Prep, label: str, target: str) -> int:
     return parse_count(answer)
 
 
+def at_site(p: Prep, view: dict, label: str) -> None:
+    """The camera at a coverage view, its chunks loaded, ready."""
+    pose = view_pose(view)
+    p.s.step(f"{label}: camera.place {view['id']}", lambda: p.c.camera_place(pose, PLACE_TIMEOUT))
+    p.s.step(f"{label}: ready", lambda: p.c.ready(STABLE_FRAMES, 1.0, READY_TIMEOUT))
+
+
+def place(p: Prep, name: str, text: str) -> list[str]:
+    """One build command; its answer's lines. A block already as asked (UNCHANGED) passes, any
+    other failure stops prep."""
+    answer = command(p, f"coverage: {name}", text, check=False)
+    failures = answer["failures"]
+    unchanged = bool(failures) and all(failure in UNCHANGED for failure in failures)
+    if answer["succeeded"] is not True and not unchanged:
+        raise WorldError(f"coverage: {name}: {text} did not succeed: {answer}")
+    return answer["messages"] + failures
+
+
+def coverage_counts(p: Prep, view: dict, label: str) -> dict:
+    """What the site holds, the camera at `view`: each content entity counted by its selector,
+    each block tested (block_tests), the sign's first line read back."""
+    at_site(p, view, f"coverage {label}")
+    entities = {
+        item.name: count(p, f"coverage {label}: {item.name}", item.selector()) for item in CONTENT
+    }
+    blocks = {
+        name: parse_test(command(p, f"coverage {label}: {name}", text, check=False))
+        for name, text in block_tests()
+    }
+    read = command(p, f"coverage {label}: sign text", sign_command(), check=False)
+    return {"entities": entities, "blocks": blocks, "sign": read["messages"] + read["failures"]}
+
+
+def old_content(p: Prep) -> int:
+    """The bench-tagged entities in the site's box, read once a second until all of a built
+    site's answer or POSITIONS_WAIT passes: a rebuilt site's entities load after their chunks, as
+    the entities role's do (positions); a new site answers none throughout."""
+    found = count(p, "coverage: old content", f"@e[tag={TAG},{SITE}]")
+    for _ in range(int(POSITIONS_WAIT)):
+        if found >= len(CONTENT):
+            break
+        time.sleep(1.0)
+        found = count(p, "coverage: old content", f"@e[tag={TAG},{SITE}]")
+    return found
+
+
+def build_coverage(p: Prep, view: dict) -> dict:
+    """The coverage step (plans/m3.md D64), once Chunky has generated the site, the camera at its
+    first coverage view (`view`), so its chunks are loaded: any bench-tagged entity in the site's
+    box (a rebuilt site's old content, waited for: old_content) killed, KILL_TICKS stepped after so
+    a killed mob's body goes, none left; the kill (clear_view) of what generation left there and
+    those bodies' drops; the floor,
+    blocks and entities through `command` (coverage_commands); then the counts, which must hold
+    (coverage_problems). Its facts."""
+    at_site(p, view, "coverage")
+    old = old_content(p)
+    if old:
+        if not ticks_allowed(view):
+            raise WorldError(f"{view['id']}: old content beside the End's dragon fight")
+        command(p, "coverage: kill the old content", f"/kill @e[tag={TAG},{SITE}]")
+        p.s.step(f"coverage: ticks.step {KILL_TICKS}", lambda: p.c.ticks_step(KILL_TICKS, 60.0))
+        left = count(p, "coverage: old content left", f"@e[tag={TAG},{SITE}]")
+        if left:
+            raise WorldError(f"coverage: {left} of the old content left after its kill")
+    cleared = clear_view(p, view)
+    placed = {name: place(p, name, text) for name, text in coverage_commands()}
+    counted = coverage_counts(p, view, "built")
+    problems = coverage_problems(counted)
+    if problems:
+        raise WorldError("; ".join(problems) + " (plans/m2.md section 7)")
+    return {"old": old, "kill": cleared, "placed": placed, "counts": counted}
+
+
 def positions(p: Prep, label: str) -> list[dict]:
     """The tagged mobs' names and positions near the camera, read until TAGGED_MOBS answer or
     POSITIONS_WAIT passes (their chunks' entities load after the chunks)."""
@@ -938,10 +1192,11 @@ def clear_view(p: Prep, view: dict) -> dict:
 
 
 def sweep(p: Prep, views: dict, suite: dict, previous: str) -> dict:
-    """The last kill at every view, ticks frozen unless a mob turns up: what later views' ticks
-    left near earlier ones (cave and rain lie within 110 blocks of forest_noon). The kills."""
+    """The last kill at every view, the coverage views too, ticks frozen unless a mob turns up:
+    what later views' ticks left near earlier ones (cave and rain lie within 110 blocks of
+    forest_noon). The kills."""
     found = {}
-    for view in views["views"]:
+    for view in record.every_view(views):
         vid = view["id"]
         pose = view_pose(view)
         p.s.step(f"{vid}: sweep camera.place", partial(p.c.camera_place, pose, PLACE_TIMEOUT))
@@ -995,12 +1250,21 @@ def call_function(p: Prep, vid: str, label: str) -> dict:
 def prepare_view(
     p: Prep, view: dict, ramped: str | None, previous: str | None, suite: dict, raw: Path
 ) -> tuple[dict, str | None]:
-    """A view prepared: its function, camera.place, ready, then the overworld's weather ramped
-    by ticks when it changed (with the camera already at the view: never beside the End's dragon
-    fight), the kill, the counts, one reference frame with the GUI as D49 says. The view's facts
-    and the weather the overworld is ramped to after it (None once a kill stepped ticks)."""
+    """A view prepared: its function (an End view's clock read back: END_CLOCK), camera.place,
+    ready, then the overworld's weather ramped by ticks when it changed and a coverage view's own
+    `ticks` (with the camera already at the view: never beside the End's dragon fight), the kill,
+    the counts, one reference frame with the GUI as D49 says (session.shows_hand). The view's
+    facts and the weather the overworld is ramped to after it (None once a kill stepped ticks)."""
     vid = view["id"]
     facts: dict[str, Any] = {"function": call_function(p, vid, f"{vid}: function")}
+    if view["dim"] == END:
+        asked = command(p, f"{vid}: the End's clock", f"/time of {END_CLOCK} query time", False)
+        facts["endClock"] = parse_clock(asked)
+        if facts["endClock"] != view["time"]:
+            raise WorldError(
+                f"{vid}: the End's clock reads {facts['endClock']} after the view's function, not "
+                f"{view['time']} (plans/m3.md D56)"
+            )
     capture = suite["capture"]
     pose = view_pose(view)
     placed = p.s.step(
@@ -1016,6 +1280,14 @@ def prepare_view(
         p.s.step(f"{vid}: ticks.step {n}", lambda: p.c.ticks_step(n, 60.0))
         ramped = view["weather"]
         facts["weatherTicks"] = n
+    ticks = view.get("ticks", 0)
+    if ticks:
+        if not ticks_allowed(view):
+            raise WorldError(f"{vid}: its {ticks} ticks would be stepped beside the dragon fight")
+        p.s.step(f"{vid}: ticks.step {ticks}, its own", lambda: p.c.ticks_step(ticks, 60.0))
+        facts["viewTicks"] = ticks
+        if ramped != view["weather"]:  # stepped toward the view's weather, which is not ramped
+            ramped = None
     settle = capture["visualSettleS"].get(vid, capture["visualSettleS"]["default"])
     if previous != view["dim"]:
         settle += capture["visualSettleS"]["addAfterDimensionChange"]
@@ -1035,7 +1307,7 @@ def prepare_view(
                 f"{vid}: {facts['dragons']} ender dragon(s) counted; the views say none"
             )
     p.s.step(f"{vid}: ready after the kill", lambda: p.c.ready(STABLE_FRAMES, 1.0, READY_TIMEOUT))
-    gui = vid == ENTITIES
+    gui = shows_hand(view)
     if gui:
         command(p, f"{vid}: creative", "/gamemode creative")
         p.s.step(f"{vid}: hud.set hideGui false", lambda: p.c.hud_set(hide_gui=False))
@@ -1054,11 +1326,19 @@ def prepare_view(
     return facts, ramped
 
 
-def check_counts(views: dict, done: dict, before: list[dict], after: list[dict]) -> list[str]:
+def check_counts(
+    views: dict, done: dict, before: list[dict], after: list[dict], cover: dict | None = None
+) -> list[str]:
     """What prep must count (plans/m2.md section 7): the entities view's seven tagged mobs, unmoved
-    from before the pre-generation; end_dragon's ten end crystals. The problems, empty when all
-    hold."""
+    from before the pre-generation; end_dragon's ten end crystals; with a coverage list, the
+    site's content after the sweep (`cover`: coverage_counts, plans/m3.md D64). The problems,
+    empty when all hold."""
     problems = []
+    if views.get(record.COVERAGE):
+        if cover is None:
+            problems.append("coverage: the site was not counted after the sweep")
+        else:
+            problems += coverage_problems(cover)
     ids = [v["id"] for v in views["views"]]
     if ENTITIES in ids:
         if done[ENTITIES]["tagged"] != TAGGED_MOBS:
@@ -1114,11 +1394,13 @@ def prep(root: Path, world_id: str, host: RunHost, say: Say, announce: Say) -> d
             f"{len(facts['pack']['written'])}, pruned {facts['pack']['pruned'] or 'none'})"
         )
         tasks = selections(views)
+        cover = len(views.get(record.COVERAGE, []))
         announce(
             f"launch (announced): world prep, the {platform.WORLD_PREP} set (bench + Chunky), "
-            f"world {world_id}: gamerules, /tick freeze, {len(tasks)} Chunky tasks, then at each "
-            f"of {len(views['views'])} views the kill and a 4K reference frame; input.block on "
-            "from the join to the quit (hands off the game window)"
+            f"world {world_id}: gamerules, /tick freeze, {len(tasks)} Chunky tasks, "
+            + ("the coverage site built and counted, " if cover else "")
+            + f"then at each of {len(views['views']) + cover} views the kill and a 4K reference "
+            "frame; input.block on from the join to the quit (hands off the game window)"
         )
         launched = launch.launch(root, world_id, platform.WORLD_PREP, True, {}, say, host)
         facts["launch"] = {k: launched.facts[k] for k in ("pid", "join", "mods", "uuid")}
@@ -1194,7 +1476,8 @@ def judged(facts: dict, log: Path) -> list[str]:
 def session(p: Prep, plat: platform.Platform, suite: dict, views: dict, tasks: list, raw: Path):
     """The prep session after hello, in order: the join, the render target, input.block, the
     gamerules, /tick freeze, spectator with a torch in the main hand, the tagged mobs' positions,
-    Chunky's tasks, every view, the positions again, the camera home, input.block off."""
+    Chunky's tasks, the coverage step (build_coverage), every view (the coverage views last), the
+    sweep, the site counted again, the positions again, the camera home, input.block off."""
     s, c, facts = p.s, p.c, p.facts
     s.step("world.wait", lambda: c.world_wait(WORLD_TIMEOUT))
     state = s.step(
@@ -1224,9 +1507,10 @@ def session(p: Prep, plat: platform.Platform, suite: dict, views: dict, tasks: l
                     "(plans/m2.md section 7)"
                 )
         facts["positionsBefore"] = before
+        every = record.every_view(views)
         facts["functions"] = {
             v["id"]: call_function(p, v["id"], f"{v['id']}: function (each answering)")["succeeded"]
-            for v in views["views"]
+            for v in every
         }
         frozen = {"on": True}
 
@@ -1240,14 +1524,19 @@ def session(p: Prep, plat: platform.Platform, suite: dict, views: dict, tasks: l
             if not frozen["on"]:
                 command(p, "tick freeze", "/tick freeze")
                 frozen["on"] = True
+        cover = views.get(record.COVERAGE, [])
+        if cover:
+            facts["coverage"] = build_coverage(p, cover[0])
         done: dict[str, dict] = {}
         facts["views"] = done
         ramped: str | None = None
-        previous: str | None = OVERWORLD if ENTITIES in by_id else None
-        for view in views["views"]:
+        previous: str | None = OVERWORLD if ENTITIES in by_id or cover else None
+        for view in every:
             done[view["id"]], ramped = prepare_view(p, view, ramped, previous, suite, raw)
             previous = view["dim"]
         facts["sweep"] = sweep(p, views, suite, previous or OVERWORLD)
+        counted = coverage_counts(p, cover[0], "after the sweep") if cover else None
+        facts["coverageAfter"] = counted
         after: list[dict] = []
         if ENTITIES in by_id:
             here = view_pose(by_id[ENTITIES])
@@ -1255,7 +1544,7 @@ def session(p: Prep, plat: platform.Platform, suite: dict, views: dict, tasks: l
             s.step(f"{ENTITIES}: ready again", lambda: c.ready(STABLE_FRAMES, 1.0, READY_TIMEOUT))
             after = positions(p, f"{ENTITIES}: positions after")
         facts["positionsAfter"] = after
-        problems = check_counts(views, done, before, after)
+        problems = check_counts(views, done, before, after, counted)
         if problems:
             raise WorldError("; ".join(problems) + " (plans/m2.md section 7)")
         home = view_pose(views["views"][0])
