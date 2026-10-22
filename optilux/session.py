@@ -88,6 +88,10 @@ COMMAND_TIMEOUT = 10.0
 OVERWORLD = "minecraft:overworld"
 
 
+# The only perf view with entities in sight and the GUI shown (shows_hand).
+ENTITIES = "entities"
+
+
 # Events that invalidate a capture (docs/mod-protocol.md#client-rules).
 INVALIDATING = ("hook.error", "focus.lost", "screen.opened", "reload.done", "dimension.changed")
 
@@ -441,6 +445,12 @@ class RunHost(launch.Host):
 def view_pose(view: dict) -> dict:
     keys = ("x", "y", "z", "yaw", "pitch")
     return {"dimension": view["dim"], **{key: view[key] for key in keys}}
+
+
+def shows_hand(view: dict) -> bool:
+    """plans/m2.md D49: of the perf views entities alone shows the GUI, in creative with prep's
+    torch in the main hand; a coverage view with `hand` does too (plans/m3.md D64)."""
+    return view["id"] == ENTITIES or view.get("hand") is True
 
 
 # The session.

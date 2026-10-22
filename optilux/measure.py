@@ -67,6 +67,7 @@ from optilux.session import (
     Session,
     now,
     session_start,
+    shows_hand,
     view_pose,
     visual_settle,
 )
@@ -93,9 +94,6 @@ ZIP_FILE = 0o100644 << 16
 SETTINGS = "{pack}.txt"
 # The view functions world prep writes (world.py: optilux:view/<id>, ending in `return 1`).
 FUNCTION = "/function optilux:view/{id}"
-# The only perf view that shows the GUI, in creative with prep's torch in the main hand (D49), as
-# a coverage view with `hand` does (plans/m3.md D64).
-ENTITIES = "entities"
 TICKS_TIMEOUT = 60.0
 # The timers on a timers-on variant (mod-protocol.md#commands): every pass, read 3 frames late,
 # and room for every frame from the start to the stop (a 4 s settle and a 2.5 s window at 400 fps
@@ -528,12 +526,13 @@ def captured(entry: dict, line: presentmon.Timeline, events: list[dict], validit
 
 
 def stale_functions(root: Path, views: dict) -> list[str]:
-    """The views whose function in the snapshot's data pack is not the one the views file gives
-    (world.view_function): the session calls the snapshot's, the record states the views file's
-    time and weather, so the two must agree (`world prep` writes both)."""
+    """The views, the coverage views too (plans/m3.md D64), whose function in the snapshot's data
+    pack is not the one the views file gives (world.view_function): the session calls the
+    snapshot's, the record states the views file's time and weather, so the two must agree
+    (`world prep` writes both)."""
     folder = root / record.SNAPSHOTS / views["id"] / "datapacks" / world.PACK / world.FUNCTIONS
     stale = []
-    for view in views["views"]:
+    for view in record.every_view(views):
         path = folder / f"{view['id']}.mcfunction"
         if not path.is_file() or path.read_bytes() != world.view_function(view, views["id"]):
             stale.append(view["id"])
@@ -891,12 +890,6 @@ def leave_gui(m: Measured, where: str) -> None:
     m.gui = False
 
 
-def shows_hand(view: dict) -> bool:
-    """D49: entities, and a coverage view with `hand` (plans/m3.md D64), show the GUI in creative,
-    prep's torch in the main hand."""
-    return view["id"] == ENTITIES or view.get("hand") is True
-
-
 def arrive(m: Measured, view: dict) -> bool:
     """A view reached (measurement.md#session step 5): its function, camera.place, D49's GUI and
     game mode, the overworld weather's ticks with the camera there when it changed, then a
@@ -950,6 +943,8 @@ def arrive(m: Measured, view: dict) -> bool:
     if ticks:
         s.step(f"{vid}: ticks.step {ticks}, its own", lambda: c.ticks_step(ticks, TICKS_TIMEOUT))
         m.facts.setdefault("viewTicks", []).append({"view": vid, "ticks": ticks})
+        if m.ramped != view["weather"]:  # outside the overworld: its weather moved, not ramped
+            m.ramped = None
     changed = m.previous != view["dim"]
     m.previous = view["dim"]
     return changed
