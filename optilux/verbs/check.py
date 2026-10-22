@@ -17,9 +17,9 @@ import sys
 import time
 from pathlib import Path
 
-from optilux import REPO_ROOT, offline, packzip, platform
+from optilux import REPO_ROOT, l1, offline, packzip, platform, record
 from optilux.verbs import Verb, verify
-from optilux.verbs.install import REFERENCE, TOOLS, TOOLS_DIR
+from optilux.verbs.install import REFERENCE, RUNTIME, STORE, TOOLS, TOOLS_DIR
 
 PREFIX = "optilux check L0"
 PIPELINE = "config/pipeline.json"
@@ -49,6 +49,20 @@ def configure(parser: argparse.ArgumentParser) -> None:
         help="a folder holding shaders/, a pack's .zip, or - for a zip on stdin; default: shader/",
     )
     l0.add_argument("--json", action="store_true", help="print JSON instead of text")
+    l1_parser = levels.add_parser(
+        "L1",
+        help="a dump run's prints: dump equality, the premise check, impact matrix, audit",
+        description=(
+            "Judge each candidate of a dump record against its baseline (docs/offline.md#levels, "
+            "plans/m3.md D69): dump equality and took-effect per dimension, the premise check, the "
+            "impact matrix and the pipeline audit; the closures as the record's `offline` holds "
+            "them, held against the record's own."
+        ),
+    )
+    l1_parser.add_argument(
+        "record", metavar="run", help="a dump record's run name, or - for a record on stdin"
+    )
+    l1_parser.add_argument("--json", action="store_true", help="print JSON instead of text")
 
 
 def load_pack(root: Path, named: str | None) -> offline.Pack:
@@ -315,7 +329,243 @@ def print_text(found: dict) -> None:
     print(f"{PREFIX}: {verdict} in {found['seconds']} s")
 
 
+# L1 (docs/offline.md#levels, plans/m3.md D69): optilux/l1.py on a dump record.
+
+L1_PREFIX = "optilux check L1"
+
+
+def dump_record(root: Path, named: str) -> dict:
+    """The dump record L1 judges: results/records/<run>.json, or - for one on stdin (the run's
+    own, before it is written)."""
+    if named == STDIN:
+        found = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+    else:
+        try:
+            found = record.read_record(root, named)
+        except record.RecordError as error:
+            raise l1.L1Error(str(error)) from None
+    if not isinstance(found, dict) or found.get("kind") != record.DUMP:
+        raise l1.L1Error(f"{named} is no dump record; fix: a run of kind dump (plans/m3.md D60)")
+    return found
+
+
+def variant_pack(root: Path, found: dict, variant: dict) -> offline.Pack:
+    """A variant's source as its dump loaded it: an Optilux zip kept under raw/<run>/packs/, or the
+    reference pack's pinned zip in the store; each held to the variant's sha512."""
+    packs = found.get("packs") or {}
+    if variant["pack"] in packs:
+        path = root / found["raw"] / packs[variant["pack"]]
+    else:
+        path = root / RUNTIME / platform.load(root).id / STORE / variant["pack"]
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        raise l1.L1Error(
+            f"{path}: {error}; fix: the run's raw folder, or `optilux install`"
+        ) from None
+    if hashlib.sha512(data).hexdigest() != variant["sha512"]:
+        raise l1.L1Error(f"{path} is not {variant['id']}'s zip (sha512); fix: rerun the dump")
+    return offline.from_zip(variant["pack"], data)
+
+
+def option_changes(base: dict, cand: dict) -> list[str]:
+    """The options whose effective value the candidate's reload read back unlike the baseline's."""
+    bv = (base.get("effective") or {}).get("values") or {}
+    cv = (cand.get("effective") or {}).get("values") or {}
+    return sorted(k for k in bv.keys() | cv.keys() if bv.get(k) != cv.get(k))
+
+
+def run_l1(root: Path, named: str) -> dict:
+    """`check L1`'s whole result: per candidate its dump equality, premise check and impact
+    matrix, the audit over every dump, the closures (the record's `offline` field) and whether
+    the record's own agree."""
+    started = time.perf_counter()
+    found = dump_record(root, named)
+    raw = root / found["raw"]
+    passes = json.loads((root / PIPELINE).read_text(encoding="utf-8"))["passes"]
+    base, judged = l1.equality(found)
+    variants = {v["id"]: v for v in found["variants"]}
+    taken = l1.prints(found)
+    sources = {vid: variant_pack(root, found, v) for vid, v in variants.items()}
+
+    def units(vid: str) -> dict[str, dict]:
+        return {
+            d: l1.stage_units(raw, taken[(vid, d)]["capture"], taken[(vid, d)]["files"])
+            for d in record.DIMENSIONS
+            if (vid, d) in taken
+        }
+
+    base_units: dict | None = None
+    for entry in judged:
+        vid = entry["variant"]
+        changed = l1.changed_files(sources[base], sources[vid])
+        if changed:
+            base_units = base_units if base_units is not None else units(base)
+            entry["premise"] = l1.premise(sources[base], sources[vid], units(vid), base_units)
+        else:
+            entry["premise"] = {"verdict": "no source change", "files": []}
+        if entry["premise"]["verdict"] in ("not compiled", "not executed"):
+            entry["closures"].append(
+                {
+                    "method": l1.PREMISE,
+                    "power": "close",
+                    "verdict": entry["premise"]["verdict"],
+                    "files": [f["file"] for f in entry["premise"]["files"]],
+                }
+            )
+        entry["options"] = option_changes(variants[base], variants[vid])
+        entry["impact"] = l1.impact(sources[vid], changed, entry["options"], passes)
+    properties = {}
+    for (vid, dim), dumped in taken.items():
+        name = l1.PREPROCESSED
+        if name in dumped["files"]:
+            path = raw / dumped["capture"]["dump"]["folder"] / name
+            properties[(vid, dim)] = path.read_text(encoding="utf-8", errors="replace")
+    problems = l1.audit(passes, properties)
+    offline_field = {
+        "level": "L1",
+        "baseline": base,
+        "closures": [{"variant": e["variant"], **c} for e in judged for c in e["closures"]],
+        "candidates": [
+            {
+                "variant": e["variant"],
+                "tookEffect": e["tookEffect"],
+                "undumped": e["undumped"],
+                "dimensions": {
+                    d: None
+                    if row is None
+                    else {
+                        "equal": row["equal"],
+                        "changed": len(row["changed"]),
+                        "baselineOnly": len(row["baselineOnly"]),
+                        "candidateOnly": len(row["candidateOnly"]),
+                    }
+                    for d, row in e["dimensions"].items()
+                },
+                "premise": e["premise"]["verdict"],
+                "options": e["options"],
+            }
+            for e in judged
+        ],
+        "audit": problems,
+    }
+    held = found.get("offline")
+    agrees = None if held is None else record.canonical(held) == record.canonical(offline_field)
+    return {
+        "ok": True,
+        "run": found["name"],
+        "status": found.get("status"),
+        "baseline": base,
+        "candidates": judged,
+        "audit": problems,
+        "offline": offline_field,
+        "recordAgrees": agrees,
+        "seconds": round(time.perf_counter() - started, 2),
+    }
+
+
+def stage_list(keys: list[str]) -> str:
+    """Stage files grouped by program: `basic (fsh, json, vsh)`, without patched_shaders/."""
+    grouped: dict[str, list[str]] = {}
+    for key in keys:
+        name = key.removeprefix(f"{l1.PATCHED}/")
+        program, _, ending = name.rpartition(".")
+        grouped.setdefault(program or name, []).append(ending)
+    return ", ".join(f"{p} ({' '.join(sorted(e))})" for p, e in grouped.items())
+
+
+def print_l1(result: dict) -> None:
+    print(
+        f"{L1_PREFIX}: {result['run']} ({result['status']}), baseline {result['baseline']}, "
+        f"{len(result['candidates'])} candidates"
+    )
+    short = {d: d.removeprefix("minecraft:") for d in record.DIMENSIONS}
+    for entry in result["candidates"]:
+        vid, rows = entry["variant"], entry["dimensions"]
+        equal = [short[d] for d, r in rows.items() if r is not None and r["equal"]]
+        effect = "took effect" if entry["tookEffect"] else "did not take effect"
+        same = ", ".join(equal) or "none"
+        print(f"{vid} against {result['baseline']}: {effect}; dump-equal in {same}")
+        shown_rows: dict[str, list[str]] = {}
+        for d, row in rows.items():
+            if row is None:
+                print(f"  {short[d]}: not dumped")
+                continue
+            if row["equal"]:
+                continue
+            text = (
+                f"{len(row['changed'])} stages differ: {stage_list(row['changed'])}"
+                if row["changed"]
+                else "the stages are equal"
+            )
+            for label, keys in (
+                ("only in the baseline", row["baselineOnly"]),
+                ("only in it", row["candidateOnly"]),
+            ):
+                if keys:
+                    text += f"; {label}: {stage_list(keys)}"
+            if row["renumbered"]:
+                text += "; Iris's counter numbered them otherwise"
+            shown_rows.setdefault(text, []).append(short[d])
+        for text, dims in shown_rows.items():
+            print(f"  {', '.join(dims)}: {text}")
+        premise = entry["premise"]
+        print(f"  premise: {premise['verdict']}")
+        for item in premise["files"]:
+            for kind in ("functions", "removed"):
+                for fn in item[kind]:
+                    where = "; ".join(f"{short[d]} {len(v)}" for d, v in fn["reachedIn"].items())
+                    said = "removed" if kind == "removed" else "changed"
+                    print(
+                        f"    {item['file']}: {fn['name']} {said}, defined in {fn['defined']} "
+                        f"dumped stages, reached from main in {fn['reached']}"
+                        + (f" ({where})" if where else "")
+                    )
+        for why in premise.get("undecided", []):
+            print(f"    undecided: {why}")
+        if entry["options"]:
+            print(f"  options read back otherwise: {', '.join(entry['options'])}")
+        for row in entry["impact"]:
+            print(
+                f"  impact: {row['change']} -> {len(row['programs'])} program files -> passes "
+                f"{', '.join(row['passes']) or 'none'} -> {len(row['views'])} views"
+            )
+        for closure in entry["closures"]:
+            dims = ", ".join(short[d] for d in closure.get("dimensions", [])) or "every dimension"
+            print(f"  CLOSED ({closure['method']}): {closure['verdict']}, in {dims}")
+    print(f"audit: {len(result['audit'])} problems over the dumps' passes")
+    for problem in result["audit"]:
+        print(f"FAIL {problem}")
+    agrees = {None: "holds no offline field", True: "agrees", False: "DIFFERS"}[
+        result["recordAgrees"]
+    ]
+    closures = result["offline"]["closures"]
+    print(
+        f"{L1_PREFIX}: {len(closures)} closures"
+        + (
+            f" ({'; '.join(c['variant'] + ' ' + c['verdict'] for c in closures)})"
+            if closures
+            else ""
+        )
+        + f"; the record's offline field {agrees}; in {result['seconds']} s"
+    )
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.level == "L1":
+        try:
+            result = run_l1(REPO_ROOT, args.record)
+        except (l1.L1Error, offline.L0Error, platform.PlatformError, OSError, ValueError) as error:
+            if args.json:
+                print(json.dumps({"ok": False, "error": str(error)}))
+            else:
+                print(f"{L1_PREFIX}: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(result))
+        else:
+            print_l1(result)
+        return 0 if result["recordAgrees"] is not False else 1
     try:
         found = run_l0(REPO_ROOT, args.pack)
     except (offline.L0Error, platform.PlatformError, verify.SimilarityError, OSError) as error:

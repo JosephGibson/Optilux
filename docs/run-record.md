@@ -29,7 +29,7 @@ Every input that can move a measurement; matched key by key (AGENTS.md Terms). C
 
 ## Fields
 - identity (above) and calibration id.
-- offline: closures and predictions, each with its method and evidence (offline.md#decision-powers).
+- offline: closures and predictions, each with its method and evidence (offline.md#decision-powers); a dump record's, `check L1`'s.
 - per variant, the variant fields (they may differ between compared runs): pack tree hash + effective option values read back after reload. As built for a zip pack: its sha512 and `shaders.options`' values after the start-of-run reload.
 - per capture: view, variant and its role (baseline | candidate | twin), round, sequence index, the summaries (median GPUBusy, median and p95 FrameTime, frame count, halves, PresentMode, per-pass timer medians, dropped timer frames), frame hashes, validity flags. Raw artifacts are referenced by run name and capture index.
   - As built (M2.P05): `index`, `pass` (1 the warm-up pass, 2 the schedule), `view`, `variant`, `role`, `round` (0 in the warm-up pass), `settleS`, `frames` (the mod's), `rows` (the cut's), `edges`, `gpuBusyMs`, `frameTimeMs`, `frameTimeP95Ms`, `gpuLatencyMs`, `gpuBusyOverFrameTime` (median over median), `halvesGpuBusyMs`, `halvesPct`, `presentMode`, `flags`, `valid` (measurement.md#validity); a timers-on capture's `timers` (frames, missing, topLevelMs, each pass's depth and median ms, the dropped counts, residualMs: A11's GPUBusy less the top-level sum, median over the frames).

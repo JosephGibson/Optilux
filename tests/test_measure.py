@@ -36,6 +36,7 @@ from optilux import (
     world,
 )
 from optilux.verbs import calibrate as calibrate_verb
+from optilux.verbs import check as check_verb
 from optilux.verbs import compare as compare_verb
 from optilux.verbs import install, verify
 from optilux.verbs import pack as pack_verb
@@ -3170,6 +3171,30 @@ def test_a_dump_run_copies_each_variants_print_in_each_dimension(fake_run) -> No
     assert "enableDebugOptions=true" in iris
     assert verify.record_problems(root, "m3-dump-test", path.read_bytes()) == ([], None)
     assert run_verb.summary_line(found) == "9 of 9 dumps whole, 3 distinct"
+    # `check L1` in a child process gave the record its offline field: both candidates took
+    # effect (an option; the final program's whitespace, which the fake prints as written), so
+    # nothing closed, and the edit leaves the premise check undecided.
+    held = found["offline"]
+    assert (held["level"], held["baseline"], held["closures"], held["audit"]) == (
+        "L1",
+        "head",
+        [],
+        [],
+    )
+    off, edited = held["candidates"]
+    assert (off["variant"], off["tookEffect"], off["premise"], off["options"]) == (
+        "off",
+        True,
+        "no source change",
+        ["BORDER_FOG"],
+    )
+    assert (edited["variant"], edited["tookEffect"], edited["premise"]) == (
+        "hello",
+        True,
+        "undecided",
+    )
+    again = check_verb.run_l1(root, "m3-dump-test")
+    assert again["recordAgrees"] is True and again["offline"] == held
 
 
 def test_a_dump_run_killed_mid_session_is_finished_with_the_dumps_it_took(
