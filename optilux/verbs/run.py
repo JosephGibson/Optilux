@@ -289,7 +289,8 @@ def prepare(
     pack = launch.reference_pack(plat)
     spec = checked(root, spec_in, fresh)
     views, views_path = record.load_views(root, spec.views)
-    stale = measure.stale_functions(root, views) if spec.mode is not None else []
+    walks = spec.mode is not None or spec.kind == record.DUMP  # it calls the view functions
+    stale = measure.stale_functions(root, views) if walks else []
     if stale:
         raise record.RecordError(
             f"{record.SNAPSHOTS}/{spec.views}/'s view functions differ from {record.VIEWS}/"
@@ -348,6 +349,8 @@ def prepare(
     cycle = 1
     if spec.kind == record.VISUAL:
         zips, cycle = visual_zips(root, spec), pipeline_cycle(root)
+    elif spec.kind == record.DUMP:
+        zips = visual_zips(root, spec)
     return Prepared(
         spec,
         plat,
@@ -476,7 +479,7 @@ class Runner:
         self.s: Session | None = None
         self.launched: launch.Launched | None = None
         self.m: measure.Measured | None = None
-        if self.spec.kind == record.VISUAL:
+        if self.spec.kind in (record.VISUAL, record.DUMP):
             self.found = visual_variants(ready)
         else:
             self.found = measure.variants(self.spec, ready.suite) if self.spec.mode else []
@@ -604,13 +607,13 @@ class Runner:
         the last capture wrote it, naming its variant's pack), latest.log copied to raw/ and its
         helper lines counted (a hook failure there makes the record invalid)."""
         pre = launched.prelaunch
-        last = self.iris_pack
+        last, debug = self.iris_pack, False
         if self.m is not None and self.m.last_written is not None:
-            last = self.m.last_written.pack
+            last, debug = self.m.last_written.pack, self.m.last_debug
         if last is not None:
-            pre = dataclasses.replace(
-                pre, iris=launch.iris_properties(self.ready.suite["display"], self.spec.tier, last)
-            )
+            display = self.ready.suite["display"]
+            iris = launch.iris_properties(display, self.spec.tier, last, debug)
+            pre = dataclasses.replace(pre, iris=iris)
         try:
             self.facts["readBack"] = launch.read_back(launched.game, pre)
         except (OSError, ValueError) as error:
@@ -1123,9 +1126,20 @@ def visual_before(run: Runner) -> None:
 
 
 def visual_session(run: Runner, s: Session) -> None:
+    run.m = view_session(run, s)
+    measure.visual_body(run.m)
+
+
+def dump_session(run: Runner, s: Session) -> None:
+    run.m = view_session(run, s)
+    measure.dump_body(run.m)
+
+
+def view_session(run: Runner, s: Session) -> measure.Measured:
+    """A visual or dump session's state over the spec's views (a coverage run's too, D64)."""
     ready, spec = run.ready, run.spec
-    by_id = {v["id"]: v for v in record.every_view(ready.views)}  # a coverage run's too (D64)
-    run.m = measure.Measured(
+    by_id = {v["id"]: v for v in record.every_view(ready.views)}
+    return measure.Measured(
         s=s,
         spec=spec,
         suite=ready.suite,
@@ -1140,7 +1154,6 @@ def visual_session(run: Runner, s: Session) -> None:
         marks=run.marks,
         cycle=ready.cycle,
     )
-    measure.visual_body(run.m)
 
 
 def visual_fields(run: Runner) -> dict:
@@ -1148,8 +1161,21 @@ def visual_fields(run: Runner) -> dict:
     sha512 (an Optilux variant's build and `check L0` summary beside it) and its effective options
     in full; every pair (the events that flagged one stay in raw/captures.json); a pair planned
     but not taken, or one missing a frame, a problem of the run's."""
-    spec, m, ready = run.spec, run.m, run.ready
+    spec, m = run.spec, run.m
     entries = m.entries if m is not None else []
+    planned = len(spec.view_ids) * len(run.found)
+    run.problems += measure.visual_problems(
+        entries, planned, run.status == "ok" and not run.problems
+    )
+    (run.raw / CAPTURES).write_text(json.dumps({"captures": entries}, indent=1) + "\n", "utf-8")
+    captures = [{k: v for k, v in e.items() if k != "problems"} for e in entries]
+    return {"mode": spec.mode, "variants": loaded_variants(run), "captures": captures}
+
+
+def loaded_variants(run: Runner) -> list[dict]:
+    """A visual or dump record's variants: each zip's sha512 (an Optilux variant's build and `check
+    L0` summary beside it) and its effective options in full."""
+    m, ready = run.m, run.ready
     variants = []
     for v in run.found:
         mine = m.effective.get(v.id) if m is not None else None
@@ -1171,13 +1197,48 @@ def visual_fields(run: Runner) -> dict:
                 },
             }
         )
-    planned = len(spec.view_ids) * len(run.found)
-    run.problems += measure.visual_problems(
-        entries, planned, run.status == "ok" and not run.problems
+    return variants
+
+
+# The dump body (plans/m3.md D60; optilux/measure.py's dump_body).
+
+# Each Optilux zip a dump run loads, kept beside its dumps: L1 reads the variants' sources there.
+PACKS = "packs"
+
+
+def dump_plan(run: Runner) -> str:
+    spec = run.spec
+    ids = ", ".join(f"{v.id} ({v.pack})" for v in run.found)
+    return (
+        f"a dump run of {ids} at {', '.join(spec.view_ids)}, one view per dimension, "
+        f"{spec.planned} reloads, each variant's with Iris's debug flag on and its print copied"
     )
+
+
+def dump_before(run: Runner) -> None:
+    """As visual_before, then each Optilux zip's bytes kept under raw/<run>/packs/, L1's sources."""
+    visual_before(run)
+    packs = run.raw / PACKS
+    packs.mkdir()
+    for zipped in run.ready.zips:
+        (packs / zipped["file"]).write_bytes(zipped["data"])
+
+
+def dump_fields(run: Runner) -> dict:
+    """A dump record's own fields (run-record.md#record): the variants as a visual record's; each
+    dump with its files' count, bytes and manifest; `dumps`, every manifest's files by name with the
+    sha256 dump equality compares (an ID map's own sha256 in its dump's `dated`), once however many
+    dumps share it; a dump planned but not taken, or one without its print, a run's problem."""
+    spec, m = run.spec, run.m
+    entries = m.entries if m is not None else []
+    planned = len(spec.view_ids) * len(run.found)
+    run.problems += measure.dump_problems(entries, planned, run.status == "ok" and not run.problems)
     (run.raw / CAPTURES).write_text(json.dumps({"captures": entries}, indent=1) + "\n", "utf-8")
-    captures = [{k: v for k, v in e.items() if k != "problems"} for e in entries]
-    return {"mode": spec.mode, "variants": variants, "captures": captures}
+    dumps = {e["dump"]["manifest"]: e["files"] for e in entries}
+    captures = [{k: v for k, v in e.items() if k not in ("problems", "files")} for e in entries]
+    found = {"variants": loaded_variants(run), "captures": captures, "dumps": dumps}
+    found["packs"] = {z["file"]: f"{PACKS}/{z['file']}" for z in run.ready.zips}
+    return found
 
 
 # The run.
@@ -1241,6 +1302,9 @@ def perform(
         if spec.kind == record.VISUAL:
             visual_before(run)
             run.session(visual_plan(run), lambda s: visual_session(run, s))
+        elif spec.kind == record.DUMP:
+            dump_before(run)
+            run.session(dump_plan(run), lambda s: dump_session(run, s))
         elif spec.mode is None:
             pack = f"unmodified {ready.pack.file}"
             if spec.optilux is not None:
@@ -1286,6 +1350,19 @@ def perform(
             found.update(visual_fields(run))
         except Exception as error:  # noqa: BLE001 the record is written whatever its pairs met
             run.problems.append(f"the pairs' record: {type(error).__name__}: {error}")
+        status = measured_status(run)
+        try:
+            measured_session_facts(run)
+        except Exception as error:  # noqa: BLE001 as above
+            run.problems.append(f"the session's raw files: {type(error).__name__}: {error}")
+            status = "failed" if status == "ok" else status
+        run.facts["timeSplit"] = measure.time_split(marks, time.monotonic())
+    elif spec.kind == record.DUMP:
+        found.update(variants=[], captures=[], dumps={})
+        try:
+            found.update(dump_fields(run))
+        except Exception as error:  # noqa: BLE001 the record is written whatever its dumps met
+            run.problems.append(f"the dumps' record: {type(error).__name__}: {error}")
         status = measured_status(run)
         try:
             measured_session_facts(run)
@@ -1355,6 +1432,8 @@ def check(ready: Prepared, as_json: bool) -> int:
         found["optilux"] = zipped
         if ready.spec.kind == record.VISUAL:
             found.update(zips=zips, cycle=ready.cycle, planned=ready.spec.planned)
+        if ready.spec.kind == record.DUMP:
+            found.update(zips=zips, views=list(ready.spec.view_ids), planned=ready.spec.planned)
         print(json.dumps({**found, "groups": groups, "identity": ready.identity}))
         return 0
     judged = f"; calibration {cid[:24]}... matches it key by key" if cid else ""
@@ -1372,6 +1451,11 @@ def check(ready: Prepared, as_json: bool) -> int:
             f"visual: {ready.spec.planned} reloads on {', '.join(ready.spec.view_ids)}, aligned on "
             f"cycle {ready.cycle}; zips: {json.dumps(zips)}"
         )
+    if ready.spec.kind == record.DUMP:
+        print(
+            f"dump: {ready.spec.planned} reloads, one view per dimension: "
+            f"{', '.join(ready.spec.view_ids)}; zips: {json.dumps(zips)}"
+        )
     for key, value in ready.identity.items():
         print(f"{key}: {json.dumps(value)}")  # ASCII: a piped stdout may be cp1252
     return 0
@@ -1381,6 +1465,11 @@ def summary_line(found: dict) -> str:
     """The run's outcome in one line: a measured run's captures and verdicts, a visual run's pairs,
     an acceptance run's items."""
     parts = []
+    if found.get("kind") == record.DUMP:
+        captures = found.get("captures") or []
+        valid = sum(1 for c in captures if c.get("valid"))
+        manifests = {c["dump"]["manifest"] for c in captures if "dump" in c}
+        return f"{valid} of {len(captures)} dumps whole, {len(manifests)} distinct"
     if "captures" in found:
         captures = found["captures"]
         valid = sum(1 for c in captures if c.get("valid"))
@@ -1439,11 +1528,13 @@ def run_session(
             return found, write_launch(root, found, say)
         return run_split(root, data, spec, host, machine, say, announce, held)
 
-    if spec.mode is None or displays is not None:
+    viewed = spec.kind in (record.VISUAL, record.DUMP)
+    if (spec.mode is None and not viewed) or displays is not None:
         return launches(displays)
-    # A visual run reads its frames back and needs no presented row: the displays are held on
-    # through it but never refused off (m3-capture-1's selftest captured 3840x2160 with them off).
-    with measure.displays_on(host, say, spec.kind != record.VISUAL) as held:
+    # A visual run reads its frames back and a dump run its files, and neither needs a presented
+    # row: the displays are held on through both but never refused off (m3-capture-1's selftest
+    # captured 3840x2160 with them off).
+    with measure.displays_on(host, say, not viewed) as held:
         return launches(held)
 
 

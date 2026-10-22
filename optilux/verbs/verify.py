@@ -30,7 +30,7 @@ from optilux.verbs.pack import PACK_DIR
 # run-record.md#record's budget, D51: ~200 KB a measurement or calibration record (frame-level
 # samples live in results/raw/); M1's full acceptance records run to 238 KB (F13).
 RECORD_BUDGET = 200_000
-BUDGETED = ("measurement", "calibration", record.VISUAL)
+BUDGETED = ("measurement", "calibration", record.VISUAL, record.DUMP)
 # Records written before M2.P01 added `harness` (plans/m2.md D36) hold the other ten keys.
 EARLIER_IDENTITY = tuple(key for key in record.IDENTITY_KEYS if key != "harness")
 ROLES = ("baseline", "candidate", "twin")
@@ -40,6 +40,8 @@ SPLIT_KEYS = ("session", "part", "parts", "views")
 # the frame's stamps.
 VISUAL_CAPTURE_KEYS = ("index", "view", "variant", "frames", "flags", "valid")
 FRAME_KEYS = ("path", "sha256", "frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
+# A dump record's dump (plans/m3.md D60): its dimension and variant, its files by manifest.
+DUMP_CAPTURE_KEYS = ("index", "view", "dimension", "variant", "dump", "valid")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -242,6 +244,68 @@ def visual_problems(found: dict) -> list[str]:
     return problems
 
 
+def dump_capture_problem(capture: Any, ids: set, dumps: dict) -> str | None:
+    """A dump against its record (plans/m3.md D60): its keys, a variant of the record's, a
+    dimension, its manifest a key of `dumps` whose files hash to it, its count theirs, each
+    `dated` file in them with its compared sha256 and its own."""
+    if not isinstance(capture, dict):
+        return "a dump is no object"
+    missing = [key for key in DUMP_CAPTURE_KEYS if key not in capture]
+    if missing:
+        return f"dump {capture.get('index')} lacks {', '.join(missing)}"
+    where, dump = f"dump {capture['index']}", capture["dump"]
+    if capture["variant"] not in ids or capture["dimension"] not in record.DIMENSIONS:
+        return f"{where}: variant {capture['variant']!r} in {capture['dimension']!r}"
+    if not isinstance(dump, dict) or not isinstance(dump.get("dated"), dict):
+        return f"{where}: no dump with its dated files"
+    files = dumps.get(dump.get("manifest"))
+    if not isinstance(files, dict) or record.dump_manifest(files) != dump["manifest"]:
+        return f"{where}: manifest {str(dump.get('manifest'))[:12]}... is no hash of `dumps`"
+    if dump.get("files") != len(files):
+        return f"{where}: {dump.get('files')!r} files, its manifest holds {len(files)}"
+    for name, dated in dump["dated"].items():
+        hashes = [dated.get("sha256"), dated.get("compared")] if isinstance(dated, dict) else []
+        if len(hashes) != 2 or files.get(name) != hashes[1]:
+            return f"{where}: dated {name} is not its manifest's file"
+        if not all(isinstance(h, str) and SHA256.fullmatch(h) for h in hashes):
+            return f"{where}: dated {name} without both sha256"
+    if not isinstance(capture["valid"], bool):
+        return f"{where}: valid {capture['valid']!r} is no boolean"
+    return None
+
+
+def dump_problems(found: dict) -> list[str]:
+    """A dump record's own fields (plans/m3.md D60): no mode; its variants, dumps and `dumps`, each
+    file's sha256; an ok one holds one whole dump of every variant in every dimension it took."""
+    problems = []
+    if found.get("mode") is not None:
+        problems.append(f"mode {found.get('mode')!r}: a dump run has none")
+    variants, captures, dumps = found.get("variants"), found.get("captures"), found.get("dumps")
+    if not isinstance(variants, list) or not isinstance(captures, list):
+        return [*problems, "no variants or captures list"]
+    if not isinstance(dumps, dict):
+        return [*problems, "no dumps object"]
+    hashed = all(
+        isinstance(files, dict)
+        and all(isinstance(h, str) and SHA256.fullmatch(h) for h in files.values())
+        for files in dumps.values()
+    )
+    if not hashed:
+        problems.append("`dumps` holds a file without its sha256")
+    ids = {v.get("id") for v in variants if isinstance(v, dict)}
+    found_problems = [p for c in captures if (p := dump_capture_problem(c, ids, dumps)) is not None]
+    problems += found_problems[:3]
+    if found.get("status") != "ok" or found_problems:
+        return problems
+    if not all(c["valid"] for c in captures):
+        problems.append("an ok dump record holds a dump without its print")
+    taken = [(c["dimension"], c["variant"]) for c in captures]
+    dims = list(dict.fromkeys(dim for dim, _ in taken))
+    if not taken or sorted(taken) != sorted((dim, vid) for dim in dims for vid in ids):
+        problems.append("an ok dump record lacks or repeats a variant's dump in a dimension")
+    return problems
+
+
 def record_problems(root: Path, name: str, text: bytes) -> tuple[list[str], str | None]:
     """One record's violations, and its report when it is an acceptance record over the
     budget."""
@@ -275,6 +339,8 @@ def record_problems(root: Path, name: str, text: bytes) -> tuple[list[str], str 
             problems.append(str(error))
     if kind == record.VISUAL:
         problems += visual_problems(found)
+    elif kind == record.DUMP:
+        problems += dump_problems(found)
     elif found.get("mode") is not None or kind != "acceptance":
         problems += measured_problems(root, found)
     elif "variants" in found and not isinstance(found["variants"], list):

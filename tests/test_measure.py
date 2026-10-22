@@ -3052,3 +3052,188 @@ def test_a_visual_records_pairs_must_agree_with_their_flags() -> None:
     assert verify.visual_problems({**two, "captures": [ok, other]}) == []
     assert verify.visual_problems({**two, "captures": [ok, other, ok]}) != []
     assert verify.visual_problems({**two, "status": "failed", "captures": [ok]}) == []
+
+
+# A dump run (plans/m3.md D60).
+
+HEAD = {"id": "head", "pack": "optilux@HEAD", "profile": None}
+FOG_OFF = {"id": "off", "pack": "optilux@HEAD", "profile": None, "options": {"BORDER_FOG": False}}
+DIMS = ("overworld", "the_nether", "the_end")
+
+
+def dump(**changes: Any) -> dict:
+    found = {
+        "name": "m3-dump-test",
+        "kind": "dump",
+        "views": "bench_263",
+        "world": "bench_263",
+        "variants": [HEAD, FOG_OFF, HELLO],
+        "tier": "bench",
+        "resourcePacks": record.PACK_SET,
+        "notes": "a fixture",
+    }
+    found.update(changes)
+    return found
+
+
+def test_a_dump_spec_takes_each_dimensions_first_view_and_a_reload_a_variant_there(
+    bench_root,
+) -> None:
+    root, saves = bench_root
+    optilux_tree(root)
+    spec = record.check_spec(root, dump(), PLAT, SUITE, saves, PACK)
+    assert (spec.kind, spec.mode, spec.items, spec.groups) == ("dump", None, (), ())
+    assert spec.view_ids == ("forest_noon", "nether_crimson", "end_dragon")
+    assert spec.planned == 2 + 3 * 3
+    head, off, hello = spec.variants
+    assert head["build"]["ref"] == "HEAD" and hello["build"]["commit"] is None
+    assert off["options"] == {"BORDER_FOG": False}
+
+
+DUMP_REFUSALS = [
+    ({"mode": "quick"}, "mode: no dump run's"),
+    ({"items": ["A2"], "heap": False}, "items, heap: no dump run's"),
+    ({"variants": []}, "variants lists none"),
+    ({"variants": [{**HELLO, "id": f"v{n}"} for n in range(7)]}, "plans 23 reloads (2 + 3"),
+    ({"resourcePacks": "standard"}, "every session runs the deterministic set"),
+]
+
+
+@pytest.mark.parametrize(("changes", "says"), DUMP_REFUSALS)
+def test_each_dump_refusal_names_its_fix(bench_root, changes: dict, says: str) -> None:
+    root, saves = bench_root
+    with pytest.raises(record.RecordError, match=re.escape(says)) as refused:
+        record.check_spec(root, dump(**changes), PLAT, SUITE, saves, PACK)
+    assert "fix:" in str(refused.value)
+
+
+def dumped_tree(root: Path) -> str:
+    """optilux_tree with an ID map committed, which Iris prints under Properties.store's date;
+    HEAD's sha."""
+    optilux_tree(root)
+    (root / "shader/shaders/entity.properties").write_bytes(b"entity.1 = minecraft:end_crystal\n")
+    git(root, "add", "shader/shaders/entity.properties")
+    git(root, "commit", "-q", "-m", "feat: an ID map")
+    return git(root, "rev-parse", "HEAD").stdout.strip()
+
+
+def test_a_dump_run_copies_each_variants_print_in_each_dimension(fake_run) -> None:
+    """D60 on the fake: per dimension its first view, per variant there the print's places
+    emptied, iris.properties with the debug flag on, a reload, the print copied under
+    raw/dumps/<dimension>/<variant>/ and hashed; equal prints share a manifest though the ID
+    map's date moved; the zips kept under raw/packs/; verify records passes the record."""
+    root, spec_path, fake, _ = fake_run
+    commit = dumped_tree(root)
+    spec_path.write_text(json.dumps(dump()), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    path = root / record.RECORDS / "m3-dump-test.json"
+    found = json.loads(path.read_text(encoding="utf-8"))
+    assert (found["status"], found["kind"]) == ("ok", "dump") and "mode" not in found
+    captures = found["captures"]
+    dims = [f"minecraft:{d}" for d in DIMS]
+    assert [(c["dimension"], c["variant"]) for c in captures] == [
+        (dim, variant) for dim in dims for variant in ("head", "off", "hello")
+    ]
+    assert [c["view"] for c in captures[::3]] == ["forest_noon", "nether_crimson", "end_dragon"]
+    assert all(c["valid"] for c in captures) and reloads(fake) == 1 + 9 and fake.prints == 9
+    # The start-of-run reload prints nothing (the flag off, as launched); each later reload
+    # finds the previous print, all of it removed first.
+    assert [c["emptied"] for c in captures] == [0] + [5] * 8
+    by = {(c["dimension"], c["variant"]): c["dump"] for c in captures}
+    heads = [by[(dim, "head")] for dim in dims]
+    assert len({d["manifest"] for d in heads}) == 1 and all(d["files"] == 5 for d in heads)
+    dated = [d["dated"]["patched_shaders/entity.properties"] for d in heads]
+    assert len({d["sha256"] for d in dated}) == 3 and len({d["compared"] for d in dated}) == 1
+    assert by[(dims[0], "off")]["manifest"] != heads[0]["manifest"]
+    assert by[(dims[0], "hello")]["manifest"] != heads[0]["manifest"]
+    assert len(found["dumps"]) == 3
+    raw = root / found["raw"]
+    files = found["dumps"][heads[0]["manifest"]]
+    assert sorted(files) == [
+        "original.properties",
+        "patched_shaders/001_final.fsh",
+        "patched_shaders/001_final.json",
+        "patched_shaders/entity.properties",
+        "preprocessed.properties",
+    ]
+    copy = raw / "dumps" / "the_end" / "head" / "patched_shaders" / "001_final.fsh"
+    assert hashlib.sha256(copy.read_bytes()).hexdigest() == files["patched_shaders/001_final.fsh"]
+    assert found["packs"] == {
+        f"optilux-{commit[:12]}.zip": f"packs/optilux-{commit[:12]}.zip",
+        "optilux.zip": "packs/optilux.zip",
+    }
+    hello = next(v for v in found["variants"] if v["id"] == "hello")
+    kept = (raw / found["packs"]["optilux.zip"]).read_bytes()
+    assert hashlib.sha512(kept).hexdigest() == hello["sha512"]
+    assert found["session"]["readBack"]["ok"] is True  # iris.properties with the flag, as written
+    iris = (root / "runtime" / PLAT.id / "game" / launch.IRIS).read_text(encoding="utf-8")
+    assert "enableDebugOptions=true" in iris
+    assert verify.record_problems(root, "m3-dump-test", path.read_bytes()) == ([], None)
+    assert run_verb.summary_line(found) == "9 of 9 dumps whole, 3 distinct"
+
+
+def test_a_dump_run_killed_mid_session_is_finished_with_the_dumps_it_took(
+    fake_run, monkeypatch
+) -> None:
+    root, spec_path, _, host = fake_run
+    dumped_tree(root)
+    spec_path.write_text(json.dumps(dump()), encoding="utf-8")
+    calls = {"n": 0}
+    capture = measure.dump_capture
+
+    def killed(*args: Any) -> None:
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise Killed
+        capture(*args)
+
+    monkeypatch.setattr(measure, "dump_capture", killed)
+    with pytest.raises(Killed):
+        run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    del host.table[os.getpid()]
+    host.table[os.getpid() + 1] = {"pid": os.getpid() + 1, "createTime": 9.0, "exe": "python.exe"}
+    host.game.returncode = None
+    (finished,) = measure.finish_orphans(root, host, lambda text: None)
+    assert (finished["status"], finished["kind"]) == ("aborted", "dump")
+    assert [c["variant"] for c in finished["captures"]] == ["head", "off"]
+    assert len(finished["dumps"]) == 2 and "files" not in finished["captures"][0]
+    text = (root / record.RECORDS / "m3-dump-test.json").read_bytes()
+    assert verify.record_problems(root, "m3-dump-test", text) == ([], None)
+
+
+def test_a_dump_records_dumps_must_hash_to_their_manifests() -> None:
+    files = {"patched_shaders/001_final.fsh": "a" * 64, "patched_shaders/x.properties": "b" * 64}
+    manifest = record.dump_manifest(files)
+    dated = {"patched_shaders/x.properties": {"sha256": "c" * 64, "compared": "b" * 64}}
+    dumped = {"files": 2, "bytes": 9, "manifest": manifest, "dated": dated, "folder": "dumps/x"}
+    ok = {
+        "index": 1,
+        "view": "v",
+        "dimension": "minecraft:overworld",
+        "variant": "a",
+        "dump": dumped,
+        "valid": True,
+    }
+    dumps = {manifest: files}
+    assert verify.dump_capture_problem(ok, {"a"}, dumps) is None
+    moved = {"y": dated["patched_shaders/x.properties"]}
+    cases = [
+        ({**ok, "variant": "b"}, "variant 'b' in"),
+        ({**ok, "dimension": "minecraft:moon"}, "in 'minecraft:moon'"),
+        ({**ok, "dump": {**dumped, "manifest": "e" * 64}}, "is no hash of `dumps`"),
+        ({**ok, "dump": {**dumped, "files": 3}}, "3 files, its manifest holds 2"),
+        ({**ok, "dump": {**dumped, "dated": moved}}, "dated y is not its manifest's file"),
+        ({**ok, "valid": "yes"}, "valid 'yes' is no boolean"),
+        ({key: v for key, v in ok.items() if key != "dump"}, "lacks dump"),
+    ]
+    for capture, says in cases:
+        assert says in (verify.dump_capture_problem(capture, {"a"}, dumps) or ""), says
+    other = {"patched_shaders/001_final.fsh": "d" * 64}
+    assert verify.dump_capture_problem(ok, {"a"}, {manifest: other}) is not None
+    found = {"status": "ok", "variants": [{"id": "a"}, {"id": "b"}], "captures": [ok]}
+    assert verify.dump_problems({**found, "dumps": dumps}) == [
+        "an ok dump record lacks or repeats a variant's dump in a dimension"
+    ]
+    broken = verify.dump_problems({**found, "dumps": {**dumps, "f" * 64: {"f": "x"}}})
+    assert broken[0] == "`dumps` holds a file without its sha256"
+    assert verify.dump_problems({**found, "mode": "quick", "dumps": dumps})[0].startswith("mode")

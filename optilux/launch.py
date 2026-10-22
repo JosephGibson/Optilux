@@ -57,6 +57,8 @@ UUID_NAME = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 OPTIONS = "options.txt"
 SODIUM = "config/sodium-options.json"
 IRIS = "config/iris.properties"
+# Its debug flag: Iris prints game/patched_shaders/ at each pipeline build while it is true.
+DEBUG_OPTIONS = "enableDebugOptions"
 RESOURCE_PACKS = "resourcepacks"
 SHADER_PACKS = "shaderpacks"
 # options.txt's resource packs (plans/m3.md M3.P06): the game's own pack, then each pack of the
@@ -696,11 +698,14 @@ def sodium_file(display: dict) -> tuple[str, str]:
     return text, digest
 
 
-def iris_properties(display: dict, tier: str, pack: str) -> dict[str, str]:
+def iris_properties(display: dict, tier: str, pack: str, debug: bool = False) -> dict[str, str]:
     """config/iris.properties' keys: the pack, then suite.json display.irisProperties with the
-    tier's overrides (display.irisTiers)."""
+    tier's overrides (display.irisTiers); `debug`, a dump run's reload (plans/m3.md D60), turns
+    enableDebugOptions on, which Iris re-reads at the reload (P13)."""
     found = {"shaderPack": pack, **display["irisProperties"]}
     found.update(display.get("irisTiers", {}).get(tier, {}))
+    if debug:
+        found[DEBUG_OPTIONS] = "true"
     for key, value in found.items():
         if not (value.isascii() and value.isprintable() and value == value.strip()):
             raise LaunchError(f"iris.properties {key}={value!r} would need escaping; fix: rename")
