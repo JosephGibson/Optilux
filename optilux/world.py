@@ -898,7 +898,9 @@ def command(p: Prep, label: str, text: str, check: bool = True) -> dict:
 
 
 def gamerules(p: Prep, rules: dict[str, str]) -> dict:
-    """The platform's gamerules set (P7) and each read back from the game's own answer."""
+    """The platform's gamerules set (P7) and each read back from the game's own answer. A rule
+    already at its value (a prepared snapshot's) answers the failure "Game rule <name> is already
+    set to <value>", which counts as set; any other failure stops prep."""
     values = {
         "advanceTime": "false",
         "advanceWeather": "false",
@@ -908,7 +910,11 @@ def gamerules(p: Prep, rules: dict[str, str]) -> dict:
     found = {}
     for key, value in values.items():
         name = rules[key]
-        command(p, f"gamerule {name}", f"/gamerule {name} {value}")
+        text = f"/gamerule {name} {value}"
+        answer = command(p, f"gamerule {name}", text, check=False)
+        already = answer["failures"] == [f"Game rule {name} is already set to {value}"]
+        if answer["succeeded"] is not True and not already:
+            raise WorldError(f"gamerule {name}: {text} did not succeed: {answer}")
         read = command(p, f"gamerule {name}?", f"/gamerule {name}", check=False)
         text = " ".join(read["messages"])
         if read["failures"] or not text.rstrip(".").endswith(f" {value}"):
