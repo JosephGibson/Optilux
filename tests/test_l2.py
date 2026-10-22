@@ -212,3 +212,36 @@ def test_the_pinned_rga_builds_the_hello_packs_final_program(tmp_path: Path) -> 
     assert (tmp_path / "final" / "gfx1101_isa_frag.txt").is_file()
     assert (tmp_path / "final" / "gfx1101_cfg_vert.dot").is_file()
     assert check.rga_exe(REPO_ROOT)[1] == "2.15.0.30"
+
+
+def test_rga_is_held_to_the_version_its_pin_names(monkeypatch: pytest.MonkeyPatch) -> None:
+    printed = {"text": "Radeon GPU Analyzer Version: 2.15.0.30 (10/02/2026)\n"}
+
+    def run(args: list[str], **_: object) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(args, 0, printed["text"].encode(), b"")
+
+    monkeypatch.setattr(check.subprocess, "run", run)
+    assert check.rga_exe(REPO_ROOT)[1] == PIN["printed"] == "2.15.0.30"
+    printed["text"] = "Radeon GPU Analyzer Version: 2.15.1.2 (01/01/2027)\n"
+    with pytest.raises(l2.L2Error, match=r"prints version 2\.15\.1\.2, the pin says 2\.15\.0\.30"):
+        check.rga_exe(REPO_ROOT)
+
+
+GEOMETRY = (
+    "#version 330 core\nlayout(triangles) in;\nlayout(triangle_strip, max_vertices = 3) out;\n"
+    "void main() { for (int i = 0; i < 3; i++) { gl_Position = gl_in[i].gl_Position; "
+    "EmitVertex(); } EndPrimitive(); }\n"
+)
+
+
+@needs_rga
+def test_the_pinned_rga_names_a_geometry_stage_as_l2_reads_it(tmp_path: Path) -> None:
+    """RGA 2.15 writes gfx1101_<output>_geom for --geom (and _tesc, _tese for the tessellation
+    stages, seen 2026-10-22), the names l2.NAMES maps .gsh, .tcs and .tes to."""
+    shaders = REPO_ROOT / "shader" / "shaders"
+    (tmp_path / "s.gsh").write_text(GEOMETRY, encoding="utf-8")
+    stages = {"vsh": shaders / "final.vsh", "gsh": tmp_path / "s.gsh", "fsh": shaders / "final.fsh"}
+    found = l2.analyze(RGA, l2.Program("final", stages, "1" * 64), tmp_path / "out")
+    assert (found["failed"], found["tool"]) == ({}, None), found
+    assert sorted(found["stages"]) == ["fsh", "gsh", "vsh"] and found["stages"]["gsh"]["vgprs"] > 0
+    assert l2.NAMES == {"vsh": "vert", "tcs": "tesc", "tes": "tese", "gsh": "geom", "fsh": "frag"}

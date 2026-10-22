@@ -27,6 +27,8 @@
   "source": "https://github.com/GPUOpen-Tools/radeon_gpu_analyzer/releases/download/2.15/rga-windows-x64-2.15.zip",
   "unpack": "rga-2.15",
   "exe": "rga.exe",
+  "printed": "2.15.0.30",
+  "printedWhy": "what the unpacked rga.exe --version prints (\"Radeon GPU Analyzer Version: 2.15.0.30 (10/02/2026)\", 2026-10-22); check L2 holds the exe to it, so another build unpacked into rga-2.15/ is refused",
   "why": "L2's command line (-s opengl -c gfx1101): registers, ISA, live registers and the CFG of dumped stages; explains, never gates (offline.md#tools); the newest release, 2026-10-06 (plans/m3.md D58)",
   "sha256Why": "GitHub's asset digest, equal to the sha256 of the file downloaded on 2026-10-20 (268732151 bytes)"
  },
