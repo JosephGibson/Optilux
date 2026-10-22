@@ -335,12 +335,15 @@
    "ppd": 66.2243805699035,
    "why": "32-inch 16:9 4K panel viewed from about 70 cm (user, 2026-10-06; design.md D5)"
   },
-  "tiers": {
-   "identical": "decoded pixels equal",
-   "near": "max |d| <= 1 on every pixel",
-   "close": "mean FLIP <= 0.005, p99.9 <= 0.10, SSIM >= 0.995",
-   "review": "anything else"
-  }
+  "near": {
+   "maxAbsDiff": 1
+  },
+  "close": {
+   "meanFlip": 0.005,
+   "p999Flip": 0.1,
+   "minSsim": 0.995
+  },
+  "tiersWhy": "measurement.md#visual-protocol's tiers, judged in this order by optilux/visual.py: identical (decoded pixels equal), near (no decoded value off by more than near.maxAbsDiff), close (the mean FLIP error at most close.meanFlip, its 99.9th percentile at most close.p999Flip, SSIM at least close.minSsim), review (anything else); fidelity is not identity (run-record.md#identity, suite), so a tier's change needs no recalibration"
  },
  "reference": {
   "pack": "complementary-unbound",
