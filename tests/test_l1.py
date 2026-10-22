@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from optilux import REPO_ROOT, l1, offline, record
-from optilux.verbs import verify
+from optilux.verbs import check, verify
 
 PIPELINE = json.loads((REPO_ROOT / "config" / "pipeline.json").read_text(encoding="utf-8"))
 PASSES = PIPELINE["passes"]
@@ -124,25 +124,59 @@ def test_a_candidate_equal_everywhere_did_not_take_effect_and_one_equal_somewher
     assert short["undumped"] == [DIMS[2]] and short["closures"][0]["verdict"] == "skip"
 
 
-def test_verify_records_rejudges_a_dump_equality_closure_from_the_record() -> None:
+def offline_of(found: dict, judged: list[dict]) -> dict:
+    """The offline field run_l1 writes from l1.equality's judgment, for verify records."""
+    return {
+        "level": "L1",
+        "baseline": found["variants"][0]["id"],
+        "closures": [{"variant": e["variant"], **c} for e in judged for c in e["closures"]],
+        "candidates": [
+            {"variant": e["variant"], "undumped": e["undumped"], "unprinted": [], "options": []}
+            for e in judged
+        ],
+    }
+
+
+def test_verify_records_rejudges_each_candidates_closures_from_the_record() -> None:
     prints = {(vid, dim): files() for dim in DIMS for vid in ("base", "same")}
     found = dump_record(prints, ["base", "same"])
     _, judged = l1.equality(found)
-    closures = [{"variant": "same", **c} for c in judged[0]["closures"]]
-    found["offline"] = {"level": "L1", "baseline": "base", "closures": closures}
+    found["offline"] = offline_of(found, judged)
     assert verify.dump_problems(found) == []
+    wrong = "offline: same's dump-equality closures are not its manifests'"
     forged = json.loads(json.dumps(found))
     forged["offline"]["closures"][0]["evidence"][DIMS[0]]["candidate"] = "0" * 64
-    assert verify.dump_problems(forged) == [
-        f"offline: same's dump-equal {DIMS[0]} is not its dumps' manifests"
-    ]
     narrow = json.loads(json.dumps(found))
     narrow["offline"]["closures"][0]["dimensions"] = [DIMS[0]]
-    assert "names ['minecraft:overworld'], the record dumped" in verify.dump_problems(narrow)[0]
+    missing = {**found, "offline": {**found["offline"], "closures": []}}
+    for broken in (forged, narrow, missing):
+        assert verify.dump_problems(broken) == [wrong]
+    # A changed file no print shows: no dump-equality closure may stand.
+    unprinted = json.loads(json.dumps(found))
+    unprinted["offline"]["candidates"][0]["unprinted"] = ["textures/noise.png"]
+    assert verify.dump_problems(unprinted) == [wrong]
+    unprinted["offline"]["closures"] = []
+    assert verify.dump_problems(unprinted) == []
+    selfish = json.loads(json.dumps(found))
+    selfish["offline"]["closures"][0]["variant"] = "base"
+    assert "without its method or candidate" in verify.dump_problems(selfish)[0]
+    premised = json.loads(json.dumps(found))
+    closure = {"variant": "same", "method": l1.PREMISE, "power": "close", "verdict": "not compiled"}
+    premised["offline"]["closures"].append(closure)
+    assert verify.dump_problems(premised) == []
+    premised["offline"]["candidates"][0]["options"] = ["BENCH"]
+    assert verify.dump_problems(premised) == [
+        "offline: same's premise closure despite its options or dumps"
+    ]
     del found["offline"]
     assert verify.dump_problems(found) == [
         "an ok dump record without `offline`, check L1's closures"
     ]
+
+
+def test_a_record_of_one_variant_has_no_candidate_to_judge() -> None:
+    found = dump_record({("base", dim): files() for dim in DIMS}, ["base"])
+    assert l1.equality(found) == ("base", [])
 
 
 # The premise check.
@@ -171,26 +205,49 @@ def edited(old: str, new: str) -> str:
     return STAGE.split("\n", 1)[1].replace(old, new)
 
 
+def judge(
+    cand: offline.Pack,
+    base: offline.Pack | None = None,
+    cand_units: dict | None = None,
+    base_units: dict | None = None,
+) -> dict:
+    """The premise check of `cand` against `base` (pack()), its changed files by their bytes."""
+    base = base or pack()
+
+    def raw(found: offline.Pack) -> dict[str, bytes]:
+        return {k: v.encode("utf-8") for k, v in found.files.items()}
+
+    paths = l1.changed_files(raw(base), raw(cand))
+    units = (cand_units or DUMPED, base_units or DUMPED)
+    return l1.premise(base, cand, paths, *units)
+
+
 def test_the_premise_holds_for_a_changed_function_main_reaches() -> None:
-    cand = pack(**{"lib/fog.glsl": edited("return c * ramp(1.0);", "return c * ramp(2.0);")})
-    found = l1.premise(pack(), cand, DUMPED, DUMPED)
+    found = judge(
+        pack(**{"lib/fog.glsl": edited("return c * ramp(1.0);", "return c * ramp(2.0);")})
+    )
     assert found["verdict"] == "holds" and found["undecided"] == []
     (entry,) = found["files"]
     (fn,) = entry["functions"]
     assert (fn["name"], fn["defined"], fn["reached"]) == ("lit", 3, 3)
+    # A directive moved inside a function changes that function, in place.
+    flipped = judge(pack(**{"lib/fog.glsl": edited("#ifdef BENCH", "#ifndef BENCH")}))
+    assert flipped["verdict"] == "holds"
+    assert [fn["name"] for fn in flipped["files"][0]["functions"]] == ["lit"]
 
 
 def test_the_premise_fails_for_a_function_no_dump_compiles_or_main_never_reaches() -> None:
     cand = pack(**{"lib/fog.glsl": edited("return ramp(d) * 2.0;", "return ramp(d) * 3.0;")})
-    assert l1.premise(pack(), cand, DUMPED, DUMPED)["verdict"] == "not executed"
+    assert judge(cand)["verdict"] == "not executed"
     gone = stage(STAGE.replace("float unused(float d) { return ramp(d) * 2.0; }\n", ""))
-    assert l1.premise(pack(), cand, gone, gone)["verdict"] == "not compiled"
+    assert judge(cand, cand_units=gone, base_units=gone)["verdict"] == "not compiled"
     removed = pack(
         **{"lib/fog.glsl": edited("float unused(float d) { return ramp(d) * 2.0; }", "")}
     )
-    assert l1.premise(pack(), removed, gone, DUMPED)["verdict"] == "not executed"  # baseline's
+    assert judge(removed, cand_units=gone)["verdict"] == "not executed"  # in the baseline's
 
 
+MACRO = "#define SUM(n) \\\n    for (int i = 0; i < n; i++) { acc += w(i); }\n"
 PREMISE_UNDECIDED = [
     ({"lib/fog.glsl": edited("// a comment", "// another")}, "a comment changed"),
     (
@@ -212,15 +269,66 @@ PREMISE_UNDECIDED = [
 
 @pytest.mark.parametrize(("changed", "says"), PREMISE_UNDECIDED)
 def test_the_premise_check_leaves_what_it_cannot_judge_undecided(changed: dict, says: str) -> None:
-    found = l1.premise(pack(), pack(**changed), DUMPED, DUMPED)
+    found = judge(pack(**changed))
     assert found["verdict"] == "undecided" and any(says in why for why in found["undecided"])
 
 
+def test_a_continued_defines_body_stays_in_its_directive() -> None:
+    """A #define's body over continued lines is the directive's, never a function `for` that no
+    print defines (which would read as not compiled)."""
+    unit = l1.glsl_unit(MACRO + "float w(int i) { return 1.0; }\n")
+    assert sorted(unit.functions) == ["w"] and unit.outside[0].startswith("#define SUM(n)")
+    base = pack(**{"x.glsl": MACRO})
+    cand = pack(**{"x.glsl": MACRO.replace("w(i)", "2.0 * w(i)")})
+    found = judge(cand, base)
+    assert found["verdict"] == "undecided" and "outside its functions'" in found["undecided"][0]
+
+
+def test_a_dimension_whose_print_holds_no_stage_leaves_the_premise_undecided() -> None:
+    cand = pack(**{"lib/fog.glsl": edited("return ramp(d) * 2.0;", "return ramp(d) * 3.0;")})
+    empty = {**DUMPED, DIMS[2]: {}}
+    found = judge(cand, cand_units=empty)
+    assert found["verdict"] == "undecided" and "holds no stage" in found["undecided"][0]
+
+
 def test_no_source_change_leaves_the_premise_to_the_options() -> None:
-    assert l1.premise(pack(), pack(), DUMPED, DUMPED) == {
-        "verdict": "no source change",
-        "files": [],
+    assert judge(pack()) == {"verdict": "no source change", "files": [], "undecided": []}
+    assert l1.changed_files({"a.png": b"\x89\xff"}, {"a.png": b"\x89\xfe"}) == ["a.png"]
+    assert l1.printed("lib/fog.glsl") and l1.printed("entity.properties")
+    assert not l1.printed("textures/noise.png") and not l1.printed("dimension.properties")
+
+
+def test_dead_only_accepts_a_print_that_differs_in_dead_functions_alone() -> None:
+    base = {"patched_shaders/basic.fsh": l1.glsl_unit(STAGE)}
+    dead = STAGE.replace("return ramp(d) * 2.0;", "return ramp(d) * 3.0;")
+    row = {"changed": ["patched_shaders/basic.fsh"], "baselineOnly": [], "candidateOnly": []}
+    cand = {"patched_shaders/basic.fsh": l1.glsl_unit(dead)}
+    assert l1.dead_only(base, cand, row, {"unused"}) is None
+    live = dead.replace("return c * ramp(1.0);", "return c * ramp(2.0);")
+    reason = l1.dead_only(base, {"patched_shaders/basic.fsh": l1.glsl_unit(live)}, row, {"unused"})
+    assert reason == "patched_shaders/basic.fsh: lit differs and is no dead changed function"
+    assert l1.dead_only(base, cand, {**row, "candidateOnly": ["x.fsh"]}, {"unused"}) is not None
+    json_row = {**row, "changed": ["patched_shaders/basic.json"]}
+    assert l1.dead_only(base, cand, json_row, {"unused"}) == (
+        "patched_shaders/basic.json is no stage, and differs"
+    )
+
+
+def test_a_premise_verdict_closes_only_what_the_source_alone_decides() -> None:
+    """check.premise_held_back: an option change, a dimension not dumped, or a print that differs
+    though no print defines a changed function each hold a closing verdict back."""
+    row = {"changed": [], "baselineOnly": [], "candidateOnly": [], "equal": True}
+    entry = {
+        "premise": {"verdict": "not compiled", "files": []},
+        "options": [],
+        "undumped": [],
+        "tookEffect": False,
+        "dimensions": dict.fromkeys(DIMS, row),
     }
+    assert check.premise_held_back(entry, {}, {}) is None
+    assert "options differ" in check.premise_held_back({**entry, "options": ["BENCH"]}, {}, {})
+    assert "not dumped in" in check.premise_held_back({**entry, "undumped": [DIMS[2]]}, {}, {})
+    assert "prints differ" in check.premise_held_back({**entry, "tookEffect": True}, {}, {})
 
 
 def test_a_dumped_stage_off_its_recorded_sha256_is_refused(tmp_path: Path) -> None:

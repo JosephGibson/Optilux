@@ -1392,12 +1392,14 @@ def perform(
             found.update(dump_fields(run))
         except Exception as error:  # noqa: BLE001 the record is written whatever its dumps met
             run.problems.append(f"the dumps' record: {type(error).__name__}: {error}")
-        if run.status == "ok" and not run.problems:  # closures only over a whole set of dumps
+        status = measured_status(run)
+        if status == "ok":  # closures only over a whole set of dumps of an ok session
             try:
-                found["offline"] = check_l1(root, {**found, "raw": shown(run.raw, root)})
+                held = {**found, "status": status, "raw": shown(run.raw, root)}
+                found["offline"] = check_l1(root, held)
             except record.RecordError as error:
                 run.problems.append(str(error))
-        status = measured_status(run)
+                status = "failed"
         try:
             measured_session_facts(run)
         except Exception as error:  # noqa: BLE001 as above

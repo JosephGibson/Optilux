@@ -3136,10 +3136,10 @@ def test_a_dump_run_copies_each_variants_print_in_each_dimension(fake_run) -> No
         (dim, variant) for dim in dims for variant in ("head", "off", "hello")
     ]
     assert [c["view"] for c in captures[::3]] == ["forest_noon", "nether_crimson", "end_dragon"]
-    assert all(c["valid"] for c in captures) and reloads(fake) == 1 + 9 and fake.prints == 9
-    # The start-of-run reload prints nothing (the flag off, as launched); each later reload
-    # finds the previous print, all of it removed first.
-    assert [c["emptied"] for c in captures] == [0] + [5] * 8
+    assert all(c["valid"] for c in captures) and reloads(fake) == 1 + 9 and fake.prints == 10
+    # The flag is on from the start-of-run reload (measure.TRANSFORM_CACHE), so every dump's
+    # reload finds the previous print, all of it removed first.
+    assert [c["emptied"] for c in captures] == [5] * 9
     by = {(c["dimension"], c["variant"]): c["dump"] for c in captures}
     heads = [by[(dim, "head")] for dim in dims]
     assert len({d["manifest"] for d in heads}) == 1 and all(d["files"] == 5 for d in heads)

@@ -12,12 +12,14 @@ so it runs the tests, never this verb.
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
 import subprocess
 import sys
 import time
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -365,23 +367,30 @@ def dump_record(root: Path, named: str) -> dict:
     return found
 
 
-def variant_pack(root: Path, found: dict, variant: dict) -> offline.Pack:
+def variant_pack(root: Path, found: dict, variant: dict) -> tuple[offline.Pack, dict[str, bytes]]:
     """A variant's source as its dump loaded it: an Optilux zip kept under raw/<run>/packs/, or the
-    reference pack's pinned zip in the store; each held to the variant's sha512."""
+    reference pack's pinned zip in the store; each held to the variant's sha512. The pack as
+    text, and its files under shaders/ as bytes (changes are judged on bytes)."""
     packs = found.get("packs") or {}
     if variant["pack"] in packs:
         path = root / found["raw"] / packs[variant["pack"]]
+        fix = "the run's raw folder as it wrote it"
     else:
         path = root / RUNTIME / platform.load(root).id / STORE / variant["pack"]
+        fix = "`optilux install`"
     try:
         data = path.read_bytes()
     except OSError as error:
-        raise l1.L1Error(
-            f"{path}: {error}; fix: the run's raw folder, or `optilux install`"
-        ) from None
+        raise l1.L1Error(f"{path}: {error}; fix: {fix}") from None
     if hashlib.sha512(data).hexdigest() != variant["sha512"]:
         raise l1.L1Error(f"{path} is not {variant['id']}'s zip (sha512); fix: rerun the dump")
-    return offline.from_zip(variant["pack"], data)
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        files = {
+            info.filename.removeprefix(f"{offline.SHADERS}/"): archive.read(info)
+            for info in archive.infolist()
+            if info.filename.startswith(f"{offline.SHADERS}/") and not info.is_dir()
+        }
+    return offline.from_zip(variant["pack"], data), files
 
 
 def option_changes(base: dict, cand: dict) -> list[str]:
@@ -391,50 +400,100 @@ def option_changes(base: dict, cand: dict) -> list[str]:
     return sorted(k for k in bv.keys() | cv.keys() if bv.get(k) != cv.get(k))
 
 
+def premise_held_back(entry: dict, base_units: dict, cand_units: dict) -> str | None:
+    """Why a closing premise verdict (not compiled, not executed) closes nothing, or None: the
+    check reads the source alone, so it closes only a candidate whose options equal the
+    baseline's, dumped in every dimension; not compiled only where the prints are equal too (a
+    print that differs holds something it did not see); not executed where every stage that
+    differs differs only in dead changed functions (l1.dead_only)."""
+    found = entry["premise"]
+    if entry["options"]:
+        return "its options differ from the baseline's too, which the premise check does not read"
+    if entry["undumped"]:
+        return f"it was not dumped in {', '.join(entry['undumped'])}"
+    if found["verdict"] == "not compiled" and entry["tookEffect"]:
+        return "its prints differ, though none defines a changed function"
+    if found["verdict"] == "not executed" and entry["tookEffect"]:
+        dead = {
+            fn["name"]
+            for f in found["files"]
+            for kind in ("functions", "removed")
+            for fn in f[kind]
+        }
+        for dim, row in entry["dimensions"].items():
+            if row is not None and not row["equal"]:
+                why = l1.dead_only(base_units[dim], cand_units[dim], row, dead)
+                if why is not None:
+                    return f"{dim}: {why}"
+    return None
+
+
 def run_l1(root: Path, named: str) -> dict:
-    """`check L1`'s whole result: per candidate its dump equality, premise check and impact
-    matrix, the audit over every dump, the closures (the record's `offline` field) and whether
-    the record's own agree."""
+    """`check L1`'s whole result over an ok dump record: per candidate its dump equality (no
+    closure when it changes a file no print shows), premise check (closing only as
+    premise_held_back allows) and impact matrix, the audit over the Optilux variants' dumps, the
+    closures (the record's `offline` field) and whether the record's own agree."""
     started = time.perf_counter()
     found = dump_record(root, named)
+    if found.get("status") != "ok":
+        raise l1.L1Error(
+            f"{named} ended {found.get('status')}; L1 closes only over an ok dump record's whole "
+            "set of prints; fix: a dump run that ended ok"
+        )
+    invalid = [str(c["index"]) for c in found.get("captures") or [] if not c.get("valid")]
+    if invalid:
+        raise l1.L1Error(f"dumps {', '.join(invalid)} are not whole; fix: rerun the dump")
     raw = root / found["raw"]
-    passes = json.loads((root / PIPELINE).read_text(encoding="utf-8"))["passes"]
+    spec = (root / PIPELINE).read_bytes()
+    passes = json.loads(spec.decode("utf-8"))["passes"]
     base, judged = l1.equality(found)
     variants = {v["id"]: v for v in found["variants"]}
     taken = l1.prints(found)
     sources = {vid: variant_pack(root, found, v) for vid, v in variants.items()}
+    parsed: dict[str, dict[str, dict]] = {}
 
     def units(vid: str) -> dict[str, dict]:
-        return {
-            d: l1.stage_units(raw, taken[(vid, d)]["capture"], taken[(vid, d)]["files"])
-            for d in record.DIMENSIONS
-            if (vid, d) in taken
-        }
+        if vid not in parsed:
+            parsed[vid] = {
+                d: l1.stage_units(raw, taken[(vid, d)]["capture"], taken[(vid, d)]["files"])
+                for d in record.DIMENSIONS
+                if (vid, d) in taken
+            }
+        return parsed[vid]
 
-    base_units: dict | None = None
     for entry in judged:
         vid = entry["variant"]
-        changed = l1.changed_files(sources[base], sources[vid])
-        if changed:
-            base_units = base_units if base_units is not None else units(base)
-            entry["premise"] = l1.premise(sources[base], sources[vid], units(vid), base_units)
-        else:
-            entry["premise"] = {"verdict": "no source change", "files": []}
-        if entry["premise"]["verdict"] in ("not compiled", "not executed"):
-            entry["closures"].append(
-                {
-                    "method": l1.PREMISE,
-                    "power": "close",
-                    "verdict": entry["premise"]["verdict"],
-                    "files": [f["file"] for f in entry["premise"]["files"]],
-                }
-            )
+        changed = l1.changed_files(sources[base][1], sources[vid][1])
+        entry["unprinted"] = [path for path in changed if not l1.printed(path)]
+        if entry["unprinted"]:  # no print shows it: dump equality cannot speak for it
+            entry["closures"] = [c for c in entry["closures"] if c["method"] != l1.DUMP_EQUALITY]
         entry["options"] = option_changes(variants[base], variants[vid])
-        entry["impact"] = l1.impact(sources[vid], changed, entry["options"], passes)
+        found_units = (units(base), units(vid)) if changed else ({}, {})
+        entry["premise"] = l1.premise(
+            sources[base][0], sources[vid][0], changed, found_units[1], found_units[0]
+        )
+        if entry["premise"]["verdict"] in l1.METHODS[l1.PREMISE]:
+            why = premise_held_back(entry, *found_units)
+            entry["premise"]["heldBack"] = why
+            if why is None:
+                entry["closures"].append(
+                    {
+                        "method": l1.PREMISE,
+                        "power": "close",
+                        "verdict": entry["premise"]["verdict"],
+                        "files": [f["file"] for f in entry["premise"]["files"]],
+                    }
+                )
+        try:
+            entry["impact"] = l1.impact(sources[vid][0], changed, entry["options"], passes)
+        except offline.L0Error as error:
+            entry["impact"] = [
+                {"change": f"none read ({error})", "programs": [], "passes": [], "views": []}
+            ]
     properties = {}
     for (vid, dim), dumped in taken.items():
         name = l1.PREPROCESSED
-        if name in dumped["files"]:
+        if variants[vid].get("build") is not None and name in dumped["files"]:
             path = raw / dumped["capture"]["dump"]["folder"] / name
             properties[(vid, dim)] = path.read_text(encoding="utf-8", errors="replace")
     problems = l1.audit(passes, properties)
@@ -447,6 +506,7 @@ def run_l1(root: Path, named: str) -> dict:
                 "variant": e["variant"],
                 "tookEffect": e["tookEffect"],
                 "undumped": e["undumped"],
+                "unprinted": e["unprinted"],
                 "dimensions": {
                     d: None
                     if row is None
@@ -463,10 +523,19 @@ def run_l1(root: Path, named: str) -> dict:
             }
             for e in judged
         ],
+        "pipeline": {"file": PIPELINE, "sha256": hashlib.sha256(spec).hexdigest()},
         "audit": problems,
     }
     held = found.get("offline")
-    agrees = None if held is None else record.canonical(held) == record.canonical(offline_field)
+    # The closures and the candidates' judgments; the audit follows pipeline.json, which may move.
+    judged_keys = ("level", "baseline", "closures", "candidates")
+    agrees = (
+        None
+        if held is None
+        else all(
+            record.canonical(held.get(k)) == record.canonical(offline_field[k]) for k in judged_keys
+        )
+    )
     return {
         "ok": True,
         "run": found["name"],
@@ -526,7 +595,11 @@ def print_l1(result: dict) -> None:
         for text, dims in shown_rows.items():
             print(f"  {', '.join(dims)}: {text}")
         premise = entry["premise"]
-        print(f"  premise: {premise['verdict']}")
+        held = premise.get("heldBack")
+        print(f"  premise: {premise['verdict']}" + (f", closing nothing: {held}" if held else ""))
+        if entry["unprinted"]:
+            files = ", ".join(entry["unprinted"])
+            print(f"  changed, in no print (no dump-equality closure): {files}")
         for item in premise["files"]:
             for kind in ("functions", "removed"):
                 for fn in item[kind]:
