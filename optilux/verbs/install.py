@@ -85,9 +85,12 @@ STATIC_FILE = f"{STATIC_TEXTURES}.zip"
 ASSETS = "assets/"
 MCMETA = ".mcmeta"
 TEXTURE = ".png"
-# The held animation: one frame, the first (SpriteContents.createAnimatedTexture makes no
-# animation of one frame, P11), at the frame size the provider's metadata sets, if any.
-HELD_FRAMES = [0]
+# The held animation: the first frame, twice, at the frame size the provider's metadata sets, if
+# any. Twice, as 26.3's SpriteContents.createAnimatedTexture makes no animation of a one-frame
+# list, and TextureAtlas.uploadInitialContents then writes the sprite's whole image, the strip of
+# every frame, into a texture of one frame's size: the reload fails and the game drops every
+# selected pack (m3-visual-1). Two entries keep the animated path, every frame of it frame 0.
+HELD_FRAMES = [0, 0]
 FRAME_SIZE = ("width", "height")
 STATIC_DESCRIPTION = (
     "Optilux static textures: each animated texture of the packs below held on its first frame "
