@@ -1,0 +1,28 @@
+Legend:
+  ':' means that the register is kept alive, while it is not actively being used by the current instruction
+  '^' means that the current instruction writes to the register
+  'v' means that the current instruction reads from the register
+  'x' means that the current instruction both reads from the register and writes to it
+ 'Rn': Number of live registers
+
+  Line | Rn  |      | Instruction
+--------------------------------------------------------------------------------
+     1 |   2 |   :: | s_version UC_VERSION_GFX11 | UC_VERSION_W64_BIT
+     2 |   2 |   :: | s_getpc_b64 s[2:3]
+     3 |   2 |   :: | s_set_inst_prefetch_distance 0x0003
+     4 |   2 |   :: | s_mov_b32 s7, s3
+     5 |   2 |   :: | s_load_b256 s[0:7], s[6:7], null
+     6 |   3 | ^ v: | v_cvt_i32_f32 v0, v2
+     7 |   3 | : ^v | v_cvt_i32_f32 v2, v3
+     8 |   3 | : :^ | v_mov_b32 v3, 1.0
+     9 |   3 | : :: | s_waitcnt lgkmcnt(0)
+    10 |   4 | x^x: | image_load v[0:2], [v0,v2], s[0:7]
+    11 |   4 | :::: | s_waitcnt vmcnt(0)
+    12 |   4 | vvvv | exp mrt0, v0, v1, v2, v3
+    13 |   0 |      | s_endpgm
+
+Maximum # VGPR used   4, VGPRs allocated by HW:  12 (4 requested)
+
+Architecture info:
+  VGPRs total: 256
+  VGPR allocation granularity: 12

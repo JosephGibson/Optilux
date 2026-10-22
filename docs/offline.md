@@ -1,5 +1,5 @@
 # Offline testing
-Status: rough spec, 2026-10-05; L0 built in M3.P04 (optilux/offline.py), L1 in M3.P08 (optilux/l1.py), L2 in M3, L3-L4 in M4, run with `optilux check <level>` (design.md#5-interfaces). Each method is ranked by what ALC recorded about it.
+Status: rough spec, 2026-10-05; L0 built in M3.P04 (optilux/offline.py), L1 and L2 in M3.P08 (optilux/l1.py, l2.py), L3-L4 in M4, run with `optilux check <level>` (design.md#5-interfaces). Each method is ranked by what ALC recorded about it.
 
 ## Contents
 Rules · Levels · Decision powers · ALC evidence · Tools · Costs · Verify
@@ -39,6 +39,7 @@ Cheapest first; a change climbs only as far as it needs.
   - The impact matrix: changed files -> the program files including them (Iris expands includes as text, before its preprocessor) -> pipeline.json's passes in each dimension's folder -> their views; a changed option -> the passes naming it.
   - The audit, per dump: the passes enabled there (their dimensions, no `program.<name>.enabled = false` in its preprocessed.properties); each colortex a pass samples written by an enabled pass before it, each one written read after it, each custom uniform a pass reads defined wherever it runs. Iris's own uniforms wait for a list read from its jar.
   - `run` runs it on its own record in a child process (out of `harness`), so the record's `offline` holds the closures, which `verify records` re-judges from the manifests; `check L1 <run>` says whether the record's agree.
+- L2 as built (M3.P08, `optilux check L2 <run>`, optilux/l2.py) on a dump run's record: each print's stage files grouped by program, held to their sha256, one RGA run per distinct program (`-s opengl -c gfx1101`, P7) with its ISA, statistics, live VGPRs and SGPRs and CFG under results/raw/<run>/l2/<program>-<sha>/ and l2.json beside them; per stage its VGPRs and SGPRs used, spills, scratch, ISA bytes and live-register peaks. RGA exits 0 on a failed build, so a program without its "succeeded" line or statistics is listed as a known offline failure with RGA's lines; L2 never gates.
 - Impact matrix: changed files -> includes -> passes (pipeline spec) -> views that exercise them. This replaces ALC's text-walk `deps`, which over-reported (enderBeams reached 37 files; 5 were really kept) and missed Voxy wrappers.
 
 ## Decision powers

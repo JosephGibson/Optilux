@@ -1,0 +1,106 @@
+Legend:
+  ':' means that the register is kept alive, while it is not actively being used by the current instruction
+  '^' means that the current instruction writes to the register
+  'v' means that the current instruction reads from the register
+  'x' means that the current instruction both reads from the register and writes to it
+ 'Rn': Number of live registers
+
+  Line | Rn  |                                              | Instruction
+--------------------------------------------------------------------------------
+     1 |   8 |   ::      ::::::                             | s_version UC_VERSION_GFX11 | UC_VERSION_W64_BIT
+     2 |   8 |   ::      ::::::                             | s_mov_b64 exec, -1
+     3 |  10 |   ::  ^^  ::::::                             | s_getpc_b64 s[6:7]
+     4 |   9 |   ::   :  ::::::                             | s_set_inst_prefetch_distance 0x0003
+     5 |  10 |   ::   :  :v::::^                            | s_mov_b32 s16, s11
+     6 |  10 |   ::   :  : v::::^                           | s_mov_b32 s17, s12
+     7 |  10 |   ::   :  :  v::::^                          | s_mov_b32 s18, s13
+     8 |  10 |   ::   :  :   v::::^                         | s_mov_b32 s19, s14
+     9 |   9 |   ::   :  :    :::::                         | v_mbcnt_lo_u32_b32 v1, -1, 0
+    10 |  10 | ^ :v   :  :    :::::                         | s_bfe_u32 s0, s3, lit(0x00040018)
+    11 |  10 | :^v    :  :    :::::                         | s_bfe_u32 s1, s2, lit(0x0009000c)
+    12 |  10 | :::    :  :    :::::                         | s_delay_alu instid0(VALU_DEP_1) | instskip(NEXT) | instid1(VALU_DEP_1)
+    13 |  10 | :::    :  :    :::::                         | v_mbcnt_hi_u32_b32 v1, -1, v1
+    14 |  10 | v::    :  :    :::::                         | v_mad_u32_u24 v1, s0, 64, v1
+    15 |  11 |  :: ^^ :  :    :::::                         | s_mov_b64 s[4:5], exec
+    16 |  11 |  :: :: :  :    :::::                         | s_delay_alu instid0(VALU_DEP_1)
+    17 |  11 |  v: :: :  :    :::::                         | v_cmpx_gt_u32 exec, s1, v1
+    18 |  11 |  :: :: :  :    :::::                         | s_cbranch_execz label_0160
+    19 |  12 |  :: ::^:  v    :::::                         | s_mov_b32 s6, s10
+    20 |  15 |  :: ::vv^^^^   :::::                         | s_load_b128 s[8:11], s[6:7], null
+    21 |  13 |  :: ::  ::::   v::::                         | v_add_nc_u32 v2, s15, v5
+    22 |  12 |  :: ::  ::::    ::::                         | s_waitcnt lgkmcnt(0)
+    23 |  12 |  :: ::  vvvv    ::::                         | buffer_load_b96 v[2:4], v2, s[8:11], 0
+    24 |  16 |  :: ::  ^^^^^^^^vvvv                         | s_buffer_load_b256 s[8:15], s[16:19], null
+    25 |  24 |  :: ::  ::::::::vvvv^^^^^^^^                 | s_buffer_load_b256 s[20:27], s[16:19], 0x000020
+    26 |  32 |  :: ::  ::::::::vvvv::::::::^^^^^^^^         | s_buffer_load_b256 s[28:35], s[16:19], 0x000040
+    27 |  40 |  :: ::  ::::::::vvvv::::::::::::::::^^^^^^^^ | s_buffer_load_b256 s[36:43], s[16:19], 0x000060
+    28 |  36 |  :: ::  ::::::::    :::::::::::::::::::::::: | s_waitcnt vmcnt(0) & lgkmcnt(0)
+    29 |  36 |  :: ::  ::::::::    ::::::::v::::::::::::::: | v_mul_f32 v5, s28, v2
+    30 |  35 |  :: ::  ::::::::    :::::::: v:::::::::::::: | v_mul_f32 v8, s29, v2
+    31 |  34 |  :: ::  ::::::::    ::::::::  v::::::::::::: | v_mul_f32 v6, s30, v2
+    32 |  33 |  :: ::  ::::::::    ::::::::   v:::::::::::: | v_mul_f32 v2, s31, v2
+    33 |  32 |  :: ::  ::::::::    ::::::::    :::::::::::: | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    34 |  32 |  :: ::  ::::::::    ::::::::    v::::::::::: | v_fmac_f32 v5, s32, v3
+    35 |  31 |  :: ::  ::::::::    ::::::::     v:::::::::: | v_fmac_f32 v8, s33, v3
+    36 |  30 |  :: ::  ::::::::    ::::::::      :::::::::: | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    37 |  30 |  :: ::  ::::::::    ::::::::      v::::::::: | v_fmac_f32 v6, s34, v3
+    38 |  29 |  :: ::  ::::::::    ::::::::       v:::::::: | v_fmac_f32 v2, s35, v3
+    39 |  28 |  :: ::  ::::::::    ::::::::        :::::::: | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    40 |  28 |  :: ::  ::::::::    ::::::::        v::::::: | v_fmac_f32 v5, s36, v4
+    41 |  27 |  :: ::  ::::::::    ::::::::         v:::::: | v_fmac_f32 v8, s37, v4
+    42 |  26 |  :: ::  ::::::::    ::::::::          :::::: | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    43 |  26 |  :: ::  ::::::::    ::::::::          v::::: | v_fmac_f32 v6, s38, v4
+    44 |  25 |  :: ::  ::::::::    ::::::::           v:::: | v_fmac_f32 v2, s39, v4
+    45 |  24 |  :: ::  ::::::::    ::::::::            :::: | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    46 |  24 |  :: ::  ::::::::    ::::::::            v::: | v_add_f32 v3, s40, v5
+    47 |  23 |  :: ::  ::::::::    ::::::::             v:: | v_add_f32 v4, s41, v8
+    48 |  22 |  :: ::  ::::::::    ::::::::              :: | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    49 |  22 |  :: ::  ::::::::    ::::::::              v: | v_add_f32 v5, s42, v6
+    50 |  21 |  :: ::  ::::::::    ::::::::               v | v_add_f32 v2, s43, v2
+    51 |  20 |  :: ::  ::::::::    ::::::::                 | s_delay_alu instid0(VALU_DEP_4) | instskip(SKIP_3) | instid1(VALU_DEP_4)
+    52 |  20 |  :: ::  v:::::::    ::::::::                 | v_mul_f32 v6, s8, v3
+    53 |  19 |  :: ::   v::::::    ::::::::                 | v_mul_f32 v7, s9, v3
+    54 |  18 |  :: ::    v:::::    ::::::::                 | v_mul_f32 v8, s10, v3
+    55 |  17 |  :: ::     v::::    ::::::::                 | v_mul_f32 v3, s11, v3
+    56 |  16 |  :: ::      v:::    ::::::::                 | v_fmac_f32 v6, s12, v4
+    57 |  15 |  :: ::       :::    ::::::::                 | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    58 |  15 |  :: ::       v::    ::::::::                 | v_fmac_f32 v7, s13, v4
+    59 |  14 |  :: ::        v:    ::::::::                 | v_fmac_f32 v8, s14, v4
+    60 |  13 |  :: ::         :    ::::::::                 | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    61 |  13 |  :: ::         v    ::::::::                 | v_fmac_f32 v3, s15, v4
+    62 |  12 |  :: ::              v:::::::                 | v_fmac_f32 v6, s20, v5
+    63 |  11 |  :: ::               :::::::                 | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    64 |  11 |  :: ::               v::::::                 | v_fmac_f32 v7, s21, v5
+    65 |  10 |  :: ::                v:::::                 | v_fmac_f32 v8, s22, v5
+    66 |   9 |  :: ::                 :::::                 | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    67 |   9 |  :: ::                 v::::                 | v_fmac_f32 v3, s23, v5
+    68 |   8 |  :: ::                  v:::                 | v_fma_f32 v5, s24, v2, v6
+    69 |   7 |  :: ::                   :::                 | s_delay_alu instid0(VALU_DEP_4) | instskip(NEXT) | instid1(VALU_DEP_4)
+    70 |   7 |  :: ::                   v::                 | v_fmac_f32 v7, s25, v2
+    71 |   6 |  :: ::                    v:                 | v_fma_f32 v4, s26, v2, v8
+    72 |   5 |  :: ::                     :                 | s_delay_alu instid0(VALU_DEP_4)
+    73 |   5 |  :: ::                     v                 | v_fma_f32 v2, s27, v2, v3
+    74 |   4 |  :: vv                                       | label_0160: s_and_not1_b64 exec, s[4:5], exec
+    75 |   4 |  :: ::                                       | v_mov_b32 v2, 0
+    76 |   4 |  :: ::                                       | v_mov_b32 v4, 0
+    77 |   4 |  :: ::                                       | v_mov_b32 v7, 0
+    78 |   4 |  :: ::                                       | v_mov_b32 v5, 0
+    79 |   4 |  :: vv                                       | s_mov_b64 exec, s[4:5]
+    80 |   3 | ^:v                                          | s_bfe_u32 s0, s2, lit(0x00090016)
+    81 |   4 | ::^^                                         | s_mov_b64 s[2:3], exec
+    82 |   4 | v:::                                         | v_cmpx_gt_u32 exec, s0, v1
+    83 |   3 |  :::                                         | s_cbranch_execz label_0198
+    84 |   3 |  :::                                         | exp prim, v0, off, off, off
+    85 |   3 |  :::                                         | label_0198: s_waitcnt expcnt(0)
+    86 |   3 |  :vv                                         | s_mov_b64 exec, s[2:3]
+    87 |   3 |  v::                                         | v_cmp_gt_u32 vcc, s1, v1
+    88 |   2 |   vv                                         | s_and_b64 exec, s[2:3], vcc
+    89 |   0 |                                              | s_cbranch_execz label_01B4
+    90 |   0 |                                              | exp pos0, v5, v7, v4, v2
+    91 |   0 |                                              | label_01B4: s_waitcnt expcnt(0)
+    92 |   0 |                                              | s_endpgm
+
+Maximum # SGPR used  40, SGPRs allocated :  44
+
+Architecture info:
+  SGPRs total: 106
