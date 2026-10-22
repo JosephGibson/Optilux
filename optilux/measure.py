@@ -138,8 +138,16 @@ VISUAL_CAPTURE_TIMEOUT = READY_TIMEOUT + 30.0
 # is never rewritten, so the run empties both places before each reload: a file there after it
 # is that reload's. Copied under raw/<run>/dumps/<dimension>/<variant>/ by the same names.
 PATCHED = "patched_shaders"
+STAGE_NAME = re.compile(rf"{PATCHED}/\d{{3}}_.+\.(?:vsh|tcs|tes|gsh|fsh|csh)")
 GAME_PROPERTIES = ("preprocessed.properties", "original.properties")
 DUMPS = "dumps"
+# TransformPatcher caches each program's transform (1.11.7, javap: a static LRUCache of 400 keyed
+# by its sources and parameters, never cleared) and reads the flag only on a miss, for the print's
+# style (INDENTED, uncalled functions kept, P13). A program first built with the flag off would
+# print its flag-off transform at every later dump, so the run turns the flag on from the
+# start-of-run reload: every transform of a variant it loads is made under it (selftest's reload of
+# the launch's reference pack excepted).
+TRANSFORM_CACHE = 400
 # Properties.store's first line, the print's date (`#Wed Oct 07 01:52:48 ADT 2026`): the one part
 # of a dump that moves between two prints of a pack, so dump equality compares the file without it.
 STORE_DATE = re.compile(rb"#[A-Z][a-z]{2} [A-Z][a-z]{2} \d\d \d\d:\d\d:\d\d [^\r\n]+ \d{4}\r?\n")
@@ -1215,9 +1223,10 @@ def visual_problems(entries: list[dict], planned: int, laps_done: bool) -> list[
 
 def dump_body(m: Measured) -> None:
     """A dump session after hello (plans/m3.md D60): the session start as a visual run's, the first
-    variant's files written before the start-of-run reload with Iris's debug flag off, as launched;
-    then per dimension its first view (record.dump_views), reached as a measured pass reaches it
-    (arrive), and there per variant its dump (dump_capture); input.block off. No PresentMon."""
+    variant's files written before the start-of-run reload with Iris's debug flag already on, as
+    TRANSFORM_CACHE says; then per dimension its first view (record.dump_views), reached as a
+    measured pass reaches it (arrive), and there per variant its dump (dump_capture); input.block
+    off. No PresentMon."""
     s, c = m.s, m.c
     s.stop_on = ends
     m.mark("start")
@@ -1231,7 +1240,7 @@ def dump_body(m: Measured) -> None:
         m.display_mode,
         m.suite["display"]["resolution"],
         start,
-        lambda: m.write_files(base),
+        lambda: m.write_files(base, debug=True),
     )
     m.reloads = record.ACCEPTANCE_RELOADS
     m.check_options(base, start["options"])
@@ -1329,9 +1338,9 @@ def dump_capture(m: Measured, view: dict, variant: Variant) -> None:
         raise RunError(f"{label}: the camera left the view: {moved}")
     folder = s.raw / DUMPS / view["dim"].removeprefix("minecraft:") / variant.id
     files, problems = copy_dump(game, folder)
-    programs = [name for name in files if name.startswith(f"{PATCHED}/")]
+    programs = [name for name in files if STAGE_NAME.fullmatch(name)]
     if not programs:
-        problems.append(f"{label}: Iris printed nothing into {PATCHED}/ at the reload")
+        problems.append(f"{label}: Iris printed no stage into {PATCHED}/ at the reload")
     compared = {name: f["compared"] for name, f in files.items()}
     entry = {
         "index": m.index,
@@ -1356,7 +1365,7 @@ def dump_capture(m: Measured, view: dict, variant: Variant) -> None:
         "files": compared,
     }
     s.say(
-        f"{label}: {len(files)} files ({len(programs)} in {PATCHED}/), manifest "
+        f"{label}: {len(files)} files ({len(programs)} stages), manifest "
         f"{entry['dump']['manifest'][:12]}..."
     )
     m.entries.append(entry)
@@ -1758,6 +1767,7 @@ def orphan_record(root: Path, raw: Path, journal: dict, done: dict, complete: bo
             ],
             captures=captures,
             dumps={e["dump"]["manifest"]: e["files"] for e in entries if "files" in e},
+            packs={p.name: f"packs/{p.name}" for p in sorted((raw / "packs").glob("*.zip"))},
         )
     if spec["kind"] == "acceptance":
         part = journal.get("split")

@@ -45,7 +45,40 @@ METHODS = {DUMP_EQUALITY: ("no effect", "skip"), PREMISE: ("not compiled", "not 
 TOKEN = re.compile(r"[A-Za-z_]\w*|\d[\w.]*|\S")
 IDENT = re.compile(r"[A-Za-z_]\w*")
 DEFINED = re.compile(r"^\s*#\s*define\s+(?P<name>\w+)", re.M)
-NOT_CALLS = frozenset(("if", "for", "while", "switch", "return", "layout", "do"))
+# A line ending in a backslash continues on the next (a #define's body).
+CONTINUED = re.compile(r"\\[ \t]*\r?\n")
+# Names no function takes: GLSL's statement and declaration keywords (a call's name never is one).
+KEYWORDS = frozenset(
+    (
+        "if",
+        "else",
+        "for",
+        "while",
+        "do",
+        "switch",
+        "case",
+        "default",
+        "return",
+        "break",
+        "continue",
+        "discard",
+        "layout",
+        "struct",
+        "uniform",
+        "in",
+        "out",
+        "inout",
+        "const",
+    )
+)
+# The files a print shows (printed): GLSL by its ending, and the properties files Iris prints.
+GLSL_ENDINGS = (".glsl", *(f".{e}" for e in offline.STAGES))
+PRINTED_PROPERTIES = (
+    "shaders.properties",
+    "block.properties",
+    "item.properties",
+    "entity.properties",
+)
 # The audit: buffers a pass samples or writes (Iris's colortex aliases), and Iris's stage order.
 BUFFER = re.compile(r"colortex\d+|gcolor|gdepth|gnormal|composite|gaux[1-4]|shadowcolor[01]?")
 SCREEN = "screen"
@@ -127,9 +160,9 @@ def equality(found: dict) -> tuple[str, list[dict]]:
     """The baseline and each candidate's dump equality per dimension the baseline was dumped in:
     the comparison, the skips and, equal everywhere, the closure."""
     variants = [v["id"] for v in found.get("variants") or []]
-    if len(variants) < 2:
-        raise L1Error("the record holds one variant, and L1 judges candidates; fix: a candidate")
-    base, *candidates = variants
+    if not variants:
+        raise L1Error("the record holds no variant; fix: a dump run that dumped one")
+    base, *candidates = variants  # one variant: a print for L2, no candidate to judge
     taken = prints(found)
     dims = [d for d in record.DIMENSIONS if (base, d) in taken]
     if not dims:
@@ -189,43 +222,57 @@ def equality(found: dict) -> tuple[str, list[dict]]:
 
 @dataclass
 class Unit:
-    """A GLSL text's functions: each name with its definitions' tokens (signature and body) and
-    the names its bodies call; whether its braces balance (else nothing in it is judged)."""
+    """A GLSL text's functions: each name with its definitions' tokens (signature and body, its
+    directive lines in place) and the names its bodies call; the tokens outside every definition,
+    in order; whether its braces balance (else nothing in it is judged)."""
 
     functions: dict[str, list[str]] = field(default_factory=dict)
     calls: dict[str, set[str]] = field(default_factory=dict)
+    outside: list[str] = field(default_factory=list)
     balanced: bool = True
 
 
+def tokens_of(source: str) -> list[str]:
+    """A GLSL text's tokens: comments dropped, a line ending in a backslash joined to the next
+    (a #define's body stays in its directive), each directive line one token in its place (its
+    words single-spaced), every other line's tokens."""
+    text = CONTINUED.sub(" ", offline.COMMENT.sub(" ", source))
+    tokens: list[str] = []
+    for line in offline.lines_of(text):
+        if line.lstrip().startswith("#"):
+            tokens.append(" ".join(line.split()))
+        else:
+            tokens += TOKEN.findall(line)
+    return tokens
+
+
 def glsl_unit(source: str) -> Unit:
-    """The functions of a GLSL text: comments and directive lines dropped, then at depth 0 each
-    `{` after a `)` whose `(` follows a name is a definition from the token before that name to
-    its `}`."""
-    text = offline.COMMENT.sub(" ", source)
-    lines = [line for line in offline.lines_of(text) if not line.lstrip().startswith("#")]
-    tokens = TOKEN.findall("\n".join(lines))
+    """The functions of a GLSL text (tokens_of): at depth 0 each `{` right after a `)` whose `(`
+    follows a name that is no keyword is a definition, from the token before that name to its
+    `}`. Directive tokens open and close nothing."""
+    tokens = tokens_of(source)
     unit = Unit()
-    depth, start = 0, 0
-    i = 0
+    depth, start, i, last = 0, 0, 0, 0
     while i < len(tokens):
         word = tokens[i]
         if word == "{" and depth == 0 and i and tokens[i - 1] == ")":
             opened = matching_paren(tokens, i - 1)
-            if opened is not None and opened > 0 and IDENT.fullmatch(tokens[opened - 1]):
-                name = tokens[opened - 1]
+            name = tokens[opened - 1] if opened else ""
+            if IDENT.fullmatch(name) and name not in KEYWORDS:
                 end = matching_brace(tokens, i)
                 if end is None:
                     unit.balanced = False
                     return unit
-                head = max(start, opened - 2)
+                head = max(start, (opened or 0) - 2)
+                unit.outside += tokens[last:head]
                 unit.functions.setdefault(name, []).append(" ".join(tokens[head : end + 1]))
-                body = tokens[i + 1 : end]
+                body = [t for t in tokens[i + 1 : end] if not t.startswith("#")]
                 unit.calls.setdefault(name, set()).update(
                     t
                     for n, t in enumerate(body[:-1])
-                    if IDENT.fullmatch(t) and body[n + 1] == "(" and t not in NOT_CALLS
+                    if IDENT.fullmatch(t) and body[n + 1] == "(" and t not in KEYWORDS
                 )
-                i, start = end + 1, end + 1
+                i = start = last = end + 1
                 continue
         if word == "{":
             depth += 1
@@ -234,9 +281,10 @@ def glsl_unit(source: str) -> Unit:
             if depth < 0:
                 unit.balanced = False
                 return unit
-        elif word == ";" and depth == 0:
+        elif (word == ";" or word.startswith("#")) and depth == 0:
             start = i + 1
         i += 1
+    unit.outside += tokens[last:]
     unit.balanced = depth == 0
     return unit
 
@@ -282,13 +330,18 @@ def reachable(unit: Unit, entry: str = "main") -> set[str]:
 # The premise check.
 
 
-def changed_files(base: offline.Pack, cand: offline.Pack) -> list[str]:
-    """The files under shaders/ the candidate changes, adds or removes, by path."""
-    return sorted(
-        path
-        for path in base.files.keys() | cand.files.keys()
-        if base.files.get(path) != cand.files.get(path)
-    )
+def changed_files(base: Mapping[str, bytes], cand: Mapping[str, bytes]) -> list[str]:
+    """The files under shaders/ the candidate changes, adds or removes, by path, by their bytes."""
+    return sorted(path for path in base.keys() | cand.keys() if base.get(path) != cand.get(path))
+
+
+def printed(path: str) -> bool:
+    """Whether a print shows what the file holds: GLSL (a stage or an include, whose text Iris
+    compiles), shaders.properties (game/preprocessed.properties) or an ID map (its patched copy).
+    A texture, its .mcmeta, a lang file or dimension.properties reach no print, so dump equality
+    cannot speak for a change to one (offline.md#levels)."""
+    pure = PurePosixPath(path)
+    return pure.suffix in GLSL_ENDINGS or path in PRINTED_PROPERTIES
 
 
 def changed_functions(
@@ -305,23 +358,11 @@ def changed_functions(
     removed = sorted(n for n in bu.functions if n not in cu.functions)
     if offline.COMMENT.findall(base or "") != offline.COMMENT.findall(cand or ""):
         return changed, removed, "a comment changed (Iris reads directives in comments)"
-    if outside_tokens(base or "", bu) != outside_tokens(cand or "", cu):
+    if bu.outside != cu.outside:
         return changed, removed, "text changed outside its functions'"
     if not changed and not removed:
         return changed, removed, "only its whitespace changed"
     return changed, removed, None
-
-
-def outside_tokens(source: str, unit: Unit) -> list[str]:
-    """A file's tokens and directive lines with its function definitions taken out."""
-    lines = offline.lines_of(offline.COMMENT.sub(" ", source))
-    directives = [line.strip() for line in lines if line.lstrip().startswith("#")]
-    code = [line for line in lines if not line.lstrip().startswith("#")]
-    rest = " ".join(TOKEN.findall("\n".join(code)))
-    for definitions in unit.functions.values():
-        for definition in definitions:
-            rest = rest.replace(definition, " ", 1)
-    return [*directives, *rest.split()]
 
 
 def stage_units(raw: Path, capture: dict, files: Mapping[str, str]) -> dict[str, Unit]:
@@ -346,26 +387,32 @@ def stage_units(raw: Path, capture: dict, files: Mapping[str, str]) -> dict[str,
 def premise(
     base: offline.Pack,
     cand: offline.Pack,
+    paths: list[str],
     cand_units: Mapping[str, Mapping[str, Unit]],
     base_units: Mapping[str, Mapping[str, Unit]],
 ) -> dict:
-    """The premise check of one candidate (D69): its changed files and functions, and per changed
-    function the dumped stages (by dimension) that define it and those whose main reaches it;
-    the verdict: no source change, holds, not compiled, not executed, or undecided (why)."""
-    paths = changed_files(base, cand)
+    """The premise check of one candidate (D69) over the files it changes (`paths`): the functions
+    each changes, and per changed function the dumped stages (by dimension) that define it and
+    those whose main reaches it; the verdict: holds, not compiled, not executed, or undecided
+    (why). The caller decides whether a verdict closes (premise_closes)."""
     if not paths:
-        return {"verdict": "no source change", "files": []}
+        return {"verdict": "no source change", "files": [], "undecided": []}
     macros = {
         m["name"]
         for text in (*base.files.values(), *cand.files.values())
         for m in DEFINED.finditer(text)
     }
     files, undecided = [], []
+    for units in (cand_units, base_units):
+        if not units or any(not us for us in units.values()):
+            undecided.append("a dimension's print holds no stage")
+        if any(not u.balanced for us in units.values() for u in us.values()):
+            undecided.append("a dumped stage does not parse")
     defined_any = reached_any = False
     for path in paths:
-        if PurePosixPath(path).suffix not in (".glsl", *(f".{e}" for e in offline.STAGES)):
+        if PurePosixPath(path).suffix not in GLSL_ENDINGS:
             files.append({"file": path, "functions": [], "removed": []})
-            undecided.append(f"{path} is no GLSL (dump equality judges it)")
+            undecided.append(f"{path} is no GLSL")
             continue
         changed, removed, why = changed_functions(base.files.get(path), cand.files.get(path))
         entry: dict = {"file": path, "functions": [], "removed": []}
@@ -406,6 +453,29 @@ def premise(
     else:
         verdict = "not compiled"
     return {"verdict": verdict, "files": files, "undecided": undecided}
+
+
+def dead_only(
+    base_units: Mapping[str, Unit], cand_units: Mapping[str, Unit], row: dict, dead: set[str]
+) -> str | None:
+    """Why a print's difference from the baseline's is not just the dead functions `dead` (None
+    when it is): a stage only one side has, a differing file that is no stage, or a differing
+    stage whose other text, or a function main reaches, differs too."""
+    if row["baselineOnly"] or row["candidateOnly"]:
+        return "a stage only one print has"
+    for key in row["changed"]:
+        bu, cu = base_units.get(key), cand_units.get(key)
+        if bu is None or cu is None:
+            return f"{key} is no stage, and differs"
+        if bu.outside != cu.outside:
+            return f"{key} differs outside its functions"
+        live = reachable(cu)
+        for name in bu.functions.keys() | cu.functions.keys():
+            if bu.functions.get(name) != cu.functions.get(name) and (
+                name not in dead or name in live or name in reachable(bu)
+            ):
+                return f"{key}: {name} differs and is no dead changed function"
+    return None
 
 
 # The impact matrix and the audit.

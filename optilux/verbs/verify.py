@@ -307,37 +307,70 @@ def dump_problems(found: dict) -> list[str]:
     return problems + offline_problems(found, dims)
 
 
+def expected_equality(base: Any, vid: Any, manifests: dict, dims: list[str]) -> dict | None:
+    """The dump-equality closure a candidate's manifests give (l1.equality's, from the record
+    alone): no effect when it equals the baseline in every dimension the baseline was dumped in,
+    skip where it equals it in some, else none."""
+    equal = [
+        d for d in dims if (vid, d) in manifests and manifests[(vid, d)] == manifests[(base, d)]
+    ]
+    if not equal:
+        return None
+    whole = all((vid, d) in manifests for d in dims)
+    return {
+        "variant": vid,
+        "method": l1.DUMP_EQUALITY,
+        "power": "close",
+        "verdict": "no effect" if whole and len(equal) == len(dims) else "skip",
+        "dimensions": equal,
+        "evidence": {
+            d: {"baseline": manifests[(base, d)], "candidate": manifests[(vid, d)]} for d in equal
+        },
+    }
+
+
 def offline_problems(found: dict, dims: list[str]) -> list[str]:
-    """An ok dump record's `offline` field (offline.md#rules), its dump-equality closures re-judged
-    from the record alone: each names its method and verdict, its evidence the manifests of the
-    baseline's and the candidate's dumps in each dimension it names, equal; a `no effect` closure
-    names every dimension the record dumped."""
+    """An ok dump record's `offline` field (offline.md#rules), re-judged from the record alone:
+    one candidate entry per variant but the baseline; each candidate's dump-equality closures
+    exactly the one its manifests give (none when it changed a file no print shows, its
+    `unprinted`); a premise closure only for a candidate of the baseline's options dumped in every
+    dimension, a `not compiled` one only where its prints equal the baseline's."""
     held = found.get("offline")
     if not isinstance(held, dict) or not isinstance(held.get("closures"), list):
         return ["an ok dump record without `offline`, check L1's closures"]
-    base = found["variants"][0].get("id") if found["variants"] else None
+    ids = [v.get("id") for v in found["variants"]]
+    base = ids[0] if ids else None
     if held.get("level") != "L1" or held.get("baseline") != base:
         return [f"offline: level {held.get('level')!r}, baseline {held.get('baseline')!r}"]
+    candidates = {c.get("variant"): c for c in held.get("candidates") or [] if isinstance(c, dict)}
+    if sorted(candidates, key=str) != sorted(ids[1:], key=str):
+        return [f"offline: candidates {sorted(candidates, key=str)}, the record's {ids[1:]}"]
     manifests = {(c["variant"], c["dimension"]): c["dump"]["manifest"] for c in found["captures"]}
     problems = []
     for closure in held["closures"]:
-        if not isinstance(closure, dict) or closure.get("method") not in l1.METHODS:
-            problems.append(f"offline: a closure without its method: {closure!r}"[:200])
-            continue
-        vid, verdict = closure.get("variant"), closure.get("verdict")
-        if verdict not in l1.METHODS[closure["method"]]:
-            problems.append(f"offline: {vid}: {closure['method']} gives no verdict {verdict!r}")
-        if closure["method"] != l1.DUMP_EQUALITY:
-            continue
-        named, evidence = closure.get("dimensions") or [], closure.get("evidence") or {}
-        for dim in named:
-            pair = (manifests.get((base, dim)), manifests.get((vid, dim)))
-            shown_pair = evidence.get(dim) or {}
-            held_pair = (shown_pair.get("baseline"), shown_pair.get("candidate"))
-            if held_pair != pair or pair[0] != pair[1]:
-                problems.append(f"offline: {vid}'s dump-equal {dim} is not its dumps' manifests")
-        if not named or (verdict == "no effect" and sorted(named) != sorted(dims)):
-            problems.append(f"offline: {vid}'s {verdict} names {named}, the record dumped {dims}")
+        ok = isinstance(closure, dict) and closure.get("method") in l1.METHODS
+        if not ok or closure.get("variant") not in candidates:
+            problems.append(
+                f"offline: a closure without its method or candidate: {closure!r}"[:200]
+            )
+        elif closure.get("verdict") not in l1.METHODS[closure["method"]]:
+            problems.append(f"offline: {closure['variant']}: no verdict {closure.get('verdict')!r}")
+    if problems:
+        return problems
+    for vid, entry in candidates.items():
+        mine = [c for c in held["closures"] if c["variant"] == vid]
+        equality = [c for c in mine if c["method"] == l1.DUMP_EQUALITY]
+        expected = None if entry.get("unprinted") else expected_equality(base, vid, manifests, dims)
+        if equality != ([expected] if expected else []):
+            problems.append(f"offline: {vid}'s dump-equality closures are not its manifests'")
+        for closure in (c for c in mine if c["method"] == l1.PREMISE):
+            if entry.get("options") or entry.get("undumped"):
+                problems.append(f"offline: {vid}'s premise closure despite its options or dumps")
+            if (
+                closure["verdict"] == "not compiled"
+                and (expected or {}).get("verdict") != "no effect"
+            ):
+                problems.append(f"offline: {vid} closed not compiled, its prints differ")
     return problems
 
 
