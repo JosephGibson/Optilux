@@ -1,57 +1,59 @@
 # Handoff
-Status: the latest stop: M3.P06 stopped before its exit run, the static-textures pack, the deterministic set, the visual kind and the tiers built, reviewed and committed; `install` found 26.3's version JSON republished, so the launch spec differs and the exit's launch waits on the user's re-pin.
+Status: the latest stop: M3.P06 done, the static-textures pack, the deterministic set, visual runs and their tiers built and accepted (m3-visual-2), and what M3.P07 starts from.
 
 ## Contents
 Outcome · What changed · Review · Choices · Checks · Open questions · Weak points · Commits and time · Next
 
 ## Outcome
-Last phase: M3.P05
-- Stopped (plans/m3.md section 7: "a launch spec that differs (the user re-pins)"; the prompt: a Done-when not met): `optilux install` (04:28 ADT) built the static-textures pack, then reported "launch spec: differs from config/platforms/mc-26.3.launch.json in 4 facts". Mojang republished 26.3's version JSON: sha1 11f1aefe... -> 61fff131..., asset index 34 sha1 e787e8af... -> 0c8f43b2..., the two URLs with them; install fetched the new JSON, index and 144 files, the client jar and every classpath jar unchanged (5,246 hashes). `launch` now refuses: "asset index runtime/mc-26.3/assets/indexes/34.json: sha1 0c8f43b2... differs from e787e8af...". No launch was made: the exit's run m3-visual-1 (spec in Next) did not run, so its status, frames, read-back options, hello-pack pairs, `compare`'s tiers and review.html on real frames are not shown.
-- Shown in this session:
-  - the static pack: optilux-static-textures.zip over 26.3.jar and Faithful 64x - Release 15.zip, 63 animated textures held on frame 0, 6 at their set frame size (conduit wind and wind_vertical 256x128, four gui sprites), 15,721 bytes, sha512 afc28c9093bc3b2aba0e719dd300e27b0cd101ee6ee9e865ebe71e1dfca5bec2c0364b596a7021d006ee033b7e5d844b6e8bae6e93d4fecb70abb28da3c63933, in the store and game/resourcepacks/ (a second install: state equal);
-  - `run m3-visual-1 --check` holds: 8 reloads on forest_noon, nether_crimson, end_dragon, aligned on cycle 1; optilux.zip from shader/, 25 entries, sha512 d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4, `check L0` ok; the identity's resourcePacks the deterministic set: Faithful 64x bc534dfb..., the static pack afc28c90....
-- runtime/ written only by install (the static pack, the republished version JSON, index and assets); no launch, no system setting.
+Last phase: M3.P06
+- The exit holds, shown in this session (2026-10-22, ADT): m3-visual-2 (13:26-13:28, announced, the machine left alone), a visual run on quick mode's views with the hello pack (`optilux`, optilux.zip sha512 d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4, `check L0` ok) and Unbound r5.9.3 on iso v1:
+  - status ok; 6 of 6 pairs valid, each two frames 2.000-2.007 s apart, every frame's PNG hashed and its sha256 recorded;
+  - every option read back: options.txt's 24 keys (resourcePacks among them) and iris.properties' 5 after the quit; each variant's written options equal to their effective values after each reload (hello none written, its 1 option at its default; Unbound 48 of 398);
+  - every hello-pack pair identical (forest_noon 80080902..., nether_crimson e027f4cf..., end_dragon 3ef4672d...), water in sight at forest_noon, a lava lake at nether_crimson; Unbound's three pairs moving (TAA);
+  - `compare m3-visual-2`: per view the hello pair identical, the Unbound pair REVIEW (FLIP mean 0.086, 0.017, 0.061; SSIM 0.81, 0.99, 0.98), Unbound vs hello REVIEW; review.html and report.html under results/raw/m3-visual-2/;
+  - the game loaded both packs (latest.log: `..., file/Faithful 64x - Release 15.zip, file/optilux-static-textures.zip`), with 63 "Unused frames in sprite" warnings, one per held texture.
+- The static pack: 63 animated textures held on frame 0, 6 at their set frame size (conduit wind and wind_vertical 256x128, four gui sprites), sha512 ff44b3cc091747390108ff3acdfc6ba2a81adaebff181f250306ab7a2053279574d7792e762c7d93c4fb224f19ea27f9c7e5dd6522a711c0f48c118015529ee8, in the identity's resourcePacks after Faithful 64x (bc534dfb...).
+- m3-visual-1 (11:30) failed before it: 26.3's resource reload threw "Dest texture (72x504) is not large enough to write a rectangle of 72x504" at particle/vibration.png and dropped every selected pack, so the session ran on vanilla textures; read_back caught it (resourcePacks read `[]`). Its hello pairs were identical too.
+- The stop at 04:56 (Mojang republished 26.3's version JSON: 142 language files) ended with the user's re-pin (`install --refresh`, 4 facts). runtime/ written only by install, the runs' world restores, launches and the game; no system setting.
 
 ## What changed
-- The static pack (dcb4d9b): install's static_textures and static_pack. Per texture whose metadata, the top one from the top pack down to the texture's provider (P11), holds an animation: that metadata with frames [0] at its width and height, its other sections kept; read as Gson reads it, the first JSON value (Faithful's friends/background_dark.png.mcmeta ends in a stray byte). pack.mcmeta min_format and max_format [97, 1]; packzip's zip rules; built when one suite.json set names it, last.
-- The set (79cc518): record.PACK_SET deterministic; launch.set_packs (pinned packs by slug, the static pack by the store's sha512), packs_line (vanilla, then file/<name>, as Gson writes it), resourcePacks written from the set (display.optionsTxt drops its line; no `--set` of it), check_packs in the set's order; run's identity from the set; an unknown set and another set refused apart.
-- The visual kind (d70f0d0): record (check_visual_spec, check_visual_variants, optilux_build), run (each Optilux zip built and L0-checked once, pipeline_cycle, visual_before, visual_session, visual_fields; no D42; displays held, never refused off), measure (visual_body, visual_capture, visual_problems, the orphan path, displays_on's refuse_off), session.visual_settle, modclient.check_schedule's interval, the fake (intervalMs; frames painted by pack and pose; `moving` packs), verify records' and report's visual records. Tests 918 to 939.
-- The tiers (fc2269b): optilux/visual.py (fidelity, decode, tier, plan, unmatched, lines, page), compare's visual path and `--against`, suite.json fidelity's numbers. Tests to 946.
-- Docs: measurement.md (set, visual capture, tiers, review page; Placement, the budget run's reads, the calibration refusals and the deps list cut as duplicates of suite.json and run-record.md), run-record.md (Status, identity, record, comparison, run spec), platform.md (install, options.txt), AGENTS.md (visual.py), CHANGELOG.md (two bullets).
+- The static pack (dcb4d9b, fixed in 46f730f): install's static_textures and static_pack; per texture whose top metadata down to its provider (P11) animates, that metadata with frames [0, 0] at its width and height, its other sections kept; read as Gson reads it; pack.mcmeta min and max_format [97, 1]; packzip's rules.
+- The set (79cc518): record.PACK_SET deterministic; launch.set_packs, packs_line, resourcePacks written from the set, check_packs in its order; run's identity from it.
+- The visual kind (d70f0d0) and the tiers (fc2269b): plans/m3.md D63 as built (record, run, measure, session, modclient's interval check, the fake, verify records, report; optilux/visual.py, `compare --against`, review.html, suite.json fidelity's numbers).
+- The re-pin (7c08e57, its fixture in 3e7e423), the records (ca01ba5 m3-visual-1, ee16c16 m3-visual-2).
+- Docs: measurement.md, run-record.md, platform.md, AGENTS.md, CHANGELOG.md (two bullets).
 
 ## Review
-Two reviewer agents, each finding read at its source.
-- Session and identity: 11 (2 medium, 9 low). Fixed: 1 the pair's 2 s unchecked (check_schedule refuses a frame under intervalMs after the one before); 2 `--against` silent on pairs one run lacks (fixed with the tiers); 4 the orphan record (problems stripped, builds and L0 journaled, each visual variant's options in full); 5 a second ref of one commit took the first's build; 6 visual_sha512's default; 7 the cap's fix text; 8 report's options column; 9 verify passing an ok visual record lacking a pair; 10 the fake's 256-frame period; 11 timers false refused. Reported: 3 (Weak points). Identity: the set's packs reach launch_differences in one order (holds); the line in Gson's form (holds harness-side, the game's side unverified until a launch, read_back judges it); visual.py outside run's closure (holds, test_visual pins it).
-- Tiers and compare: 9 (1 medium, 8 low), all fixed: 1 as 2 above, and `--against` refused when no pair matches; 2 close decided unrounded, printed to 7 digits; 3 ppd 0 (FLIP exits the process) and a float near refused; 4 frame paths held to the run's shape (Windows forms) and a record's name to its file; 5 `--against` itself refused; 6 a moving pair's second frame on the page; 7 one reading of valid; 8 fixtures failing close on p99.9 alone and SSIM alone; 9 the CLI through the fixture root, `--json` and the untested refusals. Outside its dimension: run-record.md#comparison, updated.
+Two reviewer agents, each finding read at its source. Session and identity: 11 (2 medium, 9 low), 10 fixed, 1 reported (Weak points); the set's packs reach launch_differences in one order, the line in Gson's form (shown in game by m3-visual-2's read-back), visual.py outside run's closure: hold. Tiers and compare: 9 (1 medium, 8 low), all fixed. The 04:56 handoff (git 3e075bf) lists each.
 
 ## Choices
 Neither the prompt nor the plan names these:
-- The code commits went on after install's stop: they need no launch and change no pin; the stop holds the launch.
-- A held .mcmeta keeps the provider's other sections (kelp's texture.alpha_cutoff_bias 0.1): replacing the file would move the alpha cutoff.
-- pack.mcmeta's formats [97, 1], world.py's data-pack form at the platform's resource format.
-- A visual pair is one frames.capture (count 2, intervalMs 2000, align phase 0 on config/pipeline.json's cycle, ready with the view's visual settle, +3 s for the first variant after a dimension change); the 30 s GPU warm-up kept (measurement.md#session's start).
-- A visual run holds the displays on, never refuses them off (frames are read back: m3-capture-1's selftest read 3840x2160 with them off), waits no D42, ends invalid on focus.lost or a foreign screen.
-- `moving` by the pair's PNG sha256; compare's pair tier by decoded pixels; variants' roles baseline then candidate.
-- suite.json fidelity's tiers as numbers (not identity).
+- frames [0, 0], not D62's [0]: 26.3's createAnimatedTexture makes no animation of a one-entry list, and TextureAtlas.uploadInitialContents then writes the sprite's whole strip into a one-frame texture (javap of SpriteContents and TextureAtlas). Two entries keep the animated path, every frame frame 0; still .mcmeta alone.
+- A held .mcmeta keeps the provider's other sections (kelp's alpha_cutoff_bias).
+- A visual pair is one frames.capture (count 2, intervalMs 2000, align phase 0 on config/pipeline.json's cycle, ready with the view's visual settle, +3 s for the first variant after a dimension change); the 30 s GPU warm-up kept.
+- A visual run holds the displays on, never refuses them off, waits no D42 and ends invalid on focus.lost or a foreign screen.
+- `moving` by the pair's PNG sha256; compare's tiers on decoded pixels; suite.json fidelity's numbers (not identity).
+- The code commits went on after the 04:56 stop; the re-pin and m3-visual-2 at the user's go (11:14 "continue to closeout"; the rerun chosen at 13:25).
 
 ## Checks
-- Start (03:41 ADT): branch m3 clean at 7e4536b; 908 passed; verify docs 0 violations.
-- Before each commit, on a tree equal to it: 916, 918, 939, 946 passed; ruff, ruff format, pyright clean; verify docs 0 violations; verify records 226 records, 0 violations.
-- CI green on dcb4d9b, 79cc518, d70f0d0, each watched to its end before the next push; fc2269b's watched before this handoff's push.
+- Start (03:41 ADT): branch m3 clean at 7e4536b; 908 passed; verify docs 0 violations. Resumed (11:14): clean at 3e075bf; 946 passed.
+- Before each commit, on a tree equal to it: 916, 918, 939, 946, 947 passed; ruff, ruff format, pyright clean; verify docs 0 violations; verify records 228 records, 0 violations. Except 7c08e57: pushed with test_platform red (the spec ahead of its fixture), fixed in 3e7e423; CI red on 7c08e57, green on 3e7e423.
+- CI green on dcb4d9b, 79cc518, d70f0d0, fc2269b, 3e075bf, 3e7e423, each watched to its end before the next push; 46f730f's and ee16c16's watched before this handoff's push. ca01ba5, pushed with 46f730f, had no CI run of its own: its tree in a worktree passed 938, failing the 4 hook end-to-end tests HEAD's tree fails there too (HEAD 947 in the checkout).
+- Double check (13:40): m3-visual-2's 12 frames re-hashed equal to the record, each hello pair equal in decoded pixels, each first frame the ready frame, every written option its effective value, the static pack's sha512 the store's and the game copy's.
 
 ## Open questions
-- The re-pin (user's, section 7; D20 the precedent): `uv run optilux install --refresh`, then commit config/platforms/mc-26.3.launch.json. Recommended: yes, as in D20: nothing is calibrated on the deterministic set yet (M3.P10 recalibrates both modes), only the asset index moved, and a spec off Mojang's JSON fails every later install; the identity's launchSpec moves with it.
-- Carried: the display guard for A9; Nether fog and the features on neither list; the water fog colour (M3.P06, M3.P09); D66, the driver; D72; the ticks before /tick freeze; spider eyes and the world's difficulty (M4); M2's carried list (git 7dfc2fa's handoff).
+- The hello pack's End stone reads olive-green at end_dragon (texture x vertex colour x the End's lightmap?), Unbound's pale; a look note for M4's pack, Claude's pre-screen.
+- With ticks frozen, m3-visual-1's hello pairs were identical on vanilla's animated textures too: whether 26.3 animates textures on frozen client ticks (the static pack then guards unfrozen sessions and the TAA history) is unverified.
+- Carried: the display guard for A9; Nether fog and the features on neither list; the water fog colour (M3.P09); D66, the driver; D72; the ticks before /tick freeze; spider eyes and the world's difficulty (M4); M2's carried list (git 7dfc2fa's handoff).
 
 ## Weak points
 - Session review 3: every variant aligns on the working tree's pipeline.json cycle; an `optilux@<ref>` commit's may differ. Every M3 cycle is 1.
-- Unverified in game until a launch: the options line in Gson's form and the pack's [97, 1] formats (an incompatible pack leaves the line: read_back fails the run), and `moving` by sha256 (the game's one PNG writer assumed to write equal pixels as equal bytes).
+- `moving` by sha256 assumes the game's PNG writer writes equal pixels as equal bytes (one writer); compare's pair tier judges the pixels.
 - Margins: measurement.md 2 bytes; platform.md 7; AGENTS.md 16; mod.md 62; workflow.md 199.
 
 ## Commits and time
-- dcb4d9b the static pack; 79cc518 the set; d70f0d0 the visual kind; fc2269b the tiers, compare and the review page; then this handoff.
-- 2026-10-22 03:41 to about 04:55 ADT, 1.2 h against 3.5 h, the exit still to run. Tripwire: actuals about 54.9 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, P01 0.8, P02 0.8, P03 1.9, P04 1.9, P05 1.4, P06 so far 1.2); the trip at 174.6 h.
+- dcb4d9b, 79cc518, d70f0d0, fc2269b, 3e075bf, 7c08e57, 3e7e423, ca01ba5, 46f730f, ee16c16; then this handoff.
+- 2026-10-22 03:41-05:01, 11:14-11:38 and 13:25-13:50 ADT: about 2.1 h against 3.5 h, the user's re-pin and rerun waits apart. Tripwire: actuals about 55.8 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, P01 0.8, P02 0.8, P03 1.9, P04 1.9, P05 1.4, P06 2.1); the trip at 174.6 h.
 
 ## Next
-After the user's re-pin and its commit, M3.P06's exit, announced, the machine left alone: `uv run optilux run <spec> --check`, then `uv run optilux run <spec>`, `uv run optilux compare m3-visual-1` and `uv run optilux report m3-visual-1`; the record committed (`chore: add the visual run`), then this file with `Last phase: M3.P06`. The spec, m3-visual-1.json:
-`{"name": "m3-visual-1", "kind": "visual", "mode": "quick", "views": "bench_263", "world": "bench_263", "variants": [{"id": "hello", "pack": "optilux", "profile": null}, {"id": "unbound-iso", "pack": "ComplementaryUnbound_r5.9.3.zip", "profile": "iso"}], "tier": "bench", "resourcePacks": "deterministic", "notes": "M3.P06's exit: the hello pack (its pairs identical, lava in sight at nether_crimson) and Unbound r5.9.3 on iso v1 (TAA: its pairs move), on the deterministic set"}`
+/optilux-next prints M3.P07's prompt: coverage views, 2.5 h, 2 launches and the new area's generation; its visual run uses the visual kind as built here (the views file's coverage list joins the spec then).
