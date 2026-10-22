@@ -1046,6 +1046,12 @@ def test_the_schedule_check_refuses_what_the_capture_did_not_ask() -> None:
     early = {"frames": [frame(49, 4)], "dropped": [], "ready": report}
     with pytest.raises(modclient.ModError, match="first frame 49"):
         modclient.check_schedule(early, None, True)
+    # intervalMs (a visual run's pair, plans/m3.md D63): each frame that long after the one before.
+    spaced = [{**frame(50, 7), "qpcNs": 1_000_000_000}, {**frame(337, 294), "qpcNs": 3_002_000_000}]
+    modclient.check_schedule({**good, "frames": spaced}, (1, 0), True, 2000)
+    close = [spaced[0], {**spaced[1], "qpcNs": 2_999_000_000}]
+    with pytest.raises(modclient.ModError, match=r"frame 337 came 1999\.000 ms after frame 50"):
+        modclient.check_schedule({**good, "frames": close}, (1, 0), True, 2000)
 
 
 def test_a_capture_whose_manifest_disagrees_with_its_request_is_refused(tmp_path: Path) -> None:

@@ -41,6 +41,18 @@ COLUMNS = (
     ("busy/frame", "gpuBusyOverFrameTime"),
     ("halves %", "halvesPct"),
 )
+# A visual record's pairs (plans/m3.md D63): each frame's stamps and its sha256's first digits.
+VISUAL_COLUMNS = (
+    ("#", "index"),
+    ("view", "view"),
+    ("variant", "variant"),
+    ("settle s", "settleS"),
+    ("ready s", "readyS"),
+    ("frames", "frameIndex"),
+    ("sinceReload", "sinceReload"),
+    ("pair s", "pairSeconds"),
+    ("sha256", "sha256"),
+)
 STYLE = """
 :root { --bg: #fbfbfa; --fg: #1d1d1b; --muted: #6b6b66; --line: #dcdcd6; --bad: #b3261e;
   --good: #1e6b33; --wait: #8a5a00; --head: #f0f0ec; }
@@ -129,6 +141,18 @@ def verdict_section(judged: dict) -> str:
     return "".join(out)
 
 
+def pair_cells(capture: dict) -> dict:
+    """A visual pair's columns: its frames' stamps and sha256 prefixes joined, ready's seconds."""
+    frames = capture.get("frames") or []
+    return {
+        **capture,
+        "readyS": (capture.get("ready") or {}).get("seconds"),
+        "frameIndex": ", ".join(str(f["frameIndex"]) for f in frames),
+        "sinceReload": ", ".join(str(f["sinceReload"]) for f in frames),
+        "sha256": ", ".join(f["sha256"][:12] for f in frames),
+    }
+
+
 def page(found: dict, captures: list[dict]) -> str:
     """The run's page, from its record."""
     name = found["name"]
@@ -141,9 +165,10 @@ def page(found: dict, captures: list[dict]) -> str:
         + (f": {e(found['reason'])}" if found.get("reason") else "")
         + "</p>",
     ]
+    visual = found.get("kind") == record.VISUAL
     if found.get("parts"):
         out.append(f"<p>A split session: {e(', '.join(found['parts']))}.</p>")
-    if found.get("mode") is not None and found.get("calibration") is None:
+    if found.get("mode") is not None and found.get("calibration") is None and not visual:
         out.append("<p>Calibration null (plans/m2.md D40): no verdicts.</p>")
     if found.get("verdicts"):
         out.append(verdict_section(found["verdicts"]))
@@ -158,7 +183,21 @@ def page(found: dict, captures: list[dict]) -> str:
             rows.append([e(entry["item"]), f'<span class="{word}">{word}</span>', e(why)])
         out.append("<h2>Acceptance</h2>" + table(["item", "verdict", "evidence"], rows))
     variants = found.get("variants") or []
-    if variants:
+    if variants and visual:  # each of its own pack, its options in full (run-record.md#record)
+        rows = [
+            [
+                e(v.get("id")),
+                e(v.get("role")),
+                e(v.get("pack")),
+                e(v.get("profile")),
+                e(len(v.get("options") or {})),
+                e(((v.get("effective") or {}).get("sha256") or "")[:16]),
+            ]
+            for v in variants
+        ]
+        headings = ["variant", "role", "pack", "profile", "options written", "effective sha256"]
+        out.append("<h2>Variants</h2>" + table(headings, rows))
+    elif variants:
         rows = []
         for v in variants:
             effective = v.get("effective") or {}
@@ -174,8 +213,11 @@ def page(found: dict, captures: list[dict]) -> str:
             )
         headings = ["variant", "role", "profile", "timers", "options off the baseline's"]
         out.append("<h2>Variants</h2>" + table(headings, rows))
+    if visual:  # its frames are tiered by `compare`, which writes review.html beside this page
+        captures = [pair_cells(c) for c in captures]
     if captures:
         columns = [*COLUMNS, ("part", "part")] if any("part" in c for c in captures) else COLUMNS
+        columns = VISUAL_COLUMNS if visual else columns
         rows, classes = [], []
         for c in captures:
             flags = e(", ".join(c.get("flags") or []))
@@ -212,11 +254,15 @@ def summary(found: dict, captures: list[dict]) -> list[str]:
         f"  status {found.get('status')}" + (f": {found['reason']}" if found.get("reason") else ""),
     ]
     parts = found.get("parts") or []
+    visual = found.get("kind") == record.VISUAL
     if parts:
         out.append(f"  split session: {len(parts)} parts, {parts[0]} to {parts[-1]}")
-    if found.get("mode") is not None:
+    if found.get("mode") is not None and not visual:
         cid = found.get("calibration")
         out.append(f"  calibration {cid[:24]}..." if cid else "  calibration null: no verdicts")
+    if visual:
+        moving = [f"{c['view']}/{c['variant']}" for c in captures if "moving" in c["flags"]]
+        out.append(f"  pairs moving: {', '.join(moving) or 'none'} (`optilux compare` tiers them)")
     judged = found.get("verdicts")
     if judged:
         twin = judged["twin"]

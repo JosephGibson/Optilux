@@ -67,6 +67,7 @@ from optilux.session import (
     now,
     session_start,
     view_pose,
+    visual_settle,
 )
 from optilux.verbs.install import RUNTIME, Say, shown
 
@@ -119,6 +120,15 @@ ENDING = ("focus.lost", "screen.opened")
 # The screens the harness's own steps open: a camera.place into another dimension shows the
 # loading screen (every M1 and M2.P04 log); the quit's saving screens come after the last step.
 HARNESS_SCREENS = ("net.minecraft.client.gui.screens.LevelLoadingScreen",)
+# A visual run's captures (plans/m3.md D63): at each view and variant a pair of frames PAIR_MS
+# apart, the first ready-triggered, both aligned, written under raw/<run>/frames/<view>/<variant>/;
+# the mod's own wait for the predicate (at most READY_TIMEOUT) and both PNGs inside the timeout.
+# A pair is flagged `moving` when its PNGs differ: the game's one PNG writer writes equal pixels
+# as equal bytes, and a pack drawing the same frame every frame never moves (record.VISUAL_FLAGS).
+PAIR = record.VISUAL_PAIR
+PAIR_MS = 2000
+FRAMES = "frames"
+VISUAL_CAPTURE_TIMEOUT = READY_TIMEOUT + 30.0
 
 
 def ends(event: dict) -> bool:
@@ -652,14 +662,15 @@ def machine_to_itself(host: RunHost, luid: str, say: Say) -> dict:
 
 
 @contextlib.contextmanager
-def displays_on(host: RunHost, say: Say) -> Iterator[dict]:
+def displays_on(host: RunHost, say: Say, refuse_off: bool = True) -> Iterator[dict]:
     """The displays held on through a measured run, from before its first step to its end: a
     display-required power request on this thread (SetThreadExecutionState, DISPLAY_REQUEST; no
     setting changed), released at the end whatever happened. RecordError when the displays read
     off as it is taken (GUID_CONSOLE_DISPLAY_STATE, read after it: the request is not known to
-    wake them) or unread, or when a call fails. The AC display timeout and the input's seconds
-    are recorded beside the state, never judged: the request holds the displays' own idle timer,
-    so input older than the timeout does not mean them off (a process after a measured one). The
+    wake them) or unread, unless `refuse_off` is False (a visual run's: its frames are read back,
+    off or on), or when a call fails. The AC display timeout and the input's seconds are recorded
+    beside the state, never judged: the request holds the displays' own idle timer, so input
+    older than the timeout does not mean them off (a process after a measured one). The
     request's facts."""
     try:
         timeout = host.display_timeout()
@@ -677,7 +688,7 @@ def displays_on(host: RunHost, say: Say) -> Iterator[dict]:
             state = None
             say(f"displays: their state was not read: {error}")
         shown_state = DISPLAY_STATES.get(state, "unread") if state is not None else "unread"
-        if shown_state in ("off", "unread"):
+        if shown_state in ("off", "unread") and refuse_off:
             raise record.RecordError(
                 f"the displays read {shown_state} (input {idle:.0f} s ago, the display timeout "
                 f"{timeout} s on AC), and with them off PresentMon records no frame; fix: wake "
@@ -732,6 +743,7 @@ class Measured:
     gui: bool = False
     last_end: int | None = None
     last_written: Variant | None = None
+    cycle: int = 1  # a visual run's align: the Optilux pack's cycle (config/pipeline.json)
 
     @property
     def c(self) -> modclient.Client:
@@ -768,7 +780,7 @@ class Measured:
         if first is None:
             self.effective[variant.id] = {"sha256": digest, "values": values}
             kept = {"sha256": digest, "count": len(values)}
-            if variant.role == "baseline":
+            if variant.role == "baseline" or self.spec.kind == record.VISUAL:  # D63: each in full
                 kept["values"] = values
             self.journal.set(
                 "effective", {**self.journal.data.get("effective", {}), variant.id: kept}
@@ -1036,6 +1048,139 @@ def bare(
     m.entries.append(entry)
     m.journal.append("captures", entry)
     heap_row(m)
+
+
+def visual_body(m: Measured) -> None:
+    """A visual session after hello (plans/m3.md D63): the session start, the first variant's files
+    written before the start-of-run reload; one lap over the mode's views (D48), each reached as a
+    measured pass reaches it (arrive: its function, camera.place, D49's GUI, the overworld
+    weather's ticks), then per variant its pair (visual_capture), the settle's dimension-change
+    addition only for the first after a dimension change; input.block off. No PresentMon."""
+    s, c = m.s, m.c
+    s.stop_on = ends
+    m.mark("start")
+    base = m.found[0]
+    start: dict = {}
+    m.facts["start"] = start
+    session_start(
+        s,
+        base.pack,
+        m.suite["capture"]["gpuWarmupS"],
+        m.display_mode,
+        m.suite["display"]["resolution"],
+        start,
+        lambda: m.write_files(base),
+    )
+    m.reloads = record.ACCEPTANCE_RELOADS
+    m.check_options(base, start["options"])
+    m.previous = start["joined"]["pose"]["dimension"]
+    m.mark("views")
+    order = record.lap(m.views, m.ramped)
+    m.facts["laps"] = [[v["id"] for v in order]]
+    for view in order:
+        changed = arrive(m, view)
+        for slot, variant in enumerate(m.found):
+            settle = visual_settle(m.suite["capture"], view, changed and slot == 0)
+            visual_capture(m, view, variant, settle)
+    if m.gui:
+        leave_gui(m, "end")
+    s.step("input.block off", lambda: c.input_block(False))
+
+
+def visual_capture(m: Measured, view: dict, variant: Variant, settle: float) -> None:
+    """One variant's frames at one view (plans/m3.md D63): its files, shaders.reload and its pack,
+    the options read back; frames.capture's pair: ready (STABLE_FRAMES and the view's visual
+    settle as minSeconds: measurement.md#readiness), aligned on the Optilux pack's cycle (phase 0),
+    PAIR frames PAIR_MS apart, PNGs under raw/frames/<view>/<variant>/, judged by their files
+    (modclient.verify_manifest); the pose held. Its entry: each frame's path under raw/, sha256 and
+    stamps, ready's report, the flags (record.VISUAL_FLAGS)."""
+    s, c = m.s, m.c
+    m.index += 1
+    label = f"{m.index:03d} {view['id']} {variant.id}"
+    m.write_files(variant)
+    m.reloads += 1
+    reload = s.step(
+        f"{label}: shaders.reload",
+        lambda: c.shaders_reload(RELOAD_TIMEOUT, 2, pack=variant.pack),
+        lambda a: f"{a['seconds']:.3f} s, reloadFrame {a['reloadFrame']}",
+    )
+    options = s.step(
+        f"{label}: shaders.options",
+        c.shaders_options,
+        keep=lambda a: {"pack": a["pack"], "values": len(a["values"])},
+    )
+    m.check_options(variant, options)
+    folder = s.raw / FRAMES / view["id"] / variant.id
+    align = (m.cycle, 0)
+    taken = s.step(
+        f"{label}: frames.capture",
+        lambda: c.frames_capture(
+            folder,
+            PAIR,
+            VISUAL_CAPTURE_TIMEOUT,
+            interval_ms=PAIR_MS,
+            align=align,
+            ready=(STABLE_FRAMES, settle),
+        ),
+        lambda a: (
+            f"frames {', '.join(str(f['frameIndex']) for f in a['frames'])} after "
+            f"{a['ready']['seconds']:.2f} s ready"
+        ),
+    )
+    held = s.step(f"{label}: camera.get", c.camera_get)
+    moved = modclient.pose_differences(view_pose(view), held["pose"])
+    if moved:
+        raise RunError(f"{label}: the camera left the view during the capture: {moved}")
+    # The attempt folder by its name under the folder asked for, whatever form the mod's path took.
+    attempt = folder.relative_to(s.raw) / Path(taken["manifest"]).parent.name
+    frames = [
+        {
+            "path": (attempt / frame["name"]).as_posix(),
+            "sha256": frame["sha256"],
+            **{key: frame[key] for key in modclient.MARK_KEYS},
+        }
+        for frame in taken["frames"]
+    ]
+    ready = taken["ready"]
+    last = frames[-1]["frameIndex"] if frames else ready["frameIndex"]
+    events = window_events(s.events, ready["frameIndex"], last + 1)
+    whole = len(frames) == PAIR and not taken["dropped"] and taken["verified"]["complete"] is True
+    apart = (frames[-1]["qpcNs"] - frames[0]["qpcNs"]) / 1e9 if whole else None
+    flags = [] if whole else ["incomplete"]
+    if whole and frames[0]["sha256"] != frames[1]["sha256"]:
+        flags.append("moving")
+    if events:
+        flags.append("event")
+    entry = {
+        "index": m.index,
+        "view": view["id"],
+        "variant": variant.id,
+        "settleS": settle,
+        "reload": {k: reload[k] for k in ("seconds", "reloadFrame", "pack")},
+        "align": {"cycle": align[0], "phase": align[1]},
+        "ready": ready,
+        "frames": frames,
+        "pairSeconds": None if apart is None else round(apart, 4),
+        "dropped": taken["dropped"],
+        "flags": flags,
+        "valid": not any(flag in record.VISUAL_INVALIDATING for flag in flags),
+        "problems": [f"{e['event']} at frame {e['frameIndex']}" for e in events],
+    }
+    m.entries.append(entry)
+    m.journal.append("captures", entry)
+
+
+def visual_problems(entries: list[dict], planned: int, laps_done: bool) -> list[str]:
+    """What fails a visual record beside its session: a pair planned but never taken, or one
+    missing a frame (missing = fail)."""
+    problems = []
+    missing = planned - len(entries)
+    if missing > 0 and laps_done:
+        problems.append(f"{missing} planned captures were not taken")
+    short = [str(e["index"]) for e in entries if "incomplete" in e["flags"]]
+    if short:
+        problems.append(f"captures {', '.join(short)} miss a frame")
+    return problems
 
 
 def gpu_memory(text: str, pid: int, luid: str) -> dict:
@@ -1368,9 +1513,13 @@ def orphan_record(root: Path, raw: Path, journal: dict, done: dict, complete: bo
     entries = journal.get("captures", [])
     validity = journal.get("validity")  # the run's own suite: its identity hashed it
     pid = (journal.get("game") or {}).get("pid")
+    visual = spec.get("kind") == record.VISUAL
     captures: list[dict] = []
     why = "PresentMon did not end by its session's stop: its CSV may lack its last rows"
-    if entries and complete and isinstance(pid, int) and validity is not None:
+    if visual:  # each journaled pair as taken (whole or flagged), its frames under raw/: no CSV
+        captures = [{k: v for k, v in e.items() if k != "problems"} for e in entries]
+        why = ""
+    elif entries and complete and isinstance(pid, int) and validity is not None:
         try:
             line, facts = read_timeline(raw / CSV, pid)
             done["csv"] = facts
@@ -1402,7 +1551,7 @@ def orphan_record(root: Path, raw: Path, journal: dict, done: dict, complete: bo
         effective = journal.get("effective", {})
         found.update(
             mode=spec["mode"],
-            calibration=spec.get("calibration"),
+            **({} if visual else {"calibration": spec.get("calibration")}),
             variants=[
                 {**v, "effective": effective.get(v["id"])} for v in journal.get("variants", [])
             ],

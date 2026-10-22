@@ -37,8 +37,9 @@ from optilux import (
 )
 from optilux.verbs import calibrate as calibrate_verb
 from optilux.verbs import compare as compare_verb
-from optilux.verbs import install
+from optilux.verbs import install, verify
 from optilux.verbs import pack as pack_verb
+from optilux.verbs import report as report_verb
 from optilux.verbs import run as run_verb
 
 PLAT = platform.load(REPO_ROOT)
@@ -2785,3 +2786,211 @@ def test_the_switch_reads_an_empty_settings_file_and_every_file_is_journaled(fak
         f"{folder}/optilux.zip.part",
         f"{folder}/optilux.zip.txt",
     ]
+
+
+# A visual run (plans/m3.md D63).
+
+HELLO = {"id": "hello", "pack": "optilux", "profile": None}
+UNBOUND_ISO = {"id": "unbound-iso", "pack": PACK, "profile": "iso"}
+UNBOUND = {"id": "unbound", "pack": PACK, "profile": "played"}  # the fake's defaults hold its keys
+
+
+def visual(**changes: Any) -> dict:
+    found = {
+        "name": "m3-visual-test",
+        "kind": "visual",
+        "mode": "quick",
+        "views": "bench_263",
+        "world": "bench_263",
+        "variants": [HELLO, UNBOUND_ISO],
+        "tier": "bench",
+        "resourcePacks": record.PACK_SET,
+        "notes": "a fixture",
+    }
+    found.update(changes)
+    return found
+
+
+def test_a_visual_spec_takes_a_modes_views_and_a_reload_a_view_and_variant(bench_root) -> None:
+    root, saves = bench_root
+    spec = record.check_spec(root, visual(), PLAT, SUITE, saves, PACK)
+    assert (spec.kind, spec.mode, spec.items, spec.groups) == ("visual", "quick", (), ())
+    assert spec.view_ids == ("forest_noon", "nether_crimson", "end_dragon")
+    assert spec.planned == 2 + 3 * 2  # selftest's and the start-of-run reload, then 3 x 2
+    hello, iso = spec.variants
+    assert hello["build"] == {"variant": "optilux", "ref": None, "commit": None}
+    assert hello["options"] == {} and iso["build"] is None
+    assert iso["options"] == record.profile_options(REPO_ROOT, SUITE, "iso")
+    assert all(v["timers"] is False for v in spec.variants)
+    one = record.check_spec(root, visual(mode="full", variants=[HELLO]), PLAT, SUITE, saves, PACK)
+    assert one.planned == 2 + 11 and len(one.view_ids) == 11
+
+
+VISUAL_REFUSALS = [
+    ({"mode": "full"}, "plans 24 reloads (2 + 11 views x 2 variants), over capture.reloadCap 20"),
+    ({"mode": None}, "takes a mode's perf views"),
+    ({"resourcePacks": "standard"}, "every session runs the deterministic set"),
+    ({"resourcePacks": "nope"}, "no set of suite.json"),
+    ({"items": ["A2"]}, "items: no visual run's"),
+    ({"calibration": None}, "calibration: no visual run's"),
+    ({"heap": False, "reloads": 10}, "heap, reloads: no visual run's"),
+    ({"variants": []}, "variants lists none"),
+    ({"variants": [{**HELLO, "timers": True}]}, "a visual run times nothing; fix: timers false"),
+    ({"variants": [{**HELLO, "seed": 1}]}, "unknown ['seed']"),
+    ({"variants": [{**HELLO, "profile": "iso"}]}, "optilux has no profile"),
+    ({"variants": [{**HELLO, "pack": "other.zip"}]}, "pack 'other.zip'"),
+    ({"variants": [HELLO, HELLO]}, "listed twice"),
+    ({"variants": [{**HELLO, "id": "twin"}]}, "starts with twin"),
+    ({"variants": [{**HELLO, "pack": "optilux@-x"}]}, "no ref a spec may name"),
+    ({"variants": [{**UNBOUND, "options": {"SHADOW_QUALITY": -1}}]}, "the pack's own text"),
+]
+
+
+@pytest.mark.parametrize(("changes", "says"), VISUAL_REFUSALS)
+def test_each_visual_refusal_names_its_fix(bench_root, changes: dict, says: str) -> None:
+    root, saves = bench_root
+    with pytest.raises(record.RecordError, match=re.escape(says)) as refused:
+        record.check_spec(root, visual(**changes), PLAT, SUITE, saves, PACK)
+    assert "fix:" in str(refused.value)
+
+
+def test_a_quick_visual_spec_over_the_cap_names_fewer_variants_alone(bench_root) -> None:
+    root, saves = bench_root
+    many = [HELLO, *({**UNBOUND, "id": f"unbound-{n}"} for n in range(6))]  # 2 + 3 x 7 = 23
+    with pytest.raises(record.RecordError, match=r"plans 23 reloads") as refused:
+        record.check_spec(root, visual(variants=many), PLAT, SUITE, saves, PACK)
+    assert str(refused.value).endswith("fix: fewer variants")
+    timed = record.check_spec(
+        root, visual(variants=[{**UNBOUND, "timers": False}]), PLAT, SUITE, saves, PACK
+    )
+    assert timed.variants[0]["timers"] is False  # a measured run's field, false
+
+
+def test_a_visual_run_takes_each_variants_pair_at_each_view(fake_run, monkeypatch) -> None:
+    """D63 on the fake: the hello pack's zip written and loaded, the session start, one lap over
+    quick mode's views and at each view per variant a reload, the options read back and a
+    ready-triggered, aligned pair 2 s apart; the hello pack's pairs equal, the reference pack's
+    moving (the fake's TAA); every frame hashed and its file under raw/; the zip and settings
+    files deleted; the displays held on and not refused off; no D42 wait."""
+    root, spec_path, fake, host = fake_run
+    optilux_tree(root)
+    fake.moving = {PACK}
+    monkeypatch.setattr(host, "display_state", lambda: 0)  # off
+    spec_path.write_text(json.dumps(visual(variants=[HELLO, UNBOUND])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    path = root / record.RECORDS / "m3-visual-test.json"
+    found = json.loads(path.read_text(encoding="utf-8"))
+    assert (found["status"], found["kind"], found["mode"]) == ("ok", "visual", "quick")
+    captures = found["captures"]
+    views = ("forest_noon", "nether_crimson", "end_dragon")
+    assert [(c["view"], c["variant"]) for c in captures] == [
+        (view, variant) for view in views for variant in ("hello", "unbound")
+    ]
+    assert [c["flags"] for c in captures] == [[], ["moving"]] * 3
+    assert all(c["valid"] for c in captures) and reloads(fake) == 1 + 6
+    # The first variant after a dimension change waits the longer settle (measurement.md).
+    assert [c["settleS"] for c in captures] == [1.0, 1.0, 4.0, 1.0, 4.0, 1.0]
+    raw = root / found["raw"]
+    for c in captures:
+        first, second = c["frames"]
+        assert (
+            c["align"] == {"cycle": 1, "phase": 0}
+            and c["ready"]["frameIndex"] == first["frameIndex"]
+        )
+        assert second["qpcNs"] - first["qpcNs"] >= 2e9 and c["pairSeconds"] >= 2.0
+        for frame in c["frames"]:
+            assert frame["path"].startswith(f"frames/{c['view']}/{c['variant']}/attempt-001/")
+            assert hashlib.sha256((raw / frame["path"]).read_bytes()).hexdigest() == frame["sha256"]
+    hello, unbound = found["variants"]
+    assert (hello["pack"], hello["role"], unbound["role"]) == (
+        "optilux.zip",
+        "baseline",
+        "candidate",
+    )
+    assert hello["build"]["variant"] == "optilux" and hello["l0"]["ok"] is True
+    pinned = platform.load(root).data["referencePacks"][0]["sha512"]  # the fake root's pin
+    assert (unbound["pack"], unbound["sha512"]) == (PACK, pinned)
+    assert unbound["effective"]["values"] == {**DEFAULTS, **PLAYED}
+    session_facts = found["session"]
+    assert session_facts["readBack"]["ok"] is True and "machine" not in session_facts
+    assert session_facts["displays"]["state"] == "off" and host.states == [
+        HOLD,
+        measure.ES_CONTINUOUS,
+    ]
+    assert session_facts["laps"] == [list(views)]
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert sorted(p.name for p in packs.iterdir()) == [PACK]
+    assert verify.record_problems(root, "m3-visual-test", path.read_bytes()) == ([], None)
+    assert report_verb.summary(found, captures)[2] == (
+        "  pairs moving: forest_noon/unbound, nether_crimson/unbound, end_dragon/unbound "
+        "(`optilux compare` tiers them)"
+    )
+
+
+def test_a_visual_run_killed_mid_session_is_finished_with_the_pairs_it_took(
+    fake_run, monkeypatch
+) -> None:
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    spec_path.write_text(json.dumps(visual(variants=[HELLO, UNBOUND])), encoding="utf-8")
+    calls = {"n": 0}
+    capture = measure.visual_capture
+
+    def killed(*args: Any) -> None:
+        calls["n"] += 1
+        if calls["n"] == 3:
+            raise Killed
+        capture(*args)
+
+    monkeypatch.setattr(measure, "visual_capture", killed)
+    with pytest.raises(Killed):
+        run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    del host.table[os.getpid()]  # the killed runner is gone
+    host.table[os.getpid() + 1] = {"pid": os.getpid() + 1, "createTime": 9.0, "exe": "python.exe"}
+    host.game.returncode = None
+    (finished,) = measure.finish_orphans(root, host, lambda text: None)
+    assert (finished["status"], finished["kind"]) == ("aborted", "visual")
+    assert [c["variant"] for c in finished["captures"]] == ["hello", "unbound"]
+    assert "calibration" not in finished and finished["variants"][0]["pack"] == "optilux.zip"
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert sorted(p.name for p in packs.iterdir()) == [PACK]
+
+
+def test_a_visual_records_pairs_must_agree_with_their_flags() -> None:
+    frame = {
+        "path": "frames/v/a/attempt-001/frame-00001.png",
+        "sha256": "a" * 64,
+        "frameIndex": 10,
+        "sinceReload": 9,
+        "qpcNs": 1,
+        "swapQpcNs": 0,
+    }
+    pair = {"index": 1, "view": "v", "variant": "a", "frames": [frame, frame]}
+    ok = {**pair, "flags": [], "valid": True}
+    assert verify.visual_capture_problem(ok, {"a"}) is None
+    moved = {**frame, "sha256": "b" * 64}
+    cases = [
+        ({**ok, "variant": "b"}, "variant 'b' is none of the record's"),
+        ({**ok, "flags": ["shaky"]}, "flags ['shaky']"),
+        ({**ok, "frames": [frame]}, "1 frames and no `incomplete` flag"),
+        ({**ok, "frames": [frame, moved]}, "`moving` disagrees"),
+        ({**ok, "flags": ["moving"]}, "`moving` disagrees"),
+        ({**ok, "flags": ["event"]}, "valid True disagrees with its flags"),
+        ({**ok, "frames": [{**frame, "sha256": "x"}, frame]}, "a frame without its path"),
+        ({**ok, "frames": [{**frame, "qpcNs": True}, frame]}, "a frame without its path"),
+    ]
+    for capture, says in cases:
+        assert says in (verify.visual_capture_problem(capture, {"a"}) or ""), says
+    short = {**ok, "frames": [frame], "flags": ["incomplete"], "valid": False}
+    assert verify.visual_capture_problem(short, {"a"}) is None
+    found = {"mode": "quick", "status": "ok", "variants": [{"id": "a"}], "captures": [short]}
+    assert verify.visual_problems(found) == ["an ok visual record holds a pair missing a frame"]
+    # Every variant at every view it took, once: a pair missing or repeated is no ok record's.
+    two = {**found, "variants": [{"id": "a"}, {"id": "b"}], "captures": [ok]}
+    assert verify.visual_problems(two) == [
+        "an ok visual record lacks or repeats a pair of a variant at a view"
+    ]
+    other = {**ok, "index": 2, "variant": "b"}
+    assert verify.visual_problems({**two, "captures": [ok, other]}) == []
+    assert verify.visual_problems({**two, "captures": [ok, other, ok]}) != []
+    assert verify.visual_problems({**two, "status": "failed", "captures": [ok]}) == []

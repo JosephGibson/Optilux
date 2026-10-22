@@ -29,6 +29,10 @@ raw/<name>/partial.json follows the run.
   names its calibration is refused unless the calibration's identity equals its own key by key,
   and its record holds the verdicts (optilux/stats.py: each candidate's, the twin's check and the
   twin monitor over the calibration's judged twins) or A8's and A11's judged entries.
+- A visual run (plans/m3.md D63): its Optilux variants' zips built and passed by `check L0`
+  before anything is written, then written into shaderpacks/; the session start, one lap over the
+  mode's views and at each view per variant a reload and a pair of frames (measure.visual_body),
+  every frame hashed; the displays held on but never refused off; never split.
 - A session over capture.reloadCap (plans/m2.md D43, run-record.md#split-sessions) runs as one
   launch per group of its views, each a part <session>-p<n> recorded on its own with the session's
   spec and its `split`, each with the warm-up pass while suite.json keeps it (D47); `run` resumes
@@ -123,6 +127,10 @@ OPTILUX_COMMIT_ZIP = "optilux-{commit}.zip"
 # the check's modules stay out of the measured closure (run-record.md#identity: harness).
 L0_COMMAND = ("-m", "optilux.cli", "check", "L0", "-", "--json")
 L0_TIMEOUT = 600
+# A visual run aligns its captures on the Optilux pack's cycle (plans/m3.md D63), which pipeline
+# spec v0 states (D57); Iris's frame counter wraps at 720720, which a cycle must divide.
+PIPELINE = "config/pipeline.json"
+FRAME_WRAP = 720720
 
 
 @dataclass(frozen=True)
@@ -143,6 +151,14 @@ class Prepared:
     identity: dict
     recorded: dict
     optilux: dict | None = None  # an Optilux variant's zip, built in memory (optilux_zip)
+    zips: tuple[dict, ...] = ()  # a visual run's Optilux zips, each built once (visual_zips)
+    cycle: int = 1  # a visual run's align (pipeline_cycle)
+
+
+def zip_name(build: dict) -> str:
+    """An Optilux variant's file under shaderpacks/: the working tree's, or a commit's, its sha."""
+    commit = build["commit"]
+    return OPTILUX_ZIP if commit is None else OPTILUX_COMMIT_ZIP.format(commit=commit[:12])
 
 
 def optilux_zip(root: Path, build: dict) -> dict:
@@ -153,15 +169,44 @@ def optilux_zip(root: Path, build: dict) -> dict:
     commit = build["commit"]
     try:
         if commit is None:
-            sources, name = packzip.tree_sources(root), OPTILUX_ZIP
+            sources = packzip.tree_sources(root)
         else:
             sources = packzip.commit_sources(root, commit, build["variant"])
-            name = OPTILUX_COMMIT_ZIP.format(commit=commit[:12])
     except packzip.PackError as error:
         raise record.RecordError(f"{build['variant']}: {error}") from None
     data = packzip.zip_bytes(sources)
     digest = hashlib.sha512(data).hexdigest()
-    return {"file": name, "data": data, "entries": len(sources), "sha512": digest}
+    return {"file": zip_name(build), "data": data, "entries": len(sources), "sha512": digest}
+
+
+def visual_zips(root: Path, spec: record.Spec) -> tuple[dict, ...]:
+    """Each Optilux zip a visual run's variants load (plans/m3.md D63), built once however many
+    variants share it, each refused unless it passes `check L0` (check_l0), in the variants'
+    order; each with its build."""
+    found: dict[str, dict] = {}
+    for variant in spec.variants:
+        build = variant["build"]
+        if build is None or zip_name(build) in found:
+            continue
+        zipped = optilux_zip(root, build)
+        zipped["l0"] = check_l0(root, zipped, build["variant"])
+        found[zipped["file"]] = {**zipped, "build": build}
+    return tuple(found.values())
+
+
+def pipeline_cycle(root: Path) -> int:
+    """The Optilux pack's cycle in frames, config/pipeline.json's (plans/m3.md D57): a visual
+    run's captures align on it (D63). RecordError naming the fix."""
+    try:
+        cycle = json.loads((root / PIPELINE).read_text(encoding="utf-8"))["cycle"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise record.RecordError(f"{PIPELINE} gives no cycle ({error}); fix: restore it") from None
+    if isinstance(cycle, bool) or not isinstance(cycle, int) or cycle < 1 or FRAME_WRAP % cycle:
+        raise record.RecordError(
+            f"{PIPELINE}'s cycle {cycle!r} does not divide {FRAME_WRAP}, where Iris's frame "
+            "counter wraps; fix: the pack's cycle in frames"
+        )
+    return cycle
 
 
 def check_l0(root: Path, zipped: dict, variant: str) -> dict:
@@ -298,8 +343,25 @@ def prepare(
     if spec.optilux is not None:  # built, then refused unless it passes L0
         optilux = optilux_zip(root, spec.optilux)
         optilux["l0"] = check_l0(root, optilux, spec.optilux["variant"])
+    zips: tuple[dict, ...] = ()
+    cycle = 1
+    if spec.kind == record.VISUAL:
+        zips, cycle = visual_zips(root, spec), pipeline_cycle(root)
     return Prepared(
-        spec, plat, suite, pack, views, base, java_home, snapshot, pm_exe, found, recorded, optilux
+        spec,
+        plat,
+        suite,
+        pack,
+        views,
+        base,
+        java_home,
+        snapshot,
+        pm_exe,
+        found,
+        recorded,
+        optilux,
+        zips,
+        cycle,
     )
 
 
@@ -413,7 +475,10 @@ class Runner:
         self.s: Session | None = None
         self.launched: launch.Launched | None = None
         self.m: measure.Measured | None = None
-        self.found = measure.variants(self.spec, ready.suite) if self.spec.mode else []
+        if self.spec.kind == record.VISUAL:
+            self.found = visual_variants(ready)
+        else:
+            self.found = measure.variants(self.spec, ready.suite) if self.spec.mode else []
         self.created: list[Path] = []  # the files under shaderpacks/ this run wrote
         # An acceptance session's pack: the reference pack, or its Optilux variant's zip once
         # written (write_optilux), which iris.properties names from the start-of-run reload on.
@@ -678,14 +743,11 @@ def acceptance_body(run: Runner, s: Session) -> None:
     s.step("input.block off", lambda: client.input_block(False))
 
 
-def write_optilux(run: Runner) -> dict:
+def write_zip(run: Runner, zipped: dict, build: dict) -> dict:
     """An Optilux variant's zip under shaderpacks/ before the launch (plans/m3.md D63), the bytes
     prepare built (optilux_zip): journaled before it exists, its part file too (D41), written
     through that part name and its sha512 checked against the bytes built. A file of its name
     already there, or its settings file, is refused: the run deletes only what it wrote."""
-    build, zipped = run.spec.optilux, run.ready.optilux
-    if build is None or zipped is None:
-        raise RunError("the spec names no Optilux variant")
     name = zipped["file"]
     packs = run.ready.base / launch.GAME / launch.SHADER_PACKS
     target = packs / name
@@ -700,7 +762,6 @@ def write_optilux(run: Runner) -> dict:
     digest = platform.sha512(target)
     if digest != zipped["sha512"]:
         raise RunError(f"{name} hashes {digest[:12]}..., built {zipped['sha512'][:12]}...")
-    run.pack_file, run.pack_sha512 = name, digest
     run.say(
         f"{build['variant']}: wrote shaderpacks/{name} ({zipped['entries']} entries, sha512 "
         f"{digest[:12]}..., check L0 passed)"
@@ -712,6 +773,16 @@ def write_optilux(run: Runner) -> dict:
         **build,
         "l0": zipped["l0"],
     }
+
+
+def write_optilux(run: Runner) -> dict:
+    """An acceptance run's Optilux variant written (write_zip), the pack its session loads."""
+    build, zipped = run.spec.optilux, run.ready.optilux
+    if build is None or zipped is None:
+        raise RunError("the spec names no Optilux variant")
+    found = write_zip(run, zipped, build)
+    run.pack_file, run.pack_sha512 = found["file"], found["sha512"]
+    return found
 
 
 def optilux_files(run: Runner, s: Session) -> None:
@@ -978,6 +1049,136 @@ def measured_session_facts(run: Runner) -> None:
         facts["start"] = {k: v for k, v in facts["start"].items() if k != "options"}
 
 
+# The visual body (plans/m3.md D63; optilux/measure.py's visual_body).
+
+
+def visual_variants(ready: Prepared) -> list[measure.Variant]:
+    """A visual run's variants as its session loads them: the first the baseline, which the others
+    are tiered against (optilux/visual.py), each by the file Iris loads from shaderpacks/ (an
+    Optilux variant's zip, or the reference pack) with its profile's options and the spec's."""
+    found = []
+    for n, variant in enumerate(ready.spec.variants):
+        build = variant["build"]
+        pack = ready.pack.file if build is None else zip_name(build)
+        role = "baseline" if n == 0 else "candidate"
+        options = dict(variant["options"])
+        found.append(
+            measure.Variant(variant["id"], role, pack, pack, variant["profile"], options, False)
+        )
+    return found
+
+
+def visual_sha512(ready: Prepared, pack: str) -> str:
+    """The sha512 of the zip a visual variant loads: its built zip's, or the reference pack's
+    pin; RunError for any other file, which no visual variant loads."""
+    built = {zipped["file"]: zipped["sha512"] for zipped in ready.zips}
+    if pack in built:
+        return built[pack]
+    if pack == ready.pack.file:
+        return ready.pack.sha512
+    raise RunError(f"{pack} is no zip this run built and not the reference pack")
+
+
+def visual_build(ready: Prepared, variant: measure.Variant) -> dict:
+    """An Optilux variant's own build as its spec named it (two refs may name one commit, so one
+    zip) and its zip's `check L0` summary; nothing for the reference pack."""
+    build = next(v["build"] for v in ready.spec.variants if v["id"] == variant.id)
+    if build is None:
+        return {}
+    zipped = next(z for z in ready.zips if z["file"] == variant.pack)
+    return {"build": build, "l0": zipped["l0"]}
+
+
+def visual_plan(run: Runner) -> str:
+    spec = run.spec
+    ids = ", ".join(f"{v.id} ({v.pack})" for v in run.found)
+    return (
+        f"a {spec.mode}-mode visual run of {ids} on {len(spec.view_ids)} views, {spec.planned} "
+        f"reloads, at each view and variant a pair of frames {measure.PAIR_MS / 1000:g} s apart"
+    )
+
+
+def visual_before(run: Runner) -> None:
+    """The variants journaled, then each Optilux zip written into shaderpacks/ (write_zip) before
+    the launch, the run's files journaled first (D41)."""
+    ready = run.ready
+    run.journal.set(
+        "variants",
+        [
+            {
+                "id": v.id,
+                "role": v.role,
+                "pack": v.pack,
+                "sha512": visual_sha512(ready, v.pack),
+                **visual_build(ready, v),
+                "profile": v.profile,
+                "options": v.options,
+                "timers": False,
+            }
+            for v in run.found
+        ],
+    )
+    run.facts["zips"] = [write_zip(run, zipped, zipped["build"]) for zipped in ready.zips]
+
+
+def visual_session(run: Runner, s: Session) -> None:
+    ready, spec = run.ready, run.spec
+    by_id = {v["id"]: v for v in ready.views["views"]}
+    run.m = measure.Measured(
+        s=s,
+        spec=spec,
+        suite=ready.suite,
+        views=[by_id[vid] for vid in spec.view_ids],
+        found=run.found,
+        journal=run.journal,
+        pm_exe=ready.presentmon,
+        jcmd=ready.java_home / "bin" / "jcmd.exe",
+        display_mode=ready.identity["system"]["resolution"],
+        own=run.own,
+        luid=ready.recorded["hags"]["adapterLuid"],
+        marks=run.marks,
+        cycle=ready.cycle,
+    )
+    measure.visual_body(run.m)
+
+
+def visual_fields(run: Runner) -> dict:
+    """A visual record's own fields (run-record.md#record): the mode; the variants, each zip's
+    sha512 (an Optilux variant's build and `check L0` summary beside it) and its effective options
+    in full; every pair (the events that flagged one stay in raw/captures.json); a pair planned
+    but not taken, or one missing a frame, a problem of the run's."""
+    spec, m, ready = run.spec, run.m, run.ready
+    entries = m.entries if m is not None else []
+    variants = []
+    for v in run.found:
+        mine = m.effective.get(v.id) if m is not None else None
+        variants.append(
+            {
+                "id": v.id,
+                "role": v.role,
+                "pack": v.pack,
+                "sha512": visual_sha512(ready, v.pack),
+                **visual_build(ready, v),
+                "profile": v.profile,
+                "options": v.options,
+                "effective": None
+                if mine is None
+                else {
+                    "sha256": mine["sha256"],
+                    "count": len(mine["values"]),
+                    "values": mine["values"],
+                },
+            }
+        )
+    planned = len(spec.view_ids) * len(run.found)
+    run.problems += measure.visual_problems(
+        entries, planned, run.status == "ok" and not run.problems
+    )
+    (run.raw / CAPTURES).write_text(json.dumps({"captures": entries}, indent=1) + "\n", "utf-8")
+    captures = [{k: v for k, v in e.items() if k != "problems"} for e in entries]
+    return {"mode": spec.mode, "variants": variants, "captures": captures}
+
+
 # The run.
 
 
@@ -1021,7 +1222,7 @@ def perform(
         f"{'on' if system['hags'] else 'off'}, Windows build {system['windowsBuild']}"
     )
     machine_facts = None
-    if spec.mode is not None:
+    if spec.mode is not None and spec.kind != record.VISUAL:  # D42: a measured run's
         marks["machine"] = time.monotonic()
         machine_facts = measure.machine_to_itself(host, ready.recorded["hags"]["adapterLuid"], say)
         say(
@@ -1036,7 +1237,10 @@ def perform(
     if displays is not None:
         run.facts["displays"] = displays
     try:
-        if spec.mode is None:
+        if spec.kind == record.VISUAL:
+            visual_before(run)
+            run.session(visual_plan(run), lambda s: visual_session(run, s))
+        elif spec.mode is None:
             pack = f"unmodified {ready.pack.file}"
             if spec.optilux is not None:
                 run.facts["optilux"] = write_optilux(run)
@@ -1075,7 +1279,20 @@ def perform(
         "identity": run.ident,
         "recorded": run.recorded,
     }
-    if spec.mode is None:
+    if spec.kind == record.VISUAL:
+        found.update(mode=spec.mode, variants=[], captures=[])
+        try:
+            found.update(visual_fields(run))
+        except Exception as error:  # noqa: BLE001 the record is written whatever its pairs met
+            run.problems.append(f"the pairs' record: {type(error).__name__}: {error}")
+        status = measured_status(run)
+        try:
+            measured_session_facts(run)
+        except Exception as error:  # noqa: BLE001 as above
+            run.problems.append(f"the session's raw files: {type(error).__name__}: {error}")
+            status = "failed" if status == "ok" else status
+        run.facts["timeSplit"] = measure.time_split(marks, time.monotonic())
+    elif spec.mode is None:
         status, acceptance = record_status(
             run.status, run.problems, run.facts, run.items, spec.items, spec.reloads, run.table
         )
@@ -1123,17 +1340,20 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 def check(ready: Prepared, as_json: bool) -> int:
     """`--check`: the identity `run` would record, key by key, the calibration that matched it,
-    a split session's launches and an Optilux variant's zip as built; nothing launched or
-    written."""
+    a split session's launches and an Optilux variant's zip as built (a visual run's, each);
+    nothing launched or written."""
     cid = ready.spec.calibration
     groups = [list(g) for g in ready.spec.groups]
     zipped = None
     if ready.optilux is not None:
         zipped = {k: v for k, v in ready.optilux.items() if k != "data"}
         zipped["build"] = ready.spec.optilux
+    zips = [{k: v for k, v in z.items() if k != "data"} for z in ready.zips]
     if as_json:
         found = {"ok": True, "name": ready.spec.name, "launched": False, "calibration": cid}
         found["optilux"] = zipped
+        if ready.spec.kind == record.VISUAL:
+            found.update(zips=zips, cycle=ready.cycle, planned=ready.spec.planned)
         print(json.dumps({**found, "groups": groups, "identity": ready.identity}))
         return 0
     judged = f"; calibration {cid[:24]}... matches it key by key" if cid else ""
@@ -1146,19 +1366,27 @@ def check(ready: Prepared, as_json: bool) -> int:
         print(f"split: {len(groups)} launches of views (D43): {launches}")
     if zipped is not None:
         print(f"optilux: {json.dumps(zipped)}")
+    if ready.spec.kind == record.VISUAL:
+        print(
+            f"visual: {ready.spec.planned} reloads on {', '.join(ready.spec.view_ids)}, aligned on "
+            f"cycle {ready.cycle}; zips: {json.dumps(zips)}"
+        )
     for key, value in ready.identity.items():
         print(f"{key}: {json.dumps(value)}")  # ASCII: a piped stdout may be cp1252
     return 0
 
 
 def summary_line(found: dict) -> str:
-    """The run's outcome in one line: a measured run's captures and verdicts, an acceptance run's
-    items."""
+    """The run's outcome in one line: a measured run's captures and verdicts, a visual run's pairs,
+    an acceptance run's items."""
     parts = []
     if "captures" in found:
         captures = found["captures"]
         valid = sum(1 for c in captures if c.get("valid"))
         parts.append(f"{valid} of {len(captures)} captures valid")
+        if found.get("kind") == record.VISUAL:
+            moving = [f"{c['view']}/{c['variant']}" for c in captures if "moving" in c["flags"]]
+            parts.append(f"pairs moving: {', '.join(moving) or 'none'}")
     judged = found.get("verdicts")
     if judged:
         parts += [f"{c['variant']} {c['verdict']}" for c in judged["candidates"]]
@@ -1199,7 +1427,8 @@ def run_session(
     split session's parts from the first without an ok record, then its session record. The
     last record written and its path: a part that did not end ok stops the session there. A
     measured session holds the displays on throughout (measure.displays_on), unless its caller
-    holds them already (`displays`, calibrate's over its sessions)."""
+    holds them already (`displays`, calibrate's over its sessions); a visual one too, never
+    refused with them off."""
     data = load_spec(spec_in) if isinstance(spec_in, Path) else spec_in
     spec = checked(root, data)
 
@@ -1211,7 +1440,9 @@ def run_session(
 
     if spec.mode is None or displays is not None:
         return launches(displays)
-    with measure.displays_on(host, say) as held:
+    # A visual run reads its frames back and needs no presented row: the displays are held on
+    # through it but never refused off (m3-capture-1's selftest captured 3840x2160 with them off).
+    with measure.displays_on(host, say, spec.kind != record.VISUAL) as held:
         return launches(held)
 
 

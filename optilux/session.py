@@ -746,6 +746,14 @@ def set_time(c: modclient.Client, ticks: int) -> dict:
     return result
 
 
+def visual_settle(capture: dict, view: dict, dimension_changed: bool) -> float:
+    """A view's visual settle (measurement.md#readiness, suite.json capture.visualSettleS): its
+    role's own (underwater's 2.0), else the default, plus the addition after a dimension change."""
+    visual = capture["visualSettleS"]
+    settle = visual.get(view["id"], visual["default"])
+    return settle + (visual["addAfterDimensionChange"] if dimension_changed else 0.0)
+
+
 def settle_view(
     s: Session, view: dict, weather: str | None, suite: dict, previous: str | None
 ) -> dict:
@@ -779,10 +787,7 @@ def settle_view(
     problems = modclient.pose_differences(pose, placed["pose"])
     if problems:
         raise RunError(f"{view['id']}: camera.place answered {placed['pose']}: {problems}")
-    visual = capture["visualSettleS"]
-    settle = visual.get(view["id"], visual["default"])  # a role's own settle (underwater 2.0)
-    if previous != view["dim"]:
-        settle += capture["visualSettleS"]["addAfterDimensionChange"]
+    settle = visual_settle(capture, view, previous != view["dim"])
     ready = s.step(
         f"{view['id']}: ready",
         lambda: c.ready(STABLE_FRAMES, settle, READY_TIMEOUT),
