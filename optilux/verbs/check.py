@@ -400,6 +400,18 @@ def option_changes(base: dict, cand: dict) -> list[str]:
     return sorted(k for k in bv.keys() | cv.keys() if bv.get(k) != cv.get(k))
 
 
+def iris_pinned(root: Path) -> None:
+    """L1Error unless the bench tier's Iris is the jar l1.IRIS_UNIFORMS was read in."""
+    plat = platform.load(root)
+    iris = next((p for p in plat.tier_files(BENCH) if p.kind == "mod" and p.slug == "iris"), None)
+    if iris is None or iris.sha512 != offline.IRIS_SHA512:
+        raise l1.L1Error(
+            f"the bench tier pins {iris.file if iris else 'no Iris'}, and L1's uniform list was "
+            f"read in {offline.IRIS_JAR}; fix: read it again in the new jar with javap and update "
+            "optilux/l1.py"
+        )
+
+
 def premise_held_back(entry: dict, base_units: dict, cand_units: dict) -> str | None:
     """Why a closing premise verdict (not compiled, not executed) closes nothing, or None: the
     check reads the source alone, so it closes only a candidate whose options equal the
@@ -497,6 +509,18 @@ def run_l1(root: Path, named: str) -> dict:
             path = raw / dumped["capture"]["dump"]["folder"] / name
             properties[(vid, dim)] = path.read_text(encoding="utf-8", errors="replace")
     problems = l1.audit(passes, properties)
+    iris_pinned(root)  # the uniform list was read in that jar
+    read: dict[str, dict[str, set[str]]] = {}  # per manifest: one print, read once
+    for (vid, dim), dumped in sorted(taken.items()):
+        if variants[vid].get("build") is None:
+            continue
+        manifest = dumped["capture"]["dump"]["manifest"]
+        if manifest not in read:
+            declared = l1.pack_uniforms(sources[vid][0])
+            texts = l1.stage_texts(raw, dumped["capture"], dumped["files"])
+            read[manifest] = {k: l1.read_uniforms(t, declared) for k, t in texts.items()}
+        customs = {m["name"] for m in l1.CUSTOM_UNIFORM.finditer(properties.get((vid, dim), ""))}
+        problems += l1.uniform_problems(f"{vid} in {dim}", read[manifest], customs)
     offline_field = {
         "level": "L1",
         "baseline": base,

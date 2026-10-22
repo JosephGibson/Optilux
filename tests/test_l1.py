@@ -384,3 +384,43 @@ def test_the_audit_pairs_each_buffer_with_its_producer_and_reader() -> None:
     assert l1.audit(passes, uniforms) == [
         "b in minecraft:overworld: present reads custom uniform wobble, undefined there"
     ]
+
+
+PRINTED = """#version 330 core
+uniform mat4 modelViewMatrix;
+uniform float far;
+uniform float farr;
+uniform float wobble;
+uniform sampler2D gtexture;
+uniform vec3 fogColor;
+void main() { vec4 p = iris_transforms.ModelViewMat * vec4(far + farr + wobble); }
+"""
+
+
+def test_the_audit_names_a_uniform_iris_never_defines() -> None:
+    """uniform -> reader (playbook.md#7-pitfalls): a uniform the pack declares and its print still
+    reads must be Iris's (l1.IRIS_UNIFORMS, read in the pinned jar) or a custom uniform; a core
+    name the transformers replaced is declared but no longer read."""
+    declared = l1.pack_uniforms(offline.Pack("x", {"a.glsl": PRINTED, "b.png": "uniform float x;"}))
+    assert declared == {"modelViewMatrix", "far", "farr", "wobble", "fogColor"}
+    reads = l1.read_uniforms(PRINTED, declared)
+    assert reads == {"far", "farr", "wobble"}  # modelViewMatrix and fogColor: declared, unread
+    assert l1.uniform_problems("a in overworld", {"basic.vsh": reads}, {"wobble"}) == [
+        "a in overworld: basic.vsh reads uniform farr, which Iris never defines (it reads 0)"
+    ]
+    hello = l1.pack_uniforms(HELLO)
+    named = {"far", "fogColor", "fogStart", "fogEnd", "entityId", "alphaTestRef"}
+    assert named <= hello and named <= l1.IRIS_UNIFORMS
+    assert {
+        "gbufferModelViewInverse",
+        "dhPreviousProjection",
+        "shadowProjection",
+    } <= l1.IRIS_UNIFORMS
+    assert len(l1.IRIS_UNIFORMS) == 195
+
+
+def test_the_uniform_list_is_refused_once_the_bench_tiers_iris_moves(monkeypatch) -> None:
+    check.iris_pinned(REPO_ROOT)
+    monkeypatch.setattr(offline, "IRIS_SHA512", "0" * 128)
+    with pytest.raises(l1.L1Error, match="read it again in the new jar with javap"):
+        check.iris_pinned(REPO_ROOT)

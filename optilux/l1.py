@@ -94,6 +94,66 @@ STAGE_ORDER = (
 )
 DISABLED = re.compile(r"^\s*program\.(?P<name>[\w/-]+)\.enabled\s*[=:]\s*false\s*$", re.M)
 CUSTOM_UNIFORM = re.compile(r"^\s*uniform\.\w+\.(?P<name>\w+)\s*[=:]", re.M)
+# Iris 1.11.7's uniforms (javap of the pinned jar, offline.IRIS_SHA512, M3.P08): the String each
+# of UniformHolder's 16 registering methods (uniform1f ... externallyManagedUniform) receives in
+# the jar's classes; MatrixUniforms' recipes gbuffer<m>, gbuffer<m>Inverse and gbufferPrevious<m>
+# (dh likewise, shadow without Previous) over the ModelView and Projection its callers pass; and
+# the names ExternallyManagedUniforms' helpers take. A uniform the pack declares that its print
+# still reads, none of these and no custom uniform of the dump's properties, reads 0
+# (playbook.md#7-pitfalls). The transformers replace their core-profile names (modelViewMatrix,
+# projectionMatrix, chunkOffset, textureMatrix, alphaTestRef) before the print, so no print reads
+# them.
+IRIS_UNIFORMS = frozenset(
+    (  # noqa: SIM905 the jar's names, kept as its words
+        "BiomeTemp alphaTestRef ambientLight anisotropicFiltering aspectRatio atlasSize "
+        "bedrockLevel biome biome_category biome_precipitation blendFunc blindFactor "
+        "blindness blockEntityId burningSmooth cameraPosition cameraPositionFract "
+        "cameraPositionInt chunkFadeTimeInv cloudHeight cloudTime constantMood "
+        "currentColorSpace currentDate currentPlayerAir currentPlayerArmor "
+        "currentPlayerHealth currentPlayerHunger currentRenderedItemId currentSelectedBlockId "
+        "currentSelectedBlockPos currentTime currentYearTime darknessFactor "
+        "darknessLightFactor dawnDusk day decay dhFarPlane dhNearPlane dhPreviousProjection "
+        "dhProjection dhProjectionInverse dhRenderDistance effectStrength endFlashIntensity "
+        "endFlashPosition entityColor entityId eyeAltitude eyeBrightness eyeBrightnessM "
+        "eyeBrightnessSmooth eyePosition far feetInWater firstPersonCamera fogColor "
+        "fogDensity fogEnd fogMode fogShape fogStart frameCounter frameTime frameTimeCounter "
+        "frameTimeSmooth gbufferModelView gbufferModelViewInverse gbufferPreviousModelView "
+        "gbufferPreviousProjection gbufferProjection gbufferProjectionInverse glintAlpha "
+        "gtextureId gtextureSize hasCeiling hasSkylight heavyFog heightLimit "
+        "heldBlockLightColor heldBlockLightColor2 heldBlockLightValue heldBlockLightValue2 "
+        "heldItemId heldItemId2 hideGUI inSwimmingAnimation iris_CameraTranslation "
+        "iris_ColorModulator iris_DefaultModelViewMatrixInverse iris_DefaultNormalMat "
+        "iris_DefaultProjectionMatrixInverse iris_FogColor iris_FogDensity iris_FogEnd "
+        "iris_FogStart iris_GlintAlpha iris_LightmapTextureMatrix iris_ModelOffset "
+        "iris_ModelScale iris_ModelViewMat iris_ModelViewMatrix iris_NormalMat "
+        "iris_NormalMatrix iris_ProjMat iris_ProjectionMatrix iris_ScreenSize "
+        "iris_ShadowModelViewMatrixInverse iris_ShadowProjectionMatrixInverse iris_TextureMat "
+        "iris_TextureScale iris_currentAlphaTest isDry isElytraFlying isEyeInCave "
+        "isEyeInWater isPrecipitationRain isRainy isRiding isRightHanded isSnowy isSpectator "
+        "is_burning is_hurt is_invisible is_on_ground is_sneaking is_sprinting lastFrameTime "
+        "lightningBoltPosition logicalHeightLimit maxPlayerAir maxPlayerArmor maxPlayerHealth "
+        "maxPlayerHunger moonBrightness moonPhase moonPosition near night nightVision pi "
+        "playerBodyVector playerLookVector playerMood previousCameraPosition "
+        "previousCameraPositionFract previousCameraPositionInt previousEndFlashIntensity "
+        "projection rainFactor rainStrength rainStrengthS rainStrengthS2 "
+        "rainStrengthShiningStars rainfall relativeEyePosition relativeVehiclePosition "
+        "renderStage screenBrightness seaLevel shadowAngle shadowFade shadowLightPosition "
+        "shadowModelView shadowModelViewInverse shadowProjection shadowProjectionInverse "
+        "shdFade skyColor sneakSmooth starter sunAngle sunPosition temperature "
+        "textureFilteringMode textureReloadCount thunderStrength timeAngle timeBrightness "
+        "touchmybody u_ModelScale u_ModelViewProjectionMatrix u_TextureScale upPosition "
+        "vehicleId vehicleInWater vehicleLookVector velocity viewHeight viewWidth wetness "
+        "worldDay worldTime"
+    ).split()
+)
+# A uniform's declaration at file scope: its type and name (an opaque type is a sampler or image,
+# which Iris binds by unit, not by its uniform system).
+UNIFORM_DECLARED = re.compile(
+    r"^[ \t]*uniform\s+(?:(?:lowp|mediump|highp)\s+)?(?P<type>\w+)\s+(?P<name>\w+)\s*"
+    r"(?:\[[^\]]*\])?\s*(?:=[^;]*)?;",
+    re.M,
+)
+OPAQUE = ("sampler", "isampler", "usampler", "image", "iimage", "uimage")
 
 
 class L1Error(RuntimeError):
@@ -365,8 +425,8 @@ def changed_functions(
     return changed, removed, None
 
 
-def stage_units(raw: Path, capture: dict, files: Mapping[str, str]) -> dict[str, Unit]:
-    """A dump's stage files under raw/<run>/, each held to its recorded sha256, parsed."""
+def stage_texts(raw: Path, capture: dict, files: Mapping[str, str]) -> dict[str, str]:
+    """A dump's stage files under raw/<run>/ by stage_key, each held to its recorded sha256."""
     folder = raw / capture["dump"]["folder"]
     found = {}
     for name, digest in files.items():
@@ -380,8 +440,13 @@ def stage_units(raw: Path, capture: dict, files: Mapping[str, str]) -> dict[str,
             raise L1Error(f"{path}: {error}; fix: the run's raw folder as it wrote it") from None
         if hashlib.sha256(data).hexdigest() != digest:
             raise L1Error(f"{path} does not hash to its record's sha256; fix: rerun the dump")
-        found[key] = glsl_unit(data.decode("utf-8", errors="replace"))
+        found[key] = data.decode("utf-8", errors="replace")
     return found
+
+
+def stage_units(raw: Path, capture: dict, files: Mapping[str, str]) -> dict[str, Unit]:
+    """A dump's stage files (stage_texts), parsed."""
+    return {key: glsl_unit(text) for key, text in stage_texts(raw, capture, files).items()}
 
 
 def premise(
@@ -585,6 +650,39 @@ def audit(passes: list[dict], properties: Mapping[tuple[str, str], str]) -> list
                         "after it"
                     )
     return problems
+
+
+def pack_uniforms(pack: offline.Pack) -> set[str]:
+    """The uniforms, but samplers and images, that the pack's GLSL declares under any condition."""
+    found = set()
+    for path, text in pack.files.items():
+        if PurePosixPath(path).suffix in GLSL_ENDINGS:
+            for m in UNIFORM_DECLARED.finditer(offline.COMMENT.sub(" ", text)):
+                if not m["type"].startswith(OPAQUE):
+                    found.add(m["name"])
+    return found
+
+
+def read_uniforms(text: str, among: set[str]) -> set[str]:
+    """The uniforms of `among` a printed stage declares and still reads (named past its
+    declaration): the transformers' replacements leave a core name declared and unread."""
+    code = offline.COMMENT.sub(" ", text)
+    return {
+        m["name"]
+        for m in UNIFORM_DECLARED.finditer(code)
+        if m["name"] in among and len(re.findall(rf"\b{re.escape(m['name'])}\b", code)) > 1
+    }
+
+
+def uniform_problems(where: str, reads: Mapping[str, set[str]], customs: set[str]) -> list[str]:
+    """The audit's uniform -> reader over one dump's stages: each uniform a stage reads defined by
+    Iris (IRIS_UNIFORMS) or by the dump's properties (a custom uniform), else it reads 0."""
+    return [
+        f"{where}: {stage} reads uniform {name}, which Iris never defines (it reads 0)"
+        for stage, names in sorted(reads.items())
+        for name in sorted(names)
+        if name not in IRIS_UNIFORMS and name not in customs
+    ]
 
 
 def written(found: dict) -> set[str]:
