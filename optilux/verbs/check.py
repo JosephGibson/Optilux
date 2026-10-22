@@ -13,13 +13,17 @@ so it runs the tests, never this verb.
 import argparse
 import hashlib
 import json
+import os
+import re
+import subprocess
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from optilux import REPO_ROOT, l1, offline, packzip, platform, record
+from optilux import REPO_ROOT, l1, l2, offline, packzip, platform, record
 from optilux.verbs import Verb, verify
-from optilux.verbs.install import REFERENCE, RUNTIME, STORE, TOOLS, TOOLS_DIR
+from optilux.verbs.install import REFERENCE, RUNTIME, STORE, TOOLS, TOOLS_DIR, shown
 
 PREFIX = "optilux check L0"
 PIPELINE = "config/pipeline.json"
@@ -63,6 +67,18 @@ def configure(parser: argparse.ArgumentParser) -> None:
         "record", metavar="run", help="a dump record's run name, or - for a record on stdin"
     )
     l1_parser.add_argument("--json", action="store_true", help="print JSON instead of text")
+    l2_parser = levels.add_parser(
+        "L2",
+        help="RGA (gfx1101) on a dump run's every program: registers, ISA, live registers, CFG",
+        description=(
+            "Build each distinct program of a dump record's prints with RGA in OpenGL mode for "
+            "gfx1101 (docs/offline.md#levels, plans/m3.md D70), its outputs under "
+            "results/raw/<run>/l2/; print each stage's VGPRs, or name it a known offline "
+            "failure. Explains only: it never gates."
+        ),
+    )
+    l2_parser.add_argument("record", metavar="run", help="a dump record's run name")
+    l2_parser.add_argument("--json", action="store_true", help="print JSON instead of text")
 
 
 def load_pack(root: Path, named: str | None) -> offline.Pack:
@@ -551,7 +567,134 @@ def print_l1(result: dict) -> None:
     )
 
 
+# L2 (docs/offline.md#levels, plans/m3.md D70): optilux/l2.py on a dump record.
+
+L2_PREFIX = "optilux check L2"
+L2_DIR = "l2"
+
+
+def rga_exe(root: Path) -> tuple[Path, str]:
+    """RGA as config/tools.json pins it under runtime/tools/, its printed version held to the
+    pin's (`--version`: "Radeon GPU Analyzer Version: 2.15.0.30 (...)")."""
+    pin = json.loads((root / TOOLS).read_text(encoding="utf-8")).get("rga")
+    if not isinstance(pin, dict) or not pin.get("unpack") or not pin.get("exe"):
+        raise l2.L2Error(f"{TOOLS} pins no rga with unpack and exe; fix: restore it")
+    exe = root / TOOLS_DIR / pin["unpack"] / pin["exe"]
+    try:
+        done = subprocess.run(  # noqa: S603 the pinned RGA, no shell
+            [str(exe), "--version"], capture_output=True, timeout=60, check=False
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise l2.L2Error(f"{exe} did not run ({error}); fix: `uv run optilux install`") from None
+    found = re.search(r"Version: (\S+)", done.stdout.decode("utf-8", "replace"))
+    version = found[1] if found else "nothing"
+    if not (version == pin["version"] or version.startswith(f"{pin['version']}.")):
+        raise l2.L2Error(
+            f"{exe} prints version {version}, the pin says {pin['version']}; fix: `uv run "
+            "optilux install`"
+        )
+    return exe, version
+
+
+def run_l2(root: Path, named: str) -> dict:
+    """`check L2`'s whole result: each distinct program of the record's prints through RGA, the
+    prints that share it, its stages' figures or its failure; the results also written to
+    results/raw/<run>/l2/l2.json."""
+    started = time.perf_counter()
+    try:
+        found = dump_record(root, named)
+    except l1.L1Error as error:
+        raise l2.L2Error(str(error)) from None
+    exe, version = rga_exe(root)
+    raw = root / found["raw"]
+    taken = l1.prints(found)
+    by_manifest: dict[str, list[tuple[str, str]]] = {}
+    for (vid, dim), dumped in taken.items():
+        by_manifest.setdefault(dumped["capture"]["dump"]["manifest"], []).append((vid, dim))
+    distinct: dict[str, l2.Program] = {}
+    prints_out = []
+    for manifest, shared in by_manifest.items():
+        dumped = taken[shared[0]]
+        found_programs = l2.programs(raw, dumped["capture"], dumped["files"])
+        for program in found_programs:
+            distinct.setdefault(program.digest, program)
+        prints_out.append(
+            {
+                "manifest": manifest,
+                "dumps": [{"variant": v, "dimension": d} for v, d in shared],
+                "programs": [{"program": p.name, "digest": p.digest} for p in found_programs],
+            }
+        )
+    out = raw / L2_DIR
+
+    def one(program: l2.Program) -> dict:
+        return l2.analyze(exe, program, out / f"{program.name}-{program.digest[:12]}")
+
+    with ThreadPoolExecutor(max_workers=max(1, min(8, (os.cpu_count() or 2) // 2))) as pool:
+        results = dict(zip(distinct, pool.map(one, distinct.values()), strict=True))
+    failures = sorted(r["program"] for r in results.values() if r["failed"])
+    result = {
+        "ok": True,
+        "run": found["name"],
+        "rga": version,
+        "asic": l2.ASIC,
+        "folder": shown(out, root),
+        "prints": prints_out,
+        "results": results,
+        "failures": failures,
+        "seconds": round(time.perf_counter() - started, 2),
+    }
+    (out / "l2.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+    return result
+
+
+def print_l2(result: dict) -> None:
+    results = result["results"]
+    print(
+        f"{L2_PREFIX}: {result['run']}: RGA {result['rga']}, {result['asic']}: {len(results)} "
+        f"distinct programs in {len(result['prints'])} distinct prints, outputs under "
+        f"{result['folder']}/"
+    )
+    short = {d: d.removeprefix("minecraft:") for d in record.DIMENSIONS}
+    for found in result["prints"]:
+        dumps = ", ".join(f"{d['variant']} in {short[d['dimension']]}" for d in found["dumps"])
+        print(f"print {found['manifest'][:12]}... ({dumps}):")
+        for entry in found["programs"]:
+            done = results[entry["digest"]]
+            for ending, stage in done["stages"].items():
+                print(
+                    f"  {done['program']}.{ending}: VGPRs {stage['vgprs']}, SGPRs "
+                    f"{stage['sgprs']}, live VGPRs {stage['liveVgprs']}, live SGPRs "
+                    f"{stage['liveSgprs']}, ISA {stage['isaBytes']} B, spills "
+                    f"{stage['vgprSpills']}/{stage['sgprSpills']}"
+                )
+            if done["failed"]:
+                print(
+                    f"  {done['program']}: known offline failure: {' | '.join(done['failed'][:3])}"
+                )
+    print(
+        f"{L2_PREFIX}: {len(results) - len(result['failures'])} programs built, "
+        f"{len(result['failures'])} known offline failures"
+        + (f" ({', '.join(result['failures'])})" if result["failures"] else "")
+        + f"; explains only; in {result['seconds']} s"
+    )
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.level == "L2":
+        try:
+            found = run_l2(REPO_ROOT, args.record)
+        except (l2.L2Error, platform.PlatformError, OSError, ValueError) as error:
+            if args.json:
+                print(json.dumps({"ok": False, "error": str(error)}))
+            else:
+                print(f"{L2_PREFIX}: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(found))
+        else:
+            print_l2(found)
+        return 0
     if args.level == "L1":
         try:
             result = run_l1(REPO_ROOT, args.record)
