@@ -16,9 +16,10 @@ through it and the orphans the next run finishes (D41).
   window per view; the measured pass, per view the schedule A, then (Ci, A) for each candidate, R
   rounds (the mode's, or a budget run's own: record.BUDGET). Each pass is a lap over the mode's
   views, ordered for the fewest weather and dimension changes (D48). At a view: its function
-  (time, weather), camera.place, the GUI and game mode (D49: entities alone shows the GUI, in
-  creative with prep's torch), then the stepped ticks when the overworld's weather changed, with
-  the camera at the view. Per capture: the variant's files,
+  (time, weather), camera.place, the GUI and game mode (D49: of the perf views entities alone
+  shows the GUI, in creative with prep's torch; a coverage view with `hand`, plans/m3.md D64),
+  then the stepped ticks when the overworld's weather changed and a coverage view's own `ticks`,
+  with the camera at the view. Per capture: the variant's files,
   shaders.reload and the options read back, timers.start for a timers-on variant,
   window.measure {after: reload} with the largest settle that applies, timers.stop; the heap read
   every record.RELOAD_EVERY reloads when the spec asks (M2.P06), and then after every reload the
@@ -92,7 +93,8 @@ ZIP_FILE = 0o100644 << 16
 SETTINGS = "{pack}.txt"
 # The view functions world prep writes (world.py: optilux:view/<id>, ending in `return 1`).
 FUNCTION = "/function optilux:view/{id}"
-# The only view that shows the GUI, in creative with prep's torch in the main hand (D49).
+# The only perf view that shows the GUI, in creative with prep's torch in the main hand (D49), as
+# a coverage view with `hand` does (plans/m3.md D64).
 ENTITIES = "entities"
 TICKS_TIMEOUT = 60.0
 # The timers on a timers-on variant (mod-protocol.md#commands): every pass, read 3 frames late,
@@ -877,8 +879,8 @@ def stop_presentmon(m: Measured, pm: presentmon.Host) -> None:
 
 
 def leave_gui(m: Measured, where: str) -> None:
-    """D49 after the entities view: the GUI hidden again and spectator back, before the next pose
-    (camera.place needs a spectator or a flying player)."""
+    """D49 after a view that shows the hand (shows_hand): the GUI hidden again and spectator back,
+    before the next pose (camera.place needs a spectator or a flying player)."""
     s, c = m.s, m.c
     s.step(f"{where}: hud.set hideGui", lambda: c.hud_set(hide_gui=True))
     s.step(
@@ -889,10 +891,17 @@ def leave_gui(m: Measured, where: str) -> None:
     m.gui = False
 
 
+def shows_hand(view: dict) -> bool:
+    """D49: entities, and a coverage view with `hand` (plans/m3.md D64), show the GUI in creative,
+    prep's torch in the main hand."""
+    return view["id"] == ENTITIES or view.get("hand") is True
+
+
 def arrive(m: Measured, view: dict) -> bool:
     """A view reached (measurement.md#session step 5): its function, camera.place, D49's GUI and
-    game mode, the overworld weather's ticks with the camera there when it changed. Whether the
-    dimension changed on the way."""
+    game mode, the overworld weather's ticks with the camera there when it changed, then a
+    coverage view's own `ticks` (plans/m3.md D64: the beacon's beam forms). Whether the dimension
+    changed on the way."""
     s, c = m.s, m.c
     vid = view["id"]
     if m.gui:
@@ -924,7 +933,7 @@ def arrive(m: Measured, view: dict) -> bool:
             lambda: c.ready(STABLE_FRAMES, 0.0, READY_TIMEOUT),
             lambda a: f"{a['seconds']:.2f} s, limitedBy {a['limitedBy']}",
         )
-    if vid == ENTITIES:
+    if shows_hand(view):
         s.step(
             f"{vid}: creative",
             lambda: c.command("/gamemode creative", COMMAND_TIMEOUT),
@@ -937,6 +946,10 @@ def arrive(m: Measured, view: dict) -> bool:
         s.step(f"{vid}: ticks.step {n}", lambda: c.ticks_step(n, TICKS_TIMEOUT))
         m.ramped = view["weather"]
         m.facts.setdefault("weatherTicks", []).append({"view": vid, "ticks": n})
+    ticks = view.get("ticks", 0)
+    if ticks:
+        s.step(f"{vid}: ticks.step {ticks}, its own", lambda: c.ticks_step(ticks, TICKS_TIMEOUT))
+        m.facts.setdefault("viewTicks", []).append({"view": vid, "ticks": ticks})
     changed = m.previous != view["dim"]
     m.previous = view["dim"]
     return changed

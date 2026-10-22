@@ -31,7 +31,8 @@ raw/<name>/partial.json follows the run.
   twin monitor over the calibration's judged twins) or A8's and A11's judged entries.
 - A visual run (plans/m3.md D63): its Optilux variants' zips built and passed by `check L0`
   before anything is written, then written into shaderpacks/; the session start, one lap over the
-  mode's views and at each view per variant a reload and a pair of frames (measure.visual_body),
+  mode's views (mode coverage: the views file's coverage views, D64) and at each view per variant
+  a reload and a pair of frames (measure.visual_body),
   every frame hashed; the displays held on but never refused off; never split.
 - A session over capture.reloadCap (plans/m2.md D43, run-record.md#split-sessions) runs as one
   launch per group of its views, each a part <session>-p<n> recorded on its own with the session's
@@ -1123,7 +1124,7 @@ def visual_before(run: Runner) -> None:
 
 def visual_session(run: Runner, s: Session) -> None:
     ready, spec = run.ready, run.spec
-    by_id = {v["id"]: v for v in ready.views["views"]}
+    by_id = {v["id"]: v for v in record.every_view(ready.views)}  # a coverage run's too (D64)
     run.m = measure.Measured(
         s=s,
         spec=spec,

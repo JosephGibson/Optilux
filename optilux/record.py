@@ -63,7 +63,8 @@ BUDGET = ("rounds", "dimensions", "keepViews", "alone", "windows")
 # The survey's exception (run-record.md#split-sessions; user, 2026-10-13): a calibration-null
 # measurement run may set its rounds and keep each launch's warm-up pass (D47).
 SURVEY = ("rounds", "warmup")
-# A visual run (plans/m3.md D63): a mode's perf views, each variant's frames taken at each.
+# A visual run (plans/m3.md D63): a mode's perf views, or the views file's coverage views (mode
+# `coverage`, D64), each variant's frames taken at each.
 VISUAL = "visual"
 KINDS = ("measurement", "calibration", "acceptance", VISUAL)
 # A visual run's own keys are the required ones, its mode and notes: none of these.
@@ -75,6 +76,8 @@ VISUAL_PAIR = 2
 VISUAL_FLAGS = ("moving", "event", "incomplete")
 VISUAL_INVALIDATING = ("event", "incomplete")
 MODES = ("quick", "full")
+COVERAGE = "coverage"
+VISUAL_MODES = (*MODES, COVERAGE)
 ITEMS = tuple(f"A{number}" for number in range(1, 13))
 # The items `run` performs in M1 (docs/plans/m1.md 0.01.08 and 0.01.09), in the record's order.
 RUNNABLE = ("A1", "A2", "A3", "A4", "A7", "A9", "A10")
@@ -122,6 +125,14 @@ VIEW_KEYS = ("id", "dim", "x", "y", "z", "yaw", "pitch", "time", "weather")
 VIEW_ID = re.compile(r"[a-z0-9_]{1,40}")
 DIMENSIONS = ("minecraft:overworld", "minecraft:the_nether", "minecraft:the_end")
 WEATHERS = ("clear", "rain", "thunder")
+# Its coverage list (plans/m3.md D64): views out of sight of the perf views, each a view's keys
+# plus `hand` (creative with the GUI shown, as D49 has entities) and `ticks` (stepped at the
+# pose, so the beacon's beam forms: P22). World prep builds, selects and prepares them, a visual
+# run of mode `coverage` takes them, no perf mode reads them. Each lies at least COVERAGE_APART
+# blocks (Chebyshev, over x and z) from every perf view of its dimension: twice the render
+# distance (suite.json display: 16 chunks), so neither sees the other's area.
+COVERAGE_KEYS = ("hand", "ticks")
+COVERAGE_APART = 2 * 16 * 16
 
 # The identity (run-record.md#identity), in the doc's order; a test keeps the two equal.
 IDENTITY_KEYS = (
@@ -198,10 +209,16 @@ def finite(value: Any) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value)
 
 
+def count_from_zero(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
 def load_views(root: Path, world_id: str) -> tuple[dict, Path]:
     """config/views/<world_id>.json checked: its id, and each view's fields (VIEW_KEYS, an
     optional `why`), a known dimension and weather, finite numbers, pitch in -90..90, an integer
-    time from 0; ids unique."""
+    time from 0; its optional `coverage` list's entries the same plus `hand` (a boolean) and
+    `ticks` (an integer from 0), each at least COVERAGE_APART from every perf view of its
+    dimension (plans/m3.md D64); ids unique across both lists."""
     path = root / VIEWS / f"{world_id}.json"
     name = f"{VIEWS}/{path.name}"
     try:
@@ -217,35 +234,85 @@ def load_views(root: Path, world_id: str) -> tuple[dict, Path]:
     views = data.get("views")
     if not isinstance(views, list) or not views:
         raise RecordError(f"{name} lists no views; fix: add one per dimension")
-    seen = set()
+    coverage = data.get(COVERAGE, [])
+    if not isinstance(coverage, list):
+        raise RecordError(f"{name}: {COVERAGE} is no list; fix: list its views, or leave it out")
+    seen: set[str] = set()
     for index, view in enumerate(views):
-        where = f"{name} view {index + 1}"
-        if not isinstance(view, dict):
-            raise RecordError(f"{where} is no object; fix: give its fields")
-        missing = [key for key in VIEW_KEYS if key not in view]
-        extra = [key for key in view if key not in (*VIEW_KEYS, "why")]
-        if missing or extra:
+        check_view(f"{name} view {index + 1}", view, VIEW_KEYS, seen)
+    for index, entry in enumerate(coverage):
+        where = f"{name} {COVERAGE} view {index + 1}"
+        check_view(where, entry, (*VIEW_KEYS, *COVERAGE_KEYS), seen)
+        if not isinstance(entry["hand"], bool):
             raise RecordError(
-                f"{where}: missing {missing or 'none'}, unknown {extra or 'none'}; fix: give "
-                f"exactly {', '.join(VIEW_KEYS)} (and a why)"
+                f"{where}: hand {entry['hand']!r}; fix: true (creative, the GUI and the held "
+                "torch shown) or false"
             )
-        if not isinstance(view["id"], str) or not VIEW_ID.fullmatch(view["id"]):
-            raise RecordError(f"{where}: id {view['id']!r} is not [a-z0-9_]{{1,40}}; fix: rename")
-        if view["id"] in seen:
-            raise RecordError(f"{where}: id {view['id']} is listed twice; fix: rename one")
-        seen.add(view["id"])
-        if view["dim"] not in DIMENSIONS:
-            raise RecordError(f"{where}: dim {view['dim']!r}; fix: one of {', '.join(DIMENSIONS)}")
-        bad = [key for key in ("x", "y", "z", "yaw", "pitch") if not finite(view[key])]
-        if bad:
-            raise RecordError(f"{where}: {', '.join(bad)} not a finite number; fix: give one")
-        if not -90 <= view["pitch"] <= 90:
-            raise RecordError(f"{where}: pitch {view['pitch']} is outside -90..90; fix: clamp it")
-        if isinstance(view["time"], bool) or not isinstance(view["time"], int) or view["time"] < 0:
-            raise RecordError(f"{where}: time {view['time']!r} is no tick count; fix: give one")
-        if view["weather"] not in WEATHERS:
-            raise RecordError(f"{where}: weather {view['weather']!r}; fix: one of {WEATHERS}")
+        if not count_from_zero(entry["ticks"]):
+            raise RecordError(f"{where}: ticks {entry['ticks']!r} is no tick count; fix: from 0")
+        near = [
+            v["id"] for v in views if v["dim"] == entry["dim"] and apart(v, entry) < COVERAGE_APART
+        ]
+        if near:
+            raise RecordError(
+                f"{where}: {entry['id']} lies within {COVERAGE_APART} blocks (Chebyshev) of "
+                f"{', '.join(near)}; fix: a pose out of sight of every perf view of its dimension "
+                "(plans/m3.md D64)"
+            )
     return data, path
+
+
+def check_view(where: str, view: Any, keys: tuple[str, ...], seen: set[str]) -> None:
+    """One view's fields: exactly `keys` and an optional `why`, an id not in `seen` (then added),
+    a known dimension and weather, finite numbers, pitch in -90..90, an integer time from 0."""
+    if not isinstance(view, dict):
+        raise RecordError(f"{where} is no object; fix: give its fields")
+    missing = [key for key in keys if key not in view]
+    extra = [key for key in view if key not in (*keys, "why")]
+    if missing or extra:
+        raise RecordError(
+            f"{where}: missing {missing or 'none'}, unknown {extra or 'none'}; fix: give "
+            f"exactly {', '.join(keys)} (and a why)"
+        )
+    if not isinstance(view["id"], str) or not VIEW_ID.fullmatch(view["id"]):
+        raise RecordError(f"{where}: id {view['id']!r} is not [a-z0-9_]{{1,40}}; fix: rename")
+    if view["id"] in seen:
+        raise RecordError(f"{where}: id {view['id']} is listed twice; fix: rename one")
+    seen.add(view["id"])
+    if view["dim"] not in DIMENSIONS:
+        raise RecordError(f"{where}: dim {view['dim']!r}; fix: one of {', '.join(DIMENSIONS)}")
+    bad = [key for key in ("x", "y", "z", "yaw", "pitch") if not finite(view[key])]
+    if bad:
+        raise RecordError(f"{where}: {', '.join(bad)} not a finite number; fix: give one")
+    if not -90 <= view["pitch"] <= 90:
+        raise RecordError(f"{where}: pitch {view['pitch']} is outside -90..90; fix: clamp it")
+    if not count_from_zero(view["time"]):
+        raise RecordError(f"{where}: time {view['time']!r} is no tick count; fix: give one")
+    if view["weather"] not in WEATHERS:
+        raise RecordError(f"{where}: weather {view['weather']!r}; fix: one of {WEATHERS}")
+
+
+def apart(a: dict, b: dict) -> float:
+    """Two poses' Chebyshev distance in blocks over x and z (the render distance's measure)."""
+    return max(abs(a["x"] - b["x"]), abs(a["z"] - b["z"]))
+
+
+def every_view(views: dict) -> list[dict]:
+    """The perf views, then the coverage views (plans/m3.md D64): what world prep selects, writes
+    functions for and prepares, and what a session may visit."""
+    return [*views["views"], *views.get(COVERAGE, [])]
+
+
+def coverage_views(views: dict) -> tuple[str, ...]:
+    """A visual run's views of mode `coverage`: the views file's coverage list, in its order;
+    RecordError when it lists none."""
+    ids = tuple(view["id"] for view in views.get(COVERAGE, []))
+    if not ids:
+        raise RecordError(
+            f"{VIEWS}/{views['id']}.json lists no {COVERAGE} views; fix: add them (plans/m3.md "
+            f"D64), then `optilux world prep {views['id']}`"
+        )
+    return ids
 
 
 # The run spec.
@@ -554,11 +621,15 @@ def check_spec(
         raise RecordError(f"kind {kind!r}; fix: one of {', '.join(KINDS)}")
     mode = data.get("mode")
     if kind == VISUAL and mode is None:
-        raise RecordError("a visual run takes a mode's perf views; fix: mode quick or full")
+        raise RecordError(
+            "a visual run takes a mode's perf views or the coverage views; fix: mode quick, full "
+            f"or {COVERAGE}"
+        )
     if kind != "acceptance" and mode is None:
         raise RecordError(f"a {kind} run measures a mode's schedule; fix: mode quick or full")
-    if mode is not None and mode not in MODES:
-        raise RecordError(f"mode {mode!r}; fix: one of {', '.join(MODES)}")
+    modes = VISUAL_MODES if kind == VISUAL else MODES
+    if mode is not None and mode not in modes:
+        raise RecordError(f"mode {mode!r}; fix: one of {', '.join(modes)}")
     if data.get("treatment") is not None:
         raise RecordError(
             "treatment: declared treatments come with the JVM track (run-record.md#comparison); "
@@ -980,11 +1051,11 @@ def check_visual_spec(
     notes: str | None,
     cap: int,
 ) -> Spec:
-    """A visual run (plans/m3.md D63): a mode's perf views, in the views file's order; its
-    variants (check_visual_variants); the session's reloads, selftest's and the start-of-run
-    reload, then one per view and variant, within capture.reloadCap: a visual session is never
-    split, as its frames would come from launches apart. No measured run's or acceptance run's
-    keys."""
+    """A visual run (plans/m3.md D63): a mode's perf views, or with mode `coverage` the views
+    file's coverage views (D64), in the views file's order; its variants (check_visual_variants);
+    the session's reloads, selftest's and the start-of-run reload, then one per view and variant,
+    within capture.reloadCap: a visual session is never split, as its frames would come from
+    launches apart. No measured run's or acceptance run's keys."""
     given = [key for key in VISUAL_REFUSED if key in data]
     if given:
         raise RecordError(
@@ -992,7 +1063,10 @@ def check_visual_spec(
             + ("it" if len(given) == 1 else "them")
         )
     variants = check_visual_variants(root, data["variants"], suite, pack)
-    ids = mode_views(suite, data["mode"], views_file)
+    if data["mode"] == COVERAGE:
+        ids = coverage_views(views_file)
+    else:
+        ids = mode_views(suite, data["mode"], views_file)
     planned = ACCEPTANCE_RELOADS + len(ids) * len(variants)
     if planned > cap:
         raise RecordError(

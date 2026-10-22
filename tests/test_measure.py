@@ -2826,9 +2826,27 @@ def test_a_visual_spec_takes_a_modes_views_and_a_reload_a_view_and_variant(bench
     assert one.planned == 2 + 11 and len(one.view_ids) == 11
 
 
+def test_a_coverage_visual_spec_takes_the_coverage_views_alone(bench_root) -> None:
+    """plans/m3.md D64: mode coverage takes the views file's coverage list, which no perf mode
+    reads; a measured run takes no such mode."""
+    root, saves = bench_root
+    spec = record.check_spec(root, visual(mode="coverage"), PLAT, SUITE, saves, PACK)
+    assert spec.mode == "coverage" and spec.planned == 2 + 3 * 2
+    assert spec.view_ids == ("coverage_items", "coverage_mobs", "coverage_beacon")
+    with pytest.raises(record.RecordError, match=r"mode 'coverage'; fix: one of quick, full$"):
+        record.check_spec(root, measured(mode="coverage"), PLAT, SUITE, saves, PACK)
+    path = root / record.VIEWS / "bench_263.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    del data[record.COVERAGE]
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(record.RecordError, match=r"lists no coverage views; fix: add them"):
+        record.check_spec(root, visual(mode="coverage"), PLAT, SUITE, saves, PACK)
+
+
 VISUAL_REFUSALS = [
     ({"mode": "full"}, "plans 24 reloads (2 + 11 views x 2 variants), over capture.reloadCap 20"),
-    ({"mode": None}, "takes a mode's perf views"),
+    ({"mode": None}, "takes a mode's perf views or the coverage views"),
+    ({"mode": "slow"}, "mode 'slow'; fix: one of quick, full, coverage"),
     ({"resourcePacks": "standard"}, "every session runs the deterministic set"),
     ({"resourcePacks": "nope"}, "no set of suite.json"),
     ({"items": ["A2"]}, "items: no visual run's"),
@@ -2925,6 +2943,46 @@ def test_a_visual_run_takes_each_variants_pair_at_each_view(fake_run, monkeypatc
         "  pairs moving: forest_noon/unbound, nether_crimson/unbound, end_dragon/unbound "
         "(`optilux compare` tiers them)"
     )
+
+
+def test_a_coverage_run_shows_the_hand_and_steps_the_views_ticks_at_its_pose(fake_run) -> None:
+    """plans/m3.md D64 on the fake: mode coverage visits the coverage views in the file's order;
+    at the view with `hand` creative and the GUI come right after camera.place (D49), its own
+    ticks after them, with the camera there, and both are put back at the end; the record's mode
+    coverage passes verify records."""
+    root, spec_path, fake, _ = fake_run
+    optilux_tree(root)
+    spec_path.write_text(json.dumps(visual(mode="coverage", variants=[HELLO])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    path = root / record.RECORDS / "m3-visual-test.json"
+    found = json.loads(path.read_text(encoding="utf-8"))
+    views = ["coverage_items", "coverage_mobs", "coverage_beacon"]
+    assert (found["status"], found["mode"]) == ("ok", "coverage")
+    assert [c["view"] for c in found["captures"]] == views and found["session"]["laps"] == [views]
+    assert found["session"]["weatherTicks"] == [{"view": "coverage_items", "ticks": 120}]
+    assert found["session"]["viewTicks"] == [{"view": "coverage_beacon", "ticks": 100}]
+
+    def shown(message: dict) -> str | None:
+        args = message["args"]
+        if message["cmd"] == "ticks.step":
+            return f"ticks {args['n']}"
+        if message["cmd"] == "hud.set":
+            return f"hideGui {args['hideGui']}"
+        return args.get("text") if message["cmd"] == "command" else None
+
+    received = fake.received
+    beacon = max(n for n, m in enumerate(received) if m["cmd"] == "camera.place")
+    assert received[beacon]["args"]["z"] == 1071.0
+    steps = [text for m in received[beacon + 1 :] if (text := shown(m)) is not None]
+    assert steps == [
+        "/gamemode creative",
+        "hideGui False",
+        "ticks 100",
+        "hideGui True",
+        "/gamemode spectator",
+    ]
+    assert fake.game["hideGui"] is True
+    assert verify.record_problems(root, "m3-visual-test", path.read_bytes()) == ([], None)
 
 
 def test_a_visual_run_killed_mid_session_is_finished_with_the_pairs_it_took(

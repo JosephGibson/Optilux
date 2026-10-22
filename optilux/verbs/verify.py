@@ -219,10 +219,11 @@ def visual_capture_problem(capture: Any, ids: set) -> str | None:
 
 
 def visual_problems(found: dict) -> list[str]:
-    """A visual record's own fields (plans/m3.md D63): its mode, variants and pairs; an ok one
-    holds a whole pair for every variant at every view it took, one each."""
+    """A visual record's own fields (plans/m3.md D63): its mode (a perf mode, or coverage: D64),
+    variants and pairs; an ok one holds a whole pair for every variant at every view it took, one
+    each."""
     problems = []
-    if found.get("mode") not in record.MODES:
+    if found.get("mode") not in record.VISUAL_MODES:
         problems.append(f"mode {found.get('mode')!r}")
     variants, captures = found.get("variants"), found.get("captures")
     if not isinstance(variants, list) or not isinstance(captures, list):
