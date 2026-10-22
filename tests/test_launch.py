@@ -18,7 +18,8 @@ from pathlib import Path
 
 import pytest
 
-from optilux import REPO_ROOT, cli, launch, modclient, modfake, platform
+from optilux import REPO_ROOT, cli, launch, modclient, modfake, platform, record
+from optilux.verbs import install
 from optilux.verbs import launch as launch_verb
 
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "launch"
@@ -27,6 +28,9 @@ FIXTURES = REPO_ROOT / "tests" / "fixtures" / "launch"
 LOG = (FIXTURES / "latest.log").read_text(encoding="utf-8")
 LOGMAN = (FIXTURES / "logman.txt").read_text(encoding="utf-8")
 DISPLAY = json.loads((REPO_ROOT / "config" / "suite.json").read_text(encoding="utf-8"))["display"]
+# A resource-pack set's files, bottom to top, and the options line launch writes for them.
+FILES = ["Pack 1.zip", install.STATIC_FILE]
+LINE = '["vanilla","file/Pack 1.zip","file/optilux-static-textures.zip"]'
 SPEC = json.loads(
     (REPO_ROOT / "config" / "platforms" / "mc-26.3.launch.json").read_text(encoding="utf-8")
 )
@@ -163,19 +167,19 @@ def test_options_txt_keeps_the_games_lines_and_writes_the_suites_keys() -> None:
 
 
 def test_the_written_options_are_the_suites_with_the_overrides() -> None:
-    written = launch.written_options(DISPLAY, {})
-    assert written == DISPLAY["optionsTxt"] and len(written) == 24
+    written = launch.written_options(DISPLAY, {}, FILES)
+    assert written == {**DISPLAY["optionsTxt"], "resourcePacks": LINE} and len(written) == 24
     assert (written["version"], written["graphicsPreset"]) == ("5023", '"custom"')
     # The game's default afk caps a session without input at 30 fps (0.01.11); minimized does not.
     assert written["inactivityFpsLimit"] == '"minimized"'
     assert "rawMouseInput" not in written  # 26.3 removed it (lessons.md#windows)
-    over = launch.written_options(DISPLAY, {"maxFps": "120"})
+    over = launch.written_options(DISPLAY, {"maxFps": "120"}, FILES)
     assert over["maxFps"] == "120" and list(over) == list(written)
     with pytest.raises(launch.LaunchError, match="--set nope: not an option the suite writes; fix"):
-        launch.written_options(DISPLAY, {"nope": "1"})
+        launch.written_options(DISPLAY, {"nope": "1"}, FILES)
     # A line break in a value would write a key the suite does not write.
     with pytest.raises(launch.LaunchError, match="is not one printable line; fix: retype it"):
-        launch.written_options(DISPLAY, {"maxFps": "260\nrenderClouds:false"})
+        launch.written_options(DISPLAY, {"maxFps": "260\nrenderClouds:false"}, FILES)
 
 
 def test_sodium_options_are_sodiums_own_format_with_the_suites_hash() -> None:
@@ -213,7 +217,7 @@ def test_iris_properties_are_written_fresh_per_tier() -> None:
 def test_the_pre_launch_files_and_their_read_back(tmp_path: Path) -> None:
     game = tmp_path / "game"
     write(game / "options.txt", GAME_OPTIONS.encode())
-    pre = launch.prelaunch(DISPLAY, "bench", "Ref.zip", {"maxFps": "120"})
+    pre = launch.prelaunch(DISPLAY, "bench", "Ref.zip", {"maxFps": "120"}, FILES)
     assert (game / "options.txt").read_bytes() == GAME_OPTIONS.encode()  # nothing written yet
     launch.write_prelaunch(game, pre)
     options = (game / "options.txt").read_bytes()
@@ -655,7 +659,7 @@ def test_the_join_wait_finds_the_line_or_fails(tmp_path: Path) -> None:
 # game/mods/.
 
 MOD_A, MOD_B, HELPER = jar("mod-a"), jar("mod-b"), jar("optilux-helper")
-PACK, REF = b"PK resource pack", b"PK shader pack"
+PACK, REF, STATIC = b"PK resource pack", b"PK shader pack", b"PK static textures"
 LIB, CLIENT = b"lib jar", b"client jar"
 VERSION = json.dumps({"id": "26.3", "type": "release"}).encode()
 INDEX = b'{"objects": {}}'
@@ -675,7 +679,8 @@ def make_root(tmp_path: Path) -> Path:
     options.txt and the previous session's latest.log."""
     root = tmp_path / "repo"
     config = root / "config"
-    suite = {"platform": PLATFORM, "display": DISPLAY}
+    sets = {record.PACK_SET: ["pack", install.STATIC_TEXTURES]}
+    suite = {"platform": PLATFORM, "display": DISPLAY, "resourcePacks": sets}
     write(config / "suite.json", json.dumps(suite).encode())
 
     def pin(slug: str, name: str, data: bytes) -> dict:
@@ -726,6 +731,8 @@ def make_root(tmp_path: Path) -> Path:
         "files/mod-b.jar": MOD_B,
         "files/Pack 1.zip": PACK,
         "files/Ref.zip": REF,
+        f"files/{install.STATIC_FILE}": STATIC,
+        f"game/resourcepacks/{install.STATIC_FILE}": STATIC,
         "game/resourcepacks/Pack 1.zip": PACK,
         "game/shaderpacks/Ref.zip": REF,
         "game/saves/spike/level.dat": b"level",
@@ -782,6 +789,61 @@ def test_game_mods_is_made_to_hold_exactly_the_tier(tmp_path: Path) -> None:
     assert not (mods / "mod-a.jar").exists()
 
 
+def test_options_txts_resource_packs_are_each_sets_packs_bottom_to_top(tmp_path: Path) -> None:
+    """plans/m3.md M3.P06: launch writes resourcePacks from suite.json's set, the game's own pack
+    first and the last on top (P11), as the game writes the line back; the static-textures pack
+    by the store's copy, checked in game/resourcepacks/ like a pinned pack."""
+    root = make_root(tmp_path)
+    base = root / "runtime" / PLATFORM
+    plat = platform.load(root)
+    sets = {"standard": ["pack"], "deterministic": ["pack", install.STATIC_TEXTURES], "why": "x"}
+    suite = {"resourcePacks": sets}
+
+    def line(name: str, tier: str = "bench") -> str:
+        return launch.packs_line(
+            [p["file"] for p in launch.set_packs(base, plat, tier, suite, name)]
+        )
+
+    assert line("standard") == '["vanilla","file/Pack 1.zip"]'
+    assert line("deterministic") == LINE == line("deterministic", "dev")
+    found = launch.set_packs(base, plat, "bench", suite, "deterministic")
+    assert found[1] == {"slug": install.STATIC_TEXTURES, "file": "optilux-static-textures.zip"} | {
+        "sha512": sha512(STATIC)
+    }
+    # The repo's own suite and pins: Faithful 64x under the static textures.
+    real = json.loads((REPO_ROOT / "config" / "suite.json").read_text(encoding="utf-8"))
+    repo_plat = platform.load(REPO_ROOT)
+    files = [p["file"] for p in launch.set_packs(base, repo_plat, "bench", real, record.PACK_SET)]
+    assert launch.written_options(DISPLAY, {}, files)["resourcePacks"] == (
+        '["vanilla","file/Faithful 64x - Release 15.zip","file/optilux-static-textures.zip"]'
+    )
+    assert launch.packs_line([]) == '["vanilla"]'
+    with pytest.raises(launch.LaunchError, match=r"resourcePacks\.why lists no pack"):
+        launch.set_packs(base, plat, "bench", suite, "why")
+    with pytest.raises(launch.LaunchError, match="names 'nope', which tier bench pins no file"):
+        launch.set_packs(base, plat, "bench", {"resourcePacks": {"x": ["nope"]}}, "x")
+    with pytest.raises(launch.LaunchError, match="would write it back escaped"):
+        launch.packs_line(["a=b.zip"])
+    with pytest.raises(launch.LaunchError, match="--set resourcePacks: not an option the suite"):
+        launch.written_options(DISPLAY, {"resourcePacks": "[]"}, FILES)
+    noted = {**DISPLAY, "optionsTxt": {**DISPLAY["optionsTxt"], "resourcePacks": "[]"}}
+    with pytest.raises(launch.LaunchError, match="optionsTxt sets resourcePacks, which launch"):
+        launch.written_options(noted, {}, FILES)
+    # The game's copy is checked against the store's; without one in the store, nothing launches.
+    checked = launch.check_packs(root, base, plat, "bench", found)
+    assert [(p["file"], p["kind"]) for p in checked] == [
+        ("Pack 1.zip", "resourcePack"),
+        (install.STATIC_FILE, "resourcePack"),
+        ("Ref.zip", "referencePack"),
+    ]
+    write(base / "game" / "resourcepacks" / install.STATIC_FILE, b"edited")
+    with pytest.raises(launch.LaunchError, match="resourcePack runtime/mc-fixture/game/resource"):
+        launch.check_packs(root, base, plat, "bench", found)
+    (base / "files" / install.STATIC_FILE).unlink()
+    with pytest.raises(launch.LaunchError, match=r"no optilux-static-textures\.zip in the store"):
+        launch.set_packs(base, plat, "bench", suite, "deterministic")
+
+
 def test_the_uuid_comes_from_the_worlds_player_file(tmp_path: Path) -> None:
     world = tmp_path / "w"
     assert launch.player_uuid(world, UUID) == (UUID, "offlinePlayer")
@@ -825,7 +887,7 @@ def test_a_launch_end_to_end_through_a_fake_game(
     assert facts["settings"]["sodiumOptions"] == DISPLAY["sodiumOptions"]
     assert "-Doptilux.token=<redacted>" in facts["command"]["arguments"]
     assert launched.token not in json.dumps(facts)
-    assert facts["hashes"]["classpathJars"] == 2 and len(facts["hashes"]["packs"]) == 2
+    assert facts["hashes"]["classpathJars"] == 2 and len(facts["hashes"]["packs"]) == 3
     assert said[0] == (
         "gate: open: no process from runtime/mc-fixture/, no optilux-* ETW session; AMD "
         "(recorded, never stopped): no PresentMon-x64.exe, no RSXTraceSession"
@@ -920,7 +982,7 @@ def test_the_cli_holds_quits_and_reads_back(
     assert err == "" and lines[0].startswith("gate: open: no process from runtime/mc-fixture/")
     assert lines[1] == (
         "hashes: 2 classpath jars, asset index 34 and the version JSON sha1-equal to the spec; "
-        "2 packs sha512-equal"
+        "3 packs sha512-equal (the deterministic set: Pack 1.zip, optilux-static-textures.zip)"
     )
     assert lines[3].startswith("pre-launch: options.txt (24 keys), sodium-options.json (sha256 ")
     assert lines[4].startswith("started pid 4242: 38 arguments, KnotClient, 2 jars, ")
@@ -1163,7 +1225,7 @@ def test_the_options_file_the_game_reads_is_recorded_before_the_launch(tmp_path:
     time unwritten in 0.01.11)."""
     game = tmp_path / "game"
     write(game / "options.txt", GAME_OPTIONS.encode())
-    pre = launch.prelaunch(DISPLAY, "bench", "Ref.zip", {})
+    pre = launch.prelaunch(DISPLAY, "bench", "Ref.zip", {}, FILES)
     found = launch.write_prelaunch(game, pre)
     written = (game / "options.txt").read_bytes()
     assert found["sha256"] == hashlib.sha256(written).hexdigest()

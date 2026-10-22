@@ -34,8 +34,17 @@ from typing import Protocol
 
 import psutil
 
-from optilux import modclient, platform
-from optilux.verbs.install import JAVA_DIR, JAVA_PROFILE, RUNTIME, STORE, Say, shown
+from optilux import modclient, platform, record
+from optilux.verbs.install import (
+    JAVA_DIR,
+    JAVA_PROFILE,
+    RUNTIME,
+    STATIC_FILE,
+    STATIC_TEXTURES,
+    STORE,
+    Say,
+    shown,
+)
 
 # The game folder under runtime/<platform>/ and what launch reads and writes in it.
 GAME = "game"
@@ -50,6 +59,13 @@ SODIUM = "config/sodium-options.json"
 IRIS = "config/iris.properties"
 RESOURCE_PACKS = "resourcepacks"
 SHADER_PACKS = "shaderpacks"
+# options.txt's resource packs (plans/m3.md M3.P06): the game's own pack, then each pack of the
+# session's set by its id, file/<name>, the last on top (P11); a JSON list as Gson writes it back,
+# so a name Gson would escape (its HTML-safe <>&=' and quotes) is refused.
+PACKS_KEY = "resourcePacks"
+VANILLA_PACK = "vanilla"
+FILE_PACK = "file/{name}"
+GSON_ESCAPED = set("<>&='\"\\")
 LOG = "logs/latest.log"
 # The game's stdout and stderr: a JVM that fails before log4j starts leaves its reason only there.
 STDOUT = "logs/stdout.log"
@@ -456,11 +472,58 @@ def reference_pack(plat: platform.Platform) -> platform.Pinned:
     return packs[0]
 
 
-def check_packs(root: Path, base: Path, plat: platform.Platform, tier: str) -> list[dict]:
-    """The tier's resource packs and the reference pack in their game folders, by sha512."""
+def set_packs(base: Path, plat: platform.Platform, tier: str, suite: dict, name: str) -> list[dict]:
+    """suite.json's resource-pack set `name` as a session loads it, bottom to top (the last on
+    top, plans/m3.md P11): each pack's slug, file and sha512, a pinned pack of the tier's by its
+    slug, the static-textures pack by the store's copy `install` built (D62). Read only, so the
+    identity is built from it before a launch; LaunchError naming the fix."""
+    slugs = (suite.get("resourcePacks") or {}).get(name)
+    if not isinstance(slugs, list) or not slugs or not all(isinstance(s, str) for s in slugs):
+        raise LaunchError(f"suite.json resourcePacks.{name} lists no pack; fix: name its packs")
+    pinned = {p.slug: p for p in plat.tier_files(tier) if p.kind == "resourcePack"}
     found = []
+    for slug in slugs:
+        if slug == STATIC_TEXTURES:
+            store = base / STORE / STATIC_FILE
+            if not store.is_file():
+                raise LaunchError(
+                    f"no {STATIC_FILE} in the store; fix: run `optilux install` (plans/m3.md D62)"
+                )
+            found.append({"slug": slug, "file": STATIC_FILE, "sha512": platform.sha512(store)})
+        elif slug in pinned:
+            found.append({"slug": slug, "file": pinned[slug].file, "sha512": pinned[slug].sha512})
+        else:
+            raise LaunchError(
+                f"suite.json resourcePacks.{name} names {slug!r}, which tier {tier} pins no file "
+                f"for; fix: pin it in {plat.path.name}, or drop it from the set"
+            )
+    return found
+
+
+def packs_line(files: list[str]) -> str:
+    """options.txt's resourcePacks for a set's files, bottom to top: the game's own pack, then
+    each as file/<name>, as the game writes the line back; LaunchError for a name it would not."""
+    for name in files:
+        if not (name.isascii() and name.isprintable()) or GSON_ESCAPED & set(name):
+            raise LaunchError(
+                f"resource pack {name!r}: the game would write it back escaped; fix: rename it"
+            )
+    ids = [VANILLA_PACK, *(FILE_PACK.format(name=name) for name in files)]
+    return json.dumps(ids, separators=(",", ":"))
+
+
+def check_packs(
+    root: Path, base: Path, plat: platform.Platform, tier: str, packs: list[dict]
+) -> list[dict]:
+    """The session's resource packs, its set's `packs` in order, in game/resourcepacks/, then the
+    reference pack in game/shaderpacks/, each by sha512."""
+    found = []
+    folder = platform.GAME_FOLDERS["resourcePack"]
+    for pack in packs:
+        check_hash(base / folder / pack["file"], "sha512", pack["sha512"], "resourcePack", root)
+        found.append({"file": pack["file"], "kind": "resourcePack", "sha512": pack["sha512"]})
     for pinned in plat.tier_files(tier):
-        if pinned.game_folder is None:
+        if pinned.kind != "referencePack" or pinned.game_folder is None:
             continue
         check_hash(
             base / pinned.game_folder / pinned.file, "sha512", pinned.sha512, pinned.kind, root
@@ -553,16 +616,23 @@ def jar_mod_id(path: Path) -> str:
 # The pre-launch files.
 
 
-def written_options(display: dict, overrides: dict[str, str]) -> dict[str, str]:
-    """The options.txt keys launch writes: suite.json display.optionsTxt with the `--set`
-    overrides applied; an override of a key the suite does not write is refused, and so is a
-    value that is not one printable line (a line break would write another key)."""
+def written_options(display: dict, overrides: dict[str, str], packs: list[str]) -> dict[str, str]:
+    """The options.txt keys launch writes: suite.json display.optionsTxt, then resourcePacks from
+    the session's set (`packs`, its files bottom to top: packs_line), with the `--set` overrides
+    applied; an override of a key the suite does not write, or of the set's line, is refused, and
+    so is a value that is not one printable line (a line break would write another key)."""
     written = dict(display["optionsTxt"])
-    unknown = [key for key in overrides if key not in written]
+    if PACKS_KEY in written:
+        raise LaunchError(
+            f"suite.json display.optionsTxt sets {PACKS_KEY}, which launch writes from the "
+            "session's resource-pack set; fix: drop it there"
+        )
+    written[PACKS_KEY] = packs_line(packs)
+    unknown = [key for key in overrides if key not in written or key == PACKS_KEY]
     if unknown:
         raise LaunchError(
             f"--set {', '.join(unknown)}: not an option the suite writes; fix: one of "
-            f"{', '.join(written)}"
+            f"{', '.join(key for key in written if key != PACKS_KEY)}"
         )
     for key, value in overrides.items():
         if not value.isprintable():
@@ -667,12 +737,15 @@ class Prelaunch:
     iris: dict[str, str]
 
 
-def prelaunch(display: dict, tier: str, pack: str, overrides: dict[str, str]) -> Prelaunch:
+def prelaunch(
+    display: dict, tier: str, pack: str, overrides: dict[str, str], packs: list[str]
+) -> Prelaunch:
     """The three files' contents, checked before anything is written: the options with the
-    overrides, the Sodium file against its hash, the Iris keys."""
+    resource-pack set's files `packs` and the overrides, the Sodium file against its hash, the
+    Iris keys."""
     sodium, digest = sodium_file(display)
     return Prelaunch(
-        written_options(display, overrides),
+        written_options(display, overrides, packs),
         dict(overrides),
         sodium,
         digest,
@@ -1244,7 +1317,9 @@ def launch(
     username = plat.data["offlinePlayer"]["name"]
     uuid, uuid_from = player_uuid(game / SAVES / world, plat.data["offlinePlayer"]["uuid"])
     pack = reference_pack(plat)
-    pre = prelaunch(suite["display"], tier, pack.file, overrides)  # refused before any write
+    packs = set_packs(base, plat, tier, suite, record.PACK_SET)
+    files = [p["file"] for p in packs]
+    pre = prelaunch(suite["display"], tier, pack.file, overrides, files)  # before any write
     # Iris.loadExternalShaderpack reads a pack's saved options from shaderpacks/<pack>.txt (the
     # 1.11.7 jar's bytecode): M1 runs the reference pack at its defaults (profile null).
     saved = base / GAME / SHADER_PACKS / f"{pack.file}.txt"
@@ -1266,10 +1341,11 @@ def launch(
         )
     say(gate_line(found, shown(base, root)))
     version_type = check_spec_files(root, base, plat, spec)
-    packs = check_packs(root, base, plat, tier)
+    checked = check_packs(root, base, plat, tier, packs)
     say(
         f"hashes: {len(spec['classpath'])} classpath jars, asset index {spec['assetIndex']['id']} "
-        f"and the version JSON sha1-equal to the spec; {len(packs)} packs sha512-equal"
+        f"and the version JSON sha1-equal to the spec; {len(checked)} packs sha512-equal (the "
+        f"{record.PACK_SET} set: {', '.join(files)})"
     )
     mods = place_mods(root, base, plat, tier)
     say(mods_line(mods, tier))
@@ -1345,7 +1421,7 @@ def launch(
             "classpathJars": len(spec["classpath"]),
             "assetIndex": spec["assetIndex"]["id"],
             "versionJson": spec["sources"]["versionJson"]["sha1"],
-            "packs": packs,
+            "packs": checked,
         },
         "mods": {
             "placed": mods.placed,

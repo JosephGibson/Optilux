@@ -44,7 +44,7 @@ def write_calibration(root: Path, identity: dict = IDENTITY, mode: str = "quick"
         "createdAt": "2026-10-13T00:00:00+00:00",
         "identityHash": digest,
         "identity": identity,
-        "resourcePacks": "standard",
+        "resourcePacks": record.PACK_SET,
         "views": VIEWS,
         "rounds": 1,
         "twinsPerSession": 2,

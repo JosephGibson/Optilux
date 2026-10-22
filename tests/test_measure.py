@@ -37,6 +37,7 @@ from optilux import (
 )
 from optilux.verbs import calibrate as calibrate_verb
 from optilux.verbs import compare as compare_verb
+from optilux.verbs import install
 from optilux.verbs import pack as pack_verb
 from optilux.verbs import run as run_verb
 
@@ -565,7 +566,7 @@ def measured(**changes: Any) -> dict:
         "world": "bench_263",
         "variants": [{"id": "baseline", "pack": PACK, "profile": "played"}],
         "tier": "bench",
-        "resourcePacks": "standard",
+        "resourcePacks": record.PACK_SET,
         "calibration": None,
         "notes": "a fixture",
     }
@@ -1088,6 +1089,9 @@ def fake_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     pack = game / "shaderpacks" / PACK
     with zipfile.ZipFile(pack, "w") as out:
         out.writestr("shaders/shaders.properties", "# a fake pack\n")
+    static = root / "runtime" / PLAT.id / "files" / install.STATIC_FILE  # as install builds it
+    static.parent.mkdir(parents=True)
+    static.write_bytes(b"PK static textures")
     plat_path = root / "config" / "platforms" / f"{PLAT.id}.json"
     data = json.loads(plat_path.read_text(encoding="utf-8"))
     data[platform.REFERENCE_PACKS][0]["sha512"] = hashlib.sha512(pack.read_bytes()).hexdigest()
@@ -1112,7 +1116,8 @@ def fake_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     def fake_launch(root_: Path, world: str, tier: str, token: bool, overrides, say, host_):
         assert not (game / "shaderpacks" / f"{PACK}.txt").exists()  # launch refuses one
-        pre = launch.prelaunch(SUITE["display"], tier, PACK, {})
+        files = [p["file"] for p in ready.identity["resourcePacks"]["packs"]]
+        pre = launch.prelaunch(SUITE["display"], tier, PACK, {}, files)
         options = launch.write_prelaunch(game, pre)
         (game / launch.LOG).write_text("[00:00:01] [main/INFO]: a session\n", encoding="utf-8")
         identity = ready.identity
@@ -1422,7 +1427,7 @@ def calibration_data(
         "createdAt": "2026-10-13T00:00:00+00:00",
         "identityHash": digest,
         "identity": identity,
-        "resourcePacks": "standard",
+        "resourcePacks": record.PACK_SET,
         "views": views,
         "rounds": rounds,
         "twinsPerSession": 2,
@@ -1928,9 +1933,9 @@ def test_run_refuses_a_calibration_of_another_mode_or_resource_pack_set(fake_run
     cid = fake_calibration(root, spec_path)
     path = root / record.CALIBRATIONS / f"{cid}.json"
     data = json.loads(path.read_text(encoding="utf-8"))
-    path.write_text(json.dumps({**data, "resourcePacks": "deterministic"}), encoding="utf-8")
+    path.write_text(json.dumps({**data, "resourcePacks": "standard"}), encoding="utf-8")
     spec_path.write_text(json.dumps(measured(calibration=cid, variants=[BASE, SHADOWS])), "utf-8")
-    with pytest.raises(record.RecordError, match="covers the deterministic resource-pack set"):
+    with pytest.raises(record.RecordError, match="covers the standard resource-pack set"):
         run_verb.prepare(root, spec_path, FakeMachine())
 
 
@@ -2203,7 +2208,7 @@ def test_only_a_measured_run_holds_the_displays_on(fake_run, monkeypatch) -> Non
         "world": "bench_263",
         "variants": [{"pack": PACK, "profile": None}],
         "tier": "bench",
-        "resourcePacks": "standard",
+        "resourcePacks": record.PACK_SET,
         "items": ["A3"],
     }
     run_verb.run_session(root, acceptance, host, FakeMachine(), print, print)
@@ -2571,7 +2576,7 @@ def optilux_spec(variant: str, **changes: Any) -> dict:
         "world": "bench_263",
         "variants": [{"pack": variant, "profile": None}],
         "tier": "bench",
-        "resourcePacks": "standard",
+        "resourcePacks": record.PACK_SET,
         "items": ["A10"],
         **changes,
     }

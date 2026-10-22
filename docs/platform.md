@@ -79,8 +79,8 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   - no Java path, heap or flags: those live in config/java/;
   - a difference exits 1 naming the facts; `install --refresh` rewrites the file. The spec's hash is run identity: a changed spec means recalibration (measurement.md#calibration) and is a platform change (below).
 - Pre-launch files, written before every launch from suite.json display (identity; reasons in its `*Why` keys):
-  - options.txt: the optionsTxt keys over the game's own lines; the file as written is recorded, its hash and every key the harness does not write;
-  - sodium-options.json: sodiumOptionsFile for every tier, refused unless it hashes to sodiumOptions: has_edited_fullscreen_option (else Sodium flips exclusiveFullscreen) and use_no_error_g_l_context=false (Mod tiers, dev);
+  - options.txt: the optionsTxt keys and resourcePacks, the session's set (vanilla, then each pack, the last on top), over the game's own lines; the file as written is recorded, its hash and every key the harness does not write;
+  - sodium-options.json: sodiumOptionsFile for every tier, refused unless it hashes to sodiumOptions (its two flags: suite.json sodiumOptionsWhy; Mod tiers, dev);
   - config/iris.properties, fresh: shaderPack, irisProperties, the tier's irisTiers; a saved shaderpacks/<pack>.txt is refused (defaults).
 - `launch <world> [--tier] [--no-token] [--set k=v] [--quit-after S]`, refusing any mismatch:
   1. the gate (F2): no process from runtime/<platform>/, no optilux-* ETW session, no Gradle build; AMD's PresentMon-x64.exe and RSXTraceSession and the other JVMs (idle Gradle daemons) recorded, never stopped;
