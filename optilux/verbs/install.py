@@ -4,15 +4,18 @@ Fills runtime/<platform>/ from the network and re-hashes every file on every run
 the Fabric profile through minecraft-launcher-lib, then install's own pass over every classpath
 jar, the asset index, every asset and the log config; the tier's Modrinth files into the store
 runtime/<platform>/files/ by sha512, resource and shader packs copied into their game folders;
-Temurin and the tools (PresentMon, glslang, RGA) by sha256, each zip unpacked into its own
-folder; the reference copies into reference/, each tree-hashed against config/similarity.json.
-The launch spec is built from Mojang's and Fabric's JSON and compared with the committed one: a
-difference exits 1 naming it, and --refresh rewrites the file. A hash that differs from its pin
-is refused with the file named, never repaired (docs/plans/m1.md#7-stop-conditions). game/saves/
-and the game's option files are never touched.
+the static-textures pack built into the store from the client jar and the packs below it in
+suite.json's set, and copied beside them (docs/plans/m3.md D62); Temurin and the tools
+(PresentMon, glslang, RGA) by sha256, each zip unpacked into its own folder; the reference copies
+into reference/, each tree-hashed against config/similarity.json. The launch spec is built from
+Mojang's and Fabric's JSON and compared with the committed one: a difference exits 1 naming it,
+and --refresh rewrites the file. A hash that differs from its pin is refused with the file named,
+never repaired (docs/plans/m1.md#7-stop-conditions). game/saves/ and the game's option files are
+never touched.
 """
 
 import argparse
+import contextlib
 import json
 import os
 import shutil
@@ -28,7 +31,7 @@ from pathlib import Path
 from minecraft_launcher_lib.exceptions import InvalidChecksum, VersionNotFound
 from minecraft_launcher_lib.install import install_minecraft_version
 
-from optilux import REPO_ROOT, platform, record
+from optilux import REPO_ROOT, packzip, platform, record
 from optilux.verbs import Verb
 
 PREFIX = "optilux install"
@@ -73,6 +76,23 @@ REFRESH_FIX = (
 # A hash that differs from its pin is a stop condition (docs/plans/m1.md#7-stop-conditions).
 MISMATCH_FIX = "never work around it: re-pin from the source, or delete the file and rerun"
 TREE_FIX = "never work around it: re-pin from the source, or delete the folder and rerun"
+# The static-textures pack (docs/plans/m3.md D62): .mcmeta files only, built here into the store
+# and copied into game/resourcepacks/, never committed; suite.json names it by this slug, the
+# last (on top) of its set (P11: the last pack listed is the top one).
+STATIC_TEXTURES = "optilux-static-textures"
+STATIC_FILE = f"{STATIC_TEXTURES}.zip"
+# A texture's metadata beside it: <texture>.png.mcmeta, every pack's under assets/.
+ASSETS = "assets/"
+MCMETA = ".mcmeta"
+TEXTURE = ".png"
+# The held animation: one frame, the first (SpriteContents.createAnimatedTexture makes no
+# animation of one frame, P11), at the frame size the provider's metadata sets, if any.
+HELD_FRAMES = [0]
+FRAME_SIZE = ("width", "height")
+STATIC_DESCRIPTION = (
+    "Optilux static textures: each animated texture of the packs below held on its first frame "
+    "(plans/m3.md D62)"
+)
 
 
 class InstallError(RuntimeError):
@@ -93,6 +113,7 @@ class Outcome:
     java: dict = field(default_factory=dict)
     tools: list[dict] = field(default_factory=list)
     references: list[dict] = field(default_factory=list)
+    static: dict = field(default_factory=dict)  # the static-textures pack, when a set names it
     spec: dict = field(default_factory=dict)
 
     @property
@@ -300,6 +321,143 @@ def tier_files(root: Path, plat: platform.Platform, tier: str, outcome: Outcome,
             }
         )
     outcome.pending = plat.pending(tier)
+
+
+def mcmeta(data: bytes, where: str) -> dict:
+    """A texture's metadata as the game reads it: the first JSON value of the file, what follows it
+    left alone (Gson reads one value: Faithful 64x R15's friends/background_dark.png.mcmeta ends in
+    a stray byte). InstallError for one that is no JSON object."""
+    try:
+        text = data.decode("utf-8-sig")
+        found, _ = json.JSONDecoder().raw_decode(text, len(text) - len(text.lstrip()))
+    except ValueError as error:
+        raise InstallError(f"{where} is no JSON ({error}); fix: re-pin the pack") from None
+    if not isinstance(found, dict):
+        raise InstallError(f"{where} is no JSON object; fix: re-pin the pack")
+    return found
+
+
+def resource_format(text: str) -> list[int]:
+    """The platform file's resource format ("97.1") as pack.mcmeta's [major, minor]."""
+    major, _, minor = text.partition(".")
+    if not major.isdigit() or not (minor or "0").isdigit():
+        raise InstallError(f"resource format {text!r} is not <major>.<minor>; fix: the platform")
+    return [int(major), int(minor or "0")]
+
+
+def static_pack(stack: list[zipfile.ZipFile], fmt: str) -> tuple[list[packzip.Source], dict]:
+    """The static-textures pack's files over `stack`, the packs below it from the bottom (the
+    client jar's resources) to the top (docs/plans/m3.md D62): for each texture whose metadata, the
+    top one from the top pack down to the pack providing the texture (P11), holds an animation,
+    that metadata with its animation held on frame 0 at the provider's frame size (its width and
+    height, when set) and every other section kept (kelp's alpha_cutoff_bias); then pack.mcmeta in
+    Faithful's form (min_format and max_format, no pack_format) at the platform's resource format.
+    The files by name, and the count of textures held and of those at a set frame size."""
+    names = [set(pack.namelist()) for pack in stack]
+    textures = sorted(
+        {
+            name.removesuffix(MCMETA)
+            for listed in names
+            for name in listed
+            if name.startswith(ASSETS) and name.endswith(TEXTURE + MCMETA)
+        }
+    )
+    found: list[packzip.Source] = []
+    framed = 0
+    for texture in textures:
+        providers = [i for i, listed in enumerate(names) if texture in listed]
+        if not providers:
+            continue  # metadata without its texture draws nothing
+        meta_name = texture + MCMETA
+        holders = [i for i in range(providers[-1], len(stack)) if meta_name in names[i]]
+        if not holders:
+            continue
+        top = holders[-1]
+        meta = mcmeta(stack[top].read(meta_name), f"{stack[top].filename}: {meta_name}")
+        animation = meta.get("animation")
+        if animation is None:
+            continue
+        if not isinstance(animation, dict):
+            raise InstallError(
+                f"{stack[top].filename}: {meta_name}'s animation is no object; fix: re-pin the pack"
+            )
+        held = {"frames": HELD_FRAMES, **{k: animation[k] for k in FRAME_SIZE if k in animation}}
+        framed += len(held) > 1
+        text = json.dumps({**meta, "animation": held}, indent=1) + "\n"
+        found.append((meta_name, text.encode("utf-8")))
+    version = resource_format(fmt)
+    pack = {
+        "pack": {"description": STATIC_DESCRIPTION, "min_format": version, "max_format": version}
+    }
+    found.append(("pack.mcmeta", (json.dumps(pack, indent=1) + "\n").encode("utf-8")))
+    return sorted(found), {"textures": len(found) - 1, "framed": framed}
+
+
+def static_textures(
+    root: Path, plat: platform.Platform, tier: str, outcome: Outcome, say: Say
+) -> None:
+    """The static-textures pack (docs/plans/m3.md D62), when suite.json's resourcePacks names it
+    in one set, last: built from the pinned client jar, which this install hashed, and the set's
+    packs below it, from the store by their pins; written into the store when absent or different,
+    then copied into game/resourcepacks/ when absent or different. InstallError naming the fix."""
+    suite = json.loads((root / platform.SUITE).read_text(encoding="utf-8"))
+    sets = {
+        name: slugs
+        for name, slugs in (suite.get("resourcePacks") or {}).items()
+        if isinstance(slugs, list) and STATIC_TEXTURES in slugs
+    }
+    if not sets:
+        return
+    if len(sets) > 1:
+        raise InstallError(
+            f"suite.json resourcePacks names {STATIC_TEXTURES} in {', '.join(sets)}; fix: one set, "
+            "as the pack is built over the packs below it"
+        )
+    ((name, slugs),) = sets.items()
+    if slugs[-1] != STATIC_TEXTURES or slugs.count(STATIC_TEXTURES) != 1:
+        raise InstallError(
+            f"suite.json resourcePacks.{name} lists {STATIC_TEXTURES} below {slugs[-1]}: its "
+            "metadata holds the textures only from the top (P11); fix: list it once, last"
+        )
+    pinned = {p.slug: p for p in plat.tier_files(tier) if p.kind == "resourcePack"}
+    unknown = [slug for slug in slugs[:-1] if slug not in pinned]
+    if unknown:
+        raise InstallError(
+            f"suite.json resourcePacks.{name} names {', '.join(unknown)}, which tier {tier} pins "
+            f"no file for; fix: pin it in {plat.path.name}, or drop it from the set"
+        )
+    base = root / RUNTIME / plat.id
+    below = [base / STORE / pinned[slug].file for slug in slugs[:-1]]
+    jar = base / "versions" / plat.minecraft / f"{plat.minecraft}.jar"
+    try:
+        with contextlib.ExitStack() as opened:
+            stack = [opened.enter_context(zipfile.ZipFile(path)) for path in [jar, *below]]
+            sources, counts = static_pack(stack, plat.data["formats"]["resourcePack"])
+    except (OSError, zipfile.BadZipFile) as error:
+        raise InstallError(f"{STATIC_FILE}: {error}; fix: rerun `optilux install`") from None
+    data = packzip.zip_bytes(sources)
+    target = base / STORE / STATIC_FILE
+    state = EQUAL if target.is_file() and target.read_bytes() == data else "built"
+    if state != EQUAL:
+        say(f"static textures: building {STATIC_FILE} into {shown(target.parent, root)}")
+        part = target.with_name(target.name + ".part")
+        part.write_bytes(data)
+        os.replace(part, target)
+    copy = base / platform.GAME_FOLDERS["resourcePack"] / STATIC_FILE
+    copy_state = EQUAL if copy.is_file() and copy.read_bytes() == data else "copied"
+    if copy_state != EQUAL:
+        copy.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(target, copy)
+    outcome.static = {
+        "file": STATIC_FILE,
+        "set": name,
+        "below": [jar.name, *(path.name for path in below)],
+        **counts,
+        "sha512": platform.sha512(target),
+        "state": state,
+        "copy": shown(copy, root),
+        "copyState": copy_state,
+    }
 
 
 def unpack(
@@ -547,6 +705,7 @@ def install(root: Path, tier: str, refresh: bool, say: Say) -> Outcome:
     built = platform.build_spec(plat.id, version, source, profile, profile_url)
     verify_minecraft(root, plat, built, outcome)
     tier_files(root, plat, tier, outcome, say)
+    static_textures(root, plat, tier, outcome, say)
     java(root, outcome, say)
     tools(root, outcome, say)
     references(root, plat, tier, outcome, say)
@@ -567,6 +726,15 @@ def report(outcome: Outcome) -> list[str]:
     if copies:
         lines.append(f"copies: {'; '.join(copies)}")
     lines += [f"pending: {pending}" for pending in outcome.pending]
+    static = outcome.static
+    if static:
+        below = ", ".join(static["below"])
+        lines.append(
+            f"static textures: {static['file']} ({static['state']}) over {below} for set "
+            f"{static['set']}: {static['textures']} animated textures held on frame 0, "
+            f"{static['framed']} at their set frame size; sha512 {static['sha512']}; "
+            f"{static['copy']} ({static['copyState']})"
+        )
     java_facts = outcome.java
     lines.append(
         f"java: {java_facts['build']}: {java_facts['archive']} sha256-equal, "

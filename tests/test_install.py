@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from optilux import REPO_ROOT, cli, platform, record, repo
+from optilux import REPO_ROOT, cli, packzip, platform, record, repo
 from optilux.verbs import install
 
 PLATFORM = "mc-fixture"
@@ -914,3 +914,199 @@ def test_an_unpack_that_stops_leaves_no_jdk_that_reads_as_present(
     monkeypatch.setattr(zipfile.ZipFile, "extractall", real)
     outcome = install.install(tmp_path, "bench", False, quiet)
     assert outcome.java["unpacked"] == "unpacked" and (home / "bin" / "java.exe").is_file()
+
+
+# The static-textures pack (docs/plans/m3.md D62).
+
+TEXTURES = "assets/minecraft/textures"
+# The client jar's resources: animated water, kelp with its alpha bias, a conduit wind strip at a
+# set frame size, fire and prismarine (each animated), a still stone, a gui sprite whose metadata
+# animates nothing, and animated metadata whose texture no pack holds.
+VANILLA = {
+    f"{TEXTURES}/block/water_still.png": b"water",
+    f"{TEXTURES}/block/water_still.png.mcmeta": b'{"animation": {"frametime": 2}}',
+    f"{TEXTURES}/block/kelp.png": b"kelp",
+    f"{TEXTURES}/block/kelp.png.mcmeta": (
+        b'{"animation": {"frametime": 2}, "texture": {"alpha_cutoff_bias": 0.1}}'
+    ),
+    f"{TEXTURES}/entity/conduit/wind.png": b"wind",
+    f"{TEXTURES}/entity/conduit/wind.png.mcmeta": (
+        b'{"animation": {"frames": [0, 1, 2], "width": 4, "height": 2}}'
+    ),
+    f"{TEXTURES}/block/fire_0.png": b"fire",
+    f"{TEXTURES}/block/fire_0.png.mcmeta": b'{"animation": {"frametime": 1}}',
+    f"{TEXTURES}/block/prismarine.png": b"prismarine",
+    f"{TEXTURES}/block/prismarine.png.mcmeta": b'{"animation": {"interpolate": true}}',
+    f"{TEXTURES}/block/stone.png": b"stone",
+    f"{TEXTURES}/gui/sprites/frame.png": b"frame",
+    f"{TEXTURES}/gui/sprites/frame.png.mcmeta": b'{"gui": {"scaling": {"type": "stretch"}}}',
+    f"{TEXTURES}/block/ghost.png.mcmeta": b'{"animation": {"frametime": 5}}',
+    "version.json": b"{}",
+}
+# The pack above it: its own water (a BOM and CRLF), kelp and wind (another frame size), fire's
+# metadata alone (it applies to vanilla's texture: P11), prismarine's texture without metadata (so
+# still), and gui metadata ending in a stray byte, as Faithful 64x R15's friends/background_dark.
+FAITHFUL = {
+    "pack.mcmeta": b'{"pack": {"description": "fixture", "min_format": 79, "max_format": 100}}',
+    f"{TEXTURES}/block/water_still.png": b"water 64x",
+    f"{TEXTURES}/block/water_still.png.mcmeta": b'\xef\xbb\xbf{\r\n "animation": {"frametime": 2}}',
+    f"{TEXTURES}/block/kelp.png": b"kelp 64x",
+    f"{TEXTURES}/block/kelp.png.mcmeta": (
+        b'{"animation": {"frametime": 2}, "texture": {"alpha_cutoff_bias": 0.1}}'
+    ),
+    f"{TEXTURES}/entity/conduit/wind.png": b"wind 64x",
+    f"{TEXTURES}/entity/conduit/wind.png.mcmeta": (
+        b'{"animation": {"frames": [0, 1], "frametime": 2, "width": 8, "height": 4}}'
+    ),
+    f"{TEXTURES}/block/fire_0.png.mcmeta": b'{"animation": {"frametime": 3, "height": 16}}',
+    f"{TEXTURES}/block/prismarine.png": b"prismarine 64x",
+    f"{TEXTURES}/gui/sprites/frame.png.mcmeta": b'{"gui": {"scaling": {"type": "tile"}}}\r\na',
+}
+# The four textures held: each its metadata with the animation on frame 0 at the size the
+# applying metadata sets.
+HELD = {
+    f"{TEXTURES}/block/fire_0.png.mcmeta": {"animation": {"frames": [0], "height": 16}},
+    f"{TEXTURES}/block/kelp.png.mcmeta": {
+        "animation": {"frames": [0]},
+        "texture": {"alpha_cutoff_bias": 0.1},
+    },
+    f"{TEXTURES}/block/water_still.png.mcmeta": {"animation": {"frames": [0]}},
+    f"{TEXTURES}/entity/conduit/wind.png.mcmeta": {
+        "animation": {"frames": [0], "width": 8, "height": 4}
+    },
+}
+# The pack's sha512 from these fixtures: its bytes are a function of its inputs alone (packzip's
+# rules), so a change to the builder shows here, as it moves the identity's resourcePacks.
+STATIC_SHA512 = (
+    "fbbc64ba8fc57d5ceaf8497c8015f4e61e17c9085fcd8783108e339567363139"
+    "ff2e1f1c4276433553fa1a0aceadc503d3f97de143ea340eee80e7e408a31355"
+)
+
+
+def fixture_stack() -> list[zipfile.ZipFile]:
+    return [zipfile.ZipFile(io.BytesIO(archive(files))) for files in (VANILLA, FAITHFUL)]
+
+
+def test_the_static_pack_holds_each_texture_the_top_pack_animates_on_frame_0() -> None:
+    sources, counts = install.static_pack(fixture_stack(), "97.1")
+    assert counts == {"textures": 4, "framed": 2}
+    assert [name for name, _ in sources] == [*sorted(HELD), "pack.mcmeta"]
+    found = dict(sources)
+    for name, held in HELD.items():
+        assert json.loads(found[name]) == held, name
+    pack = json.loads(found["pack.mcmeta"])["pack"]
+    assert (pack["min_format"], pack["max_format"]) == ([97, 1], [97, 1])
+    assert "pack_format" not in pack  # Faithful's form at the platform's format
+    data = packzip.zip_bytes(sources)
+    assert hashlib.sha512(data).hexdigest() == STATIC_SHA512
+    again = packzip.zip_bytes(install.static_pack(fixture_stack(), "97.1")[0])
+    assert again == data  # deterministic: one sha512 for one input
+    with zipfile.ZipFile(io.BytesIO(data)) as built:
+        assert {i.date_time for i in built.infolist()} == {packzip.TIMESTAMP}
+
+
+def test_a_static_pack_input_the_game_cannot_read_is_refused() -> None:
+    with pytest.raises(install.InstallError, match="is no JSON"):
+        install.mcmeta(b'{"animation": ', "x.png.mcmeta")
+    with pytest.raises(install.InstallError, match="no JSON object"):
+        install.mcmeta(b"[0]", "x.png.mcmeta")
+    assert install.mcmeta(b' \r\n{"a": 1} trailing', "x") == {"a": 1}  # Gson reads one value
+    broken = {**VANILLA, f"{TEXTURES}/block/water_still.png.mcmeta": b'{"animation": [2]}'}
+    stack = [zipfile.ZipFile(io.BytesIO(archive(broken)))]
+    with pytest.raises(install.InstallError, match="animation is no object"):
+        install.static_pack(stack, "97.1")
+    with pytest.raises(install.InstallError, match=r"not <major>.<minor>"):
+        install.static_pack(fixture_stack(), "97.x")
+
+
+def static_root(root: Path, sets: dict) -> platform.Platform:
+    """A root whose suite names `sets`, its bench tier pinning the fixture pack, the store and the
+    client jar holding the fixture zips."""
+    (root / "config" / "platforms").mkdir(parents=True)
+    pack = archive(FAITHFUL)
+    pin = {
+        "slug": "faithful",
+        "version": "1",
+        "file": "Faithful.zip",
+        "modrinthVersionId": "FFFFFFFF",
+        "sha512": sha512(pack),
+    }
+    data = {
+        "id": PLATFORM,
+        "minecraft": "26.3",
+        "formats": {"resourcePack": "97.1"},
+        "tiers": {"bench": {"extends": None, "resourcePacks": [pin]}},
+    }
+    (root / "config" / "platforms" / f"{PLATFORM}.json").write_text(json.dumps(data))
+    suite = {"platform": PLATFORM, "resourcePacks": sets}
+    (root / "config" / "suite.json").write_text(json.dumps(suite))
+    base = root / "runtime" / PLATFORM
+    (base / "files").mkdir(parents=True)
+    (base / "files" / "Faithful.zip").write_bytes(pack)
+    (base / "versions" / "26.3").mkdir(parents=True)
+    (base / "versions" / "26.3" / "26.3.jar").write_bytes(archive(VANILLA))
+    return platform.load(root)
+
+
+def test_install_builds_the_static_pack_into_the_store_and_copies_it(tmp_path: Path) -> None:
+    sets = {"standard": ["faithful"], "deterministic": ["faithful", install.STATIC_TEXTURES]}
+    plat = static_root(tmp_path, sets)
+    outcome = install.Outcome(PLATFORM, "bench")
+    said: list[str] = []
+    install.static_textures(tmp_path, plat, "bench", outcome, said.append)
+    store = tmp_path / "runtime" / PLATFORM / "files" / install.STATIC_FILE
+    copy = tmp_path / "runtime" / PLATFORM / "game" / "resourcepacks" / install.STATIC_FILE
+    assert hashlib.sha512(store.read_bytes()).hexdigest() == STATIC_SHA512
+    assert copy.read_bytes() == store.read_bytes()
+    assert outcome.static == {
+        "file": install.STATIC_FILE,
+        "set": "deterministic",
+        "below": ["26.3.jar", "Faithful.zip"],
+        "textures": 4,
+        "framed": 2,
+        "sha512": STATIC_SHA512,
+        "state": "built",
+        "copy": f"runtime/{PLATFORM}/game/resourcepacks/{install.STATIC_FILE}",
+        "copyState": "copied",
+    }
+    assert said == [
+        f"static textures: building {install.STATIC_FILE} into runtime/{PLATFORM}/files"
+    ]
+    outcome.spec = {"path": "spec.json", "state": install.EQUAL, "diff": []}
+    outcome.minecraft = {"version": "26.3", "profile": "p", "directory": "d", "jars": 1}
+    outcome.minecraft.update(assetIndex="34", assets=1)
+    outcome.java = {"build": "b", "archive": "a", "home": "h", "unpacked": "present"}
+    line = next(x for x in install.report(outcome) if x.startswith("static textures:"))
+    assert "4 animated textures held on frame 0, 2 at their set frame size" in line
+    copy.write_bytes(b"edited")
+    again = install.Outcome(PLATFORM, "bench")
+    install.static_textures(tmp_path, plat, "bench", again, quiet)
+    assert (again.static["state"], again.static["copyState"]) == ("equal", "copied")
+    assert copy.read_bytes() == store.read_bytes()
+
+
+@pytest.mark.parametrize(
+    ("sets", "says"),
+    [
+        ({"d": [install.STATIC_TEXTURES, "faithful"]}, "list it once, last"),
+        ({"d": ["faithful", install.STATIC_TEXTURES, install.STATIC_TEXTURES]}, "once, last"),
+        ({"d": ["nope", install.STATIC_TEXTURES]}, "names nope, which tier bench pins no file"),
+        (
+            {"a": ["faithful", install.STATIC_TEXTURES], "b": [install.STATIC_TEXTURES]},
+            "in a, b; fix: one set",
+        ),
+    ],
+)
+def test_a_set_the_static_pack_cannot_top_is_refused(tmp_path: Path, sets: dict, says: str) -> None:
+    plat = static_root(tmp_path, sets)
+    with pytest.raises(install.InstallError, match=says):
+        install.static_textures(tmp_path, plat, "bench", install.Outcome(PLATFORM, "bench"), quiet)
+    assert not (tmp_path / "runtime" / PLATFORM / "files" / install.STATIC_FILE).exists()
+
+
+def test_no_set_naming_the_static_pack_builds_nothing(tmp_path: Path) -> None:
+    plat = static_root(tmp_path, {"standard": ["faithful"]})
+    outcome = install.Outcome(PLATFORM, "bench")
+    install.static_textures(tmp_path, plat, "bench", outcome, quiet)
+    assert outcome.static == {}
+    assert not (tmp_path / "runtime" / PLATFORM / "files" / install.STATIC_FILE).exists()
