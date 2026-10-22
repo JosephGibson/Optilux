@@ -128,6 +128,9 @@ OPTILUX_COMMIT_ZIP = "optilux-{commit}.zip"
 # the check's modules stay out of the measured closure (run-record.md#identity: harness).
 L0_COMMAND = ("-m", "optilux.cli", "check", "L0", "-", "--json")
 L0_TIMEOUT = 600
+# `check L1` on a dump run's own record before it is written (plans/m3.md M3.P08): its closures
+# become the record's `offline` field, the child kept out of the measured closure as L0's is.
+L1_COMMAND = ("-m", "optilux.cli", "check", "L1", "-", "--json")
 # A visual run aligns its captures on the Optilux pack's cycle (plans/m3.md D63), which pipeline
 # spec v0 states (D57); Iris's frame counter wraps at 720720, which a cycle must divide.
 PIPELINE = "config/pipeline.json"
@@ -1241,6 +1244,32 @@ def dump_fields(run: Runner) -> dict:
     return found
 
 
+def check_l1(root: Path, found: dict) -> dict:
+    """A dump record's `offline` field (offline.md#rules: each closure with its method and
+    evidence): `check L1` on the record as it stands, in a child process reading it on stdin;
+    RecordError naming why there is none."""
+    try:
+        done = subprocess.run(  # noqa: S603 this interpreter and the CLI, no shell
+            [sys.executable, *L1_COMMAND],
+            cwd=root,
+            input=json.dumps(found).encode("utf-8"),
+            capture_output=True,
+            timeout=L0_TIMEOUT,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise record.RecordError(f"`check L1` did not run ({error})") from None
+    try:
+        result = json.loads(done.stdout.decode("utf-8"))
+    except ValueError:
+        result = None
+    if not isinstance(result, dict) or "offline" not in result:
+        why = (result or {}).get("error") if isinstance(result, dict) else None
+        lines = done.stderr.decode("utf-8", "replace").strip().splitlines() or ["no output"]
+        raise record.RecordError(f"`check L1` judged nothing: {why or lines[-1]}")
+    return result["offline"]
+
+
 # The run.
 
 
@@ -1363,6 +1392,11 @@ def perform(
             found.update(dump_fields(run))
         except Exception as error:  # noqa: BLE001 the record is written whatever its dumps met
             run.problems.append(f"the dumps' record: {type(error).__name__}: {error}")
+        if run.status == "ok" and not run.problems:  # closures only over a whole set of dumps
+            try:
+                found["offline"] = check_l1(root, {**found, "raw": shown(run.raw, root)})
+            except record.RecordError as error:
+                run.problems.append(str(error))
         status = measured_status(run)
         try:
             measured_session_facts(run)

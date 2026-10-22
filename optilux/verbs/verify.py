@@ -22,7 +22,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from optilux import REPO_ROOT, docs_check, platform, record, similarity
+from optilux import REPO_ROOT, docs_check, l1, platform, record, similarity
 from optilux.verbs import Verb
 from optilux.verbs.install import REFERENCE, SIMILARITY
 from optilux.verbs.pack import PACK_DIR
@@ -303,6 +303,41 @@ def dump_problems(found: dict) -> list[str]:
     dims = list(dict.fromkeys(dim for dim, _ in taken))
     if not taken or sorted(taken) != sorted((dim, vid) for dim in dims for vid in ids):
         problems.append("an ok dump record lacks or repeats a variant's dump in a dimension")
+        return problems
+    return problems + offline_problems(found, dims)
+
+
+def offline_problems(found: dict, dims: list[str]) -> list[str]:
+    """An ok dump record's `offline` field (offline.md#rules), its dump-equality closures re-judged
+    from the record alone: each names its method and verdict, its evidence the manifests of the
+    baseline's and the candidate's dumps in each dimension it names, equal; a `no effect` closure
+    names every dimension the record dumped."""
+    held = found.get("offline")
+    if not isinstance(held, dict) or not isinstance(held.get("closures"), list):
+        return ["an ok dump record without `offline`, check L1's closures"]
+    base = found["variants"][0].get("id") if found["variants"] else None
+    if held.get("level") != "L1" or held.get("baseline") != base:
+        return [f"offline: level {held.get('level')!r}, baseline {held.get('baseline')!r}"]
+    manifests = {(c["variant"], c["dimension"]): c["dump"]["manifest"] for c in found["captures"]}
+    problems = []
+    for closure in held["closures"]:
+        if not isinstance(closure, dict) or closure.get("method") not in l1.METHODS:
+            problems.append(f"offline: a closure without its method: {closure!r}"[:200])
+            continue
+        vid, verdict = closure.get("variant"), closure.get("verdict")
+        if verdict not in l1.METHODS[closure["method"]]:
+            problems.append(f"offline: {vid}: {closure['method']} gives no verdict {verdict!r}")
+        if closure["method"] != l1.DUMP_EQUALITY:
+            continue
+        named, evidence = closure.get("dimensions") or [], closure.get("evidence") or {}
+        for dim in named:
+            pair = (manifests.get((base, dim)), manifests.get((vid, dim)))
+            shown_pair = evidence.get(dim) or {}
+            held_pair = (shown_pair.get("baseline"), shown_pair.get("candidate"))
+            if held_pair != pair or pair[0] != pair[1]:
+                problems.append(f"offline: {vid}'s dump-equal {dim} is not its dumps' manifests")
+        if not named or (verdict == "no effect" and sorted(named) != sorted(dims)):
+            problems.append(f"offline: {vid}'s {verdict} names {named}, the record dumped {dims}")
     return problems
 
 

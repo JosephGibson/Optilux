@@ -1,5 +1,5 @@
 # Offline testing
-Status: rough spec, 2026-10-05; L0 built in M3.P04 (optilux/offline.py), L1-L2 in M3, L3-L4 in M4, run with `optilux check <level>` (design.md#5-interfaces). Each method is ranked by what ALC recorded about it.
+Status: rough spec, 2026-10-05; L0 built in M3.P04 (optilux/offline.py), L1 in M3.P08 (optilux/l1.py), L2 in M3, L3-L4 in M4, run with `optilux check <level>` (design.md#5-interfaces). Each method is ranked by what ALC recorded about it.
 
 ## Contents
 Rules · Levels · Decision powers · ALC evidence · Tools · Costs · Verify
@@ -33,6 +33,12 @@ Cheapest first; a change climbs only as far as it needs.
   - Not built yet, so refused: tessellation stages (Iris reads them only under the TESSELLATION_SHADERS flag) and compute programs.
   - The matrix: the defaults, then each option alone at each of its other values; each pass's program in each of its dimensions, a stage file no pass names failing. The hello pack: 8 programs x 3 dimensions x 2 variants = 48 builds, 16 compiled (the dimensions share the root), 48 glslang runs in 0.3 s.
   - A failure names the program, the stage file and the line glslang's error maps back to, the option values and the dimensions, under the defines printed once.
+- L1 as built (M3.P08, `optilux check L1 <run>`) on a dump run's record (`run`'s dump kind, plans/m3.md D60), each candidate against the baseline, the first variant:
+  - Dump equality: per dimension, its print against the baseline's file by file, a name without Iris's NNN_ counter, an ID map's copy without its date line. Equal in a dimension: skipped there; in every dimension the baseline was dumped in: no effect. Prints are compared only within one record, so debug prints only with debug prints (P13).
+  - The premise check: the candidate's source against the baseline's (each zip kept under raw/<run>/packs/), each changed function looked up in its dumped stages (a removed one in the baseline's) and walked from main through its calls. None defined: not compiled; defined, never reached: not executed (Iris keeps uncalled functions under its flag, P13); either closes. It stays undecided on a change outside a function's text, a changed comment (Iris reads RENDERTARGETS and option lists there), a name a #define also takes, unbalanced braces or a file that is no GLSL.
+  - The impact matrix: changed files -> the program files including them (Iris expands includes as text, before its preprocessor) -> pipeline.json's passes in each dimension's folder -> their views; a changed option -> the passes naming it.
+  - The audit, per dump: the passes enabled there (their dimensions, no `program.<name>.enabled = false` in its preprocessed.properties); each colortex a pass samples written by an enabled pass before it, each one written read after it, each custom uniform a pass reads defined wherever it runs. Iris's own uniforms wait for a list read from its jar.
+  - `run` runs it on its own record in a child process (out of `harness`), so the record's `offline` holds the closures, which `verify records` re-judges from the manifests; `check L1 <run>` says whether the record's agree.
 - Impact matrix: changed files -> includes -> passes (pipeline spec) -> views that exercise them. This replaces ALC's text-walk `deps`, which over-reported (enderBeams reached 37 files; 5 were really kept) and missed Voxy wrappers.
 
 ## Decision powers
@@ -68,6 +74,7 @@ glslang and RGA are pinned in config/tools.json (file, sha256, source), which `i
 - glslang 16.6.0, runtime/tools/glslang-16.6.0/bin/glslang.exe (`-E` preprocess, `-l` link, `-q` reflection). It is not AMD's compiler and can accept code the driver rejects; the in-game reload is the final compile check.
   - `-l` alone links a fragment input no vertex output writes, which the driver refuses (gpu-iris.md#programs-and-alpha-tests); `--validate-io` refuses it and mismatched types, and still links unread outputs (M3.P04). `-E` keeps the input's line numbers.
 - Iris dumps: `enableDebugOptions=true` (iris.properties) writes `patched_shaders/` per pipeline build. They are fully preprocessed, and debug mode may change performance.
+  - 1.11.7 (javap, M3.P08): a reload under the flag writes game/preprocessed.properties and original.properties, then patched_shaders/<id>.properties per ID map (Properties.store: its first line the date), then every program as NNN_<name>.vsh, .fsh and .json, the counter per pipeline; ShaderMap fills every ShaderKey when the pipeline is made, so the print is whole once the reload answers. Its clear spares *.properties, so a dump run empties both places before each reload.
   - Iris's patcher is the Java library glsl-transformer (1.11.7 bundles glsl-transformer-3.0.0-pre3 and jcpp-1.4.14). Running it outside the game could produce dumps with no launch [verify].
 - Shadesmith (GPL-3.0; expands includes and options, then glslang -> spirv-opt -> spirv-cross): unused, as glslang on the pack's own source covers L0 (plans/m3.md D58).
 - RGA 2.15, runtime/tools/rga-2.15/rga.exe (`-s opengl -c gfx1101`; `--version` prints 2.15.0.30); the GUI no longer does OpenGL. Driver-independent, so it explains and never gates.
