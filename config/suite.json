@@ -221,7 +221,7 @@
   "record id, dim, pos, yaw, pitch, time, weather in config/views/<world-id>.json (committed); its hash joins the run identity (run-record.md#identity) and the datapack functions are generated from it"
  ],
  "coverageViews": {
-  "status": "built in M3",
+  "status": "built (M3.P07, plans/m3.md D64): config/views/bench_263.json's coverage list (coverage_items, coverage_mobs, coverage_beacon) over the site `world prep` builds near (314, 1069) (optilux/world.py), m3-coverage-1 its first visual run; moving under /tick freeze across launches: the dropped items' spin (ItemEntity.bobOffs, random at each load, never saved), the campfire's smoke (particles), the enchanted item's glint (wall-clock) where a pack draws it",
   "area": "frozen, out of sight of every perf view",
   "content": [
    "NoAI mobs",
