@@ -647,11 +647,11 @@ L2_DIR = "l2"
 
 
 def rga_exe(root: Path) -> tuple[Path, str]:
-    """RGA as config/tools.json pins it under runtime/tools/, its printed version held to the
-    pin's (`--version`: "Radeon GPU Analyzer Version: 2.15.0.30 (...)")."""
+    """RGA as config/tools.json pins it under runtime/tools/, the version it prints held to the
+    pin's `printed`, exactly (`--version`: "Radeon GPU Analyzer Version: 2.15.0.30 (...)")."""
     pin = json.loads((root / TOOLS).read_text(encoding="utf-8")).get("rga")
-    if not isinstance(pin, dict) or not pin.get("unpack") or not pin.get("exe"):
-        raise l2.L2Error(f"{TOOLS} pins no rga with unpack and exe; fix: restore it")
+    if not isinstance(pin, dict) or not all(pin.get(k) for k in ("unpack", "exe", "printed")):
+        raise l2.L2Error(f"{TOOLS} pins no rga with unpack, exe and printed; fix: restore it")
     exe = root / TOOLS_DIR / pin["unpack"] / pin["exe"]
     try:
         done = subprocess.run(  # noqa: S603 the pinned RGA, no shell
@@ -661,9 +661,9 @@ def rga_exe(root: Path) -> tuple[Path, str]:
         raise l2.L2Error(f"{exe} did not run ({error}); fix: `uv run optilux install`") from None
     found = re.search(r"Version: (\S+)", done.stdout.decode("utf-8", "replace"))
     version = found[1] if found else "nothing"
-    if not (version == pin["version"] or version.startswith(f"{pin['version']}.")):
+    if version != pin["printed"]:
         raise l2.L2Error(
-            f"{exe} prints version {version}, the pin says {pin['version']}; fix: `uv run "
+            f"{exe} prints version {version}, the pin says {pin['printed']}; fix: `uv run "
             "optilux install`"
         )
     return exe, version
