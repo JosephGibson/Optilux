@@ -1,59 +1,77 @@
 # Handoff
-Status: the latest stop: M3.P06 done, the static-textures pack, the deterministic set, visual runs and their tiers built and accepted (m3-visual-2), and what M3.P07 starts from.
+Status: the latest stop: M3.P07 done, the coverage views built (the views file's coverage list, world prep's coverage site, the End views' clock) and framed by m3-coverage-1, and what M3.P08 starts from.
 
 ## Contents
 Outcome · What changed · Review · Choices · Checks · Open questions · Weak points · Commits and time · Next
 
 ## Outcome
-Last phase: M3.P06
-- The exit holds, shown in this session (2026-10-22, ADT): m3-visual-2 (13:26-13:28, announced, the machine left alone), a visual run on quick mode's views with the hello pack (`optilux`, optilux.zip sha512 d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4, `check L0` ok) and Unbound r5.9.3 on iso v1:
-  - status ok; 6 of 6 pairs valid, each two frames 2.000-2.007 s apart, every frame's PNG hashed and its sha256 recorded;
-  - every option read back: options.txt's 24 keys (resourcePacks among them) and iris.properties' 5 after the quit; each variant's written options equal to their effective values after each reload (hello none written, its 1 option at its default; Unbound 48 of 398);
-  - every hello-pack pair identical (forest_noon 80080902..., nether_crimson e027f4cf..., end_dragon 3ef4672d...), water in sight at forest_noon, a lava lake at nether_crimson; Unbound's three pairs moving (TAA);
-  - `compare m3-visual-2`: per view the hello pair identical, the Unbound pair REVIEW (FLIP mean 0.086, 0.017, 0.061; SSIM 0.81, 0.99, 0.98), Unbound vs hello REVIEW; review.html and report.html under results/raw/m3-visual-2/;
-  - the game loaded both packs (latest.log: `..., file/Faithful 64x - Release 15.zip, file/optilux-static-textures.zip`), with 63 "Unused frames in sprite" warnings, one per held texture.
-- The static pack: 63 animated textures held on frame 0, 6 at their set frame size (conduit wind and wind_vertical 256x128, four gui sprites), sha512 ff44b3cc091747390108ff3acdfc6ba2a81adaebff181f250306ab7a2053279574d7792e762c7d93c4fb224f19ea27f9c7e5dd6522a711c0f48c118015529ee8, in the identity's resourcePacks after Faithful 64x (bc534dfb...).
-- m3-visual-1 (11:30) failed before it: 26.3's resource reload threw "Dest texture (72x504) is not large enough to write a rectangle of 72x504" at particle/vibration.png and dropped every selected pack, so the session ran on vanilla textures; read_back caught it (resourcePacks read `[]`). Its hello pairs were identical too.
-- The stop at 04:56 (Mojang republished 26.3's version JSON: 142 language files) ended with the user's re-pin (`install --refresh`, 4 facts). runtime/ written only by install, the runs' world restores, launches and the game; no system setting.
+Last phase: M3.P07
+- The exit holds, shown in this session (2026-10-22, ADT):
+  - `world prep bench_263` (prep-bench_263-20261022-180856, 15:08:56-15:12:56, announced, the machine left alone) ended ok. Its Chunky tasks hit 100 % from the console's finished line, ticks frozen throughout; the overworld's took 7,209 chunks in 9 s, centre (-26, 658), radius 629 x 702 (x -655..603, z -44..1360; it was 486 x 621).
+  - The coverage step: after the build, and again after the sweep, one of each of the seven content entities counted, all 17 block tests "Test passed", the sign's first line read back `313, 101, 1072 has the following block data: "Optilux"`.
+  - The End's clock read back "Clock minecraft:the_end is at 6000 tick(s)" at end_dragon and end_city; end_dragon held ten end crystals and no dragon. The entities role's seven mobs unmoved; no hook failure; quit exit 0.
+  - The snapshot was retaken and hashed: 1b08188525ef673fe44f26653170adf55302a458cd767d0dd1e93e748fd72c82, 128 files, 168,978,587 bytes (it was 65e7ae73..., 116 files).
+  - m3-coverage-1 (15:13:58-15:15:33, announced, the machine left alone): a visual run of mode coverage with the hello pack (optilux.zip sha512 d86371b7..., `check L0` ok) and Unbound r5.9.3 on iso v1. It ended ok: 6 of 6 pairs valid, 2.0004-2.0040 s apart; the 12 frames re-hashed equal to the record; every option read back; 8 reloads; recorded on 89d4686, the tree clean.
+  - Its pairs: the hello pack's three identical (`compare`); Unbound's three moving (TAA), REVIEW (FLIP mean 0.0099, 0.0143, 0.0137). The weather's 120 ticks were stepped at coverage_items; coverage_beacon's own 100 at its pose, after creative and the GUI.
+- The first prep (prep-bench_263-20261022-180041, 15:00:41) failed at its first gamerule, before Chunky: the prepared snapshot answered "Game rule advance_time is already set to false" (a failure), which gamerules() refused. Fixed in 89d4686, then rerun: three launches, not the prompt's two. No snapshot was taken by the failed one.
+- The site: a smooth-stone floor at y 100 over x 306..322, z 1061..1077, near (314, 1069). Its three views lie 531.9-532.9 blocks (Chebyshev) from the nearest overworld perf view (ocean_sunset); the snapshot's chunks under it (15..23, 62..70; chunk 20 full, 21-23 initialize_light) reach y 83 at most.
+- What each item shows (Claude's pre-screen of m3-coverage-1's frames and prep's Unbound-default frames):
+  - coverage_items: the enchanted golden apple, plain gold in the hello pack, glint-tinted with a pink rim in Unbound. The dropped diamond stands edge-on. The item frame holds the diamond sword on its spruce planks. The sign reads "Optilux / coverage", sharp at 4K in both packs. The armor stand wears the iron helmet and diamond chestplate. The fox and the polar bear's flank show at the right.
+  - coverage_mobs: the fox, polar bear and mooshroom (its mushrooms drawn) in noon sun, the armor stand close at the left, the campfire's logs and flame at the right edge.
+  - coverage_beacon: the beam rises from the beacon on its iron base to the top of the frame in both packs. The campfire's flame shows in both, its smoke only in Unbound (BENCH_DETERMINISTIC discards particles: the exempt item). The mooshroom stands at the left, and the held torch at the bottom right (creative; frames come before the GUI pass, so no hotbar). Unbound also draws the player's own shadow at the bottom centre.
+  - Every coverage item is in its frames, so section 7's stop does not apply. The hello pack shows no glint on the apple; see Open questions.
 
 ## What changed
-- The static pack (dcb4d9b, fixed in 46f730f): install's static_textures and static_pack; per texture whose top metadata down to its provider (P11) animates, that metadata with frames [0, 0] at its width and height, its other sections kept; read as Gson reads it; pack.mcmeta min and max_format [97, 1]; packzip's rules.
-- The set (79cc518): record.PACK_SET deterministic; launch.set_packs, packs_line, resourcePacks written from the set, check_packs in its order; run's identity from it.
-- The visual kind (d70f0d0) and the tiers (fc2269b): plans/m3.md D63 as built (record, run, measure, session, modclient's interval check, the fake, verify records, report; optilux/visual.py, `compare --against`, review.html, suite.json fidelity's numbers).
-- The re-pin (7c08e57, its fixture in 3e7e423), the records (ca01ba5 m3-visual-1, ee16c16 m3-visual-2).
-- Docs: measurement.md, run-record.md, platform.md, AGENTS.md, CHANGELOG.md (two bullets).
+- e215b49: the views file's `coverage` list (record.load_views, check_view, COVERAGE_KEYS hand and ticks, COVERAGE_APART 512 by Chebyshev over x and z per dimension, every_view, coverage_views); visual runs of mode `coverage` (VISUAL_MODES, `verify records`); measure.arrive's `hand` (D49's GUI and creative) and own `ticks` after the weather's; bench_263's three coverage views.
+- 8924692: world prep's coverage step (build_coverage: the site's old tagged content waited for and killed, the kill, fills, setblocks and summons through `command`, coverage_counts and coverage_problems after the build and after the sweep); its selection, functions, views loop and sweep over every view; the End views' functions also run `time of minecraft:the_end set <time>`, read back at each End view (parse_clock); session.shows_hand; measure.stale_functions over every view.
+- 89d4686: gamerules() takes "Game rule <name> is already set to <value>" as set; the read-back decides.
+- 2c565f8: m3-coverage-1's record; suite.json coverageViews' status.
+- Docs: measurement.md#baseline-suite (coverage views, prep's coverage step and End clock; session step 5; cut: the buried-camera aside, prep's pack.mcmeta and Chunky-line detail, the tag bullet (suite.json world.setup holds it), step 5's held-item rationale, the GPULatency and display-state definitions, the CTRL_C aside, Readiness' fields line); run-record.md#run-spec (mode coverage); CHANGELOG.md 0.4.0 (one bullet).
 
 ## Review
-Two reviewer agents, each finding read at its source. Session and identity: 11 (2 medium, 9 low), 10 fixed, 1 reported (Weak points); the set's packs reach launch_differences in one order, the line in Gson's form (shown in game by m3-visual-2's read-back), visual.py outside run's closure: hold. Tiers and compare: 9 (1 medium, 8 low), all fixed. The 04:56 handoff (git 3e075bf) lists each.
+The reviewer agent on world.py's changes and the views file (correctness): 6 findings, 1 medium and 5 low, each read at its source.
+- 1 (medium) held and is fixed: the old content was read once, before its entities could load; it is now read once a second for up to 10 s, and a kill must leave none.
+- 2 (low) is fixed: a view's own ticks outside the overworld left the ramp stale, in prep and measure.arrive.
+- 3 and 4 hold as built: `execute if block`'s bare "Test passed" (ExecuteCommand.addConditional) and `time of <clock> query time` (TimeCommand, en_us.json), both by javap of the 26.3 jar, then live in this prep.
+- 5 did not hold: chunk 20 under the floor's east strip is full in the old snapshot.
+- 6 is partly fixed: the ticks' order is now recorded, and the dragon-fight guard is tested; session()'s order stays untested (Weak points).
+- The kill sparing the content, the counts and the selection were found to hold.
 
 ## Choices
 Neither the prompt nor the plan names these:
-- frames [0, 0], not D62's [0]: 26.3's createAnimatedTexture makes no animation of a one-entry list, and TextureAtlas.uploadInitialContents then writes the sprite's whole strip into a one-frame texture (javap of SpriteContents and TextureAtlas). Two entries keep the animated path, every frame frame 0; still .mcmeta alone.
-- A held .mcmeta keeps the provider's other sections (kelp's alpha_cutoff_bias).
-- A visual pair is one frames.capture (count 2, intervalMs 2000, align phase 0 on config/pipeline.json's cycle, ready with the view's visual settle, +3 s for the first variant after a dimension change); the 30 s GPU warm-up kept.
-- A visual run holds the displays on, never refuses them off, waits no D42 and ends invalid on focus.lost or a foreign screen.
-- `moving` by the pair's PNG sha256; compare's tiers on decoded pixels; suite.json fidelity's numbers (not identity).
-- The code commits went on after the 04:56 stop; the re-pin and m3-visual-2 at the user's go (11:14 "continue to closeout"; the rerun chosen at 13:25).
+- A visual run takes the coverage views by `mode: "coverage"`, a visual-only mode, not a suite.json mode: perf modes and the suite's identity unchanged.
+- The poses came from geometry, not flight (no input is sent): a floor at a fixed y 100 over the measured terrain, each item's place in frame computed for fov 0.5 at 16:9; prep's frames confirmed them. The poses went in with the loader (e215b49), so the launches ran on a committed views file; 2c565f8 carries no pose change.
+- The content:
+  - three passive mobs that Peaceful summons: mooshroom, polar bear, fox;
+  - the armor stand in an iron helmet and diamond chestplate;
+  - the item frame (Fixed, with Pos and block_pos, so no "invalid position" log line), holding a diamond sword on planks;
+  - a dropped diamond and an enchanted golden apple, whose glint needs no enchantment data (NoGravity, Age -32768, PickupDelay 32767);
+  - an oak sign facing north, a beacon on 3x3 iron, a lit campfire.
+  - Every entity carries PersistenceRequired (only mobs read it); summon coordinates are decimal, so the command never centres them.
+- `hand` is a boolean (creative and the GUI, the snapshot's torch); `ticks` is 100 at coverage_beacon, since the beacon sets its level on a game tick divisible by 80 (javap).
+- Counts: entities by selector in the site's box (the two items told apart by nbt), 17 blocks by `execute if block` (the floor's corners, the base's nine, the four blocks), the sign read back.
+- A scratch display hold (the harness's request, scratchpad hold.py) ran 14:41:50-15:15:45 over both preps and the visual run.
 
 ## Checks
-- Start (03:41 ADT): branch m3 clean at 7e4536b; 908 passed; verify docs 0 violations. Resumed (11:14): clean at 3e075bf; 946 passed.
-- Before each commit, on a tree equal to it: 916, 918, 939, 946, 947 passed; ruff, ruff format, pyright clean; verify docs 0 violations; verify records 228 records, 0 violations. Except 7c08e57: pushed with test_platform red (the spec ahead of its fixture), fixed in 3e7e423; CI red on 7c08e57, green on 3e7e423.
-- CI green on dcb4d9b, 79cc518, d70f0d0, fc2269b, 3e075bf, 3e7e423, each watched to its end before the next push; 46f730f's and ee16c16's watched before this handoff's push. ca01ba5, pushed with 46f730f, had no CI run of its own: its tree in a worktree passed 938, failing the 4 hook end-to-end tests HEAD's tree fails there too (HEAD 947 in the checkout).
-- Double check (13:40): m3-visual-2's 12 frames re-hashed equal to the record, each hello pair equal in decoded pixels, each first frame the ready frame, every written option its effective value, the static pack's sha512 the store's and the game copy's.
+- Start (14:04 ADT): branch m3 clean at f057558; 947 passed; verify docs 0 violations.
+- Before each commit, on a tree equal to it: 962, 975, 976 and 976 passed; ruff, ruff format and pyright clean; verify docs 0 violations; verify records 229 records, 0 violations.
+- The first full run before e215b49 failed one test (962 items) that the passing reruns cleared from pytest's cache before it was named; five reruns and every later run passed. Runs since list failures by name (`-rf`).
+- CI green on e215b49, 8924692 and 89d4686, each watched to its end before the next push or launch; 2c565f8's watched before this handoff's push.
 
 ## Open questions
-- The hello pack's End stone reads olive-green at end_dragon (texture x vertex colour x the End's lightmap?), Unbound's pale; a look note for M4's pack, Claude's pre-screen.
-- With ticks frozen, m3-visual-1's hello pairs were identical on vanilla's animated textures too: whether 26.3 animates textures on frozen client ticks (the static pack then guards unfrozen sessions and the TAA history) is unverified.
-- Carried: the display guard for A9; Nether fog and the features on neither list; the water fog colour (M3.P09); D66, the driver; D72; the ticks before /tick freeze; spider eyes and the world's difficulty (M4); M2's carried list (git 7dfc2fa's handoff).
+- The hello pack shows no glint on the enchanted golden apple: plain gold, its pair identical. Unbound draws the glint, which runs on the wall clock (TextureTransform.setupGlintTexturing: Util.getMillis x glintSpeed). Whether the hello pack's glint fallback (textured, P14) draws nothing or draws without the texture matrix is for M4's coverage list.
+- Moving under /tick freeze across launches (D64, named in suite.json): the dropped items' spin (ItemEntity.bobOffs, random at each load, not saved: javap), the campfire's smoke, the glint where drawn. One visual run, so the cross-launch differences are unverified.
+- Unbound on iso draws no shadow under the coverage mobs; the frame's block and the sign keep theirs. A profile look note.
+- Carried: the hello pack's olive End stone; whether 26.3 animates textures on frozen ticks; the display guard for A9; Nether fog and the features on neither list; the water fog colour (M3.P09); D66, the driver; D72; the ticks before /tick freeze; spider eyes and the world's difficulty (M4); M2's carried list (git 7dfc2fa's handoff).
 
 ## Weak points
-- Session review 3: every variant aligns on the working tree's pipeline.json cycle; an `optilux@<ref>` commit's may differ. Every M3 cycle is 1.
-- `moving` by sha256 assumes the game's PNG writer writes equal pixels as equal bytes (one writer); compare's pair tier judges the pixels.
-- Margins: measurement.md 2 bytes; platform.md 7; AGENTS.md 16; mod.md 62; workflow.md 199.
+- session()'s order (the build after Chunky, the counts after the sweep, then positions) is tested only by this prep's own run, not by a test.
+- A rebuilt site (a later prep on this snapshot) is untested live: the old content is waited for, killed and must leave none, on the fake alone.
+- Margins: measurement.md 20 bytes; platform.md 7; AGENTS.md 16; mod.md 62; workflow.md 199.
 
 ## Commits and time
-- dcb4d9b, 79cc518, d70f0d0, fc2269b, 3e075bf, 7c08e57, 3e7e423, ca01ba5, 46f730f, ee16c16; then this handoff.
-- 2026-10-22 03:41-05:01, 11:14-11:38 and 13:25-13:50 ADT: about 2.1 h against 3.5 h, the user's re-pin and rerun waits apart. Tripwire: actuals about 55.8 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, P01 0.8, P02 0.8, P03 1.9, P04 1.9, P05 1.4, P06 2.1); the trip at 174.6 h.
+- e215b49, 8924692, 89d4686, 2c565f8; then this handoff.
+- 2026-10-22 14:04-15:25 ADT: about 1.4 h against 2.5 h. Tripwire: actuals about 57.2 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, P01 0.8, P02 0.8, P03 1.9, P04 1.9, P05 1.4, P06 2.1, P07 1.4); the trip at 174.6 h.
 
 ## Next
-/optilux-next prints M3.P07's prompt: coverage views, 2.5 h, 2 launches and the new area's generation; its visual run uses the visual kind as built here (the views file's coverage list joins the spec then).
+/optilux-next prints M3.P08's prompt: check L1 and L2, 3 h, 2 launches (dump runs); the world is the new snapshot 1b081885..., so every later run and M3.P10's calibration take it.
