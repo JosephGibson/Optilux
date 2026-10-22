@@ -9,6 +9,7 @@ import hashlib
 import json
 import shutil
 from pathlib import Path
+from typing import Any
 
 import pytest
 from conftest import copy_config
@@ -1007,3 +1008,88 @@ def test_an_end_view_reads_the_ends_clock_back_after_its_function(monkeypatch) -
     assert facts["endClock"] == 6000
     with pytest.raises(world.WorldError, match="the End's clock reads 0 after the view's function"):
         prep_view(monkeypatch, FakeClient(script(0)), end_city)
+
+
+class SessionClient(FakeClient):
+    """The prep session's other calls: the join, the render target, input.block."""
+
+    def world_wait(self, timeout: float) -> dict:
+        return {}
+
+    def state(self) -> dict:
+        return {"gamemode": "spectator", "framebuffer": {"width": 3840, "height": 2160}}
+
+    def input_block(self, on: bool) -> dict:
+        self.sent.append(f"input.block {on}")
+        return {"on": on}
+
+    def input_block_when_free(self, on: bool, timeout: float) -> dict:
+        return self.input_block(on)
+
+
+def test_prep_builds_the_site_after_chunky_and_counts_it_again_after_the_sweep(
+    monkeypatch,
+) -> None:
+    """world.session's order (plans/m3.md D64): the freeze and the torch, the tagged mobs'
+    positions, every function, Chunky's tasks, then the coverage step at the first coverage
+    view (its chunks generated), every view with the coverage views last, the sweep, the site
+    counted again, the positions again, the camera home; input.block off at the end."""
+    mobs = [{"name": f"m{i}", "x": 0.0, "y": 0.0, "z": float(i)} for i in range(7)]
+    client = SessionClient(lambda text, c: (answer(True, ["ok"], []), []))
+    log = client.sent
+
+    def step(name: str, value: Any = None):
+        def call(*args: Any, **kwargs: Any) -> Any:
+            log.append(name)
+            return value
+
+        return call
+
+    def prepare(p, view, ramped, previous, suite, raw):
+        log.append(f"view {view['id']}")
+        return {"tagged": 7, "endCrystals": 10}, ramped
+
+    def positions(p, label):
+        log.append(label)
+        return mobs
+
+    monkeypatch.setattr(world, "gamerules", step("gamerules", {}))
+    monkeypatch.setattr(world, "positions", positions)
+    monkeypatch.setattr(world, "call_function", step("function", {"succeeded": True}))
+    monkeypatch.setattr(world, "run_task", lambda p, task, unfreeze: log.append(task.world))
+    monkeypatch.setattr(world, "build_coverage", lambda p, view: log.append(f"build {view['id']}"))
+    monkeypatch.setattr(world, "prepare_view", prepare)
+    monkeypatch.setattr(world, "sweep", step("sweep", {}))
+    monkeypatch.setattr(
+        world, "coverage_counts", lambda p, view, label: log.append(f"count {label}") or held()
+    )
+    prep = kill_prep(client)
+    world.session(prep, PLAT, SUITE, BENCH, world.selections(BENCH), Path("raw"))
+    every = record.every_view(BENCH)
+    assert log.count("function") == len(every) == 14
+    first = log.index("function")
+    order = [*log[:first], "function", *log[first + len(every) :]]
+    assert order == [
+        "input.block True",
+        "hideGui True",
+        "/gamemode spectator",
+        "gamerules",
+        "/tick freeze",
+        "/item replace entity @s weapon.mainhand with minecraft:torch",
+        "camera.place -366.8 244.4",
+        "entities: positions before",
+        "function",
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end",
+        "minecraft:the_end",
+        "build coverage_items",
+        *(f"view {v['id']}" for v in every),
+        "sweep",
+        "count after the sweep",
+        "camera.place -366.8 244.4",
+        "entities: positions after",
+        "camera.place 22.6 533.0",
+        "input.block False",
+    ]
+    assert prep.facts["coverageAfter"] == held()
