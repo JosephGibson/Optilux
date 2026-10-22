@@ -13,18 +13,21 @@ import pytest
 from optilux import REPO_ROOT, platform
 
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "mc-26.3"
-# Mojang's three 26.3 version JSONs: released 2026-09-15, republished 2026-10-06 (P6) and on
-# 2026-10-13 (142 language files in the index), each refreshed into the committed spec.
+# Mojang's four 26.3 version JSONs: released 2026-09-15, republished 2026-10-06 (P6), on
+# 2026-10-13 and by 2026-10-22 (142 language files in the index each time), each refreshed into
+# the committed spec.
 OLD = "4fe1aa1ef8da1cb95c5bad1fb98890ca56dd8ca3"
 NEW = "702fe59163c6ee6578607daa85811d9bc9c7cc40"
-NEWEST = "11f1aefe473eefba0af62e3286c33b692807b2eb"
+NEWER = "11f1aefe473eefba0af62e3286c33b692807b2eb"
+NEWEST = "61fff1316bd50312624a858bbb5eb18fa45208ed"
 PACKAGES = "https://piston-meta.mojang.com/v1/packages/{sha1}/26.3.json"
 PROFILE_URL = "https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/profile/json"
 # Maven's .sha1 for fabric-loader 0.19.5, the one library the profile lists without a sha1.
 LOADER_SHA1 = "ff9e65cffca4a67f31523e1807fe0855940fcbfa"
 OLD_INDEX = "abfaa525f923f807df8b4e4d29c1b5e3a104adbe"
 NEW_INDEX = "1e4e4a68dece1c0f51b8f93b45da8fe8da51bcd3"
-NEWEST_INDEX = "e787e8afd149a4cefa89d341b91f5aed8f5d93a0"
+NEWER_INDEX = "e787e8afd149a4cefa89d341b91f5aed8f5d93a0"
+NEWEST_INDEX = "0c8f43b28f837869c1e54a6aeb22c396a1548946"
 
 
 def version_json(sha1: str) -> dict:
@@ -238,7 +241,8 @@ def test_the_spec_from_the_newest_json_is_the_committed_spec() -> None:
     ("before", "after", "indexes", "grown"),
     [
         (OLD, NEW, (OLD_INDEX, NEW_INDEX), 105_275),
-        (NEW, NEWEST, (NEW_INDEX, NEWEST_INDEX), 941_887),
+        (NEW, NEWER, (NEW_INDEX, NEWER_INDEX), 941_887),
+        (NEWER, NEWEST, (NEWER_INDEX, NEWEST_INDEX), 64_086),
     ],
 )
 def test_mojangs_republished_json_moved_only_the_asset_index(
