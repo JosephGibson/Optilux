@@ -1,0 +1,2020 @@
+{
+ "schema": 1,
+ "name": "m3-dump-1",
+ "kind": "dump",
+ "spec": {
+  "name": "m3-dump-1",
+  "kind": "dump",
+  "views": "bench_263",
+  "world": "bench_263",
+  "variants": [
+   {
+    "id": "head",
+    "pack": "optilux@HEAD",
+    "profile": null
+   },
+   {
+    "id": "off",
+    "pack": "optilux@HEAD",
+    "profile": null,
+    "options": {
+     "BENCH_DETERMINISTIC": false
+    }
+   },
+   {
+    "id": "change",
+    "pack": "optilux",
+    "profile": null
+   }
+  ],
+  "tier": "bench",
+  "resourcePacks": "deterministic",
+  "notes": "M3.P08's exit (plans/m3.md): the hello pack at HEAD with BENCH_DETERMINISTIC on (head, the baseline) and off (off) in all three dimensions, so check L1 names the stages the define changes; and the working tree's one-line change to fog code that BENCH_DETERMINISTIC leaves out (change: lib/fog.glsl's environment fog inside #ifndef BENCH_DETERMINISTIC), to be closed as dump-equal and spot-checked by a visual run."
+ },
+ "notes": "M3.P08's exit (plans/m3.md): the hello pack at HEAD with BENCH_DETERMINISTIC on (head, the baseline) and off (off) in all three dimensions, so check L1 names the stages the define changes; and the working tree's one-line change to fog code that BENCH_DETERMINISTIC leaves out (change: lib/fog.glsl's environment fog inside #ifndef BENCH_DETERMINISTIC), to be closed as dump-equal and spot-checked by a visual run.",
+ "status": "ok",
+ "reason": null,
+ "startedAt": "2026-10-22T21:49:19+00:00",
+ "endedAt": "2026-10-22T21:50:36+00:00",
+ "identity": {
+  "platform": {
+   "sha256": "3bc69860cc84a5ac20feb2d34887c1768a1572c0a232d2ab52fd38def6aab20c",
+   "tier": "bench",
+   "tiers": [
+    "bench"
+   ]
+  },
+  "launchSpec": {
+   "file": "mc-26.3.launch.json",
+   "sha256": "de7fdff05a9c0d38c80846474a528b2136c2b235ae4a4564b3e88754c2b956cf"
+  },
+  "mods": [
+   "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+   "ed1f2a39e4300fec8adf94b0bc06d8fea4ae7bcf6efeeed6f568ed601d21157052897afecf5fa0bfe5cfab2d74ea245fb3f352a395dfaba5464486dbe1ac86a5",
+   "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+   "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+  ],
+  "world": {
+   "snapshot": "snapshots/bench_263",
+   "treeSha256": "33a4074d4198ea0143a5dc2a47b3e21ce900cbe9baa8276b5c918dc4a5a03035",
+   "files": 128
+  },
+  "views": {
+   "file": "bench_263.json",
+   "sha256": "c1e7046ede88765a8ce0b7936c2c765776a326815f5eec1819c7ccb59f87a6a1"
+  },
+  "resourcePacks": {
+   "set": "deterministic",
+   "packs": [
+    {
+     "file": "Faithful 64x - Release 15.zip",
+     "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+    },
+    {
+     "file": "optilux-static-textures.zip",
+     "sha512": "ff44b3cc091747390108ff3acdfc6ba2a81adaebff181f250306ab7a2053279574d7792e762c7d93c4fb224f19ea27f9c7e5dd6522a711c0f48c118015529ee8"
+    }
+   ]
+  },
+  "settings": {
+   "options": {
+    "version": "5023",
+    "fullscreen": "true",
+    "exclusiveFullscreen": "true",
+    "enableVsync": "false",
+    "maxFps": "260",
+    "renderDistance": "16",
+    "simulationDistance": "12",
+    "fov": "0.5",
+    "bobView": "false",
+    "guiScale": "3",
+    "mipmapLevels": "4",
+    "biomeBlendRadius": "2",
+    "graphicsPreset": "\"custom\"",
+    "preferredGraphicsBackend": "\"opengl\"",
+    "improvedTransparency": "false",
+    "pauseOnLostFocus": "false",
+    "onboardAccessibility": "false",
+    "skipMultiplayerWarning": "true",
+    "joinedFirstServer": "true",
+    "telemetryOptInExtra": "false",
+    "realmsNotifications": "false",
+    "narrator": "0",
+    "inactivityFpsLimit": "\"minimized\"",
+    "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\",\"file/optilux-static-textures.zip\"]"
+   },
+   "overrides": {},
+   "token": true,
+   "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+   "iris": {
+    "enableShaders": "true",
+    "enableDebugOptions": "false",
+    "disableUpdateMessage": "true",
+    "maxShadowRenderDistance": "32"
+   },
+   "unwritten": {
+    "ao": "true",
+    "chunkSectionFadeInTime": "0.75",
+    "cutoutLeaves": "true",
+    "entityDistanceScaling": "1.0",
+    "entityShadows": "true",
+    "forceUnicodeFont": "false",
+    "japaneseGlyphVariants": "false",
+    "fovEffectScale": "1.0",
+    "darknessEffectScale": "1.0",
+    "glintSpeed": "0.5",
+    "glintStrength": "0.75",
+    "prioritizeChunkUpdates": "1",
+    "macFullscreenMenuVisibility": "false",
+    "gamma": "0.5",
+    "debugGuiScale": "0",
+    "maxAnisotropyBit": "1",
+    "textureFiltering": "1",
+    "particles": "0",
+    "reducedDebugInfo": "false",
+    "renderClouds": "\"true\"",
+    "cloudRange": "64",
+    "screenEffectScale": "1.0",
+    "soundDevice": "\"\"",
+    "vignette": "true",
+    "weatherRadius": "10",
+    "autoJump": "false",
+    "rotateWithMinecart": "false",
+    "operatorItemsTab": "false",
+    "autoSuggestions": "true",
+    "chatColors": "true",
+    "chatLinks": "true",
+    "chatLinksPrompt": "true",
+    "discrete_mouse_scroll": "false",
+    "invertXMouse": "false",
+    "invertYMouse": "false",
+    "showSubtitles": "false",
+    "directionalAudio": "false",
+    "toggleCrouch": "false",
+    "toggleSprint": "false",
+    "toggleAttack": "false",
+    "toggleUse": "false",
+    "sprintWindow": "7",
+    "darkMojangStudiosBackground": "false",
+    "hideLightningFlashes": "false",
+    "hideSplashTexts": "false",
+    "mouseSensitivity": "0.5",
+    "damageTiltStrength": "1.0",
+    "highContrast": "false",
+    "highContrastBlockOutline": "false",
+    "narratorHotkey": "true",
+    "incompatibleResourcePacks": "[]",
+    "lastServer": "",
+    "lang": "en_us",
+    "chatVisibility": "0",
+    "chatOpacity": "1.0",
+    "chatLineSpacing": "0.0",
+    "textBackgroundOpacity": "0.5",
+    "backgroundForChatOnly": "true",
+    "hideServerAddress": "false",
+    "advancedItemTooltips": "false",
+    "overrideWidth": "0",
+    "overrideHeight": "0",
+    "chatHeightFocused": "1.0",
+    "chatDelay": "0.0",
+    "chatHeightUnfocused": "0.4375",
+    "chatScale": "1.0",
+    "chatWidth": "1.0",
+    "notificationDisplayTime": "1.0",
+    "useNativeTransport": "true",
+    "mainHand": "\"right\"",
+    "attackIndicator": "1",
+    "tutorialStep": "none",
+    "mouseWheelSensitivity": "1.0",
+    "allowCursorChanges": "true",
+    "quitShortcuts": "true",
+    "ctrlClickEmulatesRightClick": "false",
+    "glDebugVerbosity": "1",
+    "hideMatchedNames": "true",
+    "syncChunkWrites": "true",
+    "showAutosaveIndicator": "true",
+    "allowServerListing": "true",
+    "inGameNotification": "false",
+    "sharePresence": "\"all\"",
+    "onlyShowSecureChat": "false",
+    "saveChatDrafts": "false",
+    "panoramaScrollSpeed": "1.0",
+    "menuBackgroundBlurriness": "5",
+    "startedCleanly": "true",
+    "musicToast": "\"never\"",
+    "musicFrequency": "\"DEFAULT\"",
+    "key_key.attack": "key.mouse.left",
+    "key_key.use": "key.mouse.right",
+    "key_key.forward": "key.keyboard.w",
+    "key_key.left": "key.keyboard.a",
+    "key_key.back": "key.keyboard.s",
+    "key_key.right": "key.keyboard.d",
+    "key_key.jump": "key.keyboard.space",
+    "key_key.sneak": "key.keyboard.left.shift",
+    "key_key.sprint": "key.keyboard.left.control",
+    "key_key.drop": "key.keyboard.q",
+    "key_key.inventory": "key.keyboard.e",
+    "key_key.chat": "key.keyboard.t",
+    "key_key.playerlist": "key.keyboard.tab",
+    "key_key.pickItem": "key.mouse.middle",
+    "key_key.command": "key.keyboard.slash",
+    "key_key.friends": "key.keyboard.o",
+    "key_key.socialInteractions": "key.keyboard.p",
+    "key_key.toggleGui": "key.keyboard.f1",
+    "key_key.toggleSpectatorShaderEffects": "key.keyboard.f4",
+    "key_key.screenshot": "key.keyboard.f2",
+    "key_key.togglePerspective": "key.keyboard.f5",
+    "key_key.smoothCamera": "key.keyboard.unknown",
+    "key_key.fullscreen": "key.keyboard.f11",
+    "key_key.spectatorOutlines": "key.keyboard.unknown",
+    "key_key.spectatorHotbar": "key.mouse.middle",
+    "key_key.swapOffhand": "key.keyboard.f",
+    "key_key.saveToolbarActivator": "key.keyboard.c",
+    "key_key.loadToolbarActivator": "key.keyboard.x",
+    "key_key.advancements": "key.keyboard.l",
+    "key_key.quickActions": "key.keyboard.g",
+    "key_key.debug.overlay": "key.keyboard.f3",
+    "key_key.debug.modifier": "key.keyboard.f3",
+    "key_key.hotbar.1": "key.keyboard.1",
+    "key_key.hotbar.2": "key.keyboard.2",
+    "key_key.hotbar.3": "key.keyboard.3",
+    "key_key.hotbar.4": "key.keyboard.4",
+    "key_key.hotbar.5": "key.keyboard.5",
+    "key_key.hotbar.6": "key.keyboard.6",
+    "key_key.hotbar.7": "key.keyboard.7",
+    "key_key.hotbar.8": "key.keyboard.8",
+    "key_key.hotbar.9": "key.keyboard.9",
+    "key_key.debug.reloadChunk": "key.keyboard.a",
+    "key_key.debug.showHitboxes": "key.keyboard.b",
+    "key_key.debug.clearChat": "key.keyboard.d",
+    "key_key.debug.crash": "key.keyboard.c",
+    "key_key.debug.showChunkBorders": "key.keyboard.g",
+    "key_key.debug.showAdvancedTooltips": "key.keyboard.h",
+    "key_key.debug.copyRecreateCommand": "key.keyboard.i",
+    "key_key.debug.spectate": "key.keyboard.n",
+    "key_key.debug.switchGameMode": "key.keyboard.f4",
+    "key_key.debug.debugOptions": "key.keyboard.f6",
+    "key_key.debug.focusPause": "key.keyboard.p",
+    "key_key.debug.dumpDynamicTextures": "key.keyboard.s",
+    "key_key.debug.reloadResourcePacks": "key.keyboard.t",
+    "key_key.debug.profiling": "key.keyboard.l",
+    "key_key.debug.copyLocation": "key.keyboard.c",
+    "key_key.debug.dumpVersion": "key.keyboard.v",
+    "key_key.debug.profilingChart": "key.keyboard.1",
+    "key_key.debug.fpsCharts": "key.keyboard.2",
+    "key_key.debug.networkCharts": "key.keyboard.3",
+    "key_key.debug.lightmapTexture": "key.keyboard.4",
+    "key_key.debug.improvedTransparency": "key.keyboard.x",
+    "key_iris.keybind.reload": "key.keyboard.r",
+    "key_iris.keybind.toggleShaders": "key.keyboard.k",
+    "key_iris.keybind.shaderPackSelection": "key.keyboard.i",
+    "key_iris.keybind.wireframe": "key.keyboard.unknown",
+    "soundCategory_master": "0.0",
+    "soundCategory_music": "1.0",
+    "soundCategory_record": "1.0",
+    "soundCategory_weather": "1.0",
+    "soundCategory_block": "1.0",
+    "soundCategory_hostile": "1.0",
+    "soundCategory_neutral": "1.0",
+    "soundCategory_player": "1.0",
+    "soundCategory_ambient": "1.0",
+    "soundCategory_voice": "1.0",
+    "soundCategory_ui": "1.0",
+    "modelPart_cape": "true",
+    "modelPart_jacket": "true",
+    "modelPart_left_sleeve": "true",
+    "modelPart_right_sleeve": "true",
+    "modelPart_left_pants_leg": "true",
+    "modelPart_right_pants_leg": "true",
+    "modelPart_hat": "true"
+   }
+  },
+  "suite": {
+   "sha256": "f000a874912f43b4e21e8edf9e6795557fa53fc005004361dae3a478988748f6",
+   "sections": [
+    "display",
+    "modes",
+    "capture",
+    "validity",
+    "statistics"
+   ]
+  },
+  "java": {
+   "runtime": "jdk-25.0.4.1+1",
+   "version": "25.0.4.1+1-LTS",
+   "release": "86e5e51658bb2b9cf064b3957d81ac39abdb346b2cac19867c1625dd19d440d9",
+   "heap": {
+    "xms": 6144,
+    "xmx": 6144,
+    "unit": "MiB"
+   },
+   "args": []
+  },
+  "system": {
+   "gpu": "AMD Radeon RX 7800 XT",
+   "hags": true,
+   "resolution": "3840x2160",
+   "windowMode": "exclusive fullscreen",
+   "windowsBuild": 26200
+  },
+  "harness": {
+   "modules": {
+    "optilux/__init__.py": "17e3ccb977899bc7d0e5bf9ce25e4cbec753f5ddc5753a49cf23a482a9ceca7b",
+    "optilux/acceptance.py": "fcb8ed31815f61ae9588918c4878030e9e85789dab99ec1d5da8aecc40456423",
+    "optilux/launch.py": "5c71f75ed62e98f7757a8418372bcdf0e6d4fadc14435a02df0cddc1662faf1a",
+    "optilux/measure.py": "f60be25ea8d2ce997d8e48ed59554d7ea7ea881e0160d80c7b03619ce9f54477",
+    "optilux/modclient.py": "9bc87a14b70eebad07299e5eac628cd9eaba3c4a3fc283cb9a06fe14b46a4d3e",
+    "optilux/packzip.py": "f992c60d74eea68ad0aeeb732066d7d31cc3af88518edb5561105b72646e502d",
+    "optilux/platform.py": "8f516532ed3b012b06a7b8c71b25f6a1f0c2dedb680aaf53ef7749baa52e9b22",
+    "optilux/presentmon.py": "6424faf4d8e41ad699d25d3730b6d6d059fe914b2b3e2c6a0187882281e09269",
+    "optilux/record.py": "a8ad1fb85defdb952e8eace722cc8bbdd1ea8f78ec27b0e82324fca29ac03df4",
+    "optilux/repo.py": "d22eef770a60566986bedbbca6783713dedec5cae344ee5bd1547ee237dfc394",
+    "optilux/sendinput.py": "0fccc5785ce28aa44f9775172470a1e0ae856ae3526bd382882d3d7b74fa9aff",
+    "optilux/session.py": "d568ab86e22faac8a9c37dd9ece68db500904ac053f86b34aefc052301115494",
+    "optilux/stats.py": "048e7afa5569b930ded697e2c7aea256292a1cc1694c68996ff7de1df782c478",
+    "optilux/verbs/__init__.py": "6fb856fb4a359a394bd83e135caf220ad6b0b1a224139a9380dfbe4e1da5859d",
+    "optilux/verbs/install.py": "fdd23d296167e2bc31b707ffa457e0488eb89720e9be04f26fb7abea50a4bd5a",
+    "optilux/verbs/run.py": "c691e228acf2ee2874f7ab3b4cc66f8903659a8bd8a0884696579da045d3890f",
+    "optilux/winpipe.py": "f716a6c15d8548841ab87277f32e9341f0ca968d6b70e02afd36ef28c4b68106",
+    "optilux/world.py": "00f3c04b1e29fa6558815f7671e80837c92a787953861f85cd2811ca7406a1b2"
+   },
+   "presentMon": {
+    "file": "PresentMon-2.6.0-x64.exe",
+    "sha256": "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af",
+    "arguments": [
+     "--process_id",
+     "<pid>",
+     "--output_file",
+     "<csv>",
+     "--qpc_time_ms",
+     "--v2_metrics",
+     "--session_name",
+     "optilux-<run>",
+     "--stop_existing_session",
+     "--no_console_stats"
+    ]
+   }
+  }
+ },
+ "recorded": {
+  "platformFile": "b414c80c3c84593524550987abddf83ded7d1c8dc4f19bb3dfca53ff7b4abc4e",
+  "driver": "32.0.31041.1004",
+  "windowsRevision": 9711,
+  "display": {
+   "name": "\\\\.\\DISPLAY1",
+   "hz": 240,
+   "displays": 2
+  },
+  "hags": {
+   "caps": 11,
+   "supported": true,
+   "enabledByDefault": false,
+   "adapterLuid": "0x10a5b"
+  },
+  "hwSchMode": 2,
+  "harness": {
+   "commit": "34ebd37ef8e8b4ff40b3666a2abe918934c0d834",
+   "dirty": true
+  },
+  "amd": {
+   "presentMon": [],
+   "rsxTraceSession": false
+  },
+  "java": [
+   {
+    "pid": 11460,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+    "role": "other"
+   },
+   {
+    "pid": 11956,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+    "role": "other"
+   }
+  ],
+  "connectionsAtJoin": [],
+  "optionsTxt": {
+   "sha256": "e1b91108d25bbabd8f84c4e32d97ea833a7d68ede9a9e3cb8d75743246ea4241"
+  }
+ },
+ "variants": [
+  {
+   "id": "head",
+   "role": "baseline",
+   "pack": "optilux-34ebd37ef8e8.zip",
+   "sha512": "d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4",
+   "build": {
+    "variant": "optilux@HEAD",
+    "ref": "HEAD",
+    "commit": "34ebd37ef8e8b4ff40b3666a2abe918934c0d834"
+   },
+   "l0": {
+    "ok": true,
+    "sha512": "d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4",
+    "glslang": "16.6.0",
+    "pipeline": {
+     "file": "config/pipeline.json",
+     "sha256": "939b4bf08fb28e26ce132ae1bdc78482b312138a4e730f4864e7039f297470ba"
+    },
+    "builds": 48,
+    "variants": [
+     "defaults",
+     "BENCH_DETERMINISTIC false"
+    ],
+    "profiles": [
+     "config/profiles/complementary-unbound-iso.json",
+     "config/profiles/complementary-unbound-played.json"
+    ]
+   },
+   "profile": null,
+   "options": {},
+   "effective": {
+    "sha256": "9030d529af49af6b88fff76526f015e28c7b5a5854818605b7dbc9b0f59dbbd9",
+    "count": 1,
+    "values": {
+     "BENCH_DETERMINISTIC": true
+    }
+   }
+  },
+  {
+   "id": "off",
+   "role": "candidate",
+   "pack": "optilux-34ebd37ef8e8.zip",
+   "sha512": "d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4",
+   "build": {
+    "variant": "optilux@HEAD",
+    "ref": "HEAD",
+    "commit": "34ebd37ef8e8b4ff40b3666a2abe918934c0d834"
+   },
+   "l0": {
+    "ok": true,
+    "sha512": "d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4",
+    "glslang": "16.6.0",
+    "pipeline": {
+     "file": "config/pipeline.json",
+     "sha256": "939b4bf08fb28e26ce132ae1bdc78482b312138a4e730f4864e7039f297470ba"
+    },
+    "builds": 48,
+    "variants": [
+     "defaults",
+     "BENCH_DETERMINISTIC false"
+    ],
+    "profiles": [
+     "config/profiles/complementary-unbound-iso.json",
+     "config/profiles/complementary-unbound-played.json"
+    ]
+   },
+   "profile": null,
+   "options": {
+    "BENCH_DETERMINISTIC": false
+   },
+   "effective": {
+    "sha256": "2540fa430781b03c71230fc871667facac8d7dfa3f302a3cfe70042569d56f26",
+    "count": 1,
+    "values": {
+     "BENCH_DETERMINISTIC": false
+    }
+   }
+  },
+  {
+   "id": "change",
+   "role": "candidate",
+   "pack": "optilux.zip",
+   "sha512": "5e7f2673761f71e5674f9bb4d75ccf65ae992d3bba3323a1c072c6f6264453d719c04e9512eafb8f5a6d2cd14ebda61069afa330066aa3c094685d8ac32fd138",
+   "build": {
+    "variant": "optilux",
+    "ref": null,
+    "commit": null
+   },
+   "l0": {
+    "ok": true,
+    "sha512": "5e7f2673761f71e5674f9bb4d75ccf65ae992d3bba3323a1c072c6f6264453d719c04e9512eafb8f5a6d2cd14ebda61069afa330066aa3c094685d8ac32fd138",
+    "glslang": "16.6.0",
+    "pipeline": {
+     "file": "config/pipeline.json",
+     "sha256": "939b4bf08fb28e26ce132ae1bdc78482b312138a4e730f4864e7039f297470ba"
+    },
+    "builds": 48,
+    "variants": [
+     "defaults",
+     "BENCH_DETERMINISTIC false"
+    ],
+    "profiles": [
+     "config/profiles/complementary-unbound-iso.json",
+     "config/profiles/complementary-unbound-played.json"
+    ]
+   },
+   "profile": null,
+   "options": {},
+   "effective": {
+    "sha256": "9030d529af49af6b88fff76526f015e28c7b5a5854818605b7dbc9b0f59dbbd9",
+    "count": 1,
+    "values": {
+     "BENCH_DETERMINISTIC": true
+    }
+   }
+  }
+ ],
+ "captures": [
+  {
+   "index": 1,
+   "view": "forest_noon",
+   "dimension": "minecraft:overworld",
+   "variant": "head",
+   "reload": {
+    "seconds": 0.1261696,
+    "reloadFrame": 29076,
+    "pack": "optilux-34ebd37ef8e8.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/overworld/head",
+    "files": 254,
+    "bytes": 601021,
+    "manifest": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "4b8655c7e39365818b8fdedf2d0a2eea5489c00d7280e3cb65443392882c2d54",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "index": 2,
+   "view": "forest_noon",
+   "dimension": "minecraft:overworld",
+   "variant": "off",
+   "reload": {
+    "seconds": 0.188605,
+    "reloadFrame": 29932,
+    "pack": "optilux-34ebd37ef8e8.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/overworld/off",
+    "files": 254,
+    "bytes": 600287,
+    "manifest": "56908ed776115570fb6dc04919182548bfcd45b7a81650e5b0c8051cb104d797",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "d1f4f35a1343129ae89f84e0892bede851b6189dc616d0237b3c68bb851cf771",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "index": 3,
+   "view": "forest_noon",
+   "dimension": "minecraft:overworld",
+   "variant": "change",
+   "reload": {
+    "seconds": 0.111858,
+    "reloadFrame": 30597,
+    "pack": "optilux.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/overworld/change",
+    "files": 254,
+    "bytes": 601021,
+    "manifest": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "6d676d54822fcac028ef10dfdd3a479e58d46712815c11bdab4de883ba36795d",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "index": 4,
+   "view": "nether_crimson",
+   "dimension": "minecraft:the_nether",
+   "variant": "head",
+   "reload": {
+    "seconds": 0.1094669,
+    "reloadFrame": 31966,
+    "pack": "optilux-34ebd37ef8e8.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/the_nether/head",
+    "files": 254,
+    "bytes": 601021,
+    "manifest": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "15085db0f1324c979b61c9044d6d1e82a8fa6eaf54cf720f663443d3825e50da",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "index": 5,
+   "view": "nether_crimson",
+   "dimension": "minecraft:the_nether",
+   "variant": "off",
+   "reload": {
+    "seconds": 0.1123211,
+    "reloadFrame": 32742,
+    "pack": "optilux-34ebd37ef8e8.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/the_nether/off",
+    "files": 254,
+    "bytes": 600287,
+    "manifest": "56908ed776115570fb6dc04919182548bfcd45b7a81650e5b0c8051cb104d797",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "458c7d4b4f3180a2b9c38968a98cb83df6f6148269e55f51743f92f5ed96edc1",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "index": 6,
+   "view": "nether_crimson",
+   "dimension": "minecraft:the_nether",
+   "variant": "change",
+   "reload": {
+    "seconds": 0.1117402,
+    "reloadFrame": 33576,
+    "pack": "optilux.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/the_nether/change",
+    "files": 254,
+    "bytes": 601021,
+    "manifest": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "03290589b650e478c9cbbaed5a3fccc6a157b4402032c82c06eebb796d5b8b06",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "index": 7,
+   "view": "end_dragon",
+   "dimension": "minecraft:the_end",
+   "variant": "head",
+   "reload": {
+    "seconds": 0.1221381,
+    "reloadFrame": 34415,
+    "pack": "optilux-34ebd37ef8e8.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/the_end/head",
+    "files": 254,
+    "bytes": 601021,
+    "manifest": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "571ca77ec290d69bbdc4ab0c9a1751474e7919b2d2a9d485306cbd5625a1618d",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "index": 8,
+   "view": "end_dragon",
+   "dimension": "minecraft:the_end",
+   "variant": "off",
+   "reload": {
+    "seconds": 0.109361,
+    "reloadFrame": 35186,
+    "pack": "optilux-34ebd37ef8e8.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/the_end/off",
+    "files": 254,
+    "bytes": 600287,
+    "manifest": "56908ed776115570fb6dc04919182548bfcd45b7a81650e5b0c8051cb104d797",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "141ea8d4d2168e797137ecb8513429f8a660214cd5e6944b3636d58f33e06092",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  },
+  {
+   "index": 9,
+   "view": "end_dragon",
+   "dimension": "minecraft:the_end",
+   "variant": "change",
+   "reload": {
+    "seconds": 0.1077732,
+    "reloadFrame": 35996,
+    "pack": "optilux.zip"
+   },
+   "emptied": 254,
+   "dump": {
+    "folder": "dumps/the_end/change",
+    "files": 254,
+    "bytes": 601021,
+    "manifest": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+    "dated": {
+     "patched_shaders/entity.properties": {
+      "sha256": "77a675b2f875739d564a8e834015a2e213b358c7a7124ddd62acb64a155f3eca",
+      "compared": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+     }
+    }
+   },
+   "valid": true
+  }
+ ],
+ "dumps": {
+  "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070": {
+   "preprocessed.properties": "776e596c5c6d02f739eb76e41f4a4797849252129fa8706634462cd36bcebe88",
+   "original.properties": "e6e2d0170feb8f004f30872f92bd7a6c321c0e3b329e38910748be4b6b4d3134",
+   "patched_shaders/001_final.fsh": "94e1370a4d385c2109d78c2fc51c558243c6e1ac5cf251f1f8ea672eeccb5fd1",
+   "patched_shaders/001_final.vsh": "cef1cd9bacbd81212d4ec3117b5c1e58531d1e6871b81aa1afdb58b2b347b935",
+   "patched_shaders/002_basic.fsh": "47bb8ec1f9f202f6ce29442de7b178c59d723f5d4bc6f4af32bb724b417739a8",
+   "patched_shaders/002_basic.json": "94ea42f1e86224d0a6f9a65c080ecb2cb527d8b146c2feb66a85eb9c596ade54",
+   "patched_shaders/002_basic.vsh": "125e12286a4d85474c518745c1498e503ac8d48afcc1eb47c956c82f4b0cd527",
+   "patched_shaders/003_basic_color.fsh": "47bb8ec1f9f202f6ce29442de7b178c59d723f5d4bc6f4af32bb724b417739a8",
+   "patched_shaders/003_basic_color.json": "5307722df6dca7fdd9a66c71881ef6b1df5e73db39790e91e5d987daecc2af48",
+   "patched_shaders/003_basic_color.vsh": "bf9f8d3923552544949a7cc3993903bb958549adaef899a25c97724c995e951e",
+   "patched_shaders/004_textured.fsh": "238ea69c4cf3eb1ea94fcb3642b1f75a23e56a6d453cee6f218175c1d53d75a0",
+   "patched_shaders/004_textured.json": "f82cf005a203ef1f197f1cd160fe2fac252981957f75a56887f9d6951136aeb5",
+   "patched_shaders/004_textured.vsh": "eafbfa52fe30a7665e8f1f669df771a2fea2c79387a093c3b91296cc34db5963",
+   "patched_shaders/005_textured_color.fsh": "238ea69c4cf3eb1ea94fcb3642b1f75a23e56a6d453cee6f218175c1d53d75a0",
+   "patched_shaders/005_textured_color.json": "904242a3364f802e00d6db629e5347bc277e902afa30c3edfbb78633cd704ffb",
+   "patched_shaders/005_textured_color.vsh": "e731823e01b014d2d27ad0497af16a15a678132cc83b1b48b5c7933b657129a3",
+   "patched_shaders/006_sps.fsh": "238ea69c4cf3eb1ea94fcb3642b1f75a23e56a6d453cee6f218175c1d53d75a0",
+   "patched_shaders/006_sps.json": "6e051c6b5aac42ba1822924aa194a9cf3e25c009004a5e510cd9bdeba515a8a7",
+   "patched_shaders/006_sps.vsh": "e731823e01b014d2d27ad0497af16a15a678132cc83b1b48b5c7933b657129a3",
+   "patched_shaders/007_sky_basic.fsh": "47bb8ec1f9f202f6ce29442de7b178c59d723f5d4bc6f4af32bb724b417739a8",
+   "patched_shaders/007_sky_basic.json": "15fb7ce5746630a1cee00c992268f69545d59c5e05c2be3d532a10b2273d54e9",
+   "patched_shaders/007_sky_basic.vsh": "125e12286a4d85474c518745c1498e503ac8d48afcc1eb47c956c82f4b0cd527",
+   "patched_shaders/008_sky_basic_color.fsh": "47bb8ec1f9f202f6ce29442de7b178c59d723f5d4bc6f4af32bb724b417739a8",
+   "patched_shaders/008_sky_basic_color.json": "8da5ecf8652d9e2da03927c52ce8719dc4b4edd06eab6762940636377614e35a",
+   "patched_shaders/008_sky_basic_color.vsh": "bf9f8d3923552544949a7cc3993903bb958549adaef899a25c97724c995e951e",
+   "patched_shaders/009_sky_textured.fsh": "238ea69c4cf3eb1ea94fcb3642b1f75a23e56a6d453cee6f218175c1d53d75a0",
+   "patched_shaders/009_sky_textured.json": "d6e70d40d19b50197ba9214824b5303440c570bd6461e31c83b21690fafd7904",
+   "patched_shaders/009_sky_textured.vsh": "eafbfa52fe30a7665e8f1f669df771a2fea2c79387a093c3b91296cc34db5963",
+   "patched_shaders/010_sky_textured_color.fsh": "238ea69c4cf3eb1ea94fcb3642b1f75a23e56a6d453cee6f218175c1d53d75a0",
+   "patched_shaders/010_sky_textured_color.json": "d85f92e992346eb2cf42613d16316c2bd14ac909a4c01c8c6a69f3a898eda907",
+   "patched_shaders/010_sky_textured_color.vsh": "e731823e01b014d2d27ad0497af16a15a678132cc83b1b48b5c7933b657129a3",
+   "patched_shaders/011_clouds.fsh": "06809b6c892b9ad385d84b393afd8ee724be98b310dff903b48b4f75f5e98015",
+   "patched_shaders/011_clouds.json": "48be66c89d2a86a381f204cc9dd800f2c8384255c7a38a814e139f11a2083dae",
+   "patched_shaders/011_clouds.vsh": "bf9f8d3923552544949a7cc3993903bb958549adaef899a25c97724c995e951e",
+   "patched_shaders/012_clouds_sodium.fsh": "06809b6c892b9ad385d84b393afd8ee724be98b310dff903b48b4f75f5e98015",
+   "patched_shaders/012_clouds_sodium.json": "d39bc561177ff035981d491ff4503bd7348d74545d8e1a46aa04c036448f72a3",
+   "patched_shaders/012_clouds_sodium.vsh": "bf9f8d3923552544949a7cc3993903bb958549adaef899a25c97724c995e951e",
+   "patched_shaders/013_terrain_solid.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/013_terrain_solid.json": "0272cfebd0fe974890cc79c82a37858e098987b266586e88666efacdff37dda4",
+   "patched_shaders/013_terrain_solid.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/014_terrain_cutout.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/014_terrain_cutout.json": "c4b6483c3f3bcbc6746c2cfcc9cca41322fbd5ce1464d885466c195b2e4e6827",
+   "patched_shaders/014_terrain_cutout.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/015_terrain_translucent.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/015_terrain_translucent.json": "843e1cf9874bdf77eafe1a5f13d8354f4952847fc1cf497c2c087cd28c9250f9",
+   "patched_shaders/015_terrain_translucent.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/016_moving_block.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/016_moving_block.json": "abc6b91f8f9ae3432666aeb2f83abcf4edef4e1cac0b6e69be37107d8970bfdf",
+   "patched_shaders/016_moving_block.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/017_entities_alpha.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/017_entities_alpha.json": "9cee4461dabf5b707b121625bbe324a8f8fddee7d0dd97ac43cee06f8cc23bd0",
+   "patched_shaders/017_entities_alpha.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/018_entities_solid.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/018_entities_solid.json": "b33d10f82fbc0ee6fa4ba54741a9bd0ffd0fcd0cff85915a99a09e0014b7511f",
+   "patched_shaders/018_entities_solid.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/019_entities_solid_glint.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/019_entities_solid_glint.json": "bf6a9846eea23259f53d5c40e1a2ee00a726c0777006cbbc582ce783bdb28499",
+   "patched_shaders/019_entities_solid_glint.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/020_entities_solid_diffuse.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/020_entities_solid_diffuse.json": "f483a5bd022b114e39cb64bf4dc2775d89460aaf6916f68d46be05fa9afbe6bf",
+   "patched_shaders/020_entities_solid_diffuse.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/021_entities_solid_bright.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/021_entities_solid_bright.json": "83cd6087570f4dbb897686acea8a2a2d00989e1b519d85fba24dfa706b704573",
+   "patched_shaders/021_entities_solid_bright.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/022_entities_cutout.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/022_entities_cutout.json": "2f08b2cb3f61c9b5ff19828889e08f8a0603764bbd4eeca147ec9c2e76fff757",
+   "patched_shaders/022_entities_cutout.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/023_entities_cutout_glint.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/023_entities_cutout_glint.json": "6344cac1ffc1b8388330ff11346075246516caac4ce3d5fdc6fa2eb7fd02f0df",
+   "patched_shaders/023_entities_cutout_glint.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/024_entities_cutout_glint_special.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/024_entities_cutout_glint_special.json": "fc426a0d58cf04f52d34a3fc196c4ec46370a4010d0e8865769ac9aa44943e73",
+   "patched_shaders/024_entities_cutout_glint_special.vsh": "3ac25013a69b72ffbe4fae1efecb3810fd24e1315f32acd4cd5e6fc95bee3676",
+   "patched_shaders/025_entities_cutout_glint_armor.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/025_entities_cutout_glint_armor.json": "0b93a91e88ae84388ff65d30df95f1081c943477e03bcf3b61e691582c870e38",
+   "patched_shaders/025_entities_cutout_glint_armor.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/026_entities_cutout_diffuse.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/026_entities_cutout_diffuse.json": "b2854b2e73355b3157c90f146bcd9fad4fb6629fb77cad95905e6e51e529948b",
+   "patched_shaders/026_entities_cutout_diffuse.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/027_entities_translucent.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/027_entities_translucent.json": "3b8be2a3771384d91a450f4d99088b2e342db9b68bf0e37af15d3ca5a95b2c38",
+   "patched_shaders/027_entities_translucent.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/028_entities_translucent_glint.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/028_entities_translucent_glint.json": "e33bc265d719837c835093b52db2edb9462d8d110940e2d6332539234acb933a",
+   "patched_shaders/028_entities_translucent_glint.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/029_entities_translucent_glint_special.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/029_entities_translucent_glint_special.json": "2c3aaba5d7a98cdbf03d9b9962304d1e12048ec7c2d1f05a189eb5dd8213b898",
+   "patched_shaders/029_entities_translucent_glint_special.vsh": "3ac25013a69b72ffbe4fae1efecb3810fd24e1315f32acd4cd5e6fc95bee3676",
+   "patched_shaders/030_entities_eyes.fsh": "d222ac2fe59aa5d8cc7424b166ff80f6b92042d908d33e29ccd530be17367181",
+   "patched_shaders/030_entities_eyes.json": "735835f841b9039d381c086f09749d0ae9a88da46db3674ed2063e057bf52d32",
+   "patched_shaders/030_entities_eyes.vsh": "96ffe3a2ae7a1fc79ff082471f2918d2b706607c2def7a3fabe08e4c2e644990",
+   "patched_shaders/031_entities_eyes_trans.fsh": "d222ac2fe59aa5d8cc7424b166ff80f6b92042d908d33e29ccd530be17367181",
+   "patched_shaders/031_entities_eyes_trans.json": "109a8d178fa8466948dd157af05c10f34a8c235d15e3ddbb62bca127b3defd7e",
+   "patched_shaders/031_entities_eyes_trans.vsh": "96ffe3a2ae7a1fc79ff082471f2918d2b706607c2def7a3fabe08e4c2e644990",
+   "patched_shaders/032_hand_cutout.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/032_hand_cutout.json": "d5995f146c45678ca8b8b57d7da4a3a113bcdc4383611c6a79b6156496022c32",
+   "patched_shaders/032_hand_cutout.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/033_hand_cutout_glint.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/033_hand_cutout_glint.json": "2acc568e7f4adc251149538ba95915f0ae37d440775ff465cc40144cc735fc0c",
+   "patched_shaders/033_hand_cutout_glint.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/034_hand_cutout_glint_diffuse.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/034_hand_cutout_glint_diffuse.json": "ea0c0db8055e673d1cb9e63689eb84b6aa340a4db124e312816671282d298b65",
+   "patched_shaders/034_hand_cutout_glint_diffuse.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/035_hand_cutout_glint_special.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/035_hand_cutout_glint_special.json": "482153c3d033650d301adeab51cdd7d1cb1b26a6eee11b9fb2bb7fa99bdb041b",
+   "patched_shaders/035_hand_cutout_glint_special.vsh": "3ac25013a69b72ffbe4fae1efecb3810fd24e1315f32acd4cd5e6fc95bee3676",
+   "patched_shaders/036_hand_cutout_glint_armor.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/036_hand_cutout_glint_armor.json": "f128dcccd6adf2dbaaa861c0d3e946af155e54d8e9c0c64b2821baa2d253e0e1",
+   "patched_shaders/036_hand_cutout_glint_armor.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/037_hand_cutout_bright.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/037_hand_cutout_bright.json": "65a0066a1966c8e8c262c69ce21a4283926f6aa95d6a7a8e7a36c753d2e1b96e",
+   "patched_shaders/037_hand_cutout_bright.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/038_hand_cutout_diffuse.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/038_hand_cutout_diffuse.json": "abc4eb2af6875e199ffacdf113170b51b52b8cbba8942743baa621df225aa190",
+   "patched_shaders/038_hand_cutout_diffuse.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/039_hand_text.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/039_hand_text.json": "caabc0cd484d5da7131249119cb7422978deb22385f758ce217025f5c984ed3c",
+   "patched_shaders/039_hand_text.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/040_hand_text_translucent.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/040_hand_text_translucent.json": "f75bd4099297745be8c1186deaa623b670baadfedf4f87ddbef09cf7d80eed0d",
+   "patched_shaders/040_hand_text_translucent.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/041_hand_text_intensity.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/041_hand_text_intensity.json": "6db9cfe04bb5c62dfef9013788ae330a9664eb51200265e9479a75bc33964b6a",
+   "patched_shaders/041_hand_text_intensity.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/042_hand_translucent.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/042_hand_translucent.json": "71ee9e82a138ef7199cfeb835f3bb269eff849f70eb4cc65531df0a866a1a9dd",
+   "patched_shaders/042_hand_translucent.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/043_hand_translucent_glint.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/043_hand_translucent_glint.json": "dd637b05d64d2a7f0b9b294726cfe01fa06ca4833185be6806a95f8c59dcbeb4",
+   "patched_shaders/043_hand_translucent_glint.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/044_hand_translucent_glint_diffuse.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/044_hand_translucent_glint_diffuse.json": "a247d231904092d0ee2cceee1d00b1e0765c74e1179d35d9ecc5173f7bbc20ff",
+   "patched_shaders/044_hand_translucent_glint_diffuse.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/045_hand_translucent_glint_special.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/045_hand_translucent_glint_special.json": "802f6eb1d058ec3759eb3012b0524b7181d2673bcfba36bb8fa62f35d94c2e9c",
+   "patched_shaders/045_hand_translucent_glint_special.vsh": "3ac25013a69b72ffbe4fae1efecb3810fd24e1315f32acd4cd5e6fc95bee3676",
+   "patched_shaders/046_hand_translucent_glint_armor.fsh": "1fd374a94cd486e4116d04b7d2d54dc348210f6e404c76838f013bda2e0441a0",
+   "patched_shaders/046_hand_translucent_glint_armor.json": "6eb8066951a142e3519804558996418de381c2ac981b63d35790e61d8aae6f8c",
+   "patched_shaders/046_hand_translucent_glint_armor.vsh": "222761a5904b741ff97ed6d3c834beb53d3e6d0c92ad130e7f90c48b0452e4e9",
+   "patched_shaders/047_hand_water_bright.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/047_hand_water_bright.json": "ee0c765a22ac57542ebc0f620d168935d5cef34a9a222eb3d37a2e2fee18987e",
+   "patched_shaders/047_hand_water_bright.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/048_hand_water_diffuse.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/048_hand_water_diffuse.json": "9eef4674dcc4439d2be4db361d18d2cb9256851bb4e1124a37c516224f378ceb",
+   "patched_shaders/048_hand_water_diffuse.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/049_lightning.fsh": "06809b6c892b9ad385d84b393afd8ee724be98b310dff903b48b4f75f5e98015",
+   "patched_shaders/049_lightning.json": "887c4067a186a0cc4e69455bc5ff038832c6af32eca00c2e456ab8f8803e326e",
+   "patched_shaders/049_lightning.vsh": "bf9f8d3923552544949a7cc3993903bb958549adaef899a25c97724c995e951e",
+   "patched_shaders/050_leash.fsh": "47bb8ec1f9f202f6ce29442de7b178c59d723f5d4bc6f4af32bb724b417739a8",
+   "patched_shaders/050_leash.json": "caff8b7596e1d062aa20230700d7602527004ed55b32e909e37f058b3b461eef",
+   "patched_shaders/050_leash.vsh": "bf9f8d3923552544949a7cc3993903bb958549adaef899a25c97724c995e951e",
+   "patched_shaders/051_text_bg.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/051_text_bg.json": "822ae18c4b9341984d6470509155fd4fa09daa6beb262958a6f85b4930fb830c",
+   "patched_shaders/051_text_bg.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/052_particles.fsh": "6bf6000eb570278787a217bca83ea4d40b2938d5f28d0261e39229fa99440a3d",
+   "patched_shaders/052_particles.json": "993b2a254c850ab23f2db4c9455d70700103cce1853afa8e76556f33fda7b36c",
+   "patched_shaders/052_particles.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/053_particles_trans.fsh": "6bf6000eb570278787a217bca83ea4d40b2938d5f28d0261e39229fa99440a3d",
+   "patched_shaders/053_particles_trans.json": "0f1fae2ccfc29593b29692a5d20d77b99eead08fbb9e657445e42a723d704b99",
+   "patched_shaders/053_particles_trans.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/054_weather.fsh": "6bf6000eb570278787a217bca83ea4d40b2938d5f28d0261e39229fa99440a3d",
+   "patched_shaders/054_weather.json": "2210652ceb24fa053b2fa79476f5266a7287e5b47dc7f8e33c5631d8f2a8759c",
+   "patched_shaders/054_weather.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/055_crumbling.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/055_crumbling.json": "74a0ea81b9c7ff0beeb4cadb846ecd86c397f3f25bd703ba34b4a21e3bd2005a",
+   "patched_shaders/055_crumbling.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/056_text.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/056_text.json": "c2d849ecd16e62bc7783bf48a18629568f62b94ba20cb15146d831288f5301ac",
+   "patched_shaders/056_text.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/057_text_intensity.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/057_text_intensity.json": "e04eac621ab5838143a61969a1df08da09253d49a51d0999190bd6cac77ea6e8",
+   "patched_shaders/057_text_intensity.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/058_text_be.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/058_text_be.json": "56478760c27c6c3b76519e7dd80e31bf565151c50c2c381a5cc55a922e61969e",
+   "patched_shaders/058_text_be.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/059_text_intensity_be.fsh": "079bc2e1a9dbb44d579abe81e547dbf034a43d8779d03c270218f299c1848faf",
+   "patched_shaders/059_text_intensity_be.json": "617fe865ea0b429f6ebb17eeaad2586ba5a2138c41a0af8d8141939ef577743c",
+   "patched_shaders/059_text_intensity_be.vsh": "703624b4461103a4a9b3912b383dde03add9422a6eb71229cb53bd4dead0deb6",
+   "patched_shaders/060_block_entity.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/060_block_entity.json": "61e5f06686faf4d56d7933547b66a1a7fbf455b0799b9f7a726654f0ab171f54",
+   "patched_shaders/060_block_entity.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/061_block_entity_bright.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/061_block_entity_bright.json": "f338ca9d9d86318aee0536378921ee04ad2368b0bc6349da6ba56905dd4d9092",
+   "patched_shaders/061_block_entity_bright.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/062_block_entity_diffuse.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/062_block_entity_diffuse.json": "23a4009a1463c502d08c2b3b2b55bd91b55421c02f2001798c44b665df16a86b",
+   "patched_shaders/062_block_entity_diffuse.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/063_be_translucent.fsh": "511963697882d0f950c029ee640a221a2186a13a11473361893001a364936a04",
+   "patched_shaders/063_be_translucent.json": "0b3abf1864f6218399312cdab9bb4d5296a0d055d522920f71a485656ae29716",
+   "patched_shaders/063_be_translucent.vsh": "fe3a250bcb1329b3621cf1caa90379e3c8e341b3d7e4e2cc7265a03af135704a",
+   "patched_shaders/064_beacon.fsh": "238ea69c4cf3eb1ea94fcb3642b1f75a23e56a6d453cee6f218175c1d53d75a0",
+   "patched_shaders/064_beacon.json": "192b35eb293338aa2d0d1c48b3d8ace6883de7480e2abe734422d07df3fe4254",
+   "patched_shaders/064_beacon.vsh": "e731823e01b014d2d27ad0497af16a15a678132cc83b1b48b5c7933b657129a3",
+   "patched_shaders/065_glint.fsh": "238ea69c4cf3eb1ea94fcb3642b1f75a23e56a6d453cee6f218175c1d53d75a0",
+   "patched_shaders/065_glint.json": "91e4cb1eedd1d0cc39ccbddd47a8cf6b1eb704071434293d145f50b20701f7d3",
+   "patched_shaders/065_glint.vsh": "eafbfa52fe30a7665e8f1f669df771a2fea2c79387a093c3b91296cc34db5963",
+   "patched_shaders/066_lines.fsh": "47bb8ec1f9f202f6ce29442de7b178c59d723f5d4bc6f4af32bb724b417739a8",
+   "patched_shaders/066_lines.json": "3a2b6d97853a6fe23aeefd1a85ab919ee8525a0f3ec2bdc2a674d0b2a16fa001",
+   "patched_shaders/066_lines.vsh": "bf9f8d3923552544949a7cc3993903bb958549adaef899a25c97724c995e951e",
+   "patched_shaders/067_mekanism_flame.fsh": "238ea69c4cf3eb1ea94fcb3642b1f75a23e56a6d453cee6f218175c1d53d75a0",
+   "patched_shaders/067_mekanism_flame.json": "d98237911a9f125530b2d02bb4f7b17e2341fcc39a68b597cdb814e89c19d8ce",
+   "patched_shaders/067_mekanism_flame.vsh": "e731823e01b014d2d27ad0497af16a15a678132cc83b1b48b5c7933b657129a3",
+   "patched_shaders/068_sodium_terrain_solid.fsh": "c6d094c8eb8d835d884c1cd8d13d7295ac393a2d973947c7fbefdb5493f31c20",
+   "patched_shaders/068_sodium_terrain_solid.json": "cb9d44da9cff6f654e8eed0c034e205b27e8158a1b734af2e181f1c1a390b9d3",
+   "patched_shaders/068_sodium_terrain_solid.vsh": "c6bef575df26ff75cf9452eeaf5a3031634fbc1bdca4cd276ced9fb9f01a4c89",
+   "patched_shaders/069_sodium_terrain_cutout.fsh": "c6d094c8eb8d835d884c1cd8d13d7295ac393a2d973947c7fbefdb5493f31c20",
+   "patched_shaders/069_sodium_terrain_cutout.json": "437c9d4d18723eea57266080300dba62dbf3448426b469a90508b9d7ededf0bd",
+   "patched_shaders/069_sodium_terrain_cutout.vsh": "c6bef575df26ff75cf9452eeaf5a3031634fbc1bdca4cd276ced9fb9f01a4c89",
+   "patched_shaders/070_sodium_terrain_translucent.fsh": "c6d094c8eb8d835d884c1cd8d13d7295ac393a2d973947c7fbefdb5493f31c20",
+   "patched_shaders/070_sodium_terrain_translucent.json": "d0fa2ad49e6de78d76abff3bf7d905da6fb55368f4d16c6de815664538a9e010",
+   "patched_shaders/070_sodium_terrain_translucent.vsh": "c6bef575df26ff75cf9452eeaf5a3031634fbc1bdca4cd276ced9fb9f01a4c89",
+   "patched_shaders/071_shadow_sodium_terrain_solid.fsh": "050569ec7e3303801a8cb2a696fbf48f288303ceeb3349525286615591fa177e",
+   "patched_shaders/071_shadow_sodium_terrain_solid.vsh": "e98b605e8064a84291a04572b69d760b68a8ea2cea3ab2e94dbc22a563b7de52",
+   "patched_shaders/072_shadow_sodium_terrain_cutout.fsh": "7bdaf2c4bc35fa02e621e16b47be0b9b423f8b157a44341c687076803f025ebd",
+   "patched_shaders/072_shadow_sodium_terrain_cutout.vsh": "e98b605e8064a84291a04572b69d760b68a8ea2cea3ab2e94dbc22a563b7de52",
+   "patched_shaders/073_shadow_sodium_terrain_translucent.fsh": "7bdaf2c4bc35fa02e621e16b47be0b9b423f8b157a44341c687076803f025ebd",
+   "patched_shaders/073_shadow_sodium_terrain_translucent.vsh": "e98b605e8064a84291a04572b69d760b68a8ea2cea3ab2e94dbc22a563b7de52",
+   "patched_shaders/074_shadow_terrain_cutout.fsh": "735dcf1c51231dace62bee9d24dfb97be45601bd4580546fd1fd4d406f58315b",
+   "patched_shaders/074_shadow_terrain_cutout.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/075_shadow_translucent.fsh": "735dcf1c51231dace62bee9d24dfb97be45601bd4580546fd1fd4d406f58315b",
+   "patched_shaders/075_shadow_translucent.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/076_shadow_entities_cutout.fsh": "b2d0fb10121216e6a6a0939c1333a378e851f8c126c719e8bf50b1eaeb0529e6",
+   "patched_shaders/076_shadow_entities_cutout.vsh": "2e91e4606d53064ae4ae9251461daf81ba5a93102cc00a5177ce0d42356a87a1",
+   "patched_shaders/077_shadow_block.fsh": "b2d0fb10121216e6a6a0939c1333a378e851f8c126c719e8bf50b1eaeb0529e6",
+   "patched_shaders/077_shadow_block.vsh": "2e91e4606d53064ae4ae9251461daf81ba5a93102cc00a5177ce0d42356a87a1",
+   "patched_shaders/078_shadow_beacon_beam.fsh": "277a0e015321aabfa164de2befc7c7da1ab2a891d6a1fda5d2dc8c8c20388422",
+   "patched_shaders/078_shadow_beacon_beam.vsh": "ab869e0b8a054334a4106293984be1e6bed3d4a408bf6cb8f39bb8e67b268c8d",
+   "patched_shaders/079_shadow_basic.fsh": "4917efb53ffec4531cf1075a19c302a6c68364ba6ea84716ff32245d67e4aaa3",
+   "patched_shaders/079_shadow_basic.vsh": "fed7d44cfeaaabdd91d32f97e60cca98fa61d9526a90af4700259c9d44d402b8",
+   "patched_shaders/080_shadow_basic_color.fsh": "6aa1d897882c11705dea8c761717087bb274cde0a2cd4c86a1208abcba2bfc6c",
+   "patched_shaders/080_shadow_basic_color.vsh": "99d1dbcaa10708e6b177622c36013e6e67ad5c9eb838c633abf58d015e71e15a",
+   "patched_shaders/081_shadow_tex.fsh": "bf7a3cd28eeb8517b61a0547e3038fd0575065eb2c8855c025920819c76f97eb",
+   "patched_shaders/081_shadow_tex.vsh": "43c89bc9f0bcdd3088ff348c8b88e1d9a219036f6c5c8aeb5d32cc7d61a59509",
+   "patched_shaders/082_shadow_tex_color.fsh": "bf7a3cd28eeb8517b61a0547e3038fd0575065eb2c8855c025920819c76f97eb",
+   "patched_shaders/082_shadow_tex_color.vsh": "ab869e0b8a054334a4106293984be1e6bed3d4a408bf6cb8f39bb8e67b268c8d",
+   "patched_shaders/083_shadow_clouds.fsh": "bf7a3cd28eeb8517b61a0547e3038fd0575065eb2c8855c025920819c76f97eb",
+   "patched_shaders/083_shadow_clouds.vsh": "ab869e0b8a054334a4106293984be1e6bed3d4a408bf6cb8f39bb8e67b268c8d",
+   "patched_shaders/084_shadow_lines.fsh": "4917efb53ffec4531cf1075a19c302a6c68364ba6ea84716ff32245d67e4aaa3",
+   "patched_shaders/084_shadow_lines.vsh": "9a40c768c3bd6a3f7d19b976864a14aa611a617de2bfeb42cb84ee414e60e3fb",
+   "patched_shaders/085_shadow_leash.fsh": "b40bde11fa38a8d0879230a3e1f17e7cee922dc8da55f12f8a3a9346b8fd5eff",
+   "patched_shaders/085_shadow_leash.vsh": "69ed52dfbf232466c407b12165283018bb54678c249d69096e3635de17a78c7b",
+   "patched_shaders/086_shadow_lightning.fsh": "4917efb53ffec4531cf1075a19c302a6c68364ba6ea84716ff32245d67e4aaa3",
+   "patched_shaders/086_shadow_lightning.vsh": "99d1dbcaa10708e6b177622c36013e6e67ad5c9eb838c633abf58d015e71e15a",
+   "patched_shaders/087_shadow_particles.fsh": "735dcf1c51231dace62bee9d24dfb97be45601bd4580546fd1fd4d406f58315b",
+   "patched_shaders/087_shadow_particles.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/088_shadow_text.fsh": "735dcf1c51231dace62bee9d24dfb97be45601bd4580546fd1fd4d406f58315b",
+   "patched_shaders/088_shadow_text.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/089_shadow_text_bg.fsh": "8ea5b8676fa67775bb7c899491a37b22f0c3f7f645b7561f3037b551f10f1d0f",
+   "patched_shaders/089_shadow_text_bg.vsh": "69ed52dfbf232466c407b12165283018bb54678c249d69096e3635de17a78c7b",
+   "patched_shaders/090_shadow_text_intensity.fsh": "2af59ca6d4976720de343764e2d846f154fb63dc383ac1dfb124d65dcdb19321",
+   "patched_shaders/090_shadow_text_intensity.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/091_mekanism_flame_shadow.fsh": "bf7a3cd28eeb8517b61a0547e3038fd0575065eb2c8855c025920819c76f97eb",
+   "patched_shaders/091_mekanism_flame_shadow.vsh": "ab869e0b8a054334a4106293984be1e6bed3d4a408bf6cb8f39bb8e67b268c8d",
+   "patched_shaders/entity.properties": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+  },
+  "56908ed776115570fb6dc04919182548bfcd45b7a81650e5b0c8051cb104d797": {
+   "preprocessed.properties": "8651c131c32be71acc5f165a177d61c2fd9008ec1b27b4157fddb583a89d908b",
+   "original.properties": "e6e2d0170feb8f004f30872f92bd7a6c321c0e3b329e38910748be4b6b4d3134",
+   "patched_shaders/001_final.fsh": "94e1370a4d385c2109d78c2fc51c558243c6e1ac5cf251f1f8ea672eeccb5fd1",
+   "patched_shaders/001_final.vsh": "cef1cd9bacbd81212d4ec3117b5c1e58531d1e6871b81aa1afdb58b2b347b935",
+   "patched_shaders/002_basic.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/002_basic.json": "94ea42f1e86224d0a6f9a65c080ecb2cb527d8b146c2feb66a85eb9c596ade54",
+   "patched_shaders/002_basic.vsh": "13c9925ee8d62e1c7f9ce931ed05f08a10eb0c25245842ef4472ec02e6e48619",
+   "patched_shaders/003_basic_color.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/003_basic_color.json": "5307722df6dca7fdd9a66c71881ef6b1df5e73db39790e91e5d987daecc2af48",
+   "patched_shaders/003_basic_color.vsh": "1e431a8289233b69fd2b847b976728362bcfdb778a3db1ff612ce9cb5a9bf6d0",
+   "patched_shaders/004_textured.fsh": "8fc791968a377246b46aa6cf1df82c3d0f19a00eb0a53d7126160af535bdacfd",
+   "patched_shaders/004_textured.json": "f82cf005a203ef1f197f1cd160fe2fac252981957f75a56887f9d6951136aeb5",
+   "patched_shaders/004_textured.vsh": "52be05fac0ad8774d0d0e71dc2c4b9b231fcb51753ed00cc795fd80a15834453",
+   "patched_shaders/005_textured_color.fsh": "8fc791968a377246b46aa6cf1df82c3d0f19a00eb0a53d7126160af535bdacfd",
+   "patched_shaders/005_textured_color.json": "904242a3364f802e00d6db629e5347bc277e902afa30c3edfbb78633cd704ffb",
+   "patched_shaders/005_textured_color.vsh": "d834371280db40c75b71570e7b6ae20cfb2cba512693cded90d41c0a5955c007",
+   "patched_shaders/006_sps.fsh": "8fc791968a377246b46aa6cf1df82c3d0f19a00eb0a53d7126160af535bdacfd",
+   "patched_shaders/006_sps.json": "6e051c6b5aac42ba1822924aa194a9cf3e25c009004a5e510cd9bdeba515a8a7",
+   "patched_shaders/006_sps.vsh": "d834371280db40c75b71570e7b6ae20cfb2cba512693cded90d41c0a5955c007",
+   "patched_shaders/007_sky_basic.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/007_sky_basic.json": "15fb7ce5746630a1cee00c992268f69545d59c5e05c2be3d532a10b2273d54e9",
+   "patched_shaders/007_sky_basic.vsh": "13c9925ee8d62e1c7f9ce931ed05f08a10eb0c25245842ef4472ec02e6e48619",
+   "patched_shaders/008_sky_basic_color.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/008_sky_basic_color.json": "8da5ecf8652d9e2da03927c52ce8719dc4b4edd06eab6762940636377614e35a",
+   "patched_shaders/008_sky_basic_color.vsh": "1e431a8289233b69fd2b847b976728362bcfdb778a3db1ff612ce9cb5a9bf6d0",
+   "patched_shaders/009_sky_textured.fsh": "8fc791968a377246b46aa6cf1df82c3d0f19a00eb0a53d7126160af535bdacfd",
+   "patched_shaders/009_sky_textured.json": "d6e70d40d19b50197ba9214824b5303440c570bd6461e31c83b21690fafd7904",
+   "patched_shaders/009_sky_textured.vsh": "52be05fac0ad8774d0d0e71dc2c4b9b231fcb51753ed00cc795fd80a15834453",
+   "patched_shaders/010_sky_textured_color.fsh": "8fc791968a377246b46aa6cf1df82c3d0f19a00eb0a53d7126160af535bdacfd",
+   "patched_shaders/010_sky_textured_color.json": "d85f92e992346eb2cf42613d16316c2bd14ac909a4c01c8c6a69f3a898eda907",
+   "patched_shaders/010_sky_textured_color.vsh": "d834371280db40c75b71570e7b6ae20cfb2cba512693cded90d41c0a5955c007",
+   "patched_shaders/011_clouds.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/011_clouds.json": "48be66c89d2a86a381f204cc9dd800f2c8384255c7a38a814e139f11a2083dae",
+   "patched_shaders/011_clouds.vsh": "1e431a8289233b69fd2b847b976728362bcfdb778a3db1ff612ce9cb5a9bf6d0",
+   "patched_shaders/012_clouds_sodium.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/012_clouds_sodium.json": "d39bc561177ff035981d491ff4503bd7348d74545d8e1a46aa04c036448f72a3",
+   "patched_shaders/012_clouds_sodium.vsh": "1e431a8289233b69fd2b847b976728362bcfdb778a3db1ff612ce9cb5a9bf6d0",
+   "patched_shaders/013_terrain_solid.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/013_terrain_solid.json": "0272cfebd0fe974890cc79c82a37858e098987b266586e88666efacdff37dda4",
+   "patched_shaders/013_terrain_solid.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/014_terrain_cutout.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/014_terrain_cutout.json": "c4b6483c3f3bcbc6746c2cfcc9cca41322fbd5ce1464d885466c195b2e4e6827",
+   "patched_shaders/014_terrain_cutout.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/015_terrain_translucent.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/015_terrain_translucent.json": "843e1cf9874bdf77eafe1a5f13d8354f4952847fc1cf497c2c087cd28c9250f9",
+   "patched_shaders/015_terrain_translucent.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/016_moving_block.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/016_moving_block.json": "abc6b91f8f9ae3432666aeb2f83abcf4edef4e1cac0b6e69be37107d8970bfdf",
+   "patched_shaders/016_moving_block.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/017_entities_alpha.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/017_entities_alpha.json": "9cee4461dabf5b707b121625bbe324a8f8fddee7d0dd97ac43cee06f8cc23bd0",
+   "patched_shaders/017_entities_alpha.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/018_entities_solid.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/018_entities_solid.json": "b33d10f82fbc0ee6fa4ba54741a9bd0ffd0fcd0cff85915a99a09e0014b7511f",
+   "patched_shaders/018_entities_solid.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/019_entities_solid_glint.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/019_entities_solid_glint.json": "bf6a9846eea23259f53d5c40e1a2ee00a726c0777006cbbc582ce783bdb28499",
+   "patched_shaders/019_entities_solid_glint.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/020_entities_solid_diffuse.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/020_entities_solid_diffuse.json": "f483a5bd022b114e39cb64bf4dc2775d89460aaf6916f68d46be05fa9afbe6bf",
+   "patched_shaders/020_entities_solid_diffuse.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/021_entities_solid_bright.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/021_entities_solid_bright.json": "83cd6087570f4dbb897686acea8a2a2d00989e1b519d85fba24dfa706b704573",
+   "patched_shaders/021_entities_solid_bright.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/022_entities_cutout.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/022_entities_cutout.json": "2f08b2cb3f61c9b5ff19828889e08f8a0603764bbd4eeca147ec9c2e76fff757",
+   "patched_shaders/022_entities_cutout.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/023_entities_cutout_glint.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/023_entities_cutout_glint.json": "6344cac1ffc1b8388330ff11346075246516caac4ce3d5fdc6fa2eb7fd02f0df",
+   "patched_shaders/023_entities_cutout_glint.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/024_entities_cutout_glint_special.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/024_entities_cutout_glint_special.json": "fc426a0d58cf04f52d34a3fc196c4ec46370a4010d0e8865769ac9aa44943e73",
+   "patched_shaders/024_entities_cutout_glint_special.vsh": "228fbda125ba75e5391f808b77de95d3a6575abf24c7b29132dfca720b588c45",
+   "patched_shaders/025_entities_cutout_glint_armor.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/025_entities_cutout_glint_armor.json": "0b93a91e88ae84388ff65d30df95f1081c943477e03bcf3b61e691582c870e38",
+   "patched_shaders/025_entities_cutout_glint_armor.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/026_entities_cutout_diffuse.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/026_entities_cutout_diffuse.json": "b2854b2e73355b3157c90f146bcd9fad4fb6629fb77cad95905e6e51e529948b",
+   "patched_shaders/026_entities_cutout_diffuse.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/027_entities_translucent.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/027_entities_translucent.json": "3b8be2a3771384d91a450f4d99088b2e342db9b68bf0e37af15d3ca5a95b2c38",
+   "patched_shaders/027_entities_translucent.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/028_entities_translucent_glint.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/028_entities_translucent_glint.json": "e33bc265d719837c835093b52db2edb9462d8d110940e2d6332539234acb933a",
+   "patched_shaders/028_entities_translucent_glint.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/029_entities_translucent_glint_special.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/029_entities_translucent_glint_special.json": "2c3aaba5d7a98cdbf03d9b9962304d1e12048ec7c2d1f05a189eb5dd8213b898",
+   "patched_shaders/029_entities_translucent_glint_special.vsh": "228fbda125ba75e5391f808b77de95d3a6575abf24c7b29132dfca720b588c45",
+   "patched_shaders/030_entities_eyes.fsh": "a00200ec64cd3eeb757b279505bc9fdb176ef028896490b1f837aa44946b61c6",
+   "patched_shaders/030_entities_eyes.json": "735835f841b9039d381c086f09749d0ae9a88da46db3674ed2063e057bf52d32",
+   "patched_shaders/030_entities_eyes.vsh": "9f43b176fe11373382544574f6bde3f3538717d7665afd2e42fb496c31477ec1",
+   "patched_shaders/031_entities_eyes_trans.fsh": "a00200ec64cd3eeb757b279505bc9fdb176ef028896490b1f837aa44946b61c6",
+   "patched_shaders/031_entities_eyes_trans.json": "109a8d178fa8466948dd157af05c10f34a8c235d15e3ddbb62bca127b3defd7e",
+   "patched_shaders/031_entities_eyes_trans.vsh": "9f43b176fe11373382544574f6bde3f3538717d7665afd2e42fb496c31477ec1",
+   "patched_shaders/032_hand_cutout.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/032_hand_cutout.json": "d5995f146c45678ca8b8b57d7da4a3a113bcdc4383611c6a79b6156496022c32",
+   "patched_shaders/032_hand_cutout.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/033_hand_cutout_glint.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/033_hand_cutout_glint.json": "2acc568e7f4adc251149538ba95915f0ae37d440775ff465cc40144cc735fc0c",
+   "patched_shaders/033_hand_cutout_glint.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/034_hand_cutout_glint_diffuse.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/034_hand_cutout_glint_diffuse.json": "ea0c0db8055e673d1cb9e63689eb84b6aa340a4db124e312816671282d298b65",
+   "patched_shaders/034_hand_cutout_glint_diffuse.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/035_hand_cutout_glint_special.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/035_hand_cutout_glint_special.json": "482153c3d033650d301adeab51cdd7d1cb1b26a6eee11b9fb2bb7fa99bdb041b",
+   "patched_shaders/035_hand_cutout_glint_special.vsh": "228fbda125ba75e5391f808b77de95d3a6575abf24c7b29132dfca720b588c45",
+   "patched_shaders/036_hand_cutout_glint_armor.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/036_hand_cutout_glint_armor.json": "f128dcccd6adf2dbaaa861c0d3e946af155e54d8e9c0c64b2821baa2d253e0e1",
+   "patched_shaders/036_hand_cutout_glint_armor.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/037_hand_cutout_bright.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/037_hand_cutout_bright.json": "65a0066a1966c8e8c262c69ce21a4283926f6aa95d6a7a8e7a36c753d2e1b96e",
+   "patched_shaders/037_hand_cutout_bright.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/038_hand_cutout_diffuse.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/038_hand_cutout_diffuse.json": "abc4eb2af6875e199ffacdf113170b51b52b8cbba8942743baa621df225aa190",
+   "patched_shaders/038_hand_cutout_diffuse.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/039_hand_text.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/039_hand_text.json": "caabc0cd484d5da7131249119cb7422978deb22385f758ce217025f5c984ed3c",
+   "patched_shaders/039_hand_text.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/040_hand_text_translucent.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/040_hand_text_translucent.json": "f75bd4099297745be8c1186deaa623b670baadfedf4f87ddbef09cf7d80eed0d",
+   "patched_shaders/040_hand_text_translucent.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/041_hand_text_intensity.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/041_hand_text_intensity.json": "6db9cfe04bb5c62dfef9013788ae330a9664eb51200265e9479a75bc33964b6a",
+   "patched_shaders/041_hand_text_intensity.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/042_hand_translucent.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/042_hand_translucent.json": "71ee9e82a138ef7199cfeb835f3bb269eff849f70eb4cc65531df0a866a1a9dd",
+   "patched_shaders/042_hand_translucent.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/043_hand_translucent_glint.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/043_hand_translucent_glint.json": "dd637b05d64d2a7f0b9b294726cfe01fa06ca4833185be6806a95f8c59dcbeb4",
+   "patched_shaders/043_hand_translucent_glint.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/044_hand_translucent_glint_diffuse.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/044_hand_translucent_glint_diffuse.json": "a247d231904092d0ee2cceee1d00b1e0765c74e1179d35d9ecc5173f7bbc20ff",
+   "patched_shaders/044_hand_translucent_glint_diffuse.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/045_hand_translucent_glint_special.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/045_hand_translucent_glint_special.json": "802f6eb1d058ec3759eb3012b0524b7181d2673bcfba36bb8fa62f35d94c2e9c",
+   "patched_shaders/045_hand_translucent_glint_special.vsh": "228fbda125ba75e5391f808b77de95d3a6575abf24c7b29132dfca720b588c45",
+   "patched_shaders/046_hand_translucent_glint_armor.fsh": "171190abad8e5e774809d3678cce4cb41faf8e14a9245b9d86b4dc8536570582",
+   "patched_shaders/046_hand_translucent_glint_armor.json": "6eb8066951a142e3519804558996418de381c2ac981b63d35790e61d8aae6f8c",
+   "patched_shaders/046_hand_translucent_glint_armor.vsh": "ca3260407d1e77ac7e1edaf378c8df82e68112088302a69f2c8d3982e4bad260",
+   "patched_shaders/047_hand_water_bright.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/047_hand_water_bright.json": "ee0c765a22ac57542ebc0f620d168935d5cef34a9a222eb3d37a2e2fee18987e",
+   "patched_shaders/047_hand_water_bright.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/048_hand_water_diffuse.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/048_hand_water_diffuse.json": "9eef4674dcc4439d2be4db361d18d2cb9256851bb4e1124a37c516224f378ceb",
+   "patched_shaders/048_hand_water_diffuse.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/049_lightning.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/049_lightning.json": "887c4067a186a0cc4e69455bc5ff038832c6af32eca00c2e456ab8f8803e326e",
+   "patched_shaders/049_lightning.vsh": "1e431a8289233b69fd2b847b976728362bcfdb778a3db1ff612ce9cb5a9bf6d0",
+   "patched_shaders/050_leash.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/050_leash.json": "caff8b7596e1d062aa20230700d7602527004ed55b32e909e37f058b3b461eef",
+   "patched_shaders/050_leash.vsh": "1e431a8289233b69fd2b847b976728362bcfdb778a3db1ff612ce9cb5a9bf6d0",
+   "patched_shaders/051_text_bg.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/051_text_bg.json": "822ae18c4b9341984d6470509155fd4fa09daa6beb262958a6f85b4930fb830c",
+   "patched_shaders/051_text_bg.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/052_particles.fsh": "5769df7b3636e02906d072689c48e1a481e4cf4999ace50e0947de40f6fcd062",
+   "patched_shaders/052_particles.json": "993b2a254c850ab23f2db4c9455d70700103cce1853afa8e76556f33fda7b36c",
+   "patched_shaders/052_particles.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/053_particles_trans.fsh": "5769df7b3636e02906d072689c48e1a481e4cf4999ace50e0947de40f6fcd062",
+   "patched_shaders/053_particles_trans.json": "0f1fae2ccfc29593b29692a5d20d77b99eead08fbb9e657445e42a723d704b99",
+   "patched_shaders/053_particles_trans.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/054_weather.fsh": "5769df7b3636e02906d072689c48e1a481e4cf4999ace50e0947de40f6fcd062",
+   "patched_shaders/054_weather.json": "2210652ceb24fa053b2fa79476f5266a7287e5b47dc7f8e33c5631d8f2a8759c",
+   "patched_shaders/054_weather.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/055_crumbling.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/055_crumbling.json": "74a0ea81b9c7ff0beeb4cadb846ecd86c397f3f25bd703ba34b4a21e3bd2005a",
+   "patched_shaders/055_crumbling.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/056_text.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/056_text.json": "c2d849ecd16e62bc7783bf48a18629568f62b94ba20cb15146d831288f5301ac",
+   "patched_shaders/056_text.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/057_text_intensity.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/057_text_intensity.json": "e04eac621ab5838143a61969a1df08da09253d49a51d0999190bd6cac77ea6e8",
+   "patched_shaders/057_text_intensity.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/058_text_be.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/058_text_be.json": "56478760c27c6c3b76519e7dd80e31bf565151c50c2c381a5cc55a922e61969e",
+   "patched_shaders/058_text_be.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/059_text_intensity_be.fsh": "1487c0c7fe3598f6bc8883e1332a2d45bf1752c19db3d6710c3bb8313cb1668e",
+   "patched_shaders/059_text_intensity_be.json": "617fe865ea0b429f6ebb17eeaad2586ba5a2138c41a0af8d8141939ef577743c",
+   "patched_shaders/059_text_intensity_be.vsh": "f7fdc83c14c2ff3e06b7b55deab593ef4e127a3ed2edd22381a27072784402c3",
+   "patched_shaders/060_block_entity.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/060_block_entity.json": "61e5f06686faf4d56d7933547b66a1a7fbf455b0799b9f7a726654f0ab171f54",
+   "patched_shaders/060_block_entity.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/061_block_entity_bright.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/061_block_entity_bright.json": "f338ca9d9d86318aee0536378921ee04ad2368b0bc6349da6ba56905dd4d9092",
+   "patched_shaders/061_block_entity_bright.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/062_block_entity_diffuse.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/062_block_entity_diffuse.json": "23a4009a1463c502d08c2b3b2b55bd91b55421c02f2001798c44b665df16a86b",
+   "patched_shaders/062_block_entity_diffuse.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/063_be_translucent.fsh": "921e8ed3e563d0a097cf90fc5fdd6002b755792afbda95d32cf39f5afd92b56c",
+   "patched_shaders/063_be_translucent.json": "0b3abf1864f6218399312cdab9bb4d5296a0d055d522920f71a485656ae29716",
+   "patched_shaders/063_be_translucent.vsh": "9d07fe2ab24d20aaf1663734eb53d383529b1ac76dd0f0fdb40a1541fe0dc3c9",
+   "patched_shaders/064_beacon.fsh": "8fc791968a377246b46aa6cf1df82c3d0f19a00eb0a53d7126160af535bdacfd",
+   "patched_shaders/064_beacon.json": "192b35eb293338aa2d0d1c48b3d8ace6883de7480e2abe734422d07df3fe4254",
+   "patched_shaders/064_beacon.vsh": "d834371280db40c75b71570e7b6ae20cfb2cba512693cded90d41c0a5955c007",
+   "patched_shaders/065_glint.fsh": "8fc791968a377246b46aa6cf1df82c3d0f19a00eb0a53d7126160af535bdacfd",
+   "patched_shaders/065_glint.json": "91e4cb1eedd1d0cc39ccbddd47a8cf6b1eb704071434293d145f50b20701f7d3",
+   "patched_shaders/065_glint.vsh": "52be05fac0ad8774d0d0e71dc2c4b9b231fcb51753ed00cc795fd80a15834453",
+   "patched_shaders/066_lines.fsh": "ec8c48350a892388b2ae591c74fe671e746de0604d9e186a94507b31b5cd1b9e",
+   "patched_shaders/066_lines.json": "3a2b6d97853a6fe23aeefd1a85ab919ee8525a0f3ec2bdc2a674d0b2a16fa001",
+   "patched_shaders/066_lines.vsh": "1e431a8289233b69fd2b847b976728362bcfdb778a3db1ff612ce9cb5a9bf6d0",
+   "patched_shaders/067_mekanism_flame.fsh": "8fc791968a377246b46aa6cf1df82c3d0f19a00eb0a53d7126160af535bdacfd",
+   "patched_shaders/067_mekanism_flame.json": "d98237911a9f125530b2d02bb4f7b17e2341fcc39a68b597cdb814e89c19d8ce",
+   "patched_shaders/067_mekanism_flame.vsh": "d834371280db40c75b71570e7b6ae20cfb2cba512693cded90d41c0a5955c007",
+   "patched_shaders/068_sodium_terrain_solid.fsh": "fb83d5dfdb78f3b4e6d6d7e1d20e9127617416fb9057103b5310b857ffa5681e",
+   "patched_shaders/068_sodium_terrain_solid.json": "cb9d44da9cff6f654e8eed0c034e205b27e8158a1b734af2e181f1c1a390b9d3",
+   "patched_shaders/068_sodium_terrain_solid.vsh": "489d51935ab2db2286bf650a8b90df02385ba3c5360ee6231cd8fc375c3ab7d9",
+   "patched_shaders/069_sodium_terrain_cutout.fsh": "fb83d5dfdb78f3b4e6d6d7e1d20e9127617416fb9057103b5310b857ffa5681e",
+   "patched_shaders/069_sodium_terrain_cutout.json": "437c9d4d18723eea57266080300dba62dbf3448426b469a90508b9d7ededf0bd",
+   "patched_shaders/069_sodium_terrain_cutout.vsh": "489d51935ab2db2286bf650a8b90df02385ba3c5360ee6231cd8fc375c3ab7d9",
+   "patched_shaders/070_sodium_terrain_translucent.fsh": "fb83d5dfdb78f3b4e6d6d7e1d20e9127617416fb9057103b5310b857ffa5681e",
+   "patched_shaders/070_sodium_terrain_translucent.json": "d0fa2ad49e6de78d76abff3bf7d905da6fb55368f4d16c6de815664538a9e010",
+   "patched_shaders/070_sodium_terrain_translucent.vsh": "489d51935ab2db2286bf650a8b90df02385ba3c5360ee6231cd8fc375c3ab7d9",
+   "patched_shaders/071_shadow_sodium_terrain_solid.fsh": "050569ec7e3303801a8cb2a696fbf48f288303ceeb3349525286615591fa177e",
+   "patched_shaders/071_shadow_sodium_terrain_solid.vsh": "e98b605e8064a84291a04572b69d760b68a8ea2cea3ab2e94dbc22a563b7de52",
+   "patched_shaders/072_shadow_sodium_terrain_cutout.fsh": "7bdaf2c4bc35fa02e621e16b47be0b9b423f8b157a44341c687076803f025ebd",
+   "patched_shaders/072_shadow_sodium_terrain_cutout.vsh": "e98b605e8064a84291a04572b69d760b68a8ea2cea3ab2e94dbc22a563b7de52",
+   "patched_shaders/073_shadow_sodium_terrain_translucent.fsh": "7bdaf2c4bc35fa02e621e16b47be0b9b423f8b157a44341c687076803f025ebd",
+   "patched_shaders/073_shadow_sodium_terrain_translucent.vsh": "e98b605e8064a84291a04572b69d760b68a8ea2cea3ab2e94dbc22a563b7de52",
+   "patched_shaders/074_shadow_terrain_cutout.fsh": "735dcf1c51231dace62bee9d24dfb97be45601bd4580546fd1fd4d406f58315b",
+   "patched_shaders/074_shadow_terrain_cutout.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/075_shadow_translucent.fsh": "735dcf1c51231dace62bee9d24dfb97be45601bd4580546fd1fd4d406f58315b",
+   "patched_shaders/075_shadow_translucent.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/076_shadow_entities_cutout.fsh": "b2d0fb10121216e6a6a0939c1333a378e851f8c126c719e8bf50b1eaeb0529e6",
+   "patched_shaders/076_shadow_entities_cutout.vsh": "2e91e4606d53064ae4ae9251461daf81ba5a93102cc00a5177ce0d42356a87a1",
+   "patched_shaders/077_shadow_block.fsh": "b2d0fb10121216e6a6a0939c1333a378e851f8c126c719e8bf50b1eaeb0529e6",
+   "patched_shaders/077_shadow_block.vsh": "2e91e4606d53064ae4ae9251461daf81ba5a93102cc00a5177ce0d42356a87a1",
+   "patched_shaders/078_shadow_beacon_beam.fsh": "277a0e015321aabfa164de2befc7c7da1ab2a891d6a1fda5d2dc8c8c20388422",
+   "patched_shaders/078_shadow_beacon_beam.vsh": "ab869e0b8a054334a4106293984be1e6bed3d4a408bf6cb8f39bb8e67b268c8d",
+   "patched_shaders/079_shadow_basic.fsh": "4917efb53ffec4531cf1075a19c302a6c68364ba6ea84716ff32245d67e4aaa3",
+   "patched_shaders/079_shadow_basic.vsh": "fed7d44cfeaaabdd91d32f97e60cca98fa61d9526a90af4700259c9d44d402b8",
+   "patched_shaders/080_shadow_basic_color.fsh": "6aa1d897882c11705dea8c761717087bb274cde0a2cd4c86a1208abcba2bfc6c",
+   "patched_shaders/080_shadow_basic_color.vsh": "99d1dbcaa10708e6b177622c36013e6e67ad5c9eb838c633abf58d015e71e15a",
+   "patched_shaders/081_shadow_tex.fsh": "bf7a3cd28eeb8517b61a0547e3038fd0575065eb2c8855c025920819c76f97eb",
+   "patched_shaders/081_shadow_tex.vsh": "43c89bc9f0bcdd3088ff348c8b88e1d9a219036f6c5c8aeb5d32cc7d61a59509",
+   "patched_shaders/082_shadow_tex_color.fsh": "bf7a3cd28eeb8517b61a0547e3038fd0575065eb2c8855c025920819c76f97eb",
+   "patched_shaders/082_shadow_tex_color.vsh": "ab869e0b8a054334a4106293984be1e6bed3d4a408bf6cb8f39bb8e67b268c8d",
+   "patched_shaders/083_shadow_clouds.fsh": "bf7a3cd28eeb8517b61a0547e3038fd0575065eb2c8855c025920819c76f97eb",
+   "patched_shaders/083_shadow_clouds.vsh": "ab869e0b8a054334a4106293984be1e6bed3d4a408bf6cb8f39bb8e67b268c8d",
+   "patched_shaders/084_shadow_lines.fsh": "4917efb53ffec4531cf1075a19c302a6c68364ba6ea84716ff32245d67e4aaa3",
+   "patched_shaders/084_shadow_lines.vsh": "9a40c768c3bd6a3f7d19b976864a14aa611a617de2bfeb42cb84ee414e60e3fb",
+   "patched_shaders/085_shadow_leash.fsh": "b40bde11fa38a8d0879230a3e1f17e7cee922dc8da55f12f8a3a9346b8fd5eff",
+   "patched_shaders/085_shadow_leash.vsh": "69ed52dfbf232466c407b12165283018bb54678c249d69096e3635de17a78c7b",
+   "patched_shaders/086_shadow_lightning.fsh": "4917efb53ffec4531cf1075a19c302a6c68364ba6ea84716ff32245d67e4aaa3",
+   "patched_shaders/086_shadow_lightning.vsh": "99d1dbcaa10708e6b177622c36013e6e67ad5c9eb838c633abf58d015e71e15a",
+   "patched_shaders/087_shadow_particles.fsh": "735dcf1c51231dace62bee9d24dfb97be45601bd4580546fd1fd4d406f58315b",
+   "patched_shaders/087_shadow_particles.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/088_shadow_text.fsh": "735dcf1c51231dace62bee9d24dfb97be45601bd4580546fd1fd4d406f58315b",
+   "patched_shaders/088_shadow_text.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/089_shadow_text_bg.fsh": "8ea5b8676fa67775bb7c899491a37b22f0c3f7f645b7561f3037b551f10f1d0f",
+   "patched_shaders/089_shadow_text_bg.vsh": "69ed52dfbf232466c407b12165283018bb54678c249d69096e3635de17a78c7b",
+   "patched_shaders/090_shadow_text_intensity.fsh": "2af59ca6d4976720de343764e2d846f154fb63dc383ac1dfb124d65dcdb19321",
+   "patched_shaders/090_shadow_text_intensity.vsh": "c41faef338f83ecb2a22c6436f71612958d7742f2fdf906b68d11df89950e3cb",
+   "patched_shaders/091_mekanism_flame_shadow.fsh": "bf7a3cd28eeb8517b61a0547e3038fd0575065eb2c8855c025920819c76f97eb",
+   "patched_shaders/091_mekanism_flame_shadow.vsh": "ab869e0b8a054334a4106293984be1e6bed3d4a408bf6cb8f39bb8e67b268c8d",
+   "patched_shaders/entity.properties": "fbc40af269ccdff125b8a0befca95119d61c921e33de17eb668c724e770b05e0"
+  }
+ },
+ "packs": {
+  "optilux-34ebd37ef8e8.zip": "packs/optilux-34ebd37ef8e8.zip",
+  "optilux.zip": "packs/optilux.zip"
+ },
+ "offline": {
+  "level": "L1",
+  "baseline": "head",
+  "closures": [
+   {
+    "variant": "change",
+    "method": "L1 dump equality",
+    "power": "close",
+    "verdict": "no effect",
+    "dimensions": [
+     "minecraft:overworld",
+     "minecraft:the_nether",
+     "minecraft:the_end"
+    ],
+    "evidence": {
+     "minecraft:overworld": {
+      "baseline": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+      "candidate": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070"
+     },
+     "minecraft:the_nether": {
+      "baseline": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+      "candidate": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070"
+     },
+     "minecraft:the_end": {
+      "baseline": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070",
+      "candidate": "f4d735f6af8e9dc5b0da0c245701744fa2b62ece986f3ee54585bb6d33934070"
+     }
+    }
+   }
+  ],
+  "candidates": [
+   {
+    "variant": "off",
+    "tookEffect": true,
+    "undumped": [],
+    "unprinted": [],
+    "dimensions": {
+     "minecraft:overworld": {
+      "equal": false,
+      "changed": 139,
+      "baselineOnly": 0,
+      "candidateOnly": 0
+     },
+     "minecraft:the_nether": {
+      "equal": false,
+      "changed": 139,
+      "baselineOnly": 0,
+      "candidateOnly": 0
+     },
+     "minecraft:the_end": {
+      "equal": false,
+      "changed": 139,
+      "baselineOnly": 0,
+      "candidateOnly": 0
+     }
+    },
+    "premise": "no source change",
+    "options": [
+     "BENCH_DETERMINISTIC"
+    ]
+   },
+   {
+    "variant": "change",
+    "tookEffect": false,
+    "undumped": [],
+    "unprinted": [],
+    "dimensions": {
+     "minecraft:overworld": {
+      "equal": true,
+      "changed": 0,
+      "baselineOnly": 0,
+      "candidateOnly": 0
+     },
+     "minecraft:the_nether": {
+      "equal": true,
+      "changed": 0,
+      "baselineOnly": 0,
+      "candidateOnly": 0
+     },
+     "minecraft:the_end": {
+      "equal": true,
+      "changed": 0,
+      "baselineOnly": 0,
+      "candidateOnly": 0
+     }
+    },
+    "premise": "holds",
+    "options": []
+   }
+  ],
+  "pipeline": {
+   "file": "config/pipeline.json",
+   "sha256": "939b4bf08fb28e26ce132ae1bdc78482b312138a4e730f4864e7039f297470ba"
+  },
+  "audit": []
+ },
+ "session": {
+  "restore": {
+   "treeSha256": "33a4074d4198ea0143a5dc2a47b3e21ce900cbe9baa8276b5c918dc4a5a03035",
+   "files": 128,
+   "copied": 28,
+   "deleted": 0,
+   "kept": 100,
+   "checkedAgainstFacts": true
+  },
+  "displays": {
+   "request": "ES_CONTINUOUS | ES_DISPLAY_REQUIRED",
+   "state": "off",
+   "acTimeoutS": 600,
+   "idleSeconds": 3243.7
+  },
+  "zips": [
+   {
+    "file": "optilux-34ebd37ef8e8.zip",
+    "sha512": "d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4",
+    "entries": 25,
+    "variant": "optilux@HEAD",
+    "ref": "HEAD",
+    "commit": "34ebd37ef8e8b4ff40b3666a2abe918934c0d834",
+    "l0": {
+     "ok": true,
+     "sha512": "d86371b78b24b77ff53a2e072f1ab39e419287475ee9a7944a09c29d1683fb154197740afc8eef2e30476084b11e02a22f2e666e547f9e478ed5199c085636d4",
+     "glslang": "16.6.0",
+     "pipeline": {
+      "file": "config/pipeline.json",
+      "sha256": "939b4bf08fb28e26ce132ae1bdc78482b312138a4e730f4864e7039f297470ba"
+     },
+     "builds": 48,
+     "variants": [
+      "defaults",
+      "BENCH_DETERMINISTIC false"
+     ],
+     "profiles": [
+      "config/profiles/complementary-unbound-iso.json",
+      "config/profiles/complementary-unbound-played.json"
+     ]
+    }
+   },
+   {
+    "file": "optilux.zip",
+    "sha512": "5e7f2673761f71e5674f9bb4d75ccf65ae992d3bba3323a1c072c6f6264453d719c04e9512eafb8f5a6d2cd14ebda61069afa330066aa3c094685d8ac32fd138",
+    "entries": 25,
+    "variant": "optilux",
+    "ref": null,
+    "commit": null,
+    "l0": {
+     "ok": true,
+     "sha512": "5e7f2673761f71e5674f9bb4d75ccf65ae992d3bba3323a1c072c6f6264453d719c04e9512eafb8f5a6d2cd14ebda61069afa330066aa3c094685d8ac32fd138",
+     "glslang": "16.6.0",
+     "pipeline": {
+      "file": "config/pipeline.json",
+      "sha256": "939b4bf08fb28e26ce132ae1bdc78482b312138a4e730f4864e7039f297470ba"
+     },
+     "builds": 48,
+     "variants": [
+      "defaults",
+      "BENCH_DETERMINISTIC false"
+     ],
+     "profiles": [
+      "config/profiles/complementary-unbound-iso.json",
+      "config/profiles/complementary-unbound-played.json"
+     ]
+    }
+   }
+  ],
+  "launch": {
+   "platform": "mc-26.3",
+   "tier": "bench",
+   "world": "bench_263",
+   "pid": 14636,
+   "log": "runtime/mc-26.3/game/logs/latest.log",
+   "stdout": "runtime/mc-26.3/game/logs/stdout.log",
+   "uuid": {
+    "value": "51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79",
+    "from": "players/data/51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79.dat"
+   },
+   "gate": {
+    "games": [],
+    "sessions": [],
+    "amd": {
+     "presentMon": [],
+     "rsxTraceSession": false
+    },
+    "java": [
+     {
+      "pid": 11460,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+      "role": "other"
+     },
+     {
+      "pid": 11956,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+      "role": "other"
+     }
+    ]
+   },
+   "amdAfterJoin": {
+    "presentMon": [
+     {
+      "pid": 16720,
+      "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+      "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+     }
+    ],
+    "rsxTraceSession": true
+   },
+   "hashes": {
+    "classpathJars": 82,
+    "assetIndex": "34",
+    "versionJson": "61fff1316bd50312624a858bbb5eb18fa45208ed",
+    "packs": [
+     {
+      "file": "Faithful 64x - Release 15.zip",
+      "kind": "resourcePack",
+      "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+     },
+     {
+      "file": "optilux-static-textures.zip",
+      "kind": "resourcePack",
+      "sha512": "ff44b3cc091747390108ff3acdfc6ba2a81adaebff181f250306ab7a2053279574d7792e762c7d93c4fb224f19ea27f9c7e5dd6522a711c0f48c118015529ee8"
+     },
+     {
+      "file": "ComplementaryUnbound_r5.9.3.zip",
+      "kind": "referencePack",
+      "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c"
+     }
+    ]
+   },
+   "mods": {
+    "placed": [
+     {
+      "file": "fabric-api-0.161.0+26.3.jar",
+      "sha512": "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+      "state": "kept"
+     },
+     {
+      "file": "sodium-fabric-0.9.2+mc26.3.jar",
+      "sha512": "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93",
+      "state": "kept"
+     },
+     {
+      "file": "iris-fabric-1.11.7+mc26.3.jar",
+      "sha512": "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+      "state": "kept"
+     },
+     {
+      "file": "optilux-helper-0.1.0.jar",
+      "sha512": "ed1f2a39e4300fec8adf94b0bc06d8fea4ae7bcf6efeeed6f568ed601d21157052897afecf5fa0bfe5cfab2d74ea245fb3f352a395dfaba5464486dbe1ac86a5",
+      "state": "kept"
+     }
+    ],
+    "removed": [],
+    "helper": "optilux-helper-0.1.0.jar",
+    "sha512": [
+     "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+     "ed1f2a39e4300fec8adf94b0bc06d8fea4ae7bcf6efeeed6f568ed601d21157052897afecf5fa0bfe5cfab2d74ea245fb3f352a395dfaba5464486dbe1ac86a5",
+     "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+     "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+    ]
+   },
+   "logMods": [
+    "fabric-api",
+    "fabricloader",
+    "iris",
+    "java",
+    "minecraft",
+    "optilux-helper",
+    "sodium"
+   ],
+   "settings": {
+    "options": {
+     "version": "5023",
+     "fullscreen": "true",
+     "exclusiveFullscreen": "true",
+     "enableVsync": "false",
+     "maxFps": "260",
+     "renderDistance": "16",
+     "simulationDistance": "12",
+     "fov": "0.5",
+     "bobView": "false",
+     "guiScale": "3",
+     "mipmapLevels": "4",
+     "biomeBlendRadius": "2",
+     "graphicsPreset": "\"custom\"",
+     "preferredGraphicsBackend": "\"opengl\"",
+     "improvedTransparency": "false",
+     "pauseOnLostFocus": "false",
+     "onboardAccessibility": "false",
+     "skipMultiplayerWarning": "true",
+     "joinedFirstServer": "true",
+     "telemetryOptInExtra": "false",
+     "realmsNotifications": "false",
+     "narrator": "0",
+     "inactivityFpsLimit": "\"minimized\"",
+     "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\",\"file/optilux-static-textures.zip\"]"
+    },
+    "overrides": {},
+    "token": true,
+    "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+    "iris": {
+     "shaderPack": "ComplementaryUnbound_r5.9.3.zip",
+     "enableShaders": "true",
+     "enableDebugOptions": "false",
+     "disableUpdateMessage": "true",
+     "maxShadowRenderDistance": "32"
+    }
+   },
+   "optionsFile": {
+    "sha256": "e1b91108d25bbabd8f84c4e32d97ea833a7d68ede9a9e3cb8d75743246ea4241",
+    "unwritten": {
+     "ao": "true",
+     "chunkSectionFadeInTime": "0.75",
+     "cutoutLeaves": "true",
+     "entityDistanceScaling": "1.0",
+     "entityShadows": "true",
+     "forceUnicodeFont": "false",
+     "japaneseGlyphVariants": "false",
+     "fovEffectScale": "1.0",
+     "darknessEffectScale": "1.0",
+     "glintSpeed": "0.5",
+     "glintStrength": "0.75",
+     "prioritizeChunkUpdates": "1",
+     "macFullscreenMenuVisibility": "false",
+     "gamma": "0.5",
+     "debugGuiScale": "0",
+     "maxAnisotropyBit": "1",
+     "textureFiltering": "1",
+     "particles": "0",
+     "reducedDebugInfo": "false",
+     "renderClouds": "\"true\"",
+     "cloudRange": "64",
+     "screenEffectScale": "1.0",
+     "soundDevice": "\"\"",
+     "vignette": "true",
+     "weatherRadius": "10",
+     "autoJump": "false",
+     "rotateWithMinecart": "false",
+     "operatorItemsTab": "false",
+     "autoSuggestions": "true",
+     "chatColors": "true",
+     "chatLinks": "true",
+     "chatLinksPrompt": "true",
+     "discrete_mouse_scroll": "false",
+     "invertXMouse": "false",
+     "invertYMouse": "false",
+     "showSubtitles": "false",
+     "directionalAudio": "false",
+     "toggleCrouch": "false",
+     "toggleSprint": "false",
+     "toggleAttack": "false",
+     "toggleUse": "false",
+     "sprintWindow": "7",
+     "darkMojangStudiosBackground": "false",
+     "hideLightningFlashes": "false",
+     "hideSplashTexts": "false",
+     "mouseSensitivity": "0.5",
+     "damageTiltStrength": "1.0",
+     "highContrast": "false",
+     "highContrastBlockOutline": "false",
+     "narratorHotkey": "true",
+     "incompatibleResourcePacks": "[]",
+     "lastServer": "",
+     "lang": "en_us",
+     "chatVisibility": "0",
+     "chatOpacity": "1.0",
+     "chatLineSpacing": "0.0",
+     "textBackgroundOpacity": "0.5",
+     "backgroundForChatOnly": "true",
+     "hideServerAddress": "false",
+     "advancedItemTooltips": "false",
+     "overrideWidth": "0",
+     "overrideHeight": "0",
+     "chatHeightFocused": "1.0",
+     "chatDelay": "0.0",
+     "chatHeightUnfocused": "0.4375",
+     "chatScale": "1.0",
+     "chatWidth": "1.0",
+     "notificationDisplayTime": "1.0",
+     "useNativeTransport": "true",
+     "mainHand": "\"right\"",
+     "attackIndicator": "1",
+     "tutorialStep": "none",
+     "mouseWheelSensitivity": "1.0",
+     "allowCursorChanges": "true",
+     "quitShortcuts": "true",
+     "ctrlClickEmulatesRightClick": "false",
+     "glDebugVerbosity": "1",
+     "hideMatchedNames": "true",
+     "syncChunkWrites": "true",
+     "showAutosaveIndicator": "true",
+     "allowServerListing": "true",
+     "inGameNotification": "false",
+     "sharePresence": "\"all\"",
+     "onlyShowSecureChat": "false",
+     "saveChatDrafts": "false",
+     "panoramaScrollSpeed": "1.0",
+     "menuBackgroundBlurriness": "5",
+     "startedCleanly": "true",
+     "musicToast": "\"never\"",
+     "musicFrequency": "\"DEFAULT\"",
+     "key_key.attack": "key.mouse.left",
+     "key_key.use": "key.mouse.right",
+     "key_key.forward": "key.keyboard.w",
+     "key_key.left": "key.keyboard.a",
+     "key_key.back": "key.keyboard.s",
+     "key_key.right": "key.keyboard.d",
+     "key_key.jump": "key.keyboard.space",
+     "key_key.sneak": "key.keyboard.left.shift",
+     "key_key.sprint": "key.keyboard.left.control",
+     "key_key.drop": "key.keyboard.q",
+     "key_key.inventory": "key.keyboard.e",
+     "key_key.chat": "key.keyboard.t",
+     "key_key.playerlist": "key.keyboard.tab",
+     "key_key.pickItem": "key.mouse.middle",
+     "key_key.command": "key.keyboard.slash",
+     "key_key.friends": "key.keyboard.o",
+     "key_key.socialInteractions": "key.keyboard.p",
+     "key_key.toggleGui": "key.keyboard.f1",
+     "key_key.toggleSpectatorShaderEffects": "key.keyboard.f4",
+     "key_key.screenshot": "key.keyboard.f2",
+     "key_key.togglePerspective": "key.keyboard.f5",
+     "key_key.smoothCamera": "key.keyboard.unknown",
+     "key_key.fullscreen": "key.keyboard.f11",
+     "key_key.spectatorOutlines": "key.keyboard.unknown",
+     "key_key.spectatorHotbar": "key.mouse.middle",
+     "key_key.swapOffhand": "key.keyboard.f",
+     "key_key.saveToolbarActivator": "key.keyboard.c",
+     "key_key.loadToolbarActivator": "key.keyboard.x",
+     "key_key.advancements": "key.keyboard.l",
+     "key_key.quickActions": "key.keyboard.g",
+     "key_key.debug.overlay": "key.keyboard.f3",
+     "key_key.debug.modifier": "key.keyboard.f3",
+     "key_key.hotbar.1": "key.keyboard.1",
+     "key_key.hotbar.2": "key.keyboard.2",
+     "key_key.hotbar.3": "key.keyboard.3",
+     "key_key.hotbar.4": "key.keyboard.4",
+     "key_key.hotbar.5": "key.keyboard.5",
+     "key_key.hotbar.6": "key.keyboard.6",
+     "key_key.hotbar.7": "key.keyboard.7",
+     "key_key.hotbar.8": "key.keyboard.8",
+     "key_key.hotbar.9": "key.keyboard.9",
+     "key_key.debug.reloadChunk": "key.keyboard.a",
+     "key_key.debug.showHitboxes": "key.keyboard.b",
+     "key_key.debug.clearChat": "key.keyboard.d",
+     "key_key.debug.crash": "key.keyboard.c",
+     "key_key.debug.showChunkBorders": "key.keyboard.g",
+     "key_key.debug.showAdvancedTooltips": "key.keyboard.h",
+     "key_key.debug.copyRecreateCommand": "key.keyboard.i",
+     "key_key.debug.spectate": "key.keyboard.n",
+     "key_key.debug.switchGameMode": "key.keyboard.f4",
+     "key_key.debug.debugOptions": "key.keyboard.f6",
+     "key_key.debug.focusPause": "key.keyboard.p",
+     "key_key.debug.dumpDynamicTextures": "key.keyboard.s",
+     "key_key.debug.reloadResourcePacks": "key.keyboard.t",
+     "key_key.debug.profiling": "key.keyboard.l",
+     "key_key.debug.copyLocation": "key.keyboard.c",
+     "key_key.debug.dumpVersion": "key.keyboard.v",
+     "key_key.debug.profilingChart": "key.keyboard.1",
+     "key_key.debug.fpsCharts": "key.keyboard.2",
+     "key_key.debug.networkCharts": "key.keyboard.3",
+     "key_key.debug.lightmapTexture": "key.keyboard.4",
+     "key_key.debug.improvedTransparency": "key.keyboard.x",
+     "key_iris.keybind.reload": "key.keyboard.r",
+     "key_iris.keybind.toggleShaders": "key.keyboard.k",
+     "key_iris.keybind.shaderPackSelection": "key.keyboard.i",
+     "key_iris.keybind.wireframe": "key.keyboard.unknown",
+     "soundCategory_master": "0.0",
+     "soundCategory_music": "1.0",
+     "soundCategory_record": "1.0",
+     "soundCategory_weather": "1.0",
+     "soundCategory_block": "1.0",
+     "soundCategory_hostile": "1.0",
+     "soundCategory_neutral": "1.0",
+     "soundCategory_player": "1.0",
+     "soundCategory_ambient": "1.0",
+     "soundCategory_voice": "1.0",
+     "soundCategory_ui": "1.0",
+     "modelPart_cape": "true",
+     "modelPart_jacket": "true",
+     "modelPart_left_sleeve": "true",
+     "modelPart_right_sleeve": "true",
+     "modelPart_left_pants_leg": "true",
+     "modelPart_right_pants_leg": "true",
+     "modelPart_hat": "true"
+    }
+   },
+   "join": {
+    "seconds": 16.24,
+    "line": "[18:49:37] [Server thread/INFO]: optilux[local:E:d489b860] logged in with entity id 1 at (22.6, 102.8, 533.0)"
+   },
+   "timings": {
+    "prepareSeconds": 1.53,
+    "joinSeconds": 16.24
+   },
+   "command": {
+    "check": "equal",
+    "arguments": 38
+   }
+  },
+  "mod": {
+   "pipe": {
+    "serverPid": 14636,
+    "dacl": "D:(A;;FA;;;S-1-5-21-3689793171-124209945-1107482691-1000)",
+    "secondInstanceError": 231
+   },
+   "hello": {
+    "protocol": 1,
+    "mod": {
+     "id": "optilux-helper",
+     "version": "0.1.0"
+    },
+    "platform": "mc-26.3",
+    "versions": {
+     "minecraft": "26.3",
+     "loader": "0.19.5",
+     "iris": "1.11.7+mc26.3",
+     "sodium": "0.9.2+mc26.3",
+     "java": "25.0.4.1+1-LTS"
+    },
+    "capabilities": [
+     "hello",
+     "selftest",
+     "state",
+     "world.wait",
+     "command",
+     "ticks.step",
+     "ready",
+     "camera.place",
+     "camera.get",
+     "shaders.reload",
+     "shaders.options",
+     "frames.index",
+     "frames.capture",
+     "window.measure",
+     "input.block",
+     "hud.set",
+     "timers.start",
+     "timers.read",
+     "timers.stop",
+     "cancel",
+     "quit"
+    ],
+    "pid": 14636,
+    "resumed": false,
+    "cancelled": [],
+    "frameIndex": 99,
+    "sinceReload": 0,
+    "qpcNs": 27452666627600
+   },
+   "frames": {
+    "first": {
+     "frameIndex": 99,
+     "sinceReload": 0,
+     "qpcNs": 27452674051800
+    },
+    "advanced": {
+     "frameIndex": 100,
+     "sinceReload": 1,
+     "qpcNs": 27455683539100
+    },
+    "seconds": 3.0
+   },
+   "requestLog": "results/raw/m3-dump-1/requests.jsonl"
+  },
+  "quit": {
+   "how": "quit",
+   "exitCode": 0,
+   "seconds": 1.125,
+   "pipeEnded": true
+  },
+  "stray": [],
+  "filesCleanup": {
+   "removed": [
+    "optilux-34ebd37ef8e8.zip",
+    "optilux.zip",
+    "optilux-34ebd37ef8e8.zip.txt"
+   ],
+   "kept": []
+  },
+  "logCheck": {
+   "lines": 132,
+   "bytes": 27124,
+   "tokenAbsent": true
+  },
+  "readBack": {
+   "ok": true,
+   "options": {
+    "keys": 24,
+    "moved": {}
+   },
+   "iris": {
+    "keys": 5,
+    "moved": {}
+   },
+   "sodium": {
+    "flagsMoved": {},
+    "sameText": true
+   }
+  },
+  "helperLog": {
+   "applied": 10,
+   "active": 1,
+   "hookFailures": 0,
+   "irisOutsideReload": 0
+  },
+  "steps": {
+   "count": 46,
+   "file": "results/raw/m3-dump-1/steps.json"
+  },
+  "events": {
+   "counts": {
+    "world.joined": 1,
+    "reload.done": 11,
+    "capture.frame": 1,
+    "dimension.changed": 2,
+    "screen.opened": 4,
+    "world.left": 1
+   },
+   "file": "results/raw/m3-dump-1/events.json"
+  },
+  "start": {
+   "joined": {
+    "pose": {
+     "dimension": "minecraft:overworld",
+     "x": 22.6,
+     "y": 102.8,
+     "z": 533.0,
+     "yaw": -136.0,
+     "pitch": 37.20000076293945
+    },
+    "time": 6000,
+    "joinedQpcNs": 27455250533200,
+    "frameIndex": 102,
+    "sinceReload": 3,
+    "qpcNs": 27455784189800
+   },
+   "selftest": {
+    "pass": true,
+    "checks": {
+     "frameClock": {
+      "pass": true,
+      "first": {
+       "frameIndex": 106,
+       "qpcNs": 27455810741800,
+       "swapQpcNs": 27455810146100
+      },
+      "later": {
+       "frameIndex": 109,
+       "qpcNs": 27456046406800,
+       "swapQpcNs": 27456042816700
+      }
+     },
+     "renderer": {
+      "pass": true,
+      "reading": {
+       "inWorld": true,
+       "noScreen": true,
+       "sections": 22104,
+       "queuedJobs": 4,
+       "busyThreads": 10,
+       "buildResults": 5,
+       "runningJobs": 19,
+       "taskLists": 789,
+       "submittedTasks": 1,
+       "graphClean": false,
+       "rendererCheck": false,
+       "failing": "buildQueue"
+      }
+     },
+     "reload": {
+      "pass": true,
+      "pack": "ComplementaryUnbound_r5.9.3.zip",
+      "pipeline": "IrisRenderingPipeline",
+      "seconds": 0.4950025,
+      "reloadFrame": 110,
+      "frameIndex": 114,
+      "sinceReload": 4
+     },
+     "capture": {
+      "pass": true,
+      "frameIndex": 431,
+      "sinceReload": 321,
+      "reloadFrame": 110,
+      "align": {
+       "cycle": 4,
+       "phase": 1
+      },
+      "ready": {
+       "seconds": 3.8573978,
+       "predicateSeconds": 3.8573978,
+       "limitedBy": "graph",
+       "rendererCheck": {
+        "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+        "holds": true,
+        "seconds": 0.4012505,
+        "gapFrames": 97
+       },
+       "frames": 311,
+       "frameIndex": 428
+      },
+      "size": "3840x2160",
+      "target": "3840x2160"
+     },
+     "input": {
+      "pass": true,
+      "mixins": [
+       "KeyboardHandlerMixin",
+       "MouseHandlerMixin",
+       "MinecraftMixin"
+      ],
+      "blocked": false
+     }
+    },
+    "frameIndex": 583,
+    "sinceReload": 473,
+    "qpcNs": 27462541413900
+   },
+   "reload": {
+    "pack": "optilux-34ebd37ef8e8.zip",
+    "pipeline": "IrisRenderingPipeline",
+    "seconds": 0.2896009,
+    "framesAfter": 2,
+    "reloadFrame": 596,
+    "frameIndex": 599,
+    "sinceReload": 3,
+    "qpcNs": 27463048302200
+   }
+  },
+  "laps": [
+   [
+    "forest_noon",
+    "nether_crimson",
+    "end_dragon"
+   ]
+  ],
+  "weatherTicks": [
+   {
+    "view": "forest_noon",
+    "ticks": 120
+   }
+  ],
+  "timeSplit": {
+   "prepare": 3.0,
+   "restore": 1.4,
+   "launch": 18.0,
+   "mod": 3.1,
+   "start": 37.4,
+   "views": 16.2,
+   "quit": 1.1,
+   "after": 0.8
+  }
+ },
+ "raw": "results/raw/m3-dump-1"
+}
