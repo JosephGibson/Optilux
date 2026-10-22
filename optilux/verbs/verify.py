@@ -7,7 +7,8 @@ that set its threshold.
 kind, a status (a reason beside any but ok) and an identity of the record's era (null only when
 it is not ok); an acceptance run's items; a measured run's mode, calibration, variants and
 captures, a part's `split`, a split session's parts (each a record) and no captures, its
-verdicts when it names a calibration. Measurement and calibration records stay within
+verdicts when it names a calibration; a visual run's mode, variants and pairs, each frame hashed
+and the flags agreeing with its frames. Measurement, calibration and visual records stay within
 RECORD_BUDGET bytes; an acceptance record over it is reported, never refused: committed records
 are never edited. Kept out of the runner's import closure, so its rules never move the harness
 identity (plans/m2.md D36). CI runs it, and the pre-commit hook when a record is staged.
@@ -15,6 +16,7 @@ identity (plans/m2.md D36). CI runs it, and the pre-commit hook when a record is
 
 import argparse
 import json
+import re
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -28,12 +30,17 @@ from optilux.verbs.pack import PACK_DIR
 # run-record.md#record's budget, D51: ~200 KB a measurement or calibration record (frame-level
 # samples live in results/raw/); M1's full acceptance records run to 238 KB (F13).
 RECORD_BUDGET = 200_000
-BUDGETED = ("measurement", "calibration")
+BUDGETED = ("measurement", "calibration", record.VISUAL)
 # Records written before M2.P01 added `harness` (plans/m2.md D36) hold the other ten keys.
 EARLIER_IDENTITY = tuple(key for key in record.IDENTITY_KEYS if key != "harness")
 ROLES = ("baseline", "candidate", "twin")
 CAPTURE_KEYS = ("index", "pass", "view", "variant", "role", "valid")
 SPLIT_KEYS = ("session", "part", "parts", "views")
+# A visual record's pair (plans/m3.md D63): each frame a path under its raw folder, a sha256 and
+# the frame's stamps.
+VISUAL_CAPTURE_KEYS = ("index", "view", "variant", "frames", "flags", "valid")
+FRAME_KEYS = ("path", "sha256", "frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
+SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 def configure(parser: argparse.ArgumentParser) -> None:
@@ -170,6 +177,70 @@ def measured_problems(root: Path, found: dict) -> list[str]:
     return problems
 
 
+def frame_problem(frame: Any) -> bool:
+    """Whether a visual pair's frame lacks its path, its sha256 or an integer stamp."""
+    if not isinstance(frame, dict) or tuple(frame) != FRAME_KEYS:
+        return True
+    stamps = [frame[key] for key in FRAME_KEYS[2:]]
+    return (
+        not isinstance(frame["path"], str)
+        or not isinstance(frame["sha256"], str)
+        or not SHA256.fullmatch(frame["sha256"])
+        or any(isinstance(v, bool) or not isinstance(v, int) for v in stamps)
+    )
+
+
+def visual_capture_problem(capture: Any, ids: set) -> str | None:
+    """A visual pair against its record: its keys, a variant of the record's, its flags known
+    and agreeing with its frames (two hashed frames unless `incomplete`; `moving` when their
+    sha256 differ), `valid` as its flags make it."""
+    if not isinstance(capture, dict):
+        return "a capture is no object"
+    missing = [key for key in VISUAL_CAPTURE_KEYS if key not in capture]
+    if missing:
+        return f"capture {capture.get('index')} lacks {', '.join(missing)}"
+    where = f"capture {capture['index']}"
+    flags, frames = capture["flags"], capture["frames"]
+    if capture["variant"] not in ids:
+        return f"{where}: variant {capture['variant']!r} is none of the record's"
+    if not isinstance(flags, list) or any(flag not in record.VISUAL_FLAGS for flag in flags):
+        return f"{where}: flags {flags!r}, not among {', '.join(record.VISUAL_FLAGS)}"
+    if not isinstance(frames, list) or any(frame_problem(frame) for frame in frames):
+        return f"{where}: a frame without its path, sha256 and stamps"
+    whole = len(frames) == record.VISUAL_PAIR and "incomplete" not in flags
+    if not whole and "incomplete" not in flags:
+        return f"{where}: {len(frames)} frames and no `incomplete` flag"
+    if whole and ("moving" in flags) != (frames[0]["sha256"] != frames[1]["sha256"]):
+        return f"{where}: `moving` disagrees with its frames' sha256"
+    valid = not any(flag in record.VISUAL_INVALIDATING for flag in flags)
+    if capture["valid"] is not valid:
+        return f"{where}: valid {capture['valid']!r} disagrees with its flags {flags}"
+    return None
+
+
+def visual_problems(found: dict) -> list[str]:
+    """A visual record's own fields (plans/m3.md D63): its mode, variants and pairs; an ok one
+    holds a whole pair for every variant at every view it took, one each."""
+    problems = []
+    if found.get("mode") not in record.MODES:
+        problems.append(f"mode {found.get('mode')!r}")
+    variants, captures = found.get("variants"), found.get("captures")
+    if not isinstance(variants, list) or not isinstance(captures, list):
+        return [*problems, "no variants or captures list"]
+    ids = {v.get("id") for v in variants if isinstance(v, dict)}
+    found_problems = [p for c in captures if (p := visual_capture_problem(c, ids)) is not None]
+    problems += found_problems[:3]
+    if found.get("status") != "ok" or found_problems:
+        return problems
+    if any("incomplete" in c["flags"] for c in captures):
+        problems.append("an ok visual record holds a pair missing a frame")
+    taken = [(c["view"], c["variant"]) for c in captures]
+    views = list(dict.fromkeys(view for view, _ in taken))
+    if not taken or sorted(taken) != sorted((view, vid) for view in views for vid in ids):
+        problems.append("an ok visual record lacks or repeats a pair of a variant at a view")
+    return problems
+
+
 def record_problems(root: Path, name: str, text: bytes) -> tuple[list[str], str | None]:
     """One record's violations, and its report when it is an acceptance record over the
     budget."""
@@ -201,7 +272,9 @@ def record_problems(root: Path, name: str, text: bytes) -> tuple[list[str], str 
             record.check_acceptance(found.get("acceptance"))
         except record.RecordError as error:
             problems.append(str(error))
-    if found.get("mode") is not None or kind != "acceptance":
+    if kind == record.VISUAL:
+        problems += visual_problems(found)
+    elif found.get("mode") is not None or kind != "acceptance":
         problems += measured_problems(root, found)
     elif "variants" in found and not isinstance(found["variants"], list):
         problems.append("variants is no list")  # an aborted run of M1's items holds none

@@ -511,7 +511,7 @@ class Client:
         verified = verify_manifest(result)
         if verified["images"] is not images:
             raise ModError(f"frames.capture: asked images {images}, its manifest says otherwise")
-        check_schedule(result, align, ready is not None)
+        check_schedule(result, align, ready is not None, interval_ms)
         return {**result, "verified": verified}
 
     def selftest(self, timeout: float) -> dict:
@@ -780,13 +780,25 @@ def verify_manifest(result: dict) -> dict:
     }
 
 
-def check_schedule(result: dict, align: tuple[int, int] | None, ready: bool) -> None:
+def check_schedule(
+    result: dict, align: tuple[int, int] | None, ready: bool, interval_ms: float | None = None
+) -> None:
     """A capture's frames against what it asked (plans/m3.md section 7 stops a run on an aligned
     frame off its phase, or a ready-triggered frame not the first after the predicate): with
     `align` each frame's sinceReload at the phase; with `ready` a report naming the frame whose
     head found the predicate held, and the first frame taken (written or dropped) that frame or,
-    aligned, within one cycle of it; without, no report. ModError naming the first miss."""
+    aligned, within one cycle of it; without, no report; with `interval_ms` each frame at least
+    that long after the one before on their HEAD stamps (the mod's next is the first at or after
+    the last taken's stamp plus the interval). ModError naming the first miss."""
     frames = result["frames"]
+    if interval_ms is not None:
+        for before, after in itertools.pairwise(frames):
+            gap = after["qpcNs"] - before["qpcNs"]
+            if gap < interval_ms * 1e6:
+                raise ModError(
+                    f"frames.capture: frame {after['frameIndex']} came {gap / 1e6:.3f} ms after "
+                    f"frame {before['frameIndex']}, under the {interval_ms:g} ms asked"
+                )
     if align is not None:
         cycle, phase = align
         for frame in frames:

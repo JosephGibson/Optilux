@@ -18,7 +18,9 @@ file over the pack's defaults (`defaults`), a value of no option or of the wrong
 a dimension change also shows the loading screen and the quit the saving screens, as the game's
 do;
 shaders.options reads the model's options; frames.capture writes `count` small PNGs (none
-without images) and capture.json into a new attempt folder under an absolute directory, as the
+without images), each painted by the pack and the pose (a pack in `moving` adds the frame:
+frame_rgba), every `every` frames or intervalMs apart, and capture.json into a new attempt
+folder under an absolute directory, as the
 mod does, with align only frames at the phase and with ready a report naming the first frame
 taken (its predicate holds from the next frame, the wait stableFrames or minSeconds of 7 ms
 frames), align and ready refused as the mod refuses them, the clock then at the last frame;
@@ -281,6 +283,19 @@ class Fake:
         # A game folder makes shaders.reload read iris.properties and the pack's settings file.
         self.game_dir: Path | None = None
         self.defaults: dict[str, Any] = dict(self.game["options"])
+        # The packs whose frames move from frame to frame (a TAA pack's jitter): every other pack
+        # draws one frame per pose (frame_rgba).
+        self.moving: set[str] = set()
+
+    def frame_rgba(self, index: int) -> bytes:
+        """A captured frame's one pixel: the loaded pack and the pose decide it, as a pack whose
+        frames repeat draws it; a pack in `moving` adds the frame's index (two bytes of it, so
+        frames up to 65,536 apart never repeat)."""
+        game = self.game
+        seed = zlib.crc32(json.dumps([game["pack"], game["pose"]], sort_keys=True).encode())
+        moved = index if game["pack"] in self.moving else 0
+        high = ((seed >> 8) + (moved >> 8)) & 0xFF
+        return bytes([seed & 0xFF, high, moved & 0xFF, 255])
 
     # The wire.
 
@@ -739,6 +754,8 @@ class Fake:
             }
         frames: list[dict] = []
         index = due = start
+        # intervalMs on the fake's frame clock: the next frame the first that far past this one.
+        step = -(-round(args["intervalMs"] * 1e6) // FRAME_NS) if "intervalMs" in args else None
         while len(frames) < args["count"]:
             since = index - self.game["reloadFrame"]
             if index >= due and (align is None or since % align[0] == align[1]):
@@ -751,11 +768,11 @@ class Fake:
                 }
                 if images:
                     name = f"frame-{n:05d}.png"
-                    data = png(FRAME_SIZE, FRAME_SIZE, bytes([n % 256, 0, 0, 255]) * FRAME_SIZE**2)
+                    data = png(FRAME_SIZE, FRAME_SIZE, self.frame_rgba(index) * FRAME_SIZE**2)
                     (folder / name).write_bytes(data)
                     frame = {"name": name, "sha256": hashlib.sha256(data).hexdigest(), **frame}
                 frames.append(frame)
-                due = index + args.get("every", 1)
+                due = index + (step if step is not None else args.get("every", 1))
             index += 1
         manifest = {
             "schema": 1,

@@ -63,7 +63,17 @@ BUDGET = ("rounds", "dimensions", "keepViews", "alone", "windows")
 # The survey's exception (run-record.md#split-sessions; user, 2026-10-13): a calibration-null
 # measurement run may set its rounds and keep each launch's warm-up pass (D47).
 SURVEY = ("rounds", "warmup")
-KINDS = ("measurement", "calibration", "acceptance")
+# A visual run (plans/m3.md D63): a mode's perf views, each variant's frames taken at each.
+VISUAL = "visual"
+KINDS = ("measurement", "calibration", "acceptance", VISUAL)
+# A visual run's own keys are the required ones, its mode and notes: none of these.
+VISUAL_REFUSED = ("items", "calibration", "heap", *BUDGET, "warmup", "remeasures", "reloads")
+# A visual capture is a pair of frames (optilux/measure.py's visual_capture), flagged `moving`
+# when its frames' PNGs differ, `event` for an invalidating event among its frames, `incomplete`
+# for a frame missing; the last two invalidate it.
+VISUAL_PAIR = 2
+VISUAL_FLAGS = ("moving", "event", "incomplete")
+VISUAL_INVALIDATING = ("event", "incomplete")
 MODES = ("quick", "full")
 ITEMS = tuple(f"A{number}" for number in range(1, 13))
 # The items `run` performs in M1 (docs/plans/m1.md 0.01.08 and 0.01.09), in the record's order.
@@ -543,6 +553,8 @@ def check_spec(
     if kind not in KINDS:
         raise RecordError(f"kind {kind!r}; fix: one of {', '.join(KINDS)}")
     mode = data.get("mode")
+    if kind == VISUAL and mode is None:
+        raise RecordError("a visual run takes a mode's perf views; fix: mode quick or full")
     if kind != "acceptance" and mode is None:
         raise RecordError(f"a {kind} run measures a mode's schedule; fix: mode quick or full")
     if mode is not None and mode not in MODES:
@@ -593,6 +605,8 @@ def check_spec(
         raise RecordError("notes must be text; fix: write them as one string")
     items = data.get("items", [] if mode is not None else None)
     cap = suite["capture"]["reloadCap"]
+    if kind == VISUAL:
+        return check_visual_spec(root, data, suite, pack, views_file, world, notes, cap)
     if mode is None:
         return check_acceptance_spec(root, data, suite, pack, views, world, notes, items, cap)
     allowed = MEASURED_ITEMS if kind == "acceptance" else ()
@@ -866,29 +880,10 @@ def check_budget(
     return rounds, ids, alone, windows
 
 
-def acceptance_variant(root: Path, variants: Any, pack: str) -> dict | None:
-    """An acceptance run's one variant, at its pack's defaults (profile null): the reference pack
-    `pack` (None), or the Optilux pack (plans/m3.md D63): `optilux` from the working tree, or
+def optilux_build(root: Path, name: str) -> dict:
+    """The Optilux pack a variant names (plans/m3.md D63): `optilux` from the working tree, or
     `optilux@<ref>` from the commit the ref names in this checkout, resolved here, so `--check`
     refuses a ref git does not know and the run builds the commit it checked."""
-    wanted = [{"pack": pack, "profile": None}]
-    shaped = (
-        isinstance(variants, list)
-        and len(variants) == 1
-        and isinstance(variants[0], dict)
-        and set(variants[0]) == {"pack", "profile"}
-        and variants[0]["profile"] is None
-        and isinstance(variants[0]["pack"], str)
-    )
-    name = variants[0]["pack"] if shaped else None
-    if name is None or not (name in (pack, OPTILUX) or name.startswith(OPTILUX_AT)):
-        raise RecordError(
-            f"variants {json.dumps(variants)}: an acceptance run without a mode has one variant at "
-            f"its pack's defaults: the reference pack, {OPTILUX} or {OPTILUX_AT}<ref> (plans/m3.md "
-            f"D63); fix: {json.dumps(wanted)}"
-        )
-    if name == pack:
-        return None
     if name == OPTILUX:
         return {"variant": name, "ref": None, "commit": None}
     ref = name.removeprefix(OPTILUX_AT)
@@ -904,6 +899,148 @@ def acceptance_variant(root: Path, variants: Any, pack: str) -> dict | None:
             "resolves here"
         )
     return {"variant": name, "ref": ref, "commit": commit}
+
+
+def is_optilux(name: Any) -> bool:
+    return isinstance(name, str) and (name == OPTILUX or name.startswith(OPTILUX_AT))
+
+
+def check_visual_variants(root: Path, variants: Any, suite: dict, pack: str) -> tuple[dict, ...]:
+    """A visual run's variants (plans/m3.md D63): a measured run's objects of id, pack and profile,
+    optionally options and timers (false: a visual run times nothing), ids unique and never a
+    twin's; each pack the reference pack `pack`, at a profile of its own or null, or the Optilux
+    pack, `optilux` or `optilux@<ref>` (optilux_build), profile null. Each checked variant: its
+    id, pack, profile, options (the profile's with the spec's over them), timers false and
+    `build`, an Optilux variant's."""
+    if not isinstance(variants, list) or not variants:
+        raise RecordError("variants lists none; fix: the variants whose frames the run takes")
+    known = ", ".join((*VARIANT_REQUIRED, *VARIANT_OPTIONAL))
+    found: list[dict] = []
+    for index, variant in enumerate(variants):
+        where = f"variant {index + 1}"
+        if not isinstance(variant, dict):
+            raise RecordError(f"{where} is no object; fix: give id, pack and profile")
+        missing = [key for key in VARIANT_REQUIRED if key not in variant]
+        extra = [key for key in variant if key not in (*VARIANT_REQUIRED, *VARIANT_OPTIONAL)]
+        if missing or extra:
+            raise RecordError(
+                f"{where}: missing {missing or 'none'}, unknown {extra or 'none'}; fix: use {known}"
+            )
+        if variant.get("timers", False) is not False:
+            raise RecordError(
+                f"{where}: timers {variant['timers']!r}: a visual run times nothing; fix: timers "
+                "false, or leave it out"
+            )
+        vid = variant["id"]
+        if not isinstance(vid, str) or not NAME.fullmatch(vid) or vid.startswith(TWIN):
+            raise RecordError(
+                f"{where}: id {vid!r} is not [a-z0-9-]{{1,40}} or starts with {TWIN}; fix: "
+                "rename it"
+            )
+        if vid in (v["id"] for v in found):
+            raise RecordError(f"{where}: id {vid} is listed twice; fix: rename one")
+        name, profile = variant["pack"], variant["profile"]
+        build = None
+        if is_optilux(name):
+            if profile is not None:
+                raise RecordError(
+                    f"{where}: {name} has no profile (config/profiles/ holds the reference "
+                    "pack's); fix: profile null, its values in `options`"
+                )
+            build = optilux_build(root, name)
+        elif name != pack:
+            raise RecordError(
+                f"{where}: pack {name!r}; fix: the reference pack {pack}, {OPTILUX} or "
+                f"{OPTILUX_AT}<ref> (plans/m3.md D63)"
+            )
+        elif profile is not None and not isinstance(profile, str):
+            raise RecordError(f"{where}: profile {profile!r}; fix: a profile's name, or null")
+        options = profile_options(root, suite, profile) if profile is not None else {}
+        options.update(check_options(where, variant.get("options", {})))
+        found.append(
+            {
+                "id": vid,
+                "pack": name,
+                "profile": profile,
+                "options": options,
+                "timers": False,
+                "build": build,
+            }
+        )
+    return tuple(found)
+
+
+def check_visual_spec(
+    root: Path,
+    data: dict,
+    suite: dict,
+    pack: str,
+    views_file: dict,
+    world: str,
+    notes: str | None,
+    cap: int,
+) -> Spec:
+    """A visual run (plans/m3.md D63): a mode's perf views, in the views file's order; its
+    variants (check_visual_variants); the session's reloads, selftest's and the start-of-run
+    reload, then one per view and variant, within capture.reloadCap: a visual session is never
+    split, as its frames would come from launches apart. No measured run's or acceptance run's
+    keys."""
+    given = [key for key in VISUAL_REFUSED if key in data]
+    if given:
+        raise RecordError(
+            f"{', '.join(given)}: no visual run's (plans/m3.md D63); fix: drop "
+            + ("it" if len(given) == 1 else "them")
+        )
+    variants = check_visual_variants(root, data["variants"], suite, pack)
+    ids = mode_views(suite, data["mode"], views_file)
+    planned = ACCEPTANCE_RELOADS + len(ids) * len(variants)
+    if planned > cap:
+        raise RecordError(
+            f"the visual session plans {planned} reloads ({ACCEPTANCE_RELOADS} + {len(ids)} views "
+            f"x {len(variants)} variants), over capture.reloadCap {cap}, and a visual session is "
+            "never split (plans/m3.md D63); fix: fewer variants"
+            + (", or quick mode" if data["mode"] == "full" else "")
+        )
+    return Spec(
+        data["name"],
+        VISUAL,
+        views_file["id"],
+        world,
+        pack,
+        "bench",
+        PACK_SET,
+        (),
+        notes,
+        data,
+        mode=data["mode"],
+        variants=variants,
+        view_ids=ids,
+        planned=planned,
+    )
+
+
+def acceptance_variant(root: Path, variants: Any, pack: str) -> dict | None:
+    """An acceptance run's one variant, at its pack's defaults (profile null): the reference pack
+    `pack` (None), or the Optilux pack (plans/m3.md D63) as optilux_build resolves it."""
+    wanted = [{"pack": pack, "profile": None}]
+    shaped = (
+        isinstance(variants, list)
+        and len(variants) == 1
+        and isinstance(variants[0], dict)
+        and set(variants[0]) == {"pack", "profile"}
+        and variants[0]["profile"] is None
+        and isinstance(variants[0]["pack"], str)
+    )
+    name = variants[0]["pack"] if shaped else None
+    if name is None or not (name == pack or is_optilux(name)):
+        raise RecordError(
+            f"variants {json.dumps(variants)}: an acceptance run without a mode has one variant at "
+            f"its pack's defaults: the reference pack, {OPTILUX} or {OPTILUX_AT}<ref> (plans/m3.md "
+            f"D63); fix: {json.dumps(wanted)}"
+        )
+    if name == pack:
+        return None
+    return optilux_build(root, name)
 
 
 def check_acceptance_spec(
