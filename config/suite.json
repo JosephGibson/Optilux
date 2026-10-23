@@ -314,7 +314,7 @@
   "queueSignalWhy": "GPULatency well under one frame = CPU-limited; ALC saw ~2.7 frames in all 2,124 captures. PresentMon 2.x: GPULatency = time from the frame's CPU start until the GPU started working on it (README-ConsoleApplication.md, v2.6.0)"
  },
  "statistics": {
-  "schedule": "A, then (Ci, A) pairs, R rounds; A/A twin is always one Ci",
+  "schedule": "A, then (Ci, A) pairs, R rounds; the A/A twin is always the first Ci (plans/m3.md D65)",
   "falseRate": 0.05,
   "thresholdFloorPct": 0.5,
   "calibration": {
