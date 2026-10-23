@@ -285,10 +285,11 @@
    "afterDimensionChange": 4.0
   },
   "visualSettleS": {
-   "default": 1.0,
-   "underwater": 2.0,
+   "default": 4.0,
+   "underwater": 5.0,
    "addAfterDimensionChange": 3.0
   },
+  "visualSettleWhy": "plans/m3.md M3.P09: after a reload the readiness predicate held before the re-mesh ended (A5, m3-a5-1 and -2: 17 of 33 waits frame-final, the misses unbuilt terrain), so the settle stays the visual floor (D68); with 1.0 s (underwater 2.0) m3-determinism-1's pairs moved at ocean_sunset, underwater, entities and end_city, while every frame from 3.0 s (underwater 4.0) after the reload repeated at each view across that session and both A5 launches: so 4.0 and 5.0, a second over it; the addition after a dimension change kept",
   "reloadCap": 20,
   "warmupPass": true,
   "warmupPassWhy": "plans/m2.md D47 over m2-survey-1 and m2-survey-2 (user, 2026-10-14): entities' warm-up capture read its median GPUBusy 1.50 and 1.28 % under the measured pass's first baseline, beyond 0.5 % in both sessions (that pass's spread 0.35 and 0.18 %); every launch runs it, a split session's parts too, so full mode's twin and one candidate at R 2 hold one view a launch (2 + 1 + 9 = 12 reloads; two views 22)",
