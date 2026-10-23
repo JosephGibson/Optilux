@@ -1,84 +1,51 @@
 # Handoff
-Status: the latest stop: M3.P09 done: A5 judged over 33 waits (failed, 17 of 33, so the visual settle stays the floor), the visual settle lengthened by section 7's one fix, the hello pack identical across two full-mode sessions on all 11 views, and the A/A twin first among the Ci.
+Status: the latest stop: M3.P10 at its named stop, the user's go for the calibration hours after the driver call (D66); the identity the calibrations will carry checked, nothing launched. Next: M3.P10 step 3 after the go.
 
 ## Contents
-Outcome · What changed · Review · Choices · Checks · Open questions · Weak points · Commits and time · Next
+Outcome · The identity · The driver · The hours · Checks · Open questions · Commits and time · Next
 
 ## Outcome
 Last phase: M3.P09
-- The exit holds, shown in this session (2026-10-23, ADT), each launch announced and run with the machine left alone:
-  - A5's records judged (D68): m3-a5-1 (07:27:52-07:30:55, waits 1-18, its entry waiting) and m3-a5-2 (07:32:39-07:35:32, waits 19-33, naming it by `remeasures`), one identity, the hello pack at HEAD (zip sha512 d86371b7...).
-    - `compare m3-a5-2`: A5 FAIL: 17 of 33 waits' first frame after the predicate equal to its reference (decoded pixels); rate 0.5152 (17 equal of the 33 waits judged); the record's own verdict the same.
-    - Per view: forest_noon, cave, rain, nether_crimson 3/3; nether_soul, end_dragon 2/3; night 1/3; ocean_sunset, underwater, entities, end_city 0/3.
-    - Every miss is unbuilt terrain (the frames side by side, scratchpad): distant chunks missing at the first frame after the predicate, 0.02-0.95 s after the reload, all of them there 3 s later; the predicate held with limitedBy graph. D68's miss path: the settle stays the visual floor, the rate recorded; m3-a5-2 ended failed on "items failed: A5".
-  - m3-determinism-1 (07:39:07-07:41:12), full mode, the old settle (1.0 s, underwater 2.0): ok, 11 of 11 valid, pairs moving at ocean_sunset, underwater, entities and end_city: their first frames still re-meshing (end_city: 16,490 pixels at the horizon).
-    - Diagnosis (section 7: readiness): at every view the late frames (A5's three references, 3.1-6.9 s after the reload, and this session's second frames, 3.0 s, underwater 4.0) carry one sha256 across all three launches; the first frames match it at 7 views and miss at the 4 moving ones.
-    - The one fix (5f47025): suite.json capture.visualSettleS default 4.0 s, underwater 5.0 (the earliest final frame plus a second), the dimension change's addition 3.0 kept; visualSettleWhy cites the records.
-  - m3-determinism-2 (07:45:22-07:47:59) and m3-determinism-3 (07:48:05-07:50:43), full mode's 11 perf views, the new settle: each ok, 11 of 11 valid, no pair moving.
-    - `compare m3-determinism-3 --against m3-determinism-2`: identical on every view (forest_noon, ocean_sunset, cave, night, underwater, entities, rain, nether_crimson, nether_soul, end_dragon, end_city), each pair identical too.
-    - Every frame of both equals, by sha256, the late frames of the three launches before: the same bits across five launches.
-  - The measured schedule's test puts the twin first: test_the_schedule_brackets_each_candidate_between_two_baselines_the_twin_first and test_a_calibration_sessions_schedule_is_unchanged_by_the_twin_first passed.
-- Facts (section 9): hello pack zip d86371b7... (unchanged since M3.P08); bench_263 snapshot 33a4074d... (128 files); static-textures pack ff44b3cc...; glslang 16.6.0, RGA 2.15 unchanged; the suite identity now 7ba0cc9d... (capture changed); no calibration of the deterministic set yet (M3.P10).
+- M3.P10 step 1 done (13:55-14:01 ADT, 2026-10-23): `run <calibrate's quick session spec> --check --json` ok, nothing launched, no groups (quick mode is one launch), calibration null; identity sha256 4edbb05a97ab879a7dae07e42c003a8067817e310897f608a8121d4976b51d40, full mode's check the same, its groups 11 of one view.
+- Step 2, the stop the prompt names: the user's go for about 4.5 h of machine time, the machine left alone throughout, and D66's driver call.
 
-## What changed
-- d0702e5: A5 as a runnable acceptance item (record.RUNNABLE).
-  - record.a5_waits: three laps of the perf views, each ordered as a measured pass (lap, the ramped weather first).
-  - record.a5_share: a launch takes the waits the cap leaves (2 + 18); a second names the first by `remeasures` and takes the rest; a first is continued once; the name `-` is refused.
-  - measure.a5_body and a5_wait: arrive, a reload, one frames.capture (ready 10 frames and minSeconds 0, aligned on the pack's cycle, the reference the view's visual settle plus 2 s after the first frame); each wait's entry in A5's evidence.
-  - run: A5's portion of the acceptance body, the view functions checked, the second held to the first's identity and zip (a5_same), A5 judged after the record's status (judge_a5) by `compare -` in a child process, so visual.py stays out of `harness`.
-  - compare: A5 records, by name or on stdin: both launches' waits, each frame held to its sha256, decoded pixels (visual.difference); session.record_status: a waiting item (pass null) never fails; the launch announcement and `run --check` name A5's waits.
-- 2f18aae: D65, measure.schedule takes the twins first among the Ci (a calibration session keeps its order); suite.json statistics.schedule's text, measurement.md#session step 7, CHANGELOG.
-- ffb226c: compare's rate line counts the equal waits of those judged.
-- 5f47025: the visual settle's fix (suite.json, measurement.md#readiness, shader.md's water-vision line).
-- b17f0da: the five records; mod.md 7 and 12 (A5 failed, 17 of 33), measurement.md#visual-protocol (the hello pack bit-identical on 11/11), CHANGELOG 0.4.0 (A5, the determinism result).
+## The identity
+From this session's `run --check --json` (the spec calibrate writes: kind calibration, mode quick, Unbound r5.9.3 with the played profile, set deterministic):
+- platform 3bc69860..., tier bench; launchSpec mc-26.3.launch.json de7fdff0...; mods 4 jars;
+- world snapshots/bench_263, tree 33a4074d..., 128 files; views bench_263.json c1e7046e...;
+- resourcePacks deterministic: Faithful 64x Release 15 (bc534dfb...) under optilux-static-textures (ff44b3cc...), options.txt's line vanilla, Faithful, static;
+- settings 24 written keys, no overrides, the token, Sodium's options bf6988db..., 4 iris keys, 174 unwritten;
+- suite 7ba0cc9d...; java jdk-25.0.4.1+1, release 86e5e516..., heap 6144/6144 MiB, no args;
+- system AMD Radeon RX 7800 XT, hags true, 3840x2160, exclusive fullscreen, build 26200;
+- harness 18 modules and PresentMon-2.6.0-x64.exe b2a706bc... with its arguments.
+- Against M2's 95d96878...: launchSpec, mods[0] (the helper), world, views, resourcePacks.set, settings' resourcePacks line, suite and harness (acceptance.py) differ, so every M2 threshold is void here (P18).
+- From the first calibration session the identity is frozen (plans/m3.md section 4). A moved cap (step 3) changes suite and so the hash; the identity is re-checked before the first session.
 
-## Review
-The reviewer agent on A5 and the schedule (correctness; identity): 8 findings, 1 medium and 7 low, each read at its source and fixed before d0702e5:
-- Medium: a first launch could be continued by more than one second, so a rerun half could replace a judged miss. record.a5_continued now refuses it, and compare_a5 checks it again.
-- Low:
-  - A5 was judged before the record's status. It now waits until the status is known, as a measured run's items do.
-  - `compare` refused judged misses. A judged record is now re-judged.
-  - The rate counted flagged waits. It now covers the waits judged.
-  - A first launch could leave more waits than one more launch holds. It is refused.
-  - The announcement left A5 out.
-  - judge_a5 dropped the child's stderr. Its last line is kept.
-  - `-` was a legal run name. It is refused.
-- Its clean reads: nothing pulls compare.py or visual.py into run.py's closure (`--check` lists 18 modules, neither among them); the schedule change leaves stats' bracketing, split_groups, planned_reloads and calibrate unchanged.
+## The driver
+- As found: 32.0.31041.1004 (Win32_VideoController, dated 2026-08-16), the driver every M3 record names since m3-hello-1 (15 records); M2's 197 records name 32.0.31041.3013. It changed outside these sessions between 2026-10-15 and 2026-10-20 (643f270's handoff).
+- So D66's budget run comes first whichever the call: m3-diag-alone-1, m2-diag-alone-1's spec on the deterministic set (its `run --check` holds: full, heap true, calibration null, the baseline alone at forest_noon, 19 rounds), D43's rule over it at the heap 6144 MiB and the 2 twins a session kept (budget.py rule).
+- A moved cap goes to suite.json capture.reloadCap with its `why`, read by the reviewer agent, committed with the record before any calibration session; a cap under 20 would leave quick mode without its 2 twins, section 7's cap cut that needs a decision.
 
-## Choices
-Neither the prompt nor the plan names these:
-- The second launch names the first with `remeasures`, the key A8's second session uses, rather than a new one.
-- A wait's two frames come from one frames.capture, so the reference lies at least the settle plus 2 s after the first frame, later than after the reload.
-- A flagged wait (event, incomplete) is judged neither way and blocks a pass; none was flagged.
-- After m3-determinism-1's moving pairs, section 7's trigger, the unchanged second session was not run: the fix went in, then both sessions ran again. So five launches against the plan's four.
-- The fix's figures, 4.0 and 5.0 s, are the earliest final frames seen plus a second.
-- The displays read off (idle since 06:40) through all five launches. Acceptance and visual runs read no PresentMon, and m3-capture-1 had shown frames render with them off.
+## The hours
+calibrate's sessions (statistics.calibration: 10 a mode, 2 twins each), at the cap as found (20):
+- the budget run: 1 launch, about 5 min (m2-diag-alone-1: 4.9 min);
+- quick: cal-quick-4edbb05a97ab-1 to -10, 1 launch each (3 views, R 1, 2 + 3 + 3 x 5 = 20 reloads): 10 launches, about 0.5 h (M2: 27.6 min);
+- full: cal-full-4edbb05a97ab-1 to -10, 11 launches each (one view, R 2, 2 + 1 + 9 = 12): 110 launches, about 3.4 h (M2: 121 in 223.8 min);
+- the known positive, SHADOW_QUALITY -1 over the baseline beside the twin: quick 1 launch (about 3 min), full 11 launches (about 20 min);
+- in all 133 launches, about 4.5 h, each announced; a twin beyond the threshold adds a mode's shadows run once.
+- A moved cap holds 2 views a full launch at 30 (6 a session: 60 calibration launches), 3 at 40 (4: 40), so about 0.5-0.75 h less.
+- The machine left alone throughout: D42 waits for 30 s without input and no other 3D load before each launch; a message to this session counts as input; NoMachine disconnected (it composed m2's -5-p9: memory), check-ins from another device. The displays held on by calibrate's and run's request and a scratch hold between commands.
 
 ## Checks
-- Start (06:40 ADT): branch m3 clean at 69d8155; 1016 passed; verify docs 0 violations.
-- Before each commit, on a tree equal to it: 1023 (d0702e5), then 1024 passed at 2f18aae, ffb226c, 5f47025 and b17f0da; ruff, ruff format and pyright clean; verify docs 0 violations; verify records 0 violations (238 records at b17f0da).
-- CI green on d0702e5, 2f18aae, ffb226c and 5f47025, each watched to its end before the next push; b17f0da's and this handoff's watched before the report.
+- Start (13:55 ADT): branch m3 clean at de68869; 1024 passed; verify docs 35 files, 0 violations.
 
 ## Open questions
-- The readiness predicate after a reload: in A5 it held 0.02-0.95 s after `shaders.reload` (limitedBy graph), before Sodium's re-mesh showed in any term read, 16 times in 33. A mod change that sees the re-mesh, then A5 again, could make the predicate the floor. Whose phase is the user's call; the settle covers it now.
-- Perf windows start 1.5 s after a reload (capture.settleS). At ocean_sunset, underwater, entities and end_city frames were still re-meshing at 1.0-2.0 s, so a window there may open on terrain still arriving. The bracketing and the halves check bound it; whether to lengthen settleS before M3.P10 freezes the identity is the user's call (no evidence on GPUBusy yet).
-- Settled here: the water fog colour (its 3 s ramp lies inside underwater's 5.0 s settle; underwater identical across sessions).
-- Carried:
-  - `screen = BENCH_DETERMINISTIC` reading `screen = 1` (M3.P08);
-  - the beacon beam and clouds across launches (P22; the perf views show neither);
-  - the moving coverage items (D64); Unbound's missing coverage-mob shadows; the hello pack's olive End stone; whether 26.3 animates textures on frozen ticks;
-  - the display guard for A9; Nether fog and the features on neither list;
-  - D66, the driver; D72; spider eyes and the world's difficulty (M4);
-  - M2's carried list (git 7dfc2fa's handoff).
-
-## Weak points
-- The settle's margin rests on the late frames seen: one session's second frames at 3.0 s (4.0 underwater) and A5's references; a slower re-mesh on another day would show as a moving pair.
-- A5 judged one predicate setting (10 stable frames); its misses say when the predicate held, not how long the re-mesh takes.
-- Margins: measurement.md 3 bytes, run-record.md 9, platform.md 7, mod.md 15, AGENTS.md 16, workflow.md 199.
+- The perf settle (capture.settleS afterReload 1.5 s, M3.P09's open question), the user's call before the freeze: M2's full calibration at 1.5 s read each view's mean second-half GPUBusy change within -0.84 to +0.04 % (110 valid captures a view, nether_soul 100; rain the largest), the four views still re-meshing at 1-2 s at -0.23 to -0.02 %, so no sign of terrain arriving inside a window; keeping it is the recommendation.
+- Carried from M3.P09's handoff (de68869): the readiness predicate after a reload; `screen = BENCH_DETERMINISTIC`; the beacon beam and clouds; the moving coverage items (D64); Unbound's coverage-mob shadows; the olive End stone; textures on frozen ticks; the display guard for A9; Nether fog and the features on neither list; D72; spider eyes and the world's difficulty (M4); M2's carried list (git 7dfc2fa's handoff).
 
 ## Commits and time
-- d0702e5, 2f18aae, ffb226c, 5f47025, b17f0da; then this handoff.
-- 2026-10-23, 06:40-08:05 ADT: about 1.4 h against 2.5 h; machine five launches, about 13 min. Tripwire: actuals about 61.1 h (M0 3.3, M1 20.3, M2 about 21.3, M3.P00 about 2.0, P01 0.8, P02 0.8, P03 1.9, P04 1.9, P05 1.4, P06 2.1, P07 2.1, P08 1.8, P09 1.4); the trip at 174.6 h.
+- This stop's handoff, after de68869.
+- M3.P10 so far: about 0.1 h active from 13:55 ADT; machine: none.
 
 ## Next
-/optilux-next prints M3.P10's prompt: the recalibration on the deterministic set, after the user's driver call and go (D66); the perf settle above is an open question before it.
+The user's go and driver call; then the budget run (step 3), `uv run optilux calibrate --mode quick`, then `--mode full` (step 4), resumed by a rerun if one stops.
