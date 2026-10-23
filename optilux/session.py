@@ -637,7 +637,8 @@ def record_status(
             continue
         passed = found.pop("pass")
         acceptance.append({"item": item, "pass": passed, "evidence": found})
-    failed = [entry["item"] for entry in acceptance if not entry["pass"]]
+    # An item whose verdict waits (pass null: A5's first launch) has not failed.
+    failed = [entry["item"] for entry in acceptance if entry["pass"] is False]
     if failed and status == "ok":
         status = "failed"
         problems.append(f"items failed: {', '.join(failed)}")

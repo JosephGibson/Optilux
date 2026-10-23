@@ -15,6 +15,11 @@ the other visual record ok and of an identity equal key by key, sharing a varian
 frames, each read under results/raw/ and held to the sha256 its record names, are tiered by
 optilux/visual.py (each pair, each candidate against the baseline, each variant against itself
 in the other run) and review.html is written beside report.html (D63).
+
+An acceptance record of A5 (plans/m3.md D68) takes no calibration either: the waits of the launch
+that ends its sequence and of the first launch it names (`remeasures`), of one identity and one
+zip, each wait's first frame after the predicate against its reference by decoded pixels. `run`
+hands it the record so far on stdin (`compare - --json`) before writing it.
 """
 
 import argparse
@@ -46,6 +51,15 @@ def compare(root: Path, name: str, cid: str | None, against: str | None = None) 
     entries, and whether the record's own verdicts agree. A visual record is tiered instead
     (compare_visual), with `against` the visual record to tier it against."""
     found = record.read_record(root, name)
+    if found.get("kind") == "acceptance" and record.a5_entry(found) is not None:
+        if found.get("name") != name:  # its raw folder goes by the file's name
+            raise CompareError(f"{name}'s record names {found.get('name')!r}; fix: restore it")
+        if cid is not None or against is not None:
+            raise CompareError(
+                f"{name} carries A5, judged by its frames, never by a calibration or against "
+                "another run; fix: drop --calibration and --against"
+            )
+        return compare_a5(root, found)
     if found.get("kind") == record.VISUAL:
         if found.get("name") != name:  # its raw folder and page go by the file's name
             raise CompareError(f"{name}'s record names {found.get('name')!r}; fix: restore it")
@@ -211,6 +225,141 @@ def compare_visual(root: Path, found: dict, against: str | None) -> dict:
     return result
 
 
+def compare_a5(root: Path, found: dict) -> dict:
+    """A5's verdict (mod.md#12-acceptance, plans/m3.md D68) over the record `found` and the first
+    launch it names (`remeasures`): the refusals in order (its status; the first's name, its
+    identity key by key and its zip; the waits of both, in order, the views file's A5 sequence
+    whole; no other launch naming the first); then each wait's two frames read under
+    results/raw/<run>/, held to their recorded sha256 and decoded, the first after the predicate
+    against the reference; a wait whose capture is flagged is judged neither way. A record that
+    ended ok, or failed on its own A5 verdict (a miss: `run` judges only an ok session), is judged.
+    Passed when every wait's frames are equal. The result: pass, why, judged (the counts, the rate
+    over the waits judged, the misses, the waits unjudged, each wait)."""
+    from optilux import visual  # the frames' libraries load for an A5 record alone
+
+    name = str(found.get("name"))
+    entry = record.a5_entry(found) or {}
+    own = record.as_dict(entry.get("evidence"))
+    judged_here = isinstance(entry.get("pass"), bool) and "judged" in own
+    if found.get("status") != "ok" and not judged_here:
+        raise CompareError(
+            f"{name}'s status is {found.get('status')} ({found.get('reason')}), and its A5 was "
+            "never judged: its waits are not whole; fix: rerun A5 under new names"
+        )
+    spec = record.as_dict(found.get("spec"))
+    views_id = spec.get("views")
+    if not isinstance(views_id, str) or not record.VIEW_ID.fullmatch(views_id):
+        raise CompareError(f"{name}'s spec names views {views_id!r}; fix: restore the record")
+    launches: list[tuple[str, list]] = []
+    first_name = spec.get("remeasures")
+    if first_name is not None:
+        if not isinstance(first_name, str) or not record.NAME.fullmatch(first_name):
+            raise CompareError(f"{name}'s spec names remeasures {first_name!r}; fix: restore it")
+        first = record.read_record(root, first_name)
+        others = [n for n in record.a5_continued(root, first_name) if n != name]
+        if others:
+            raise CompareError(
+                f"{first_name} is continued by {', '.join(others)} too: a first A5 launch is "
+                "judged once (plans/m3.md D68); fix: compare the launch that continued it first"
+            )
+        if first.get("name") != first_name:
+            raise CompareError(
+                f"{first_name}'s record names {first.get('name')!r}; fix: restore it"
+            )
+        differ = record.identity_differences(found.get("identity"), first.get("identity"))
+        if differ:
+            raise CompareError(
+                f"{name} and {first_name} differ in identity: {', '.join(differ)}; fix: both of "
+                "A5's launches under one identity (run-record.md#comparison)"
+            )
+        zips = [[v.get("sha512") for v in r.get("variants") or []] for r in (first, found)]
+        if zips[0] != zips[1]:
+            raise CompareError(f"{name} and {first_name} loaded other zips; fix: one pack in both")
+        theirs = record.as_dict((record.a5_entry(first) or {}).get("evidence"))
+        launches.append((first_name, theirs.get("waits") or []))
+    launches.append((name, own.get("waits") or []))
+    views, _ = record.load_views(root, views_id)
+    seq = record.a5_waits(views)
+    waits = [(run, w) for run, held in launches for w in held if isinstance(w, dict)]
+    got = [(w.get("lap"), w.get("view")) for _, w in waits]
+    if got != seq or [w.get("wait") for _, w in waits] != list(range(1, len(seq) + 1)):
+        raise CompareError(
+            f"{' and '.join(r for r, _ in launches)} hold {len(waits)} A5 waits, not the "
+            f"sequence's {len(seq)} in order (plans/m3.md D68); fix: A5's first launch, then a "
+            "second naming it"
+        )
+    per = []
+    for run, w in waits:
+        held = {"wait": w["wait"], "run": run, "view": w["view"]}
+        frames = w.get("frames") or []
+        if not w.get("valid") or len(frames) != 2:
+            per.append({**held, "equal": None, "flags": w.get("flags") or ["incomplete"]})
+            continue
+        try:
+            arrays = [
+                visual.decode(frame_bytes(root, {"run": run, **f}), shown_frame({"run": run, **f}))
+                for f in frames
+            ]
+        except visual.VisualError as error:
+            raise CompareError(str(error)) from None
+        per.append({**held, **visual.difference(arrays[0], arrays[1])})
+    equal = sum(1 for p in per if p["equal"] is True)
+    misses = [f"{p['wait']} {p['view']}" for p in per if p["equal"] is False]
+    unjudged = [f"{p['wait']} {p['view']}" for p in per if p["equal"] is None]
+    judgeable = len(seq) - len(unjudged)  # the rate leaves out the waits judged neither way
+    why = (
+        f"{equal} of {len(seq)} waits' first frame after the predicate equal to its reference "
+        f"(decoded pixels), in {', '.join(r for r, _ in launches)}"
+        + (f"; misses: {', '.join(misses)}" if misses else "")
+        + (f"; unjudged (flagged): {', '.join(unjudged)}" if unjudged else "")
+    )
+    judged = {
+        "waits": len(seq),
+        "equal": equal,
+        "judgeable": judgeable,
+        "rate": round(equal / judgeable, 4) if judgeable else None,
+        "launches": [r for r, _ in launches],
+        "misses": misses,
+        "unjudged": unjudged,
+        "perWait": per,
+    }
+    result: dict[str, Any] = {
+        "name": name,
+        "kind": "acceptance",
+        "a5": {"pass": equal == len(seq), "why": why, "judged": judged},
+    }
+    if entry.get("pass") is not None:
+        result["sameAsRecord"] = (entry.get("pass"), own.get("judged")) == (
+            result["a5"]["pass"],
+            judged,
+        )
+    return result
+
+
+def a5_lines(result: dict) -> list[str]:
+    """A5's verdict as text: the outcome and why, each view's waits equal of its waits."""
+    a5, judged = result["a5"], result["a5"]["judged"]
+    out = [f"{PREFIX} {result['name']}: A5 {'pass' if a5['pass'] else 'FAIL'}: {a5['why']}"]
+    views: dict[str, list[dict]] = {}
+    for p in judged["perWait"]:
+        views.setdefault(p["view"], []).append(p)
+    out.append(
+        "  per view: "
+        + ", ".join(
+            f"{view} {sum(1 for p in held if p['equal'] is True)}/{len(held)}"
+            for view, held in views.items()
+        )
+    )
+    rate = "none" if judged["rate"] is None else f"{judged['rate']:.4f}"
+    out.append(f"  rate {rate} ({judged['equal']} of the {judged['judgeable']} waits judged)")
+    if "sameAsRecord" in result:
+        out.append(
+            "  the record's own A5 verdict: "
+            + ("the same" if result["sameAsRecord"] else "DIFFERENT from this")
+        )
+    return out
+
+
 def shown_frame(frame: dict) -> str:
     return f"{record.RAW}/{frame['run']}/{frame['path']}"
 
@@ -305,7 +454,11 @@ def lines(result: dict) -> list[str]:
 
 
 def configure(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("name", metavar="run", help="a run's name: results/records/<run>.json")
+    parser.add_argument(
+        "name",
+        metavar="run",
+        help="a run's name: results/records/<run>.json, or - for an A5 record on stdin (`run`'s)",
+    )
     parser.add_argument(
         "--calibration",
         help="the calibration's id (config/calibrations/<id>.json); default: the record's",
@@ -317,9 +470,25 @@ def configure(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def stdin_a5(root: Path) -> dict:
+    """The record `run` hands on stdin before writing it: A5's (compare_a5)."""
+    try:
+        found = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+    except ValueError as error:
+        raise CompareError(f"the record on stdin is no JSON ({error})") from None
+    if not isinstance(found, dict) or record.a5_entry(found) is None:
+        raise CompareError("the record on stdin carries no A5; fix: name a record instead")
+    return compare_a5(root, found)
+
+
 def run(args: argparse.Namespace) -> int:
     try:
-        result = compare(REPO_ROOT, args.name, args.calibration, args.against)
+        if args.name == record.STDIN:
+            if args.calibration is not None or args.against is not None:
+                raise CompareError("- judges A5 alone; fix: drop --calibration and --against")
+            result = stdin_a5(REPO_ROOT)
+        else:
+            result = compare(REPO_ROOT, args.name, args.calibration, args.against)
     except (CompareError, record.RecordError, stats.StatsError) as error:
         if args.json:
             print(json.dumps({"ok": False, "problem": str(error)}))
@@ -328,6 +497,8 @@ def run(args: argparse.Namespace) -> int:
         return 1
     if args.json:
         print(json.dumps({"ok": True, **result}))
+    elif "a5" in result:
+        print("\n".join(a5_lines(result)))
     elif result.get("kind") == record.VISUAL:
         from optilux import visual
 

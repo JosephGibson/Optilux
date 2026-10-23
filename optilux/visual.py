@@ -130,6 +130,18 @@ def tier(reference: np.ndarray, test: np.ndarray, fid: Fidelity) -> dict:
     return {"tier": "close" if close else "review", **found}
 
 
+def difference(reference: np.ndarray, test: np.ndarray) -> dict:
+    """Whether two frames' decoded pixels are equal (A5's test, mod.md#12-acceptance), and when not
+    the largest decoded difference and the pixels that differ; frames of two sizes never equal."""
+    if reference.shape != test.shape:
+        sizes = " and ".join(f"{a.shape[1]}x{a.shape[0]}" for a in (reference, test))
+        return {"equal": False, "why": f"sizes {sizes}"}
+    if np.array_equal(reference, test):
+        return {"equal": True}
+    diff = np.abs(reference.astype(np.int16) - test.astype(np.int16)).max(axis=-1)
+    return {"equal": False, "maxAbsDiff": int(diff.max()), "pixels": int(np.count_nonzero(diff))}
+
+
 def first_frames(found: dict) -> dict[tuple[str, str], dict]:
     """A visual record's captures by (view, variant)."""
     return {(c["view"], c["variant"]): c for c in found.get("captures") or []}
