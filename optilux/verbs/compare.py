@@ -351,7 +351,7 @@ def a5_lines(result: dict) -> list[str]:
         )
     )
     rate = "none" if judged["rate"] is None else f"{judged['rate']:.4f}"
-    out.append(f"  rate {rate} ({judged['equal']} of the {judged['judgeable']} waits judged)")
+    out.append(f"  rate {rate} ({judged['equal']} equal of the {judged['judgeable']} waits judged)")
     if "sameAsRecord" in result:
         out.append(
             "  the record's own A5 verdict: "

@@ -2885,7 +2885,7 @@ def test_a5_takes_33_waits_in_two_launches_and_the_second_judges_them(
     lines = compare_verb.a5_lines(again)
     assert lines[0].startswith("optilux compare m3-a5-test-2: A5 pass: 33 of 33")
     assert "forest_noon 3/3" in lines[1]
-    assert lines[2] == "  rate 1.0000 (33 of the 33 waits judged)"
+    assert lines[2] == "  rate 1.0000 (33 equal of the 33 waits judged)"
     # A first launch is continued once: a third naming it is refused (a verdict is never redone).
     with pytest.raises(record.RecordError, match="continued already by m3-a5-test-2"):
         run_verb.checked(root, a5_spec("m3-a5-test-3", remeasures="m3-a5-test-1"))
