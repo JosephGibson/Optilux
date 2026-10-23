@@ -17,6 +17,7 @@ import threading
 import time
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -2787,6 +2788,166 @@ def test_the_switch_reads_an_empty_settings_file_and_every_file_is_journaled(fak
         f"{folder}/optilux.zip.part",
         f"{folder}/optilux.zip.txt",
     ]
+
+
+# A5 (mod.md#12-acceptance, plans/m3.md D68).
+
+
+def a5_spec(name: str, **changes: Any) -> dict:
+    return optilux_spec("optilux", name=name, items=["A5", "A10"], **changes)
+
+
+def a5_record(root: Path, name: str) -> tuple[dict, dict]:
+    found = json.loads((root / record.RECORDS / f"{name}.json").read_text(encoding="utf-8"))
+    return found, record.a5_entry(found) or {}
+
+
+def test_a5_takes_33_waits_in_two_launches_and_the_second_judges_them(
+    fake_run, monkeypatch, capsys
+) -> None:
+    """D68 on the fake: three laps of bench_263's eleven perf views, a reload each; the first
+    launch takes the 18 the reload cap leaves it (2 + 18 = 20), its entry waiting; the second
+    names it and takes the other 15, then judges all 33 by their frames' decoded pixels in `compare
+    -`'s child process: the hello pack's frames repeat, so every wait is equal. `compare` by name
+    agrees with the record, and both records pass verify."""
+    root, spec_path, fake, host = fake_run
+    fresh_games(monkeypatch, fake, host)
+    optilux_tree(root)
+    seq = record.a5_waits(VIEWS)
+    assert len(seq) == 33 and [lap for lap, _ in seq] == [1] * 11 + [2] * 11 + [3] * 11
+    assert {vid for _, vid in seq} == {v["id"] for v in VIEWS["views"]}
+    spec_path.write_text(json.dumps(a5_spec("m3-a5-test-1")), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    first, entry = a5_record(root, "m3-a5-test-1")
+    assert (first["status"], entry["pass"]) == ("ok", None)
+    evidence = entry["evidence"]
+    assert "judged in the next launch's record" in evidence["pending"]
+    assert (evidence["from"], evidence["count"], evidence["of"]) == (1, 18, 33)
+    waits = evidence["waits"]
+    assert [(w["lap"], w["view"]) for w in waits] == seq[:18]
+    assert reloads(fake) == 1 + 18  # the start-of-run reload, then one a wait (selftest's aside)
+    raw = root / first["raw"]
+    for w in waits:
+        predicate, reference = w["frames"]
+        assert w["ready"]["frameIndex"] == predicate["frameIndex"] and w["valid"]
+        assert w["referenceAfterS"] == w["settleS"] + measure.A5_PLUS_S
+        assert reference["qpcNs"] - predicate["qpcNs"] >= w["referenceAfterS"] * 1e9
+        assert predicate["path"].startswith(f"frames/{w['view']}/a5/attempt-")
+        assert (
+            hashlib.sha256((raw / predicate["path"]).read_bytes()).hexdigest()
+            == (predicate["sha256"])
+        )
+    asked = [m["args"] for m in fake.received if m["cmd"] == "frames.capture"]
+    assert all(a["ready"] == {"stableFrames": 10, "minSeconds": 0.0} for a in asked)
+    said = capsys.readouterr().out
+    assert "session start (A10), A5's waits 1-18 of 33, a reload each" in said
+    assert verify.record_problems(root, "m3-a5-test-1", json.dumps(first).encode()) == ([], None)
+    second_spec = a5_spec("m3-a5-test-2", remeasures="m3-a5-test-1")
+    spec_path.write_text(json.dumps(second_spec), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    said = capsys.readouterr().out
+    assert "A5's waits 19-33 of 33, a reload each, continuing m3-a5-test-1" in said
+    second, entry = a5_record(root, "m3-a5-test-2")
+    assert (second["status"], entry["pass"]) == ("ok", True), second["reason"]
+    evidence = entry["evidence"]
+    assert [(w["lap"], w["view"]) for w in evidence["waits"]] == seq[18:]
+    judged = evidence["judged"]
+    assert (judged["waits"], judged["equal"], judged["rate"]) == (33, 33, 1.0)
+    assert judged["launches"] == ["m3-a5-test-1", "m3-a5-test-2"] and not judged["misses"]
+    assert evidence["why"].startswith("33 of 33 waits' first frame after the predicate equal")
+    again = compare_verb.compare(root, "m3-a5-test-2", None)
+    assert again["a5"]["pass"] is True and again["sameAsRecord"] is True
+    assert verify.record_problems(root, "m3-a5-test-2", json.dumps(second).encode()) == ([], None)
+    lines = compare_verb.a5_lines(again)
+    assert lines[0].startswith("optilux compare m3-a5-test-2: A5 pass: 33 of 33")
+    assert "forest_noon 3/3" in lines[1]
+    assert lines[2] == "  rate 1.0000 (33 of the 33 waits judged)"
+    # A first launch is continued once: a third naming it is refused (a verdict is never redone).
+    with pytest.raises(record.RecordError, match="continued already by m3-a5-test-2"):
+        run_verb.checked(root, a5_spec("m3-a5-test-3", remeasures="m3-a5-test-1"))
+    # A flagged wait is judged neither way: no pass, and the rate leaves it out.
+    flagged = copy.deepcopy(second)
+    wait = (record.a5_entry(flagged) or {})["evidence"]["waits"][0]
+    wait.update(valid=False, flags=["event"])
+    judged = compare_verb.compare_a5(root, flagged)["a5"]
+    assert judged["pass"] is False and judged["judged"]["unjudged"] == ["19 nether_crimson"]
+    assert (judged["judged"]["equal"], judged["judged"]["rate"]) == (32, 1.0)
+
+
+def test_a5_counts_a_miss_when_the_frame_after_the_predicate_is_not_final(
+    fake_run, monkeypatch
+) -> None:
+    """A pack whose frames move (the fake's TAA) never repeats, so each wait's first frame after
+    the predicate differs from its reference: a miss each, the rate recorded, A5 failed and the
+    settle kept (D68). With a cap that holds all 33, one launch judges them itself."""
+    root, spec_path, fake, _ = fake_run
+    optilux_tree(root)
+    suite_path = root / platform.SUITE
+    suite = json.loads(suite_path.read_text(encoding="utf-8"))
+    suite["capture"]["reloadCap"] = 35
+    suite_path.write_text(json.dumps(suite), encoding="utf-8")
+    fake.moving = {"optilux.zip"}
+    spec_path.write_text(json.dumps(a5_spec("m3-a5-test-1")), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 1
+    found, entry = a5_record(root, "m3-a5-test-1")
+    judged = entry["evidence"]["judged"]
+    assert (found["status"], entry["pass"]) == ("failed", False)
+    assert found["reason"] == "items failed: A5"
+    assert (judged["equal"], judged["rate"], len(judged["misses"])) == (0, 0.0, 33)
+    assert all(p["equal"] is False and p["pixels"] > 0 for p in judged["perWait"])
+    again = compare_verb.compare(root, "m3-a5-test-1", None)  # a judged miss is re-judged
+    assert again["a5"]["pass"] is False and again["sameAsRecord"] is True
+    assert verify.record_problems(root, "m3-a5-test-1", json.dumps(found).encode()) == ([], None)
+
+
+def test_a5s_second_launch_is_refused_on_another_zip_or_no_first(fake_run) -> None:
+    """The second launch's waits are judged with the first's: the same zip (and identity), the
+    first an ok A5 launch whose entry waits; each refusal names its fix."""
+    root, spec_path, _, _ = fake_run
+    optilux_tree(root)
+    spec_path.write_text(json.dumps(a5_spec("m3-a5-test-1")), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    with pytest.raises(record.RecordError, match="no record"):
+        run_verb.checked(root, a5_spec("m3-a5-test-2", remeasures="m3-a5-none"))
+    with pytest.raises(record.RecordError, match="a second launch holds 18"):
+        run_verb.checked(root, a5_spec("m3-a5-test-9", reloads=10))  # 8 now, 25 left
+    (root / "shader/shaders/final.fsh").write_bytes(b"void main() {  }\n")
+    second = a5_spec("m3-a5-test-2", remeasures="m3-a5-test-1")
+    with pytest.raises(record.RecordError, match="loaded another zip"):
+        run_verb.prepare(root, second, FakeMachine())
+
+
+def a5_runner(root: Path, plan: dict) -> Any:
+    """judge_a5's view of a runner: the spec's A5 share, the problems, what the child reads."""
+    spec = SimpleNamespace(a5=plan, name="m3-a5-test-2", kind="acceptance", data={})
+    return SimpleNamespace(spec=spec, problems=[], root=root, ident=None, variants=[])
+
+
+def test_a5_waits_unjudged_unless_its_session_ended_ok_and_ends_the_sequence(tmp_path) -> None:
+    """The verdict comes after the record's status (as a measured run's items): a session that
+    ended otherwise, or a first launch, leaves A5 waiting with why; a child that answers nothing
+    leaves it unjudged, its stderr's last line kept, and fails the record."""
+    plan = {"first": None, "from": 1, "count": 18, "of": 33}
+
+    def entry() -> list[dict]:
+        return [{"item": "A5", "pass": None, "evidence": {"complete": True, "waits": []}}]
+
+    run = a5_runner(tmp_path, plan)
+    acceptance = entry()
+    assert run_verb.judge_a5(run, acceptance, "invalid") == "invalid"
+    assert acceptance[0]["evidence"]["pending"].startswith("the session ended invalid")
+    acceptance = entry()
+    assert run_verb.judge_a5(run, acceptance, "ok") == "ok" and acceptance[0]["pass"] is None
+    assert "waits 1-18 of 33 here" in acceptance[0]["evidence"]["pending"]
+    run = a5_runner(tmp_path, {**plan, "first": "m3-a5-test-1", "from": 19, "count": 15})
+    acceptance = entry()
+    child = ("-c", "import sys; sys.stderr.write('boom' + chr(10)); sys.exit(3)")
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(run_verb, "A5_COMMAND", child)
+        assert run_verb.judge_a5(run, acceptance, "ok") == "failed"
+    assert acceptance[0]["pass"] is None
+    assert acceptance[0]["evidence"]["pending"] == "unjudged: `compare -` exited 3: boom"
+    assert run.problems == ["A5 unjudged: `compare -` exited 3: boom"]
 
 
 # A visual run (plans/m3.md D63).

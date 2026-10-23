@@ -129,6 +129,11 @@ PAIR = record.VISUAL_PAIR
 PAIR_MS = 2000
 FRAMES = "frames"
 VISUAL_CAPTURE_TIMEOUT = READY_TIMEOUT + 30.0
+# A5's waits (mod.md#12-acceptance, plans/m3.md D68): per wait one frames.capture of two frames,
+# the first frame after the readiness predicate held (minSeconds 0: the predicate alone) and the
+# reference, the view's visual settle plus A5_PLUS_S later, under frames/<view>/a5/.
+A5_FOLDER = "a5"
+A5_PLUS_S = 2.0
 # A dump run's prints (plans/m3.md D60; Iris 1.11.7, javap): with enableDebugOptions on, a reload
 # writes game/preprocessed.properties and original.properties (ShaderProperties: the pack's
 # shaders.properties after and before its preprocessor), patched_shaders/<id>.properties for each
@@ -1203,6 +1208,101 @@ def visual_capture(m: Measured, view: dict, variant: Variant, settle: float) -> 
     }
     m.entries.append(entry)
     m.journal.append("captures", entry)
+
+
+def a5_body(m: Measured, pack: str, waits: list[tuple[int, int, str]], evidence: dict) -> None:
+    """This launch's A5 waits (mod.md#12-acceptance, plans/m3.md D68), each (number, lap, view
+    id): the view reached as a measured pass reaches it (arrive), then a5_wait; the GUI hidden
+    again after a view that shows the hand. Each wait's entry goes into evidence["waits"] as it is
+    taken."""
+    by_id = {v["id"]: v for v in m.views}
+    for n, lap_no, vid in waits:
+        view = by_id[vid]
+        changed = arrive(m, view)
+        a5_wait(m, pack, n, lap_no, view, changed, evidence)
+    if m.gui:
+        leave_gui(m, "A5 end")
+
+
+def a5_wait(
+    m: Measured, pack: str, n: int, lap_no: int, view: dict, changed: bool, evidence: dict
+) -> None:
+    """One A5 wait at a view just reached: a reload of `pack`, then one frames.capture: ready
+    (STABLE_FRAMES, minSeconds 0: the predicate alone) takes the first frame after the predicate
+    held, aligned on the pack's cycle, and the reference the view's visual settle (its addition
+    after a dimension change included: measurement.md#readiness) plus A5_PLUS_S after it; the pose
+    held. Its entry: the reload, ready's report, both frames (path under raw/, sha256, stamps),
+    the seconds between them and the flags (incomplete, event) that leave it unjudged."""
+    s, c = m.s, m.c
+    label = f"A5 {n:02d} {view['id']}"
+    settle = visual_settle(m.suite["capture"], view, changed)
+    after = settle + A5_PLUS_S
+    m.reloads += 1
+    reload = s.step(
+        f"{label}: shaders.reload",
+        lambda: c.shaders_reload(RELOAD_TIMEOUT, 2, pack=pack),
+        lambda a: f"{a['seconds']:.3f} s, reloadFrame {a['reloadFrame']}",
+    )
+    folder = s.raw / FRAMES / view["id"] / A5_FOLDER
+    align = (m.cycle, 0)
+    taken = s.step(
+        f"{label}: frames.capture",
+        lambda: c.frames_capture(
+            folder,
+            PAIR,
+            VISUAL_CAPTURE_TIMEOUT + after,
+            interval_ms=after * 1000,
+            align=align,
+            ready=(STABLE_FRAMES, 0.0),
+        ),
+        lambda a: (
+            f"frames {', '.join(str(f['frameIndex']) for f in a['frames'])} after "
+            f"{a['ready']['seconds']:.2f} s ready, limitedBy {a['ready']['limitedBy']}"
+        ),
+        # The frames and ready's report go into the wait's entry; the step keeps where they lie.
+        keep=lambda a: {
+            "manifest": a["manifest"],
+            "frames": [f["frameIndex"] for f in a["frames"]],
+        },
+    )
+    held = s.step(f"{label}: camera.get", c.camera_get)
+    moved = modclient.pose_differences(view_pose(view), held["pose"])
+    if moved:
+        raise RunError(f"{label}: the camera left the view during the capture: {moved}")
+    attempt = folder.relative_to(s.raw) / Path(taken["manifest"]).parent.name
+    frames = [
+        {
+            "path": (attempt / frame["name"]).as_posix(),
+            "sha256": frame["sha256"],
+            **{key: frame[key] for key in modclient.MARK_KEYS},
+        }
+        for frame in taken["frames"]
+    ]
+    ready = taken["ready"]
+    last = frames[-1]["frameIndex"] if frames else ready["frameIndex"]
+    events = window_events(s.events, ready["frameIndex"], last + 1)
+    whole = len(frames) == PAIR and not taken["dropped"] and taken["verified"]["complete"] is True
+    flags = ([] if whole else ["incomplete"]) + (["event"] if events else [])
+    evidence["waits"].append(
+        {
+            "wait": n,
+            "lap": lap_no,
+            "view": view["id"],
+            "dimensionChanged": changed,
+            "settleS": settle,
+            "referenceAfterS": after,
+            "reload": {k: reload[k] for k in ("seconds", "reloadFrame", "pack")},
+            "ready": ready,
+            "frames": frames,
+            "apartSeconds": round((frames[-1]["qpcNs"] - frames[0]["qpcNs"]) / 1e9, 4)
+            if whole
+            else None,
+            "dropped": taken["dropped"],
+            "flags": flags,
+            "valid": not flags,
+            "events": [f"{e['event']} at frame {e['frameIndex']}" for e in events],
+        }
+    )
 
 
 def visual_problems(entries: list[dict], planned: int, laps_done: bool) -> list[str]:

@@ -1172,6 +1172,13 @@ def session_plan(spec: record.Spec, views: dict) -> str:
     per_view = [item for item in ("A2", "A3") if item in spec.items]
     if per_view:
         parts.append(f"{' and '.join(per_view)} on {len(views['views'])} views")
+    if spec.a5 is not None:
+        a5 = spec.a5
+        last = a5["from"] + a5["count"] - 1
+        parts.append(
+            f"A5's waits {a5['from']}-{last} of {a5['of']}, a reload each"
+            + (f", continuing {a5['first']}" if a5["first"] else "")
+        )
     if spec.reloads:
         parts.append(f"F4's {spec.reloads} reloads")
     return ", ".join(parts)

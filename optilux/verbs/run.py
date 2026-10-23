@@ -131,6 +131,10 @@ L0_TIMEOUT = 600
 # `check L1` on a dump run's own record before it is written (plans/m3.md M3.P08): its closures
 # become the record's `offline` field, the child kept out of the measured closure as L0's is.
 L1_COMMAND = ("-m", "optilux.cli", "check", "L1", "-", "--json")
+# A5's verdict over its waits' frames (plans/m3.md D68): `compare -` on the record so far, the
+# frames decoded by optilux/visual.py in the child, out of the measured closure.
+A5_COMMAND = ("-m", "optilux.cli", "compare", "-", "--json")
+A5_TIMEOUT = 600
 # A visual run aligns its captures on the Optilux pack's cycle (plans/m3.md D63), which pipeline
 # spec v0 states (D57); Iris's frame counter wraps at 720720, which a cycle must divide.
 PIPELINE = "config/pipeline.json"
@@ -292,7 +296,8 @@ def prepare(
     pack = launch.reference_pack(plat)
     spec = checked(root, spec_in, fresh)
     views, views_path = record.load_views(root, spec.views)
-    walks = spec.mode is not None or spec.kind == record.DUMP  # it calls the view functions
+    # It calls the view functions (A5 reaches its views as a measured pass does).
+    walks = spec.mode is not None or spec.kind == record.DUMP or spec.a5 is not None
     stale = measure.stale_functions(root, views) if walks else []
     if stale:
         raise record.RecordError(
@@ -354,6 +359,10 @@ def prepare(
         zips, cycle = visual_zips(root, spec), pipeline_cycle(root)
     elif spec.kind == record.DUMP:
         zips = visual_zips(root, spec)
+    elif spec.a5 is not None:  # aligned on the pack's cycle, as a visual run's captures
+        cycle = pipeline_cycle(root)
+        if spec.a5["first"] is not None and optilux is not None:
+            a5_same(root, spec.a5["first"], found, optilux["sha512"])
     return Prepared(
         spec,
         plat,
@@ -370,6 +379,24 @@ def prepare(
         zips,
         cycle,
     )
+
+
+def a5_same(root: Path, first: str, identity: dict, sha512: str) -> None:
+    """A5's second launch against its first (plans/m3.md D68): the identity equal key by key and
+    the same zip, so one verdict judges the waits of both; RecordError naming what differs."""
+    found = record.read_record(root, first)
+    differ = record.identity_differences(identity, found.get("identity"))
+    if differ:
+        raise record.RecordError(
+            f"{first} ran under another identity: {', '.join(differ)} differ; fix: both of A5's "
+            "launches under one identity (run-record.md#comparison)"
+        )
+    theirs = [v.get("sha512") for v in found.get("variants") or [] if isinstance(v, dict)]
+    if theirs != [sha512]:
+        raise record.RecordError(
+            f"{first} loaded another zip (sha512 {str(theirs)[:20]}...), this launch builds "
+            f"{sha512[:12]}...; fix: A5's second launch on the first's pack"
+        )
 
 
 def checked(root: Path, spec_in: Path | dict, fresh: bool = True) -> record.Spec:
@@ -743,11 +770,127 @@ def acceptance_body(run: Runner, s: Session) -> None:
         if item in spec.items:
             items[item]["pass"] = all(v["pass"] for v in done_views)
             items[item]["complete"] = True
+    if spec.a5 is not None:
+        a5_session(run, s, previous)
     if spec.reloads:
         run.table = reload_table(s, jcmd, run.pack_file, spec.reloads)
     home = view_pose(views["views"][0])
     s.step("camera.place home", lambda: client.camera_place(home, PLACE_TIMEOUT))
     s.step("input.block off", lambda: client.input_block(False))
+
+
+def a5_session(run: Runner, s: Session, previous: str) -> None:
+    """A5's waits in this launch (measure.a5_body, plans/m3.md D68) over the views file's perf
+    views, from the dimension the session stands in, the weather not yet ramped; its evidence in
+    the record as each wait is taken. Judged after the session (judge_a5)."""
+    ready, plan = run.ready, run.spec.a5
+    if plan is None:
+        return
+    evidence: dict[str, Any] = {
+        "pass": False,
+        "complete": False,
+        "first": plan["first"],
+        "from": plan["from"],
+        "count": plan["count"],
+        "of": plan["of"],
+        "waits": [],
+    }
+    run.items[record.A5] = evidence
+    run.m = measure.Measured(
+        s=s,
+        spec=run.spec,
+        suite=ready.suite,
+        views=list(ready.views["views"]),
+        found=[],
+        journal=run.journal,
+        pm_exe=ready.presentmon,
+        jcmd=ready.java_home / "bin" / "jcmd.exe",
+        display_mode=ready.identity["system"]["resolution"],
+        own=run.own,
+        luid=ready.recorded["hags"]["adapterLuid"],
+        marks=run.marks,
+        previous=previous,
+        cycle=ready.cycle,
+    )
+    measure.a5_body(run.m, run.pack_file, plan["waits"], evidence)
+    evidence["complete"] = True
+
+
+def a5_hold(run: Runner) -> None:
+    """A5's entry waits (pass null) until the record's status is known: judge_a5 decides it."""
+    entry = run.items.get(record.A5)
+    if entry is not None:
+        entry["pass"] = None
+        entry["pending"] = "judged once the session's status is known"
+
+
+def judge_a5(run: Runner, acceptance: list[dict], status: str) -> str:
+    """A5's verdict once the record's status is known (plans/m3.md D68), as a measured run's items
+    are judged after its status: only an ok session whose last wait ends the sequence is judged,
+    the waits of this launch and of the first it names (`remeasures`) by their frames' decoded
+    pixels in a child process, `compare -` reading the record so far on its stdin (optilux/visual.py
+    stays out of the run's imports: run-record.md#identity, harness). Any other session leaves the
+    entry waiting with why, never passed; a launch the next continues waits on it. The status
+    after the verdict: failed on a miss or when no verdict came."""
+    entry = next((e for e in acceptance if e["item"] == record.A5), None)
+    plan = run.spec.a5
+    if entry is None or plan is None or entry["pass"] is not None:  # not run: failed as such
+        return status
+    evidence = entry["evidence"]
+    if status != "ok" or not evidence.get("complete"):
+        evidence["pending"] = f"the session ended {status}, so its waits are not judged"
+        return status
+    last = plan["from"] + plan["count"] - 1
+    if last < plan["of"]:
+        evidence["pending"] = (
+            f"judged in the next launch's record, which names this one (`remeasures`): waits "
+            f"{plan['from']}-{last} of {plan['of']} here (plans/m3.md D68)"
+        )
+        return status
+    held = {
+        "schema": record.SCHEMA,
+        "name": run.spec.name,
+        "kind": run.spec.kind,
+        "spec": run.spec.data,
+        "status": status,
+        "identity": run.ident,
+        "variants": run.variants,
+        "acceptance": [entry],
+    }
+    why, judged = None, {}
+    try:
+        done = subprocess.run(  # noqa: S603 this interpreter and the CLI, no shell
+            [sys.executable, *A5_COMMAND],
+            cwd=run.root,
+            input=json.dumps(held, default=str).encode("utf-8"),
+            capture_output=True,
+            timeout=A5_TIMEOUT,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        why = f"`compare -` did not run ({error})"
+    else:
+        try:
+            result = json.loads(done.stdout.decode("utf-8"))
+        except ValueError:
+            result = None
+        judged = (result.get("a5") or {}) if isinstance(result, dict) else {}
+        if not isinstance(result, dict) or result.get("ok") is not True or "pass" not in judged:
+            lines = done.stderr.decode("utf-8", "replace").strip().splitlines() or ["no output"]
+            problem = result.get("problem") if isinstance(result, dict) else None
+            why = problem or f"`compare -` exited {done.returncode}: {lines[-1]}"
+    if why is not None:
+        evidence["pending"] = f"unjudged: {why}"
+        run.problems.append(f"A5 unjudged: {why}")
+        return "failed"
+    evidence.pop("pending", None)
+    entry["pass"] = judged["pass"]
+    evidence["why"] = judged["why"]
+    evidence["judged"] = judged["judged"]
+    if judged["pass"] is not True:
+        run.problems.append("items failed: A5")
+        return "failed"
+    return status
 
 
 def write_zip(run: Runner, zipped: dict, build: dict) -> dict:
@@ -1407,9 +1550,11 @@ def perform(
             status = "failed" if status == "ok" else status
         run.facts["timeSplit"] = measure.time_split(marks, time.monotonic())
     elif spec.mode is None:
+        a5_hold(run)
         status, acceptance = record_status(
             run.status, run.problems, run.facts, run.items, spec.items, spec.reloads, run.table
         )
+        status = judge_a5(run, acceptance, status)
         found.update(variants=run.variants, acceptance=acceptance)
         if spec.reloads:
             found["reloadTable"] = run.table
@@ -1491,6 +1636,14 @@ def check(ready: Prepared, as_json: bool) -> int:
         print(
             f"dump: {ready.spec.planned} reloads, one view per dimension: "
             f"{', '.join(ready.spec.view_ids)}; zips: {json.dumps(zips)}"
+        )
+    a5 = ready.spec.a5
+    if a5 is not None:
+        last = a5["from"] + a5["count"] - 1
+        print(
+            f"A5: waits {a5['from']}-{last} of {a5['of']}"
+            + (f", continuing {a5['first']}" if a5["first"] else "")
+            + f"; {ready.spec.planned} reloads, aligned on cycle {ready.cycle}"
         )
     for key, value in ready.identity.items():
         print(f"{key}: {json.dumps(value)}")  # ASCII: a piped stdout may be cp1252

@@ -34,6 +34,8 @@ SCHEMA = 1
 
 # The run spec (run-record.md#run-spec).
 NAME = re.compile(r"[a-z0-9-]{1,40}")
+# A name no run takes: `compare -` and `check L1 -` read a record on stdin.
+STDIN = "-"
 SPEC_REQUIRED = ("name", "kind", "views", "world", "variants", "tier", "resourcePacks")
 # items: an acceptance run's; mode: a measured schedule's (measurement and calibration runs, and
 # acceptance runs of A8 and A11); calibration: the calibration a measured run is judged by, or
@@ -84,8 +86,15 @@ MODES = ("quick", "full")
 COVERAGE = "coverage"
 VISUAL_MODES = (*MODES, COVERAGE)
 ITEMS = tuple(f"A{number}" for number in range(1, 13))
-# The items `run` performs in M1 (docs/plans/m1.md 0.01.08 and 0.01.09), in the record's order.
-RUNNABLE = ("A1", "A2", "A3", "A4", "A7", "A9", "A10")
+# The items `run` performs in M1 (docs/plans/m1.md 0.01.08 and 0.01.09) and A5 (plans/m3.md D68),
+# in the record's order.
+RUNNABLE = ("A1", "A2", "A3", "A4", "A5", "A7", "A9", "A10")
+# A5 (mod.md#12-acceptance, plans/m3.md D68): A5_LAPS laps of the views file's perf views, 33
+# waits on bench_263's eleven, each a reload of the hello pack; a launch takes the waits the
+# reload cap leaves it, so two launches, the second naming the first (`remeasures`, as A8's second
+# session does) and judging all of them.
+A5 = "A5"
+A5_LAPS = 3
 # The items a measured schedule carries (plans/m2.md M2.P05, M2.P10): the timers' overhead and
 # their agreement with GPUBusy, judged by M2.P07's statistics.
 MEASURED_ITEMS = ("A8", "A11")
@@ -362,6 +371,7 @@ class Spec:
     groups: tuple[tuple[str, ...], ...] = ()  # a split session's views per launch
     split: dict | None = None  # a part's: its session, part, parts and views
     optilux: dict | None = None  # an acceptance run's Optilux variant: its name, ref and commit
+    a5: dict | None = None  # this launch's A5 waits (a5_share)
 
 
 def candidates(kind: str, variants: tuple[dict, ...] | list[dict], suite: dict) -> int:
@@ -394,6 +404,20 @@ def lap(views: list[dict], ramped: str | None) -> list[dict]:
     for dim in DIMENSIONS[1:]:
         order += [v for v in views if v["dim"] == dim]
     return order
+
+
+def a5_waits(views: dict) -> list[tuple[int, str]]:
+    """A5's waits in order (plans/m3.md D68): A5_LAPS laps of the views file's perf views, each as
+    a measured pass orders it (lap), the weather the lap before ramped last first; each wait as
+    (its lap, its view id)."""
+    found: list[tuple[int, str]] = []
+    ramped = None
+    for n in range(1, A5_LAPS + 1):
+        order = lap(views["views"], ramped)
+        found += [(n, v["id"]) for v in order]
+        over = [v for v in order if v["dim"] == DIMENSIONS[0]]
+        ramped = over[-1]["weather"] if over else ramped
+    return found
 
 
 def split_groups(
@@ -622,6 +646,10 @@ def check_spec(
     name = data["name"]
     if not isinstance(name, str) or not NAME.fullmatch(name):
         raise RecordError(f"name {name!r} is not [a-z0-9-]{{1,40}}; fix: rename the run")
+    if name == STDIN:
+        raise RecordError(
+            "name - stands for a record on stdin (`compare -`, `check L1 -`); fix: rename the run"
+        )
     for taken in (root / RECORDS / f"{name}.json", root / RAW / name) if fresh else ():
         if taken.exists():
             raise RecordError(
@@ -693,7 +721,7 @@ def check_spec(
     if kind == DUMP:
         return check_dump_spec(root, data, suite, pack, views_file, world, notes, cap)
     if mode is None:
-        return check_acceptance_spec(root, data, suite, pack, views, world, notes, items, cap)
+        return check_acceptance_spec(root, data, suite, pack, views_file, world, notes, items, cap)
     allowed = MEASURED_ITEMS if kind == "acceptance" else ()
     if not isinstance(items, list) or (kind == "acceptance" and not items):
         raise RecordError(
@@ -1193,17 +1221,22 @@ def check_acceptance_spec(
     data: dict,
     suite: dict,
     pack: str,
-    views: str,
+    views_file: dict,
     world: str,
     notes: str | None,
     items: Any,
     cap: int,
 ) -> Spec:
-    """An acceptance run without a mode (M1's items): one variant at its pack's defaults (the
-    reference pack or the Optilux pack: acceptance_variant), items, F4's reloads."""
-    for key in ("calibration", "heap", *BUDGET, "warmup", "remeasures"):
+    """An acceptance run without a mode (M1's items and A5): one variant at its pack's defaults
+    (the reference pack or the Optilux pack: acceptance_variant), items, F4's reloads; A5's share
+    of its waits (a5_share), `remeasures` naming the launch before it."""
+    for key in ("calibration", "heap", *BUDGET, "warmup"):
         if key in data:
             raise RecordError(f"{key} is for measured runs; fix: drop it from an acceptance run")
+    if "remeasures" in data and not (isinstance(items, list) and A5 in items):
+        raise RecordError(
+            "remeasures is A8's second session or A5's second launch; fix: drop it, or run A5"
+        )
     optilux = acceptance_variant(root, data["variants"], pack)
     runnable = ", ".join(RUNNABLE)
     if not isinstance(items, list) or not items:
@@ -1239,11 +1272,20 @@ def check_acceptance_spec(
             f"the session plans {planned} reloads, over capture.reloadCap {cap}; fix: fewer "
             "reloads (the cap is plans/m2.md D43's)"
         )
+    a5 = None
+    if A5 in items:
+        if optilux is None:
+            raise RecordError(
+                "A5 runs on the hello pack, whose frames repeat (mod.md#12-acceptance: a "
+                'deterministic pack, TAA off); fix: variants [{"pack": "optilux", "profile": null}]'
+            )
+        a5 = a5_share(root, data, views_file, cap - planned, cap)
+        planned += a5["count"]
     order = tuple(item for item in RUNNABLE if item in items)
     return Spec(
         data["name"],
         data["kind"],
-        views,
+        views_file["id"],
         world,
         pack,
         "bench",
@@ -1254,7 +1296,99 @@ def check_acceptance_spec(
         reloads,
         planned=planned,
         optilux=optilux,
+        a5=a5,
     )
+
+
+def as_dict(value: Any) -> dict:
+    """A record's field read as an object: itself, or an empty one for anything else."""
+    return value if isinstance(value, dict) else {}
+
+
+def a5_entry(found: dict) -> dict | None:
+    """A record's A5 entry, or None."""
+    entries = found.get("acceptance")
+    if not isinstance(entries, list):
+        return None
+    return next((e for e in entries if isinstance(e, dict) and e.get("item") == A5), None)
+
+
+def a5_continued(root: Path, first: str) -> list[str]:
+    """The records of A5 launches that name `first` as theirs (`remeasures`): a first launch is
+    continued once, so no rerun of its second half can replace a verdict (plans/m3.md D68)."""
+    found = []
+    for name in record_names(root):
+        text = (root / RECORDS / f"{name}.json").read_text(encoding="utf-8")
+        if first not in text:
+            continue
+        try:
+            held = json.loads(text)
+        except ValueError:
+            continue
+        spec = as_dict(held.get("spec") if isinstance(held, dict) else None)
+        if spec.get("remeasures") == first and a5_entry(held) is not None:
+            found.append(name)
+    return found
+
+
+def a5_share(root: Path, data: dict, views: dict, room: int, cap: int) -> dict:
+    """This launch's A5 waits (plans/m3.md D68): of a5_waits' sequence, from the first not yet
+    taken, as many as the reload cap leaves it (`room`). A first launch starts at wait 1 and must
+    leave no more than one more launch holds (`cap` less selftest's and the start-of-run reload);
+    a second names it (`remeasures`), an ok acceptance run of the same views and variant whose A5
+    entry waits on the next launch, its waits the sequence's first ones, no other launch naming it
+    yet; it takes the rest, which must fit. The share: the first launch's name or None, the first
+    wait's number, the count, the sequence's length and the waits as (number, lap, view id)."""
+    seq = a5_waits(views)
+    name, start = data.get("remeasures"), 0
+    if name is not None:
+        if not isinstance(name, str) or not NAME.fullmatch(name):
+            raise RecordError(f"remeasures {name!r}; fix: A5's first launch's run name")
+        first = read_record(root, name)
+        continued = a5_continued(root, name)
+        if continued:
+            raise RecordError(
+                f"{name} is continued already by {', '.join(continued)}: a first A5 launch is "
+                "judged once (plans/m3.md D68); fix: a new first launch, then a second naming it"
+            )
+        entry = a5_entry(first) or {}
+        taken = as_dict(entry.get("evidence")).get("waits")
+        spec = as_dict(first.get("spec"))
+        if (
+            first.get("kind") != "acceptance"
+            or first.get("status") != "ok"
+            or entry.get("pass") is not None
+            or not isinstance(taken, list)
+            or spec.get("remeasures") is not None
+        ):
+            raise RecordError(
+                f"{name} is no first A5 launch that ended ok, its entry waiting on the next; fix: "
+                "name the first launch (A5 runs in two, plans/m3.md D68)"
+            )
+        if canonical(spec.get("variants")) != canonical(data["variants"]) or spec.get(
+            "views"
+        ) != data.get("views"):
+            raise RecordError(
+                f"{name} ran other variants or views; fix: the first launch's variants and views"
+            )
+        start = len(taken)
+        recorded = [(w.get("lap"), w.get("view")) for w in taken if isinstance(w, dict)]
+        if recorded != seq[:start]:
+            raise RecordError(
+                f"{name}'s A5 waits are not the sequence's first {start} (plans/m3.md D68); fix: "
+                "name a first launch of these views"
+            )
+    rest = len(seq) - start
+    count = min(rest, room)
+    second = cap - ACCEPTANCE_RELOADS  # the most waits one more launch holds
+    if count < 1 or (name is not None and count < rest) or rest - count > second:
+        raise RecordError(
+            f"A5's {'remaining ' if name else ''}{rest} waits take a reload each: the session "
+            f"leaves room for {room} under capture.reloadCap {cap}, and a second launch holds "
+            f"{second} (A5 runs in two launches, plans/m3.md D68); fix: drop the other reloads"
+        )
+    waits = [(start + n + 1, *seq[start + n]) for n in range(count)]
+    return {"first": name, "from": start + 1, "count": count, "of": len(seq), "waits": waits}
 
 
 # The identity.
