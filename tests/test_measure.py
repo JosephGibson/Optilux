@@ -3093,7 +3093,7 @@ def test_a_visual_run_takes_each_variants_pair_at_each_view(fake_run, monkeypatc
     assert [c["flags"] for c in captures] == [[], ["moving"]] * 3
     assert all(c["valid"] for c in captures) and reloads(fake) == 1 + 6
     # The first variant after a dimension change waits the longer settle (measurement.md).
-    assert [c["settleS"] for c in captures] == [1.0, 1.0, 4.0, 1.0, 4.0, 1.0]
+    assert [c["settleS"] for c in captures] == [4.0, 4.0, 7.0, 4.0, 7.0, 4.0]
     raw = root / found["raw"]
     for c in captures:
         first, second = c["frames"]

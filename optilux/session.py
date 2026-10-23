@@ -759,7 +759,7 @@ def set_time(c: modclient.Client, ticks: int) -> dict:
 
 def visual_settle(capture: dict, view: dict, dimension_changed: bool) -> float:
     """A view's visual settle (measurement.md#readiness, suite.json capture.visualSettleS): its
-    role's own (underwater's 2.0), else the default, plus the addition after a dimension change."""
+    role's own (underwater's), else the default, plus the addition after a dimension change."""
     visual = capture["visualSettleS"]
     settle = visual.get(view["id"], visual["default"])
     return settle + (visual["addAfterDimensionChange"] if dimension_changed else 0.0)

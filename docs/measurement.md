@@ -92,8 +92,8 @@ config/suite.json is the source of every value below.
 The identity contract (every input that can move a measurement), the record's fields, comparison rules and the run spec: run-record.md. Verdicts are re-judged from the record's per-capture summaries alone.
 
 ## Readiness
-- Predicate: mod.md#7-readiness (Sodium's own isTerrainRenderComplete() reads only the queue size). [MC] 26.3: verified, M1 rebuilt it on Sodium 0.9.2's fields (platform.md#mod-adapter-surface, 0.01.07).
-- For visual captures the calibrated settle stays the floor until A5 shows predicate-ready -> frame-final over at least 30 waits (mod.md#12-acceptance); perf windows keep the calibrated settle regardless, because the thresholds were calibrated with it.
+- Predicate: mod.md#7-readiness. [MC] 26.3: verified, M1 rebuilt it on Sodium 0.9.2's fields (platform.md#mod-adapter-surface, 0.01.07).
+- A5 missed (M3.P09: 17 of 33 waits frame-final, mod.md#12-acceptance): after a reload the predicate can hold before the re-mesh ends, so the settle stays the visual floor (plans/m3.md D68), lengthened then (suite.json capture.visualSettleWhy); perf windows keep theirs, as the thresholds were calibrated with them.
 - Chunk meshing is client-side and cannot be pre-done; dimension changes need the longer settle.
 
 ## Tools
