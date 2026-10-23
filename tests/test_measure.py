@@ -60,19 +60,43 @@ def variant(vid: str, role: str = "candidate", timers: bool = False) -> measure.
     return measure.Variant(vid, role, f"{vid}.zip", PACK, "played", dict(PLAYED), timers)
 
 
-def test_the_schedule_brackets_each_candidate_between_two_baselines() -> None:
-    found = [variant("baseline", "baseline"), variant("c1"), variant("twin", "twin")]
+def test_the_schedule_brackets_each_candidate_between_two_baselines_the_twin_first() -> None:
+    """plans/m3.md D65: the twin takes the first Ci slot, the one after a dimension change, each
+    round; the candidates follow in the spec's order."""
+    found = [
+        variant("baseline", "baseline"),
+        variant("c1"),
+        variant("c2"),
+        variant("twin", "twin"),
+    ]
     order = [(v.id, r) for v, r in measure.schedule(found, 2)]
     assert order == [
         ("baseline", 1),
-        ("c1", 1),
-        ("baseline", 1),
         ("twin", 1),
         ("baseline", 1),
-        ("c1", 2),
-        ("baseline", 2),
+        ("c1", 1),
+        ("baseline", 1),
+        ("c2", 1),
+        ("baseline", 1),
         ("twin", 2),
         ("baseline", 2),
+        ("c1", 2),
+        ("baseline", 2),
+        ("c2", 2),
+        ("baseline", 2),
+    ]
+
+
+def test_a_calibration_sessions_schedule_is_unchanged_by_the_twin_first() -> None:
+    """A calibration session's Ci are twinsPerSession twins alone, kept in their order."""
+    found = [variant("baseline", "baseline"), variant("twin-1", "twin"), variant("twin-2", "twin")]
+    order = [(v.id, r) for v, r in measure.schedule(found, 1)]
+    assert order == [
+        ("baseline", 1),
+        ("twin-1", 1),
+        ("baseline", 1),
+        ("twin-2", 1),
+        ("baseline", 1),
     ]
 
 
@@ -1619,9 +1643,9 @@ def test_the_diagnosis_runs_the_switches_without_windows(fake_run, monkeypatch) 
     assert [c["variant"] for c in captures] == [
         "baseline",
         "baseline",
-        "shadows-off",
-        "baseline",
         "twin",
+        "baseline",
+        "shadows-off",
         "baseline",
     ]
     assert all(c["flags"] == ["noWindow"] and not c["valid"] for c in captures)

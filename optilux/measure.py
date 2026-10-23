@@ -385,9 +385,12 @@ def values_sha256(values: dict) -> str:
 
 def schedule(found: list[Variant], rounds: int, alone: bool = False) -> list[tuple[Variant, int]]:
     """One view's captures (measurement.md#session, suite.json statistics.schedule): A, then
-    (Ci, A) for each candidate in order, R rounds; each with its round. `alone`: the baseline
+    (Ci, A) for each candidate, the twins first (plans/m3.md D65: the slot after a dimension change
+    is the twin's, so the monitor sees it), R rounds; each with its round. `alone`: the baseline
     takes the twin's slot too (a budget run's, record.BUDGET)."""
-    base, others = found[0], ([found[0]] if alone else found[1:])
+    twins = [v for v in found[1:] if v.role == "twin"]
+    base = found[0]
+    others = [base] if alone else twins + [v for v in found[1:] if v.role != "twin"]
     order = [(base, 1)]
     for r in range(1, rounds + 1):
         for variant in others:
