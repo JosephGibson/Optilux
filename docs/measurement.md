@@ -69,11 +69,11 @@ config/suite.json is the source of every value below.
 ## Visual protocol
 - Determinism rests on Iris facts re-verified in the spike (R5; gpu-iris.md#frame-counters-and-reload): frameCounter and frameTimeCounter (wall-clock) reset at every pipeline creation; a reload clears every buffer and re-meshes every chunk, so its first frames are not final.
 - BENCH_DETERMINISTIC, from M3's hello pack, the first with programs (roadmap.md#decisions D9):
-  - frameTimeCounter pinned to a constant (ALC pinned it to 0);
+  - frameTimeCounter pinned to a constant;
   - every frame-varying term (jitter, dither, noise offsets) derives from frameCounter modulo one cycle;
-  - smoothing instant, animation pinned. Wall-clock smoothing otherwise keeps moving under /tick freeze;
-  - static textures, rain texture discarded, End flash pinned (ALC).
-- Static capture, TAA off (ALC's recipe: bit-identical across launches on 8/8 views), as built (`run`'s visual kind, M3.P06): one launch, never split (2 + views x variants reloads); steps 1-3 and 5 over one lap of the mode's views (mode coverage: the coverage views); per variant step 6's reload and options, then one frames.capture: ready (10 stable frames, minSeconds the view's visual settle, +3 s for the first variant after a dimension change), aligned on config/pipeline.json's cycle, two PNGs 2 s apart, a pair whose PNGs differ flagged moving.
+  - smoothing instant, animation pinned (wall-clock smoothing keeps moving under /tick freeze);
+  - static textures, rain texture discarded, End flash pinned.
+- Static capture, TAA off (bit-identical across launches: ALC on 8/8 views, the hello pack on 11/11 in m3-determinism-2 and -3), as built (`run`'s visual kind, M3.P06): one launch, never split (2 + views x variants reloads); steps 1-3 and 5 over one lap of the mode's views (mode coverage: the coverage views); per variant step 6's reload and options, then one frames.capture: ready (10 stable frames, minSeconds the view's visual settle, +3 s for the first variant after a dimension change), aligned on config/pipeline.json's cycle, two PNGs 2 s apart, a pair whose PNGs differ flagged moving.
 - Static capture, TAA on (M5): history built while chunks re-mesh is forgotten only up to fp16 rounding (ALC: TAA on differed on 9/9 views). So:
   1. `ready`;
   2. flush the history at an aligned frame (Terms: flush; the mechanism lives in mod.md#6-time-and-determinism);

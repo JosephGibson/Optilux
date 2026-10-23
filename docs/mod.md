@@ -99,7 +99,7 @@ Session start, perf capture, static and motion visuals, coverage views, the live
 - Why not Sodium's own check: `isTerrainRenderComplete()` reads only the queue. A worker holds a dequeued job before it counts as busy (found by disassembling Sodium 0.8.12).
 - A held predicate is not a final frame: in ALC, 2 of 34 first frames were not final.
   - Static captures add the determinism check (measurement.md#visual-protocol).
-  - The calibrated settle stays the floor until A5 passes (12).
+  - The calibrated settle stays the floor: A5 failed (12).
 - Report: seconds, predicateSeconds, limitedBy, and the renderer's own check side by side (it found ALC's gap).
 - Re-read every Sodium 0.9.2 field and method by disassembly before relying on it.
 - As built (0.01.07), read on the render thread at each frame head while a wait runs: getTotalSections; the builder's queue and busy count; buildResults; each loaded section's runningJobs; taskLists (absent before the first cull); the tasks the last updateChunks submitted; needsGraphUpdate and the cull task. importantTasks is left out: it keeps sections the render tree does not show. limitedBy: minSeconds, the term that failed last, or stableFrames; the renderer's check reports its own seconds and gapFrames, the frames it held while the predicate did not.
@@ -157,7 +157,7 @@ Each item is recorded in an acceptance run record (run-record.md#record); design
 - A2 parity: with `hud.set {hideGui: true}` and no screen or chat open, `frames.capture` bytes equal a vanilla F2 screenshot of the same pose; the F2 press comes from the harness (SendInput through ctypes, `input.block off` for it) or from the user in an attended step, and the harness compares the newest file in screenshots/. M1: three provisional views, one per dimension.
 - A3 placement: `camera.place` with `/tp` semantics equals `/tp`'s pose on every acceptance view (angles wrapped, +0.5 centre correction).
 - A4 compile error: a deliberately broken pack -> `iris-compile-error` with the message; recovery reload works.
-- A5 readiness: over >= 30 waits on the hello pack (TAA off), the first frame after predicate-ready equals a reference taken after the view's calibrated visual settle plus 2 s (decoded pixels), 30 of 30; only then may the predicate replace the settle as the visual floor (section 7); any miss keeps the settle and reports the rate. It runs in M3, on a deterministic pack.
+- A5 readiness: over >= 30 waits on the hello pack (TAA off), the first frame after predicate-ready equals a reference taken after the view's calibrated visual settle plus 2 s (decoded pixels), 30 of 30; only then may the predicate replace the settle as the visual floor (section 7); any miss keeps the settle and reports the rate. M3.P09: failed, 17 of 33 (m3-a5-1, -2): the predicate held before a reload's re-mesh ended.
 - A6 motion: one `camera.path` sequence identical across 2 sessions (hello pack, TAA on, flushed).
 - A7 input: mouse (26.3's one path, plans/m1.md D24) and keys move nothing and open nothing while blocked.
 - A8 overhead: in one session, the same variant with per-pass timers on vs off, judged by the in-session threshold; pass = no effect beyond it. The mod sits in both arms of every verdict, so additive cost cancels. The presence arm (mod present vs no jar, launch-level bracketing) and the known-effect arm (the shadows-off ratio through the mod equals a mod-free one) move to the JVM track's J1 (jvm.md#build-order; user, 2026-10-06). M2.P10: passed (m2-a8-2, geo-mean +0.18 %).
