@@ -14,14 +14,14 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - No Claude or Anthropic attribution anywhere.
 
 ## Layout
-- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py stored prompts, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, session.py a game session, measure.py the measured session, stats.py the statistics, acceptance.py M1's items, world.py the world verbs, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py SendInput, presentmon.py PresentMon, visual.py the tiers, docs_check.py the doc rules. Run `uv run optilux <verb>`.
-- tests/: pytest, run in parallel by `uv run optilux test` (`--serial`: one process); fixtures/ saved 26.3 output; `windows`-marked tests skip elsewhere.
+- optilux/: Python harness (uv, one .venv); cli.py the verb registry, verbs/ one module per verb, prompts.py stored prompts, repo.py the git facts, platform.py the platform file and launch spec, launch.py the gate and the launch, record.py the run spec, identity and record, session.py a game session, measure.py the measured session, stats.py the statistics, budget.py the reload budget, acceptance.py M1's items, world.py the world verbs, modclient.py and winpipe.py the pipe client, modfake.py the protocol fake, sendinput.py SendInput, presentmon.py PresentMon, visual.py the tiers, offline.py, l1.py and l2.py the offline levels, similarity.py the similarity check, packzip.py the pack zip, docs_check.py the doc rules. Run `uv run optilux <verb>`.
+- tests/: pytest, run in parallel by `uv run optilux test`; fixtures/ saved 26.3 output; `windows`-marked tests skip elsewhere.
 - .githooks/: commit-msg and pre-commit sh shims over optilux/hooks.py (`core.hooksPath`, set --local).
-- .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`), optilux-release (the PR, the release watch, the switch block), optilux-plan, optilux-bench; agents/researcher.md and reviewer.md (read-only).
-- .github/: workflows/ci.yml (push and pull_request) and release.yml (push to main), both windows-latest (docs/workflow.md#release).
+- .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`), optilux-release, optilux-plan, optilux-bench (docs/workflow.md#skills); agents/researcher.md and reviewer.md (read-only).
+- .github/: workflows/ci.yml and release.yml (docs/workflow.md#release).
 - mod/: optilux-helper (Fabric), a Gradle project (Loom, wrapper pinned by sha256); `mod build` puts its jar into runtime/<platform>/files/, `mod test` runs its JUnit tests.
-- shader/: the pack, zipped by `pack build` and released by `pack release` (docs/workflow.md#release): the hello pack from M3.P03.
-- config/: platforms (+ launch specs), suite, profiles, java, tools, similarity, views, calibrations; pipeline planned.
+- shader/: the pack (the hello pack), zipped by `pack build`, released by `pack release` (docs/workflow.md#release).
+- config/: platforms (+ launch specs), suite, profiles, java, tools, similarity, views, pipeline, calibrations.
 - snapshots/<world>/: world copies, tree-hashed; results/: records/<run>.json and raw/<run>/.
 - docs/.
 - VERSION: the release version (docs/workflow.md#release). Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/, .coverage.
@@ -42,7 +42,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - docs/handoff.md: the latest stop: the last phase done, what passed, failed or was deferred, the next step.
 - docs/sources/: external documents kept verbatim (the user's optimization playbook).
 - docs/roadmap.md: milestones M0-M6, the current one in detail; findings assigned; decisions, each with an owner.
-- docs/plans/: one plan per milestone, from the strict template docs/templates/plan.md, premises verified at their source.
+- docs/plans/: one plan per milestone, from the strict template docs/templates/plan.md.
 - docs/prompts/: stored prompt sets, one prompt per phase plus Resume; standing.md, the Plan and Release prompts every milestone uses.
 
 ## Terms

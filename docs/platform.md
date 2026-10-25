@@ -31,11 +31,11 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
 - Aperture facts to recheck when public, from a migration guide marked outdated [S8]: no buffer flipping (a texture cannot be read and written at two positions); every texture is explicit except mainDepthTex and solidDepthTex; uniforms are `ap.*` structs; command lists merge composite and compute.
 
 ## Mod tiers
-Data: config/platforms/mc-26.3.json (version, file, Modrinth id, sha512; the played tier's missing and excluded mods with their reasons). Signed off as pinned on 2026-10-05 (design.md D8).
+Data: config/platforms/mc-26.3.json (version, file, Modrinth id, sha512; the played tier's missing and excluded mods with their reasons), signed off as design.md D8 says.
 
 | Tier | Adds to bench | Use |
 |---|---|---|
-| bench | fabric-api, sodium, iris, optilux-helper; resource pack faithful-64x | every measurement |
+| bench | fabric-api, sodium, iris, optilux-helper; resource packs faithful-64x and optilux-static-textures (`install` builds it) | every measurement |
 | played | cloth-config, entityculling, ferrite-core, immediatelyfast, lithium, modmenu, moreculling, scalablelux, placeholder-api | compatibility smoke, never shader perf evidence |
 | debug | gfx-debuggers | RenderDoc attribution only |
 | dev | viewfinder (its MCP server: offline.md#tools; tools in L2) | development and diagnostics with Claude Code; not evidence until measured (offline.md) |
@@ -45,7 +45,6 @@ Data: config/platforms/mc-26.3.json (version, file, Modrinth id, sha512; the pla
 - World prep set (not a tier, never in a session): the platform file's `worldPrep`, bench + Chunky 1.5.3; `install` and `launch` take it as `--tier worldPrep`, for `world prep`.
 - Shader perf evidence only on bench, with one declared exception, its tier in the identity: Viewfinder's per-pass timers on the dev tier after E5's overhead check and A11 (design.md#8-open-decisions). The JVM track's S4 runs on the played tier as JVM evidence (jvm.md#scenarios). ALC's reason for the rule: each extra mod changes the measured set (ModernFix startup, MoreCulling leaf geometry, ImmediatelyFast overlay cost, Voxy distant terrain).
 - Dev tier: `enableDebugOptions=true` creates a KHR_debug context and, on a fresh sodium-options.json, a modal Iris dialog over Sodium's `use_no_error_g_l_context` (L2): write it false first. The dev quit's exit -8 after the save (L2 quit) is accepted as known, no shutdown step (user, 2026-10-06).
-- ScalableLux and C2ME are alpha builds; re-pin when stable builds land.
 
 ## Mod adapter surface
 What optilux-helper's adapter must provide on each platform (mod.md#4-architecture). Fragility is ALC's experience across versions; the mc-26.3 column holds what the spike and M1 read in the pinned jars.
@@ -61,7 +60,7 @@ What optilux-helper's adapter must provide on each platform (mod.md#4-architectu
 | per-pass timers | Iris `GLDebug.pushGroup/popGroup` (high) | kept, at their HEAD (plans/m2.md D53); no-ops unless enableDebugOptions is on (KHRDebugState); the main pass's terrain shows only as "Terrain solid" (no cutout or translucent group) |
 | readiness | Sodium private fields by accessor (high) | `ChunkBuilder.isBuildQueueEmpty()`, `getScheduledJobCount()`, `getBusyThreadCount()`; `RenderSectionManager.buildResults`, `taskLists`, `pendingTask`, `needsGraphUpdate`, `thisFrameBlockingTasks`, `nextFrameBlockingTasks`, `deferredTasks` (R7); `RenderSection.runningJobs` via `regions` |
 | effective options | none | `currentPack.getShaderPackOptions().getOptionValues()`; Viewfinder's list_shaderpacks returns the same map (V1) |
-| shader dumps | `enableDebugOptions` + file poll | game/patched_shaders/, one numbered file set per program plus a .json each, rewritten on every build (V4) |
+| shader dumps | `enableDebugOptions` + file poll | game/patched_shaders/, one numbered file set per program plus a .json each, rewritten on every build (V4); dump runs: offline.md#tools |
 | input, HUD, focus | none | HEAD of MouseHandler.onMove (SDL3, relative and absolute), onButton, onScroll, KeyboardHandler.keyPress, textInput, textEditing, Minecraft.pauseGame; F1 `gui.hud.toggle()`; F3 `debugEntries.setOverlayVisible`, no option |
 | tick time, GC, heap | none | Fabric server tick event + JMX; `jcmd GC.heap_info` works on the bench JVM (L1) |
 

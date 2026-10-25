@@ -132,14 +132,14 @@ Bodies in optilux/hooks.py, run by the venv's python as `python -m optilux.hooks
 
 ## Testing
 - `optilux test` runs pytest in parallel (pytest-xdist's auto: a worker per physical core, psutil being installed; optilux/verbs/test.py has the timing); `--serial` runs one process, as CI does (ci.yml has its runner's timing). The suite passes both ways.
-- Unit tests for (reconciled with M1's tests in 0.01.12):
+- Unit tests for:
   - the run record: identity, the run spec, the views file, the run's status and the acceptance items' verdicts on fakes;
   - platform pins (sha512, sha1, sha256), install and the launch spec;
   - the launch: the gate, the pre-launch files and their read-back, the command and its check, the join, quit and end;
   - the mod protocol: commands.json against mod-protocol.md's table, the client against the protocol fake (a socket pair and a real named pipe), the mod's JUnit tests (mod.md#11-build-and-test);
   - PresentMon's start, stop and CSV, and A9's match;
   - the workflow verbs and hooks; doc limits;
-  - from M2 and M3: statistics (bracketing, thresholds, geo-mean verdicts) and similarity fingerprints.
+  - from M2: statistics (bracketing, thresholds, geo-mean verdicts); from M3: similarity fingerprints, L0-L2 on fixtures (packs, dumps, RGA's output), the tiers on fixture PNGs, pipeline.json against the pack; glslang's and RGA's runs skip without runtime/tools/ (CI).
 - Not unit-tested: the glue that drives the game or Windows (RunHost's calls, the items' request sequences); the acceptance runs cover it.
 - Runtime validity checks in every session (measurement.md#validity) are the main safety net.
 - A test that needs git builds a throwaway repo in a temp dir and checks it is not this repo before writing (ALC rule).

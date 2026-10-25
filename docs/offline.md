@@ -1,5 +1,5 @@
 # Offline testing
-Status: rough spec, 2026-10-05; L0 built in M3.P04 (optilux/offline.py), L1 and L2 in M3.P08 (optilux/l1.py, l2.py), L3-L4 in M4, run with `optilux check <level>` (design.md#5-interfaces). Each method is ranked by what ALC recorded about it.
+Status: L0 built in M3.P04 (optilux/offline.py), L1 and L2 but L2's uniform-work scan in M3.P08 (optilux/l1.py, l2.py), each run with `optilux check <level>` (design.md#5-interfaces); L3-L4 and the scan are spec, for M4, and L5 runs in a dev session. Each method is ranked by what ALC recorded about it.
 
 ## Contents
 Rules · Levels · Decision powers · ALC evidence · Tools · Costs · Verify
