@@ -1,5 +1,5 @@
 # Optilux design
-Status: what Optilux is: goals, architecture, interfaces, milestones and decisions. Built through M2 (install, launch, run, the world verbs, calibrate, compare, report, the helper mod's M1 and M2 commands, optilux-bench, the release path); the visual loop and the shader are spec, M3 on.
+Status: what Optilux is: goals, architecture, interfaces, milestones and decisions. Built through M3 (install, launch, run's five kinds, the world verbs, calibrate, compare, report, check L0-L2, verify similarity, the helper mod's M1-M3 commands, optilux-bench, the release path, the hello pack); the shader past the hello pack, L3-L4 and the temporal loop are spec, M4 on.
 
 ## Contents
 1 Goals · 2 Non-goals · 3 Core rule · 4 Architecture · 5 Interfaces · 6 Milestones · 7 Decisions taken · 8 Open decisions
@@ -58,16 +58,16 @@ user / Claude Code --skills--> optilux CLI (Python)
 
   | Verb | Does | From |
   |---|---|---|
-  | install | Minecraft, Fabric, the tier's mods, Java and tools (config/tools.json) into runtime/ and the reference copies into reference/, hash-checked; write or check the launch spec | M1 |
+  | install | Minecraft, Fabric, the tier's mods, Java and tools (config/tools.json) into runtime/, the static-textures pack into the store and the reference copies into reference/ (M3), hash-checked; write or check the launch spec | M1 |
   | launch | check the launch spec's hashes, start the game directly (token on the command line) | M1 |
-  | run | validate a run spec, run the session (over the reload cap as launches of views, M2), write the run record | M1 |
+  | run | validate a run spec, run the session, write the run record: acceptance; measurement and calibration (over the reload cap as launches of views), M2; visual and dump, M3 | M1 |
   | mod build / test | Gradle through the pinned wrapper, no daemon left | M1 |
-  | world prep / snapshot / restore | prepare a bench world (Chunky's pre-generation, the kill, the view functions, reference frames) and retake its snapshot; copy, manifest and tree hash; restore in place | M2 |
+  | world prep / snapshot / restore | prepare a bench world (Chunky's pre-generation, the coverage site from M3, the kill, the view functions, reference frames) and retake its snapshot; copy, manifest and tree hash; restore in place | M2 |
   | calibrate | the current identity's null sessions per mode, resumed after a stop, again as the twin monitor asks -> config/calibrations/<mode>-<identity sha256>.json | M2 |
-  | compare / report | a record re-judged against a calibration, another identity refused by key: verdicts and per-view cost rows (tiers and A5's frames M3); one static page per run, its summary printed | M2 |
+  | compare / report | a record re-judged against a calibration, another identity refused by key: verdicts and per-view cost rows; from M3 a visual record's frames tiered (`--against` another run's) with review.html, and A5's waits judged; one static page per run, its summary printed | M2 |
   | check L0..L4 | offline levels (offline.md); L0 of a pack (default shader/): glslang over its variant matrix under Iris's macros, the similarity check, every profile against its pack's options; L1 of a dump run: dump equality, the premise check, the impact matrix, the pipeline audit; L2: RGA's registers, ISA, live registers and CFG per printed program | M3 (L0-L2), M4 (L3-L4) |
   | verify docs / similarity / records | static checks: the doc rules; shader/'s GLSL against the studied copy in reference/ (`--controls`: the figures that set its threshold, shader.md#policy); the run records | M0 (similarity M3, records M2) |
-  | pack build / release | the shader zip | M0 |
+  | pack build / release | the shader zip (`build --ref`: a commit's, M3) | M0 |
   | milestone start | cut the milestone branch from origin/main | M0 |
   | status | where things stand, and the next prompt | M0 |
   | test | unit tests | M0 |
