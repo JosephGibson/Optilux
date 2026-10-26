@@ -83,7 +83,7 @@ Declared as `uniform.<type>.<name>` and `variable.<type>.<name>` in shaders.prop
 - Write negative literals after an operator as `(0.0 - x)`; that form is known to parse.
 - A custom uniform reaches every program that declares it. A declared uniform Iris never defines reads 0 (black clouds, skipped loops).
 - float32, like the GPU: 1-2 ulp differences.
-- Offline check, a Java harness on the Iris jar (re-read the class names on 1.11.7):
+- Offline check, a Java harness on the Iris jar (the class names hold in 1.11.7: javap, 2026-10-26; built as offline.md#tools' expression runner):
   1. `kroppeb.stareval.parser.Parser.parse` with `IrisOptions.options`;
   2. `ExpressionResolver` with `IrisFunctions.functions`;
   3. `Expression.evaluateTo`;
