@@ -85,7 +85,7 @@ glslang, RGA and RenderDoc are pinned in config/tools.json (file, sha256, source
   - 1.46 renamed `ActionDescription.next/previous` and removed `GetDefaultCaptureOptions`;
   - no GL ISA view on current AMD drivers;
   - ALC quirks: qrenderdoc's bundled Python 3.8, the first-run analytics dialog, 77 % of events unmapped until mapped by bound program, replay ~1.7x live.
-- moderngl 5.12 standalone WGL context, for L3. EGL is Linux-only.
+- moderngl 5.13.0 with glcontext 3.1.0, pinned in pyproject.toml (plans/m4.md P9): a standalone WGL context for L3, `create_standalone_context()` giving "3.3.0 Core Profile Context" on the RX 7800 XT (2026-10-26). EGL is Linux-only.
 - Viewfinder v2.1.4+26.3 (MIT, Fabric, needs Iris), dev tier:
   - MCP over streamable HTTP at http://127.0.0.1:7150/mcp, started with the game, loopback only, no authentication. It is not read-only: an MCP client can edit packs and change scenes. One active request, 32 queued. Spike L2: 23 tools (reload, pack switch with effective options, captures to game/viewfinder_captures/, per-pass GPU timings in ns, set_scene, control_ticks), no server-command tool; its MCP thread keeps the JVM alive at quit (watchdog crash report, exit -8).
   - Claude Code can connect to it directly during shader work.
