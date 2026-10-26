@@ -2,7 +2,7 @@
 Status: milestones M0-M6, the current one in detail, the findings assigned and the decisions.
 
 ## Contents
-Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M3 visual loop · M3 phases · M1 to M6 · Findings assigned · Decisions · Estimates
+Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M3 visual loop · M1 to M6 · Findings assigned · Decisions · Estimates
 
 ## Rules
 - Commits and versions (D33): Conventional Commits, each one logical, test-green change (`optilux test` and `optilux verify docs` pass before it), a phase one or more of them (workflow.md#git); the version in VERSION, a milestone a minor release, one PR and one release per milestone plus patches (workflow.md#release). Phases are M<N>.P<PP>; M0's and M1's are 0.MM.PP.
@@ -25,75 +25,13 @@ Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M3 vis
 - Closed with release v0.3.0 (2026-10-16): `world prep`, `world snapshot`, `world restore`, `calibrate`, `compare`, `report`, `verify records` and `run`'s measurement and calibration kinds with `run --check`; the mod's `window.measure` and per-pass timers (A8 passed, A11 failed at underwater: dropped from use, design.md#8-open-decisions E3); bench_263 prepared and surveyed, every view GPU-bound, the CPU floors; capture.reloadCap 20 and the split session; both modes calibrated on unmodified Unbound, shadows off detected beyond the 0.5 % floor; optilux-bench; about 21.3 h against 26.5 estimated. Plan: plans/m2.md; prompts: prompts/m2.md; what happened: the M2.P11 handoff in git history; its open rows: Findings assigned.
 
 ## M3 visual loop
-- Goal (plans/m3.md section 1): a shader change is judged by its frames as well as its GPU time: the hello pack renders the same bits across launches with TAA off, frames are taken at every view and compared by tier, offline checks gate a build before its launch and the similarity check before its commit, and both perf modes are calibrated on the static-texture set every session now uses.
-- Verbs (design.md#5-interfaces, From = M3): `check L0`, `check L1`, `check L2`, `verify similarity`; `run`'s visual and dump kinds and A5; `compare`'s tiers and the review page. Mod: frames.capture's align, ready and image-less captures; `shaders.dump` dropped (plans/m3.md D60).
-- Not in M3 (plans/m3.md section 2): L3-L4, RenderDoc, the filled coverage list and spider eyes, cost and timer rows, E2, E3 with Viewfinder (M4); TAA, the flush, `camera.path`, A6, A12, temporal gates, the live pass (M5); BENCH_DETERMINISTIC's cost row and the uniform-work scan (M4); F12 (M5); F24.
-- Exit, all of (plans/m3.md section 1): the verbs above run, tests green, the similarity hook on staged shader changes; the hello pack with BENCH_DETERMINISTIC and pipeline.json v0 passing `check L0` and `verify similarity`; the iso profile v1 passing L0's profile check; the static-textures pack holding every animated texture on its first frame in the deterministic set; coverage views built, the snapshot retaken and hashed; two visual sessions of the hello pack on the 11 perf views, every view identical; A5 judged over 33 waits; a quick and a full calibration on the deterministic set, each mode's twin inside its threshold and shadows off faster beyond it; CI green on every push and on the PR; the user's rebase merge and release v0.4.0; docs/handoff.md written.
-- Branch m3; M3.P00 (the plan) precedes the phases M3.P01 to M3.P11. Plan: plans/m3.md, premises verified 2026-10-17, its decisions D54-D70, approved by the user on 2026-10-18 (its section 10). Prompts: prompts/m3.md.
-
-## M3 phases
-Change, exit and estimate per phase; files and tests are in plans/m3.md section 5, its decisions D54-D70 in section 6.
-
-### M3.P01 Tools and reference copies
-- Change: glslang 16.6.0 and RGA 2.15 pinned and installed; pillow, numpy, flip-evaluator and scikit-image locked; reference/ filled by `install` with Unbound r5.9.3 and the control pack (plans/m3.md D54, D58, D59).
-- Exit: `install` reports both tools and both copies hash-checked; each tool prints its pinned version; the packages import; `git status` clean.
-- Estimate: 1.5 h; machine: downloads.
-
-### M3.P02 verify similarity
-- Change: winnowing over normalized GLSL tokens against reference/, each shared fingerprint extended to its whole match; the threshold from Unbound against itself and the control pack (D55); the pre-commit hook on the staged shader tree.
-- Exit: the controls hold, a planted copy is refused by the hook, shader/ passes.
-- Estimate: 2 h; machine: none.
-
-### M3.P03 The hello pack and pipeline spec v0
-- Change: the hello pack in `#version 330 core` (basic, textured, textured_lit, final), BENCH_DETERMINISTIC on by default (D56); config/pipeline.json v0 (D57); `run`'s variants `optilux` and `optilux@<ref>` (D63).
-- Exit: an acceptance run of A2 and A10 on the eleven views with the hello pack ends ok, A2 passed at every view.
-- Estimate: 2.5 h; machine: 1 launch. Attended: the machine left alone (A2 sends input).
-
-### M3.P04 check L0 and the iso profile v1
-- Change: `check L0`: glslang over the variant matrix, the similarity check, the profile check; the iso profile v1 with its `options`; `run` refusing an Optilux zip that fails L0.
-- Exit: L0 passes on the hello pack and the profile check on both Unbound profiles; a broken stage fails it.
-- Estimate: 2 h; machine: none.
-
-### M3.P05 Aligned, ready-triggered and image-less captures
-- Change (mod): frames.capture's align, ready and images false, selftest using align and ready, A9 on stamps alone (F17; D61); `shaders.dump` dropped (D60).
-- Exit: `mod test` green; A2, A9 and A10 pass on the eleven views with the reference pack, A9's capture under 5 s.
-- Estimate: 3 h; machine: 1 launch. Attended: the machine left alone (A2 sends input).
-
-### M3.P06 The deterministic set and visual runs
-- Change: the .mcmeta-only static-textures pack and the deterministic set in every session (D62); the visual kind (D63); the tiers in optilux/visual.py; `compare --against`; review.html.
-- Exit: a visual run on quick mode's views ends ok, every frame hashed, every option read back, every hello-pack pair identical; a tier per view; review.html written.
-- Estimate: 3.5 h; machine: 1 launch. Attended: the machine left alone while it runs.
-
-### M3.P07 Coverage views
-- Change: `world prep`'s coverage step at a site at least 512 blocks (Chebyshev) from every perf view of its dimension (D64), the views file's `coverage` list with `hand` and `ticks`, the End views setting the End's clock (D56); the snapshot retaken.
-- Exit: every coverage item counted, the snapshot hashed; a visual run of the coverage views ends ok.
-- Estimate: 2.5 h; machine: 2 launches and the new area's generation. Attended: the machine left alone while they run.
-
-### M3.P08 check L1 and L2
-- Change: the dump kind through iris.properties (D60); `check L1`: dump equality, the premise check, the impact matrix and pipeline.json's audit, closures in the record (D69); `check L2`: RGA's metrics (D70).
-- Exit: the define's changed stages named; a dump-equal closure spot-checked live, identical; each stage's VGPRs or a known offline failure.
-- Estimate: 3 h; machine: 2 launches. Attended: the machine left alone while they run.
-
-### M3.P09 A5 and the determinism exit
-- Change: A5 over 33 waits in two linked launches (D68); the twin first among the Ci (D65, F26).
-- Exit: A5 judged; two visual runs of the hello pack on the 11 perf views identical on every view; the schedule's test puts the twin first.
-- Estimate: 2.5 h; machine: 4 launches. Attended: the machine left alone while they run.
-
-### M3.P10 Recalibration on the deterministic set
-- Change: a budget run first when the driver differs from 32.0.31041.3013 (D66, F27); the quick and full calibrations; shadows off per mode; an M2 record refused live.
-- Exit: both calibrations committed; per mode the twin inside the threshold and shadows off faster beyond it; the refusal names resourcePacks.
-- Estimate: 1.5 h; machine: about 5 h, about 135 launches. Attended: the user's go after the driver call, the machine left alone.
-
-### M3.P11 The close
-- Change: the docs as built; CHANGELOG's 0.4.0 entry completed; the findings marked landed.
-- Exit: `optilux status` prints the Release prompt.
-- Estimate: 1 h; machine: none.
+- Closed with release v0.4.0 (2026-10-25): `verify similarity`, `check L0`, `check L1`, `check L2`; `run`'s visual and dump kinds and A5 (failed, 17 of 33 waits: the visual settle kept); `compare`'s tiers and review.html; frames.capture's align, ready and image-less captures; the hello pack with BENCH_DETERMINISTIC and pipeline.json v0, identical on the 11 perf views across launches; the iso profile v1; the static-textures pack in every session; the coverage views; both modes recalibrated on the deterministic set; about 19.3 h against 25 estimated. Plan: plans/m3.md; prompts: prompts/m3.md; what happened: the M3.P11 handoff in git history; its open rows: Findings assigned.
 
 ## M1 to M6
 One line each, from design.md#6-milestones; phase lists are provisional until each plan is approved. F and Q numbers refer to Findings assigned.
 - M1 game control: closed (above); exit: design.md#6-milestones M1.
 - M2 perf loop: closed (above); exit: design.md#6-milestones M2.
-- M3 visual loop: detailed above (M3 visual loop, M3 phases); exit: design.md#6-milestones M3.
+- M3 visual loop: closed (above); exit: design.md#6-milestones M3.
 - M4 shader base: D72 decided first; every coverage-list program, lighting, tonemap; cost rows, timer rows below the CPU floor; offline L3-L4; debug-tier attribution; E2 decided.
 - M5 features and temporal: shadows, sky, clouds, water, fog, AO, bloom, full TAA; the history flush (E4, F12), A6, A12; temporal positive controls; live pass.
 - M6 1.0: ratio vs Unbound iso reported; live pass; look review; README; release, as 1.0.0, which its first commit writes into VERSION by hand (workflow.md#release). Post-1.0: optimization, the JVM track, the lod tier, the Aperture backend.
@@ -131,6 +69,8 @@ The Phase -1 spike's handoff findings (2026-10-06) and later ones, each with the
 | F25 | A pack near 1 ms a frame meets PresentMon's row loss before the 90 % rule: the passthrough's captures were cut invalid on cave, night, entities, nether_crimson and nether_soul at 1,850-2,060 fps (m2-survey-1, -2; M2.P08's handoff) | landed in M3.P11 (plans/m3.md D67: no row in 0.4.0, measurement.md#session step 9); the row in M4 | no GPUBusy row for a pack that light: BENCH_DETERMINISTIC's cost row and the hello pack's timings wait for a heavier base or timer rows (E3) |
 | F26 | Quick mode's first Ci slot reads slow: each view's first measured baseline follows a dimension change and reads 0.13-0.16 % below the second, so slot 1, a candidate's and never the twin's, reads +0.085 % on the geo-mean (M2.P09's review 1) | landed in M3.P09 (plans/m3.md D65: the twin first) | the schedule changes before M3's calibration, so no candidate sits unwatched in that slot |
 | F27 | Each reload leaks about 0.5 GiB of GPU memory under driver 32.0.31041.3013, which an AMD installer put in place of 32.0.32015.2008 on 2026-10-10 (M1's 46 MiB of private bytes a reload), hence capture.reloadCap 20 (M2.P06; M2.P09's handoff) | landed in M3.P10 (plans/m3.md D66: the driver as found, 32.0.31041.1004; m3-diag-alone-1 leaked 580 MiB of GPU memory a reload, so the cap stays 20) | a newer driver and one budget run of m2-diag-alone-1's spec may let plans/m2.md D43 raise the cap: fewer launches a full session |
+| F28 | The uniform-work scan (PB): uniform-only math left in pixel stages, which a custom uniform would compute once a frame; the hello pack had none to scan (plans/m3.md D70) | M4 | `check L2` lists it per stage of a dump of M4's pack, explain only (offline.md#decision-powers) |
+| F29 | Peaceful refuses monsters, so no view draws spider eyes; the world's difficulty is the user's (plans/m3.md P22 and section 2) | M4 | a waiver in pipeline.json, or a NoAI spider at the coverage site once the user raises the difficulty, before M4's recalibration |
 
 ## Decisions
 Owner: who decides. Recommendation: what an unattended run takes. The user's decisions of 2026-10-05 live in design.md#7-decisions-taken-user-2026-10-05, later closed ones in this table; evidence decisions E1-E5 in design.md#8-open-decisions.
@@ -167,4 +107,4 @@ Owner: who decides. Recommendation: what an unattended run takes. The user's dec
 - M1: 28 h agent from plans/m1.md (2, 2, 2, 3, 3, 3, 2.5, 2, 1.5, 2, 3, 2; 25 h before the QA pass became two phases, D27; the mod phases carry 3 h each: ALC's mod ran 3x its line estimate, lessons.md#mod).
 - M2: 26.5 h agent from plans/m2.md (2, 2.5, 3.5, 3, 3.5, 1.5, 5, 1.5, 1.5, 1, 1.5, P03, P05 and P07 raised from 3 h on 2026-10-12 to size XL, Opus 5.5 Max, P07 to 5 h on 2026-10-13 for D43's split; its section 8 has the basis); machine time apart: 104-113 launches, M2.P09's sessions about 4 h.
 - M3: 25 h agent from plans/m3.md (1.5, 2, 2.5, 2, 3, 3.5, 2.5, 3, 2.5, 1.5, 1; its section 8 has the basis); machine time apart: about 146 launches, M3.P10's sessions about 5 h.
-- Tripwire baseline: M0-M3 summed 87.3 h (7.8 + 28 + 26.5 + 25; 72.3 h with M3's rough 10 h); the trip is at 174.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass); M2 about 21.3 h against 26.5 (the M2.P11 handoff in git history).
+- Tripwire baseline: M0-M3 summed 87.3 h (7.8 + 28 + 26.5 + 25; 72.3 h with M3's rough 10 h); the trip is at 174.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass); M2 about 21.3 h against 26.5 (the M2.P11 handoff in git history); M3 about 19.3 h against 25 (the M3.P11 handoff in git history): 64.2 h in all.
