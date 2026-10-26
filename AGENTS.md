@@ -31,7 +31,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - docs/measurement.md: baseline suite, session, verdicts, calibration, visual protocol.
 - docs/run-record.md: identity, record fields, comparison, run spec.
 - docs/platform.md: platforms, renderer transition (Vulkan, Aperture), mod tiers, spike.
-- docs/shader.md: rewrite policy, scope, method, pipeline spec.
+- docs/shader.md: rewrite policy, scope, method, pipeline spec; docs/research/ by topic.
 - docs/playbook.md: design defaults, technique candidates, pitfalls, checklists.
 - docs/offline.md: offline testing levels, what each may decide, tools.
 - docs/gpu-iris.md: GPU and Iris facts with evidence tags.

@@ -162,5 +162,5 @@ Filled in M4: every program Iris draws, its fallback and its coverage view.
   - TAA, AO, fog, post-processing, tonemapping, shadows, clouds, water;
   - Minecraft 26.x rendering (OIT), Iris internals, AMD RDNA3;
   - shader languages (GLSL now, Slang for Aperture), pipeline architecture.
-- Trigger: the cost table names the expensive pass; research that pass first.
+- Trigger: the cost table names the expensive pass; research that pass first. Before M4's plan, every topic at once (roadmap.md#decisions D73), indexed by docs/research/synthesis.md.
 - Output: docs/research/<topic>.md, within the docs cap (workflow.md#docs-rules). Claims with sources, then what applies to Optilux and the measurement that would confirm it. Superseded text is deleted.
