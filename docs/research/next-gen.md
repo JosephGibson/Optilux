@@ -2,7 +2,7 @@
 Status: Research for roadmap D72: what current Iris packs ship as next-generation, what each needs from Iris 1.11.7 on a 3.3 core context, its 4K cost here, its fit with determinism and Aperture, and the look target. Research only, not yet measured in Optilux.
 
 ## Contents
-Sources · Unbound r5.9.3 · Techniques · For Optilux · Open questions
+Sources · Unbound r5.9.3 · Techniques · For Optilux · Other not-yet items · Open questions
 
 ## Sources
 Read 2026-10-26. Iris facts are from GitHub branch 26.3 (the branch docs/platform.md#mc-263-verified read), not the pinned jar: each is [verify in jar].
@@ -42,7 +42,7 @@ Scale: Unbound's played frames are 4.6-7.7 ms at 4K (ALC, MC 1.21.11: docs/shade
 - Determinism: no TAA, but the volume is temporal state. fp16 averaging rounds, so sessions whose volumes passed different transients may settle on different states, as TAA history does (docs/measurement.md#visual-protocol) [inferred]. Fix 1: clear it at the flush; its convergence (ln 255 over the per-step attenuation's log, doubled at half rate: 100-200 frames) joins N_conv [inferred]. Fix 2: integer max-minus-one levels per channel, reads clamped to the level range: the update is monotone and lowers any excess a level a step, so one exact fixed point from any start within 15 steps (30 at half rate), no flush [inferred; L3 test 1]. The parity swap (frameCounter mod 2) makes the pack cycle even. Pitfalls: a view-dependent skip leaves stale light in view (none under BENCH_DETERMINISTIC); a scrolled read outside the volume is undefined in texelFetch, so bounds-check it.
 - Iris: CUSTOM_IMAGES (3D, at most 16: R2; zeroed at creation by glClearTexImage: R1), imageStore and at_midBlock in shadow.vsh (R2), COMPUTE_SHADERS for shadowcomp (fallback: fragment propagation over a 2D-tiled volume [inferred]), shadow.culling = reversed (SAFE_ZONE: R1) with the REVERSED_CULLING flag and voxelDistance (R2), previousCameraPosition. Iris checks capability: compute if glDispatchCompute resolves; images if glBindImageTexture resolves, GL 4.2, or the ARB or EXT extension plus ARB_buffer_storage (R1). Against: its docs say custom images "require OpenGL 4.2 support" (R2), ARB_compute_shader requires 4.2 (R4), and the context is "3.3.0 Core Profile Context" (docs/platform.md#mc-263-verified). For: Unbound's #version 400 shadow program loads and renders here (shadows off -10.76 %: docs/measurement.md#calibration) [inferred]. Only a probe launch settles it.
 - Aperture: two explicitly swapped 3D images are the no-flipping pattern (docs/shader.md#pipeline-spec); voxelization needs a pass that writes images, while Aperture's shadow pass is an object shader over cascades and image variables are the stated exception to its read/write rule (R3): unconfirmed. Algorithms go in Iris-free includes.
-- Recommendation: take back now: hooks in M4, built in M5 behind its option, if the probe passes.
+- Recommendation: later: after the probe and Unbound's COLORED_LIGHTING row.
 
 ### Voxel-traced block-light shadows and world-space reflections
 - Claim: Rethinking Voxels has "coloured block light with sharp shadows"; "Occasional sudden brightness changes are a side-effect of the way it works" (R7); how it traces is [inferred]. PathMax samples block lights "with a shadow ray each" (R8).
@@ -68,11 +68,11 @@ Scale: Unbound's played frames are 4.6-7.7 ms at 4K (ALC, MC 1.21.11: docs/shade
 
 ### Volumetric light shafts
 - Claim: Unbound, Solas ("crepuscular rays"), BSL ("volumetric light"), Photon and Kappa ("Volumetric fog") ship them (R5, R8).
-- Cost: PB put the End's shafts near 70 % of the End frame, ALC composite1 at 73 % of end_dragon (docs/playbook.md#4-design-defaults); Overworld shafts were off in ALC's rows and end_dragon's ms is in no doc, so 3-5 ms at full resolution is [inferred] from that share of 4.6-7.7 ms. At half size per axis with the depth-aware upsample (docs/playbook.md#51-structural): 0.4-1.2 ms [inferred], already paid in the End by the kept End-beam pass.
+- Cost: PB put the End's shafts near 70 % of the End frame, ALC composite1 at 73 % of end_dragon (docs/playbook.md#4-design-defaults); Overworld shafts were off in ALC's rows; that share of end_dragon's 8.16 ms on 26.3 is about 6 ms at full resolution (docs/research/synthesis.md#budget) [inferred]. At half size per axis with the depth-aware upsample (docs/playbook.md#51-structural): 0.2-1.2 ms [inferred], already paid in the End by the kept End-beam pass.
 - Quality: Off; Low, Medium, High by step count, half size per axis.
 - Determinism: dither from frameCounter mod the pack cycle, no smoothed uniform (Unbound's pitfall); TAA-on look needs A12, TAA-off frames deterministic.
 - Iris: the shadow map in composite, nothing new. Aperture: a full-screen pass over the cascaded shadow maps (R3) into an explicit half-size texture.
-- Recommendation: take back now (M5, with fog), sharing the End-beam march.
+- Recommendation: later, sharing the End-beam march.
 
 ### PBR materials and POM
 - Claim: labPBR (Photon, Kappa: R5, R8) and POM need a PBR resource pack (Unbound: RP_MODE 2, 3; POM's option text warns of a severe cost: lang/en_US.lang); IPBR-style derived normals (Unbound's default, RP_MODE 1) work on any pack.
@@ -96,19 +96,18 @@ Scale: Unbound's played frames are 4.6-7.7 ms at 4K (ALC, MC 1.21.11: docs/shade
 
 ## For Optilux
 ### First version (for D72)
-- Take back: colored block light by an integer floodfill (Medium 8 chunks), if the probe passes; light shafts at half size on the End-beam march.
-- Later: SSGI as AO's High level; voxel-traced block-light shadows; WSR; colored light fog. Not: path tracing (cost, wholly A12), custom PBR and POM, IPBR+ extras, Photonics.
+- Later: colored block light by an integer floodfill (Medium 8 chunks), after the probe and Unbound's COLORED_LIGHTING row; light shafts at half size on the End-beam march; SSGI as AO's High level; voxel-traced block-light shadows; WSR; colored light fog. Not: path tracing (cost, wholly A12), custom PBR and POM, IPBR+ extras, Photonics.
 - Prerequisites: shadows on, shadowDistance >= voxelDistance; compute in L0, which refuses compute programs today (docs/offline.md#levels), or the fragment fallback.
 
 ### Budget hypothesis (4K, RX 7800 XT)
 | Views | Floodfill (Medium) | Shafts |
 |---|---|---|
-| forest_noon, ocean_sunset, rain | 0.25-0.5 | 0.4-1.2 |
+| forest_noon, ocean_sunset, rain | 0.25-0.5 | 0.2-1.2 |
 | cave, night, underwater, entities | 0.25-0.5 | 0-0.4 |
 | nether_crimson, nether_soul | 0.45-0.9 | none |
 | end_dragon, end_city | 0.25-0.5 (0.9 without End shadows) | End-beam pass |
 
-- Frame budget for D72 [hypothesis]: default profile under 8.3 ms (120 fps) on every perf view, next-generation set under 1.5 ms mean (Unbound: 4.6-7.7 ms). Sodium targets 3840x2160@240 here (docs/platform.md#mc-263-verified): 4.17 ms, below every Unbound frame; the rate is the user's call.
+- Frame budget for D72 [hypothesis]: default profile under 8.3 ms (120 fps) on every perf view, next-generation set under 1.5 ms mean (Unbound on 26.3: 5.4-8.2 ms, docs/research/synthesis.md#budget). Sodium targets 3840x2160@240 here (docs/platform.md#mc-263-verified): 4.17 ms, below every Unbound frame; the rate is the user's call.
 - M6's ratio: kept on shared features: a taken-back feature Unbound has gets its iso switch matched (COLORED_LIGHTING with its extras set to Optilux's subset; LIGHTSHAFT_QUALI_DEFINE, End beams included); others are cost rows only.
 
 ### Look target
@@ -128,6 +127,19 @@ Scale: Unbound's played frames are 4.6-7.7 ms at 4K (ALC, MC 1.21.11: docs/shade
 3. Voxel addressing round trip; the edge fade to the lightmap continuous.
 4. Every frame-varying sequence's period divides 720720 (frameCounter 0 to 720719).
 5. Shaft march, zero dither, lit shadow map, homogeneous medium: the analytic integral.
+
+## Other not-yet items
+Paths: reference/complementary-unbound-r5.9.3/shaders/; ALC rows: config/profiles/complementary-unbound-played.json (1.21.11, 4K: docs/shader.md#method). Played's defaults (lib/common.glsl): rainbows, storm, biome weather, improved weather, bokeh on; outlines, sway, light levels, trims off. Barred under BENCH_DETERMINISTIC: frameTimeCounter, wall time (https://shaders.properties/current/reference/uniforms/system/), smooth(), wetness (docs/shader.md#determinism-and-taa). D determinism; A Aperture (its guide: https://shaders.properties/aperture/migration/); other ms [inferred].
+- Rainbows (lib/atmospherics/rainbow.glsl, composite1): an antisolar band at low sun after rain (smoothed wetness, inRainy). 0 ms gated off, to 0.05 on (~40 ops a pixel). D: wetness barred; a sun-only gate (Unbound's Always) or raw rainStrength (PER_TICK, CommonUniforms [verify in jar]), no dither, no TAA. No perf view shows one (config/suite.json times) [inferred]: a coverage view. A: yes.
+- Nether storm (lib/atmospherics/netherStorm.glsl, composite1, full size): a step per 8 blocks to far (32 at 16 chunks), 10 noisetex fetches a step, wind on frameTimeCounter. ALC: 0.228 mean, 1.837 at nether_crimson; skips failed (docs/playbook.md#6-did-not-work). Halved per axis (docs/research/synthesis.md#shared-infrastructure): 1.837/4, 0.3-0.55 with packed noise and the upsample. D: wind on worldTime (WorldTimeUniforms; branch 26.3 runs it in the Nether [verify in jar]), dither mod 16: A12. A: yes, arithmetic noise.
+- Weather styles: Heavy & Colder (played's) and biome weather thicken rain fog (lib/atmospherics/fog/mainFog.glsl) and tint light (lib/colors/lightAndAmbientColors.glsl) by smooth() rainFactor, inDry, inRainy, inSnowy (shaders.properties); ALC: -0.020 at rain. Opacity scales weather alpha; improved textures write an RGBA8 target (program/gbuffers_weather.glsl) composite1 blends: 0.03-0.1. D: raw rainStrength; biome_precipitation (BiomeUniforms, PER_TICK [verify in jar]) steps at borders. BENCH_DETERMINISTIC discards weather draws (docs/shader.md#determinism-and-taa), not fog or tint [inferred]. A: fog yes, weather program unknown.
+- Selection-outline styles (program/gbuffers_basic.glsl, composite5): a set colour, brightness; rainbow on frameTimeCounter; versatile a mask composite5 recolours; auto-hide on heldItemId (IdMapUniforms [verify in jar]). ~0 ms, static. A: unknown (no lines).
+- World and dark outline (lib/misc/worldOutline.glsl, darkOutline.glsl; deferred1): 4 and 8 or 24 depth taps a pixel: 0.01-0.05 and 0.03-0.15 (ALC sharpening, 4 taps in program/final.glsl: 0.013 mean). Static, no TAA. A: yes.
+- Hand sway (lib/misc/handSway.glsl, in hand and glint): ~0 ms on frameTimeCounter, held still under BENCH_DETERMINISTIC; hand and glint must move alike; only creative views show a hand (config/suite.json). A: unknown (no hand program).
+- Light-level overlay (lib/misc/showLightLevels.glsl; terrain): marks dark top faces with a held spider eye or light, or always; heldItemId, heldBlockLightValue (IdMapUniforms [verify in jar]). In the lighting pass, terrain pays nothing [inferred]. ~0 ms, static. A: unknown (item ids).
+- Armor trims (lib/materials/materialHandling/irisIPBR.glsl, IPBR only; played is Basic): emissive by currentRenderedItemId on trim_<material> ids (https://shaders.properties/current/reference/uniforms/id/); branch 26.3 registers it once at -1 (CommonUniforms [verify in jar]). ~0 ms, static; needs trimmed armor in a coverage view. A: unknown (item ids).
+- Distant light bokeh (program/deferred1.glsl, lib/misc/distantLightBokeh.glsl): max(pixel, 5-tap mean), mixed in over 60-260 blocks: 0.01-0.05 (as sharpening), static, no TAA. A: yes.
+- D72: now if the look wants: bokeh, heavy rain fog; later: rainbows, storm; a look call: outline styles, trims; not: the rest. Confirm: Unbound storm rows at both Nether views, TAA-off pairs across launches, review beside played.
 
 ## Open questions
 1. Do COMPUTE_SHADERS, CUSTOM_IMAGES, SSBO, #version 430 compute and glClearTexImage (R1) work on 26.3's 3.3.0 core context with AMD's driver, and does the pinned jar zero custom images? Decides: the probe; javap of FeatureFlags, IrisRenderSystem and GlImage.

@@ -73,11 +73,11 @@ D = determinism (docs/shader.md#determinism-and-taa), I = Iris 1.11.7 on the 3.3
 - D: exact mapping. I: `size.buffer.colortexN = 0.5 0.5` draws the pass at that size (docs/gpu-iris.md#passes-and-buffers, PB v) [verify in jar]. A: explicit half-size target, no flipping.
 
 ### T6 Dither and temporal reuse
-- Dither: a per-pixel start offset from generated spatial blue noise or a hash, plus a golden-ratio step on frameCounter mod c, the TAA cycle (8 or 16). 720720 = 2^4 x 3^2 x 5 x 7 x 11 x 13: 32 and Unbound's 3600 do not divide it. An STBN mask (R7) would be generated with c slices [inferred].
+- Dither: a per-pixel start offset from generated spatial blue noise or a hash, plus a golden-ratio step on frameCounter mod c, the TAA cycle (16). 720720 = 2^4 x 3^2 x 5 x 7 x 11 x 13: 32 and Unbound's 3600 do not divide it. An STBN mask (R7) would be generated with c slices [inferred].
 - Pitfall: in R6 per-ray jitter took 8 half-resolution steps from 2.3 to 7.5 ms, which the authors attribute to texture-cache misses; one offset for all rays removed the cost but gave TAA nothing to resolve. Cost: a hash per pixel plus that risk.
 - Option a: TAA alone, as in Unbound.
 - Option b, a cloud history (R8 d2_clouds_upscaling.fsh): one pixel per k x k block refreshed a frame (frameCounter mod k^2, k 4 by default), blended by age up to a limit; history rejected off-screen, behind nearer terrain, on the hand, on NaN or a clock change; a 3x3 clamp under fast camera motion; history read and written in one pass (flipping); advection by frameTime. R6: R1 updated in a 4x4 pattern, at half resolution (section 2) or quarter (abstract).
-- D: a needs TAA-on determinism (A12; docs/design.md#8-open-decisions E4). b adds a second history: the same flush, its own N_conv, k^2 dividing 720720 (k 2, 3, 4, 6 or 12), advection from T1. Under E4's fallback both get review-tier verdicts only.
+- D: a needs TAA-on determinism (A12; docs/design.md#8-open-decisions E4). b adds a second history: the same flush, its own N_conv, k^2 dividing 16 (k 2 or 4), advection from T1. Under E4's fallback a keeps identical or near verdicts for optimizations on TAA-off frames, its converged look review only; b gets review-tier verdicts only.
 - I: b needs gbufferPreviousModelView, gbufferPreviousProjection and previousCameraPosition (optilux/l1.py IRIS_UNIFORMS, from the jar). A: b needs explicit ping-pong.
 
 ### T7 Layered 2D clouds
@@ -96,7 +96,7 @@ D = determinism (docs/shader.md#determinism-and-taa), I = Iris 1.11.7 on the 3.3
 
 ## For Optilux
 - First version (M5): T1-T5 and T6a; T7 as Low and an optional high layer; T9 analytic.
-  - clouds-march: deferred, overworld only (program.<world>/<name>.enabled, docs/gpu-iris.md#passes-and-buffers), half resolution, writing premultiplied RGBA16F and RG16F (1/viewZ, cloud distance). The deferred sky pass upsamples and fades to sky; the lighting include holds the shadow function.
+  - clouds-march: deferred, overworld only (program.<world>/<name>.enabled, docs/gpu-iris.md#passes-and-buffers), half resolution, writing premultiplied RGBA16F and RG16F (1/viewZ, cloud distance). The light pass (deferred3) upsamples and fades to sky; the lighting include holds the shadow function.
   - `clouds=off` in shaders.properties, as in Unbound and Photon: gbuffers_clouds then draws nothing, so the coverage list needs a waiver or a vanilla mode (docs/shader.md#coverage-list) [verify in jar]. R9's 26.1 pipeline reads the pack's cloud setting.
   - Altitude, coverage and thickness are look constants, so cloudHeight is not read (R9: the CLOUD_HEIGHT environment attribute, not the clouds option). Rain coverage reads rainStrength (R9: per tick, the level's rain level, unsmoothed), never a smooth() of it.
   - Options: CLOUDS Off / Low / Medium / High; CLOUD_SHADOWS on/off. Off disables the pass and its consumer stops reading it (docs/playbook.md#7-pitfalls).

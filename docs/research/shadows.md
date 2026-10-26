@@ -65,7 +65,7 @@ Read in R10, described in our words.
 ### Rotated disk, rotated per frame
 - Claim: a few taps on a spiral or Vogel disk, rotated per pixel and per frame, turn banding into noise that TAA averages. R4: "a 8-tap filter with a special per-pixel noise A.K.A. "Interleaved Gradient Noise"". R10 uses 4 taps; R9 rotates a Vogel disk per frame and returns early when its first 4 taps agree.
 - Cost: the same per tap, so it pays only if fewer taps give the same look [inferred]; half the pairs with per-frame rotation is a PB candidate [PB b] (docs/playbook.md#54-sample-count-and-precision-trades).
-- Determinism: rotate by frameCounter % C, C being config/pipeline.json's cycle (1 now; the TAA topic sets it; 8 and 16 divide 720720). A mod-3600 term like Unbound's would become the cycle (docs/shader.md#determinism-and-taa). It relies on TAA: review tier only under E4's fallback, whose TAA-off frames show the raw noise.
+- Determinism: rotate by frameCounter % C, C being config/pipeline.json's cycle (1 now; 16 with TAA on, which divides 720720). A mod-3600 term like Unbound's would become the cycle (docs/shader.md#determinism-and-taa). It relies on TAA: review tier only under E4's fallback, whose TAA-off frames show the raw noise.
 - Iris: frameCounter [ALC v] (docs/gpu-iris.md#frame-counters-and-reload); the tap count from an int custom uniform (docs/gpu-iris.md#custom-uniforms). Aperture: the same include, given the frame index.
 
 ### PCSS
@@ -102,7 +102,7 @@ Read in R10, described in our words.
 First version: M4 lands the programs for the coverage list and a Low lookup; M5 adds the filters.
 - Iris-free includes for the mapping (radial distortion, centre density matched to Unbound's played map, the texel's world size) and the filters, with thin per-backend glue (docs/shader.md#pipeline-spec).
 - Programs: shadow_solid depth-only without discard; shadow_cutout testing alphaTestRef; shadow_water writing the tint; shadow_entities, shadow_block. shadowDistanceRenderMul 1, no shadowcolor1, no Nether pass.
-- One lookup per pixel in deferred if E2 makes terrain deferred (docs/design.md#8-open-decisions), else forward; translucents and entities do their own. Default filter: noise-free hardware PCF; rotation and PCSS wait for A12.
+- One lookup per pixel in deferred if E2 makes terrain deferred (docs/design.md#8-open-decisions), else forward; translucents do their own. Default filter: noise-free hardware PCF; rotation and PCSS wait for A12.
 - Options: SHADOWS Off/Low/Medium/High; shadowDistance 64/96/128/160 (default 96, as in the iso profile); ENTITY_SHADOWS on/off.
 
 | level | map | taps | colour | extra |

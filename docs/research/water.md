@@ -84,7 +84,7 @@ In Optilux's words; paths under reference/complementary-unbound-r5.9.3/shaders/ 
 - Cost: derivatives and a few ALU [inferred]. D: none; fewer fireflies for TAA. I: derivatives only, core GLSL 3.30. A: include.
 
 ### Underwater fog and distortion
-- Fog: Beer-Lambert over view distance with the absorption constants, in the fog composite (fog topic). Under BENCH_DETERMINISTIC fogColor in water settles after 3 s and fogEnd is not read (docs/shader.md#determinism-and-taa); own constants avoid both.
+- Fog: Beer-Lambert over view distance with the absorption constants, opaque in deferred, translucents forward (fog topic). Under BENCH_DETERMINISTIC fogColor in water settles after 3 s and fogEnd is not read (docs/shader.md#determinism-and-taa); own constants avoid both.
 - Distortion (in scope): a small sine UV wobble in the last pass, after TAA, so history never sees it; frozen phase under BENCH_DETERMINISTIC; ~0 ms in an existing pass [inferred]. I: isEyeInWater (R10) [verify in jar]. A: the wobble in an include.
 
 ### Foam, caustics, ripples (D72 input)
@@ -96,9 +96,9 @@ In Optilux's words; paths under reference/complementary-unbound-r5.9.3/shaders/ 
 ## For Optilux
 ### First version
 - M4 (docs/shader.md#coverage-list): gbuffers_water as a lit translucent surface (texture x vertex colour x the lighting topic's light, fog); water and glass split by block id. No water feature.
-- M5, in gbuffers_water: waves, Fresnel and Snell's window, thickness at the refracted pixel, refraction from the copy with the leak guard, per-channel absorption and in-scatter, Sky, Low or Medium reflection, footprint-filtered glint, then fog. Underwater fog in the fog composite; distortion in the last pass.
-- The copy: a second R11F_G11F_B10F output of the deferred lighting pass, compiled in only for reflection Low or more or refraction on.
-- Includes: water_waves, water_optics (Fresnel, Snell, Beer-Lambert, in-scatter, constants), ssr; gbuffers_water and the fog composite are glue.
+- M5, in gbuffers_water: waves, Fresnel and Snell's window, thickness at the refracted pixel, refraction from the copy with the leak guard, per-channel absorption and in-scatter, Sky, Low or Medium reflection, footprint-filtered glint, then fog. Underwater fog opaque in deferred, translucents forward (fog topic); distortion in the last pass.
+- The copy: scene-lit, the R11F_G11F_B10F output of the deferred lighting pass, one pre-fog copy shared with block SSR (docs/research/synthesis.md#pass-order-iris-gl).
+- Includes: water_waves, water_optics (Fresnel, Snell, Beer-Lambert, in-scatter, constants), ssr; gbuffers_water and the deferred resolve pass are glue.
 - No water-owned history: TAA's flush covers water. High SSR waits for TAA and A12.
 
 ### Options
@@ -136,7 +136,7 @@ Unbound's water: 4 % of 4.6-7.7 ms frames, 0.18-0.31 ms (docs/shader.md#method) 
 7. Clock: constant phase under BENCH_DETERMINISTIC; High's jitter cycle divides 720720.
 
 ## Open questions
-1. SSR in gbuffers_water or half-res in a composite merged with fog? Cost rows at ocean_sunset and night, L2's VGPR map.
+1. SSR in gbuffers_water or half-res in a composite? Cost rows at ocean_sunset and night, L2's VGPR map.
 2. Analytic waves or a generated tiling normal texture? L2, a cost row, a shimmer review; whether a generated PNG is a shipped texture asset (docs/shader.md#look-and-scope) is the user's call.
 3. Do custom textures, or colortex mips (built "directly before the program" that asks for them: R10), reach gbuffers_water with mips? The jar.
 4. 26.3's exact far plane (R10: roughly far x 4)? The jar, then test 4; only formulas built on far care.

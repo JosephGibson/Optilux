@@ -93,7 +93,7 @@ Judged on the look: Optilux starts "from a similar tonemap" (user, 2026-10-20; d
 - First version (M4):
   - scene colour R11G11B10F, RGBA16F its A/B variant; a pass needing alpha keeps its own buffer;
   - one pass ends the HDR chain: bloom in (post), grade matrix, exposure, an Unbound-like Lottes curve, sRGB encode, the three look terms, display saturation; output RGB10_A2, gamma-encoded; the maths in one Iris-free include;
-  - TAA after it; final: sharpening, a static triangular IGN dither, the screen;
+  - TAA after it (M5); final: sharpening (M5), a static triangular IGN dither, the screen;
   - exposure fixed per dimension; eye adaptation waits for D72's look target (docs/roadmap.md#decisions);
   - nothing in this path reads smooth(), eyeBrightnessSmooth, frameTime or random().
 - Options, fewer than Unbound's: exposure, contrast, white path, saturation; dither On/Off; later eye adaptation Off/Low/Medium/High.

@@ -23,7 +23,7 @@ Sources · Unbound r5.9.3 · Techniques · For Optilux · Open questions
 
 ## Unbound r5.9.3
 - Placement [R1]: opaque fog in deferred1 (DoFog, after SSAO, on the forward-lit colour), translucents in gbuffers_water, the volumetric march in composite1 at full resolution (shaders.properties rescales only colortex1 and colortex7).
-- Cost: composite1 is 11 % of the weighted frame (docs/shader.md#method) and 73 % of end_dragon (docs/playbook.md#4-design-defaults), ALC replay shares on MC 1.21.11. Unbound frames run 4.6-7.7 ms at 4K across ALC's views; if end_dragon's does too, its march costs about 3.4-5.6 ms [inferred: 0.73 x the range; end_dragon's own frame time is not in the docs].
+- Cost: composite1 is 11 % of the weighted frame (docs/shader.md#method) and 73 % of end_dragon (docs/playbook.md#4-design-defaults), ALC replay shares on MC 1.21.11. Unbound frames run 4.6-7.7 ms at 4K across ALC's views; end_dragon's GPUBusy is 8.16 ms on 26.3 (results/records/m3-shadows-full-1.json), so its march costs about 6 ms [inferred: 0.73 x 8.16, a 1.21.11 share].
 - Why the End costs so much: common.glsl defines LIGHTSHAFTS_ACTIVE in the End at any LIGHTSHAFT_QUALI. At the played 0 the End marches 31 near steps (within about 94 blocks at shadowDistance 96) and 10 far steps to 1536 blocks. A near step makes one shadowtex0 texelFetch, plus the translucent compare and colour fetch only where that texel is occluded; every step calls the beam function's four noisetex fetches (volumetricLight.glsl, enderBeams.glsl) [R1]: about 41 steps of up to 7 fetches per 4K pixel [inferred count].
 - Atmospheric fog (mainFog.glsl) [R1]: a distance curve that stays near zero, then rises steeply, its exponent changing with rain; scaled by ATM_FOG_MULT less a weather-dependent offset (played 0.50) and by the smoothed eye brightness, which removes it underground; an altitude factor at the fragment's and the camera's height, not integrated along the ray, so from above the fade band a valley is fogged by its own altitude [inferred]. Colour: a night and a day sky colour blended by the night factor, sharpened by the view-sun angle and sun visibility.
 - Border fog (off in played and iso), over max(horizontal, vertical) distance: overworld, a sky-coloured steep high-power curve up to far; Nether, a near-linear ramp in the pack's Nether colour up to min(far, NETHER_VIEW_LIMIT). It is the Nether's only distance fog, as the Nether undefines the atmospheric fog (common.glsl; iso droppedNotes) [R1, R14], so played draws only bloom fog there.
@@ -70,9 +70,9 @@ Sources · Unbound r5.9.3 · Techniques · For Optilux · Open questions
   - one fetch per step from a camera-centred beam map, generated procedurally each frame, world-anchored and snapped to texels, instead of Unbound's four noise fetches;
   - the energy-conserving step, so changing the step count keeps the brightness;
   - the step count from an int custom uniform (docs/gpu-iris.md#occupancy).
-- Cost [inferred from the Unbound estimate]: 3.4-5.6 ms over 41 full-resolution steps is 0.08-0.14 ms a step, 0.02-0.035 ms at a quarter of the pixels, so Low 8, Medium 12 and High 16 steps cost 0.17-0.27, 0.25-0.41 and 0.33-0.55 ms, less by an unmeasured factor for one fetch a step instead of up to seven; plus 0.05-0.1 ms for the upsample.
+- Cost [inferred from the Unbound estimate]: about 6 ms over 41 full-resolution steps is about 0.15 ms a step, 0.036 ms at a quarter of the pixels, so Low 8, Medium 12 and High 16 steps cost about 0.29, 0.44 and 0.58 ms, less by an unmeasured factor for one fetch a step instead of up to seven; plus 0.05-0.1 ms for the upsample.
 - Constraints:
-  1. Dither from IGN [R9] offset by frameCounter mod C, C the pack cycle (8 or 16, which divide 720720: docs/mod.md#6-time-and-determinism; R9's 64-frame loop does not). Static with TAA off, as Unbound does [R1]. Animation frozen under BENCH_DETERMINISTIC; off, it follows frameTimeCounter. TAA is the denoiser: the converged look rests on A12, review only under E4's fallback.
+  1. Dither from IGN [R9] offset by frameCounter mod C, C the pack cycle (16, which divides 720720: docs/mod.md#6-time-and-determinism; R9's 64-frame loop does not). Static with TAA off, as Unbound does [R1]. Animation frozen under BENCH_DETERMINISTIC; off, it follows frameTimeCounter. TAA is the denoiser: the converged look rests on A12, review only under E4's fallback.
   2. size.buffer (ShaderProperties textureScaleOverrides, R3); a pass draws at its buffers' size (docs/gpu-iris.md#passes-and-buffers, PB v on 1.10.7); RGBA16F [verify in jar].
   3. An explicit half-size texture, no flip; march and upsample in Iris-free includes.
   4. As above.
@@ -97,8 +97,8 @@ Sources · Unbound r5.9.3 · Techniques · For Optilux · Open questions
 - Epipolar sampling places march samples along epipolar lines and interpolates between them [R12]; complex for a fragment-only port [inferred]. D72 input only.
 
 ## For Optilux
-- One Iris-free include holds T1-T4, with one glue file per backend. Opaque fog in the lighting pass (E2 decides where), translucents in their forward program at their own depth (as Unbound does), clouds at the cloud depth; the sky gets no fog, but the T2 colour matches it.
-- End beams: one composite at 0.5 x 0.5 into premultiplied RGBA16F (rgb inscatter, alpha transmittance), upsampled in the next composite; the beam map from a deferred pass at an absolute size.
+- One Iris-free include holds T1-T4, with one glue file per backend. Opaque fog in deferred's resolve pass after the pre-fog copy, translucents in their forward program at their own depth (as Unbound does), clouds at the cloud depth; the sky gets no fog, but the T2 colour matches it.
+- End beams: one composite at 0.5 x 0.5 into premultiplied RGBA16F (rgb inscatter, alpha transmittance), upsampled in the tonemap pass; the beam map from a prepare pass at an absolute size.
 - No fogStart or fogEnd in either build, except for vanilla-only states (lava, powder snow, blindness, darkness) with BENCH_DETERMINISTIC off; the perf and played builds then fog alike, and the define's cost row (docs/measurement.md#session) holds no fog change [inferred].
 - Options (the edge fade always on):
 
@@ -117,7 +117,7 @@ Sources · Unbound r5.9.3 · Techniques · For Optilux · Open questions
   | forest_noon, ocean_sunset, rain, night, cave, entities | 0.08 ms |
   | underwater | 0.08 ms |
   | nether_crimson, nether_soul | 0.05 ms |
-  | end_dragon, end_city | 0.5 ms at Medium (Unbound about 3.4-5.6 at end_dragon; none for end_city) |
+  | end_dragon, end_city | 0.5 ms at Medium (Unbound about 6 at end_dragon; none for end_city) |
 
 - What would confirm each claim: a feature cost row per option on every view of its dimension (docs/measurement.md#verdicts-and-cost-rows; an analytic fog may land inside the 0.5 % floor, which is then the answer); END_BEAMS rows at both End views; a full-resolution beam variant against the half-resolution one, expected close; every feature at review against Unbound's played frames (docs/measurement.md#visual-protocol); later optimizations identical or near on TAA-off frames; a TAA-off capture with beams on identical across two launches, TAA on through A12; the live pass: beam motion, rain fog, entering water, cave mouths.
 - Dependencies: sky (fog and edge colour, End flash); lighting (sun and ambient uniforms); water (shared absorption); clouds (fog at cloud depth, shared march and upsample); taa (cycle, flush, N_conv); shadows (shafts, shadowed beams); post (output dither); bloom (bloom fog); reflections (fog on reflected samples); iris (the capabilities above); next-gen (froxels on Aperture compute).

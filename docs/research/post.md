@@ -104,7 +104,7 @@ Post chain (program/*.glsl, R15):
 ### Output dither
 - Claim: dither before the last quantization with zero-mean triangular noise; R11: "GPUs are rounding before writting to framebuffer so we center the distribution around 0.0". R10's TEPD conserves energy over time given temporal blue noise. The step depends on the target, which config/pipeline.json calls "the game's own framebuffer, whose format the pack does not set".
 - Tier: against undithered at most 1 step (near, maxAbsDiff 1 in config/suite.json); two patterns up to 2 apart (close or review) [inferred].
-- Determinism: static under BENCH_DETERMINISTIC. A temporal dither needs a cycle dividing 720720 and accumulates nothing, as final runs after TAA.
+- Determinism: static under BENCH_DETERMINISTIC. A temporal dither needs a cycle dividing 16 and accumulates nothing, as final runs after TAA.
 - Iris: a PNG custom texture (texture.<stage>.<sampler>, R13) or a hash [verify in jar]. Cost: under 0.01 ms [inferred].
 - The RGB10_A2 TAA history's write dither (±1/2 step, docs/playbook.md#54-sample-count-and-precision-trades) is the taa topic's.
 
@@ -125,16 +125,15 @@ Post chain (program/*.glsl, R15):
   - One writer per texture per frame, read after; nothing relies on blending or flip=false. If the live pass shows pulsing, v2 is the explicit chain, dual Kawase first.
 - Options: BLOOM Off, Low (5 levels), Medium (6), High (7), Off removing both passes, the mix and the mip const (docs/playbook.md#55-config-level; docs/playbook.md#4-design-defaults); BLOOM_STRENGTH; SHARPENING (Off, or 0 to 1); UNDERWATER_DISTORTION (on, off). No dither option.
 - Budget hypothesis, 4K, every view [inferred from R16, R5 scaled, docs/gpu-iris.md#bandwidth]: bloom 0.10-0.20 ms, mostly the prefilter's full-frame read and the mix's taps in every pixel; sharpening 0.02-0.05 ms; dither under 0.01 ms; distortion under 0.02 ms at underwater. Sharpening and dither likely sit inside the 0.5 % threshold floor (docs/measurement.md#calibration): they need timer rows, none yet (docs/measurement.md#verdicts-and-cost-rows).
-- Dependencies: tonemap (mix before exposure; its output encoding sets sharpening's domain and the dither step); taa (bloom before or after it, sharpening after it, N_conv); fog-volumetrics (bloom fog); water (distortion beside refraction); lighting and sky (the HDR peaks that bloom).
+- Dependencies: tonemap (mix before exposure; its output encoding sets sharpening's domain and the dither step); taa (bloom before it, sharpening after it, N_conv); fog-volumetrics (bloom fog); water (distortion beside refraction); lighting and sky (the HDR peaks that bloom).
 - Confirmation: cost rows for bloom off against each level on all 11 views, sharpening off against on, distortion at underwater; viewport scaling identical; features to review against Unbound's played frames (docs/measurement.md#visual-protocol); live pass: pulsing bloom, sharpening halos.
 - L3 golden tests (docs/offline.md#levels): linear-sampled weights reproduce the discrete kernel on an impulse within bilinear rounding (R4); DC gain 1; a lone firefly within the Karis bound; a ramp through each odd-sized level unshifted; tiles and mix satisfy f(k·x) = k·f(x), the Karis prefilter not, by design; sharpening with a zero lobe returns the input (RCAS's 0 stops is its maximum) and keeps [0, 1] in [0, 1], overshooting the neighbourhood's range by design; the dither has zero mean, stays within ±1 step and reads no frameCounter.
 
 ## Open questions
 - Does pinned Iris 1.11.7 match branches 26.1 and 26.3 on scale., flips, mips rebuilt every pass and composite blend? javap on CompositeRenderer, ShaderProperties and RenderTargets.
 - Does the mip-tile bloom pulse under motion? The live pass and a TAA-off motion sequence.
-- Bloom before or after TAA? The taa and tonemap topics: cost rows of both history formats, the live pass.
 - The final target's format and rounding, which set the dither step: an L4 RenderDoc capture.
-- Sharpening on linear or encoded values (CAS or RCAS), how strong? Review frames with TAA on, once the tonemap's output encoding is set.
+- How strong an RCAS-style sharpening? Review frames with TAA on.
 - Unbound's bloom alone (mip chain and write in, bloom fog out): L4 attribution shares, which only predict (docs/offline.md#decision-powers).
 - Bloom fog as distance haze? The fog-volumetrics topic and D72's look target.
 - Mask the hand from underwater distortion? Review frames and the live pass.

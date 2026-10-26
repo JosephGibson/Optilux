@@ -48,11 +48,11 @@ Defaults unless a technique says otherwise. Det: no frame-varying term, no accum
 ### F: forward with split programs
 - Lighting stays in gbuffers, paid per shaded fragment. F-v computes the unshadowed terms per vertex (as the hello pack reads light, shader/shaders/lib/surface_vertex.glsl); shadow and specular stay per pixel.
 - Cost [inferred]: 60-100 VALU per fragment at 3840 lanes x 2.124 GHz is 0.06-0.1 ms per full-screen layer, dual issue and stalls ignored. M5's lookups would cost F what they cost Unbound, 0.85-1.0 ms at forest_noon.
-- E2's crux: M4 has no shadows, so per-fragment cost is lowest when E2 is decided. D can lose 0.1-0.3 ms on low-overdraw views in M4 and still win at forest_noon in M5 [inferred].
+- E2's crux: M4 has only a 1-tap shadow lookup, so per-fragment cost is lowest when E2 is decided. D can lose 0.1-0.3 ms on low-overdraw views in M4 and still win at forest_noon in M5 [inferred].
 
 ### Discard-free solid programs
 - "Any reachable `discard` defers depth writes until after the shader, even if it never fires" (docs/gpu-iris.md#depth-and-discard). AMD: "Avoid `discard` in long running shaders when there are other paths" (R3); its Z-prepass alternative needs a pass Iris does not offer [inferred].
-- Iris maps Sodium's TERRAIN to TerrainSolid with AlphaTest.ALWAYS and TERRAIN_CUTOUT to TerrainCutout with ONE_TENTH_ALPHA (R2 SodiumPrograms); PB read cutout `> 0.5` on 1.10.7 (docs/gpu-iris.md#programs-and-alpha-tests): CONFLICT. A core program applies alphaTestRef itself (docs/shader.md#facts) [verify in jar]. gbuffers_terrain_solid falls back to gbuffers_terrain (R1 gbuffers).
+- Iris maps Sodium's TERRAIN to TerrainSolid with AlphaTest.ALWAYS and TERRAIN_CUTOUT to TerrainCutout with ONE_TENTH_ALPHA (R2 SodiumPrograms); PB read cutout `> 0.5` on 1.10.7 (docs/gpu-iris.md#programs-and-alpha-tests): CONFLICT. A core program applies alphaTestRef itself (docs/shader.md#facts). gbuffers_terrain_solid falls back to gbuffers_terrain (R1 gbuffers).
 - Today every hello-pack program shares a fragment stage with a reachable discard (shader/shaders/lib/surface_fragment.glsl); terrain falls back to gbuffers_textured_lit.
 - ALC's slower route was Iris's injected alpha test, which core programs do not get; the split program is unmeasured (CONFLICT, docs/gpu-iris.md#depth-and-discard). Cost: sign unknown; an A/B with identical frames decides.
 
@@ -73,7 +73,7 @@ Defaults unless a technique says otherwise. Det: no frame-varying term, no accum
 
 ### Light model on levels and custom uniforms
 - Block and sky light come from vaUV2 / 240 through Optilux's curves, not vanilla's lightmap, so vanilla's tick flicker never enters and the hello pack's lightmap special case (docs/shader.md#determinism-and-taa) goes away. What the lightmap also carried returns from uniforms: nightVision, darknessLightFactor, screenBrightness (PER_FRAME, R2 CommonUniforms), the End flash.
-- Sun: "a simple Lambertian BRDF" (R7) times the shadow (M5). Sky: a hemisphere blend on N.U times the sky curve. oldLighting is false by default (R1 features): the pack supplies the face shade [verify in jar: Sodium's shade off]. Specular: GGX, Schlick Fresnel (R7), sun only, smoothness from the material map (docs/shader.md#look-and-scope), skipped where shadowed (docs/playbook.md#53-exact-trims).
+- Sun: "a simple Lambertian BRDF" (R7) times the shadow (1-tap in M4, filtered in M5). Sky: a hemisphere blend on N.U times the sky curve. oldLighting is false by default (R1 features): the pack supplies the face shade [verify in jar: Sodium's shade off]. Specular: GGX, Schlick Fresnel (R7), sun only, smoothness from the material map (docs/shader.md#look-and-scope), skipped where shadowed (docs/playbook.md#53-exact-trims).
 - Uniform-only math is custom uniforms (docs/playbook.md#4-design-defaults; PB: terrain 72 -> 60 VGPRs): vectors, day factors, colours, held-light terms, flicker. Det: rainStrength is PER_TICK, wetness and eyeBrightnessSmooth smoothed (R2); smooth() is barred (docs/measurement.md#visual-protocol), so the bench reads rainStrength and endFlashIntensity raw where Unbound smooths them.
 - Iris: custom-uniform inputs [verify in jar]; at_midBlock.w carries block emission (BLOCK_EMISSION_ATTRIBUTE, R1 flags) [verify in jar]. Aperture: uniforms are ap.* structs (docs/platform.md#renderer-transition), so each custom uniform is re-expressed per backend from one table [inferred]. Cost: once per pixel in D, 0.06-0.1 ms [inferred].
 
@@ -91,7 +91,7 @@ Defaults unless a technique says otherwise. Det: no frame-varying term, no accum
 - The material id travels as a smooth float varying, rounded in the fragment stage: flat varyings in terrain measured +1.36 % in the Nether for ALC, neutral for PB (docs/gpu-iris.md#uniform-math) [inferred for this use]. Iris: mc_Entity in core terrain [verify in jar].
 
 ### Vanilla AO and SSAO
-- separateAo puts vanilla AO in the vertex alpha, but R1 features warns of a bug that "prevents separateAo from functioning unless the shadow pass is enabled"; M4 has no shadow pass [verify in jar].
+- separateAo puts vanilla AO in the vertex alpha, but R1 features warns of a bug that "prevents separateAo from functioning unless the shadow pass is enabled"; M4 draws a shadow pass, which may lift it [verify in jar].
 - Filament: "the ambient occlusion term is only applied to indirect lighting", and against over-darkening it takes Lagarde's min() of medium- and large-scale occlusion (R7). GTAO adds a multi-bounce fit and specular occlusion (R8). Unbound multiplies everything.
 - Proposed: vanilla AO on ambient and block light, softened on direct light until shadows land; with SSAO, min(vanilla, SSAO) (R7), not the product; review tier. Det: vanilla AO is static; SSAO noise is the ao topic's.
 
@@ -102,7 +102,7 @@ Defaults unless a technique says otherwise. Det: no frame-varying term, no accum
 - Iris-free includes (docs/shader.md#pipeline-spec): the lighting core (struct in, radiance out), the codec, the curves.
 - Options: HELD_LIGHT Off/On; BLOCK_FLICKER Off/Low/Medium/High; FOLIAGE_TRANSLUCENCY Off/On; SUN_SPECULAR Off/On. Dev: LIGHT_PATH forward/deferred; E2_LOAD 0/4/8/16 extra fetches per lit fragment from an int custom uniform, standing in for M5's lookups.
 
-### Cost hypothesis, M4, no shadows [inferred]
+### Cost hypothesis, M4, shadows excluded [inferred]
 | View type | F ms | D ms |
 |---|---|---|
 | forest_noon | 0.12-0.4 | 0.3-0.65 |
@@ -130,7 +130,7 @@ D: its pass plus 4 B more export per fragment than F, low ends assuming compress
 7. moderngl on this driver: blending and glClear on an RGBA16UI target.
 
 ### Dependencies
-- taa: deferred rebuilds position from depth with the jitter removed, as Unbound's gbuffers_terrain does; the scene target is TAA's input. tonemap: its format and the light scale.
+- taa: deferred rebuilds position from depth with the jitter removed, as Unbound's gbuffers_terrain does; the tonemap's output is TAA's input. tonemap: its format and the light scale.
 - shadows: lookups in deferred from depth and the flat normal, foliage and entity flags; their cost moves E2; separateAo may need the shadow pass. ao: normals and depth in, applied to ambient, min() with vanilla AO.
 - sky: in the lighting pass, one uniform table for sun, moon and ambient. water: the forward include; refraction copies the scene target. clouds, fog, reflections, post and next-gen read the scene target or G-buffer. iris: every [verify in jar].
 

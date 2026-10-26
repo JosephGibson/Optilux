@@ -91,11 +91,11 @@ Complementary License Agreement 1.7 (License.txt): studied, never copied (docs/s
 - End: vanilla draws a textured sky box and the flash sprite (R12); Optilux's deferred pass draws a base gradient, stars, the beam layer and the flash glow.
 
 ### T10 End beams and End flash
-- If end_dragon's frame is in the 4.6-7.7 ms range, Unbound's composite1 there is about 3.4-5.6 ms [inferred]: the whole End march, shadow fetches included.
-- Medium: an own beam field marched at half resolution, int-uniform step count 16, clipped to the band's slab, upsampled depth-aware (docs/playbook.md#51-structural): 0.3-0.7 ms [inferred: 2.07 M x 16 step-pixels against at most 8.3 M x 41, about 1/10, no shadow fetches; loose, as Unbound's march ends early on terrain].
+- At end_dragon's 8.16 ms GPUBusy (results/records/m3-shadows-full-1.json), Unbound's composite1 there is about 6 ms [inferred]: the whole End march, shadow fetches included.
+- Medium: an own beam field marched at half resolution, int-uniform step count 12, clipped to the band's slab, upsampled depth-aware (docs/playbook.md#51-structural): 0.3-0.55 ms [inferred: 2.07 M x 12 step-pixels against at most 8.3 M x 41, about 1/14, no shadow fetches; loose, as Unbound's march ends early on terrain].
 - Low: a direction-only beam layer in a small End sky map, no parallax, at most 0.05 ms [inferred]. High: 32 steps.
 - Flash: endFlashIntensity, endFlashPosition (view space), previousEndFlashIntensity (R9 uniforms/world, Iris-only) [verify in jar]. Iris-only `endFlashShadows` sets shadowLightPosition to endFlashPosition (R9 features): off unless the shadows topic wants it.
-- Det: the End's clock drives the flash, set by the End views (docs/shader.md#determinism-and-taa); beams move on worldTime, frozen in a session [verify in jar: the End's worldTime]; a fixed spatial dither, cycle 1. Aperture: an explicit half-resolution target.
+- Det: the End's clock drives the flash, set by the End views (docs/shader.md#determinism-and-taa); beams move on worldTime, frozen in a session [verify in jar: the End's worldTime]; a spatial dither, static with TAA off, cycle 16 under TAA, which denoises it. Aperture: an explicit half-resolution target.
 
 ### T11 Time-of-day custom uniforms
 - Sun, moon and up vectors; the celestial basis; day, twilight and night factors; star and nebula visibility; moon illuminance from moonPhase; rain and thunder blends. None uses smooth() (docs/measurement.md#visual-protocol).
@@ -108,7 +108,7 @@ Complementary License Agreement 1.7 (License.txt): studied, never copied (docs/s
 
 ### D72 input: aurora and light shafts (not-yet list)
 - Aurora: Unbound marches 25 planar layers, 3 noise fetches each, per sky pixel at night under a full moon in snowy biomes, on frameTimeCounter (lib/atmospherics/auroraBorealis.glsl); an aurora loop and a fallback march held a pass at 84 VGPRs, 48 without (docs/gpu-iris.md#occupancy). As a T8-style map with a fixed dither: cycle 1, TAA-independent, at most 0.05 ms against 0.3-1 ms per pixel [inferred]; it needs a coverage view.
-- Light shafts (fog-volumetrics owns them): Unbound marches the shadow map at full resolution with frame-varying dithers (docs/shader.md#determinism-and-taa), so TAA-dependent: A12, or the review tier under E4's fallback. About 0.9-1.5 ms at full resolution with 11 steps (the End's 3.4-5.6 ms times 11/41), 0.2-0.5 ms at half [inferred]. R14's radial blur is cheaper, but "the shafts will flicker" as occluders cross the image edge. Played had them off: no ALC row.
+- Light shafts (fog-volumetrics owns them): Unbound marches the shadow map at full resolution with frame-varying dithers (docs/shader.md#determinism-and-taa), so TAA-dependent: A12, or the review tier under E4's fallback. About 1.6 ms at full resolution with 11 steps (the End's about 6 ms times 11/41), 0.2-0.5 ms at half [inferred]. R14's radial blur is cheaper, but "the shafts will flicker" as occluders cross the image edge. Played had them off: no ALC row.
 
 ## For Optilux
 - M4: T11's uniform chain (lighting needs it); T5 as the sky; T1's switches and the coverage-list entries for gbuffers_skybasic and gbuffers_skytextured.
@@ -119,11 +119,11 @@ Complementary License Agreement 1.7 (License.txt): studied, never copied (docs/s
 | atmosphere | - | gradient (T5) | LUT 192x108 | LUT 384x216 |
 | stars | off | on | - | - |
 | nebula | off | 512x256 | - | 1024x512 |
-| End beams | off | layer | half-res 16 steps | half-res 32 steps |
+| End beams | off | layer | half-res 12 steps | half-res 32 steps |
 
 The sun/moon style is vanilla or Optilux, with no levels.
 
-- Budget hypothesis at 4K, sky items only [inferred]: at most 0.08 ms on forest_noon, rain, entities, underwater and cave; 0.1 ms plus water's reflection fetches on ocean_sunset; 0.12 ms on night; 0.01 ms in the Nether; 0.3-0.7 ms in the End with beams at Medium, 0.06 ms at Low.
+- Budget hypothesis at 4K, sky items only [inferred]: at most 0.08 ms on forest_noon, rain, entities, underwater and cave; 0.1 ms plus water's reflection fetches on ocean_sunset; 0.12 ms on night; 0.01 ms in the Nether; 0.3-0.55 ms in the End with beams at Medium, 0.06 ms at Low.
 - Confirmations (docs/measurement.md#verdicts-and-cost-rows):
   - Forward sky against T1: cost rows on night and end_city, identical or near tier; coverage_beacon visual only, as no perf mode reads coverage views (docs/measurement.md#baseline-suite).
   - The switches against the gradient in the sky draws: an L4 replay with no gbuffers_skybasic draws, then the identical tier on every view.

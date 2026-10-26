@@ -68,12 +68,12 @@ Checked against Det (docs/shader.md#determinism-and-taa), Iris (1.11.7, 3.3 core
 
 ### T6 Denoise: spatial, TAA, or an AO history
 - R2 "uses only a 5x5 depth-aware spatial denoising filter and relies on TAA for the temporal component". Unbound has neither; Wisdom blurs (R15); Photon keeps a history (R11).
-- A filter covering one period of the rotation pattern sees every rotation each frame, so TAA-off frames are smooth and TAA averages the rotations [inferred]. IGN (T7) has no 4x4 period: use a 4x4 interleaved rotation set, or size the filter to IGN's 3x3 property [inferred].
+- A filter covering one period of the rotation pattern sees every rotation each frame, so TAA-off frames are smooth and TAA averages the rotations [inferred]. IGN (T7) has no 4x4 period: use a 4x4 interleaved rotation set [inferred].
 - An AO history: a second history for the flush to clear in the same frame, with its own N_conv, previous-frame matrices and ping-pong pair, repeating TAA's work [inferred]. Not in the first version.
 - Cost: a 4x4 depth-aware box at half resolution, 8 gathers per half-resolution pixel: 0.03-0.07 ms [inferred]. Det: frame-invariant. Iris: a half-size deferred pass (T5). Aperture: writes a second texture, never the one it reads.
 
 ### T7 Noise and per-frame rotation
-- IGN (R10) is arithmetic, and "every 3x3 block of pixels makes a low discrepancy set", which suits TAA's 3x3 clamp box. demofox's frame index wraps at 64, as R2's noise offset does (frameIndex mod 64). Neither 64 nor Unbound's 3600 divides 720720 = 2^4 x 3^2 x 5 x 7 x 11 x 13, so Optilux wraps at 8 or 16 [inferred].
+- IGN (R10) is arithmetic, and "every 3x3 block of pixels makes a low discrepancy set", which suits TAA's 3x3 clamp box. demofox's frame index wraps at 64, as R2's noise offset does (frameIndex mod 64). Neither 64 nor Unbound's 3600 divides 720720 = 2^4 x 3^2 x 5 x 7 x 11 x 13, so Optilux wraps at 16 [inferred].
 - docs/playbook.md#54-sample-count-and-precision-trades: "SSAO: half the sample pairs per frame, alternating" [PB b], tier review, cycle 2 [inferred].
 - Det: index = frameCounter mod C, C the pack cycle (config/pipeline.json, 1 today); 0 with TAA off, as Unbound's noise is static then. Cost: a few ALU instructions. Iris, Aperture: arithmetic in the include.
 
@@ -134,7 +134,7 @@ Low about 0.6x Medium, High 1.6-2x [inferred].
 
 ### What would confirm each claim
 - Cost: cost rows per level against Off on all 11 views, full mode (docs/measurement.md#verdicts-and-cost-rows); at the 0.5 % floor, on frames of a few ms, a row resolves about 0.02 ms [inferred]. The worst view: those rows plus L4 attribution (docs/offline.md#levels).
-- Look: a feature goes to review beside Unbound's `played` frames (docs/measurement.md#visual-protocol); TAA-off frames are deterministic (index 0), TAA-on ones captured after the flush and N_conv (A12), or review only under E4's fallback.
+- Look: a feature goes to review beside Unbound's `played` frames (docs/measurement.md#visual-protocol); TAA-off frames are deterministic (index 0), TAA-on ones captured 64 frames after an aligned flush (A12), or review only under E4's fallback.
 - Later optimizations (gather upsample, depth MIP) must be identical or near; the alternating pairs go to review.
 - Live pass: shimmer at leaf edges (forest_noon), AO trails at disocclusions, hand edges.
 
@@ -152,7 +152,5 @@ Low about 0.6x Medium, High 1.6-2x [inferred].
 - Does half resolution shimmer at leaves under jitter? Decided by a motion path, the live pass, and ColorVideoVDP once the positive controls pass.
 - GTAO or VBAO on thin geometry? Decided by review frames at forest_noon and the coverage views, plus cost rows.
 - Vanilla and screen-space AO: min or multiply? Decided by review.
-- IGN or a 4x4 interleaved rotation set (T6)? Decided by L3's period test and TAA-off review frames.
-- C = 8 or 16? Decided by the taa research, then L3's cycle test.
 - textureGather's component select, bitCount and compute on the 3.3 core context? Decided by MC_GL_ARB_texture_gather, MC_GL_ARB_gpu_shader5 and MC_GL_ARB_compute_shader in a dump's defines (docs/gpu-iris.md#programs-and-alpha-tests).
 - Should entities receive AO? Decided by look review at entities and coverage_mobs.
