@@ -3,7 +3,7 @@
 User-facing changes per release, newest first. Versions are MAJOR.MINOR.PATCH from 0.2.0 on; the first release was v0.00.06.
 
 ## 0.5.0 Shader base
-Optilux's own shader takes its shape: every kind of thing Minecraft draws gets a program of the pack's own, with Optilux's lighting and tonemap, and each feature's cost is measured view by view on the bench world. The design rests on research into every part of a shader, from lighting to TAA, kept with the docs; shadows, sky, clouds, water and the rest of the look follow in later releases.
+Optilux's own shader takes its shape: every kind of thing Minecraft draws gets a program of the pack's own, lit by Optilux's deferred lighting with simple shadows, a gradient sky and its own tonemap, and each feature's cost is measured view by view on the bench world, the whole pack against Complementary on every view. Checks before any launch now also run the pack's functions on test inputs and read frames captured with RenderDoc. The design rests on research into every part of a shader, from lighting to TAA, kept with the docs; softer shadows, a physical sky, clouds, water and the rest of the look follow in later releases.
 
 ## 0.4.0 Visual loop
 Optilux's first shader pack, a minimal hello pack, and the visual loop around it: frames taken at every bench view are compared bit for bit or by how visible a difference is, checks before any launch catch a build that does not compile or that copies Complementary's code, and the performance calibration is redone on textures held still. The hello pack draws textures, vertex colour and light only; the look arrives in later releases.
