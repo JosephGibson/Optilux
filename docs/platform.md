@@ -71,7 +71,7 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   - Fabric Loader: its profile JSON from meta.fabricmc.net under versions/; libraries from Fabric's Maven against the SHA-1 the profile carries, fabric-loader's own against Maven's .sha1;
   - mods and packs: the tier's Modrinth files (through `extends`) and the reference pack into the store runtime/<platform>/files/, against the platform file's sha512; resource and shader packs copied into game/resourcepacks/ and game/shaderpacks/; beside them optilux-static-textures.zip, built from the client jar and the packs below it in its set, each animated texture held on frame 0 (plans/m3.md D62);
   - Java: Temurin from the Adoptium API, against the archive sha256 pinned in config/java/bench.json, unpacked under runtime/java/<build>/;
-  - tools: PresentMon, glslang and RGA from their GitHub releases, against config/tools.json, into runtime/tools/, a zip unpacked into its own folder.
+  - tools: PresentMon, glslang and RGA from GitHub, RenderDoc from renderdoc.org, against config/tools.json, into runtime/tools/, each zip in its own folder.
 - The launch spec, config/platforms/<id>.launch.json (committed), is written by the first install and compared fact by fact by every later one (its three note keys excepted):
   - main class (Fabric's KnotClient), the classpath in order with each jar's SHA-1, the asset index id and SHA-1;
   - the JVM options and game-argument template from Mojang's and Fabric's JSON;

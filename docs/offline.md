@@ -71,7 +71,7 @@ Ranked by value x reliability / cost:
 ALC never rendered anything offline: glfw and PyOpenGL were only a GL-capability probe.
 
 ## Tools
-glslang and RGA are pinned in config/tools.json (file, sha256, source), which `install` unpacks into runtime/tools/; RenderDoc is pinned there in M4.
+glslang, RGA and RenderDoc are pinned in config/tools.json (file, sha256, source), which `install` unpacks into runtime/tools/.
 - glslang 16.6.0, runtime/tools/glslang-16.6.0/bin/glslang.exe (`-E` preprocess, `-l` link, `-q` reflection). It is not AMD's compiler and can accept code the driver rejects; the in-game reload is the final compile check.
   - `-l` alone links a fragment input no vertex output writes, which the driver refuses (gpu-iris.md#programs-and-alpha-tests); `--validate-io` refuses it and mismatched types, and still links unread outputs (M3.P04). `-E` keeps the input's line numbers.
 - Iris dumps: `enableDebugOptions=true` (iris.properties) writes `patched_shaders/` per pipeline build. They are fully preprocessed, and debug mode may change performance.
@@ -80,7 +80,7 @@ glslang and RGA are pinned in config/tools.json (file, sha256, source), which `i
   - Iris's patcher is the Java library glsl-transformer (1.11.7 bundles glsl-transformer-3.0.0-pre3 and jcpp-1.4.14). Running it outside the game could produce dumps with no launch [verify].
 - Shadesmith (GPL-3.0; expands includes and options, then glslang -> spirv-opt -> spirv-cross): unused, as glslang on the pack's own source covers L0 (plans/m3.md D58).
 - RGA 2.15, runtime/tools/rga-2.15/rga.exe (`-s opengl -c gfx1101`; `--version` prints 2.15.0.30); the GUI no longer does OpenGL. Driver-independent, so it explains and never gates.
-- RenderDoc 1.46:
+- RenderDoc 1.46, runtime/tools/renderdoc-1.46/RenderDoc_1.46_64/ (renderdoccmd.exe, qrenderdoc.exe, renderdoc.dll; `renderdoccmd version` prints v1.46 built from e4bd23b6, 2026-10-26); RenderDoc_1.46_64.zip pinned by the sha256 of the day's download (101,000,153 bytes), as renderdoc.org publishes only a .sig (plans/m4.md P7):
   - headless `renderdoc` Python module (`InitialiseReplay`, `FetchCounters` for EventGPUDuration);
   - 1.46 renamed `ActionDescription.next/previous` and removed `GetDefaultCaptureOptions`;
   - no GL ISA view on current AMD drivers;

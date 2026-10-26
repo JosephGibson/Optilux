@@ -877,6 +877,31 @@ def test_shown_and_the_lib_version_pin() -> None:
     assert minecraft_launcher_lib.utils.get_library_version() == "8.0"  # docs/plans/m1.md P20
 
 
+def test_the_committed_renderdoc_pin_refuses_a_zip_off_its_hash(tmp_path: Path) -> None:
+    """plans/m4.md P7: RenderDoc 1.46's zip, pinned by the sha256 of the day's download, unpacked
+    into its own folder holding renderdoccmd.exe; a file off the pin refused, naming it."""
+    pins = json.loads((REPO_ROOT / install.TOOLS).read_text(encoding="utf-8"))
+    pin = pins["renderdoc"]
+    assert (pin["file"], pin["unpack"], pin["exe"]) == (
+        "RenderDoc_1.46_64.zip",
+        "renderdoc-1.46",
+        "RenderDoc_1.46_64/renderdoccmd.exe",
+    )
+    assert pin["sha256"].startswith("9ca4d09e") and len(pin["sha256"]) == 64
+    assert "later" not in pins
+    (tmp_path / "config").mkdir()
+    (tmp_path / install.TOOLS).write_text(json.dumps({"renderdoc": pin}), encoding="utf-8")
+    zipped = tmp_path / install.TOOLS_DIR / pin["file"]
+    zipped.parent.mkdir(parents=True)
+    zipped.write_bytes(b"not RenderDoc")
+    with pytest.raises(
+        install.InstallError,
+        match=f"tool renderdoc runtime/tools/{pin['file']}: sha256 .* differs from its pin",
+    ):
+        install.tools(tmp_path, install.Outcome(PLATFORM, "bench"), quiet)
+    assert not (tmp_path / install.TOOLS_DIR / pin["unpack"]).exists()
+
+
 def test_a_name_from_the_network_or_a_config_stays_under_runtime(
     tmp_path: Path, world: World
 ) -> None:
