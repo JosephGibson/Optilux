@@ -50,9 +50,9 @@ Each lists facts, then D (determinism), I (Iris 1.11.7 on 3.3 core), A (Aperture
 ### History and previous-frame data
 - gbufferPreviousModelView and gbufferPreviousProjection [uniforms.MatrixUniforms]; previousCameraPosition, shifted with cameraPosition by 30,000 blocks (past 30,000 or after a 1,000-block jump) so their difference holds, plus unshifted Int/Fract forms [uniforms.CameraUniforms]. No previous shadow matrices; no previous depth found.
 - Each program keeps its own previous matrix, the first update returning identity [MatrixUniforms, gl.program.ProgramUniforms]; updated only when used [inferred], so a gbuffers program not drawn every frame holds a stale one [inferred]: reproject in full-screen passes or custom uniforms.
-- Ping-pong: (a) one buffer read and written: flipped, copied; (b) `cur` written, then `prev` by a later pass that reads `cur`: `prev` still flips once a frame and is copied, so (a)'s cost plus a write [inferred]; (c) two buffers picked by frameCounter % 2, written by imageStore (colorimgN or custom images): no flip or copy, but fragment image load/store (Open questions 1).
+- Ping-pong: (a) one buffer read and written: flipped, copied; (b) `cur` written, then `prev` by a later pass that reads `cur`: `prev` still flips once a frame and is copied, so (a)'s cost plus a full-screen read and write [inferred]; (c) two buffers picked by frameCounter % 2, written by imageStore (colorimgN or custom images): no flip or copy, but fragment image load/store (Open questions 1), and Iris issues glMemoryBarrier only after computes [CompositeRenderer]: a fragment imageStore read the next frame needs a barrier Iris may not issue, so (c) waits on a probe that writes and reads alternating images and checks the values, not one that only compiles [inferred].
 - D: zero marks history invalid; a reload clears it; the flush frame invalidates it (docs/shader.md#determinism-and-taa). Every Clear=false buffer read a frame later needs that test.
-- I: present. A: (b) and (c) port unchanged, (a) does not. C: (c) saves (a)'s copy; (b) adds a write for portability [inferred].
+- I: present. A: (b) and (c) port unchanged, (a) does not. C: (c) saves (a)'s copy; (b) adds a full-screen read and write for portability [inferred].
 
 ### Compute, SSBOs, images
 - Support [features.FeatureFlags, gl.IrisRenderSystem]: COMPUTE_SHADERS if glDispatchCompute resolves; SSBO on GL 4.4 or ARB SSBO + buffer_storage; CUSTOM_IMAGES on glBindImageTexture, GL 4.2, or ARB/EXT image_load_store + buffer_storage.
@@ -89,7 +89,7 @@ Each lists facts, then D (determinism), I (Iris 1.11.7 on 3.3 core), A (Aperture
 ### GLSL version
 - MC_GL_VERSION from GL_VERSION, MC_GLSL_VERSION from GL_SHADING_LANGUAGE_VERSION, MC_<name> per listed extension [gl.shader.StandardMacros]. L0 uses MC_GL_VERSION 330 (docs/offline.md#levels); `#extension` lines survive the patcher (docs/gpu-iris.md#programs-and-alpha-tests), which raises other stages to at least 330 core [TransformPatcher].
 - textureGather and fragment image load/store work from GLSL 1.30 with their ARB extensions (R9), in core from 4.00 and 4.20 [unverified]; MC_GLSL_VERSION picks 330 core with guarded extensions or a higher #version.
-- D, C: none. A: R10: Slang matrix products use mul() with the argument order inverted; keep matrix maths behind one helper [inferred].
+- D, C: none. A: R10 maps GLSL's row-vector product v * a to mul(a, v), as "vectors are treated as column vectors in Slang"; a column-vector M * v stays mul(M, v) while the matrix keeps its logical layout, and R10 says nothing of row- or column-major storage. So the port fixes construction, upload layout and vector convention first, checks them on a non-symmetric transform with rotation and translation (L3), and keeps matrix maths behind one helper [inferred].
 
 ### Aperture
 - R5: RendererConfig (shadow cascades, resolution, sunPathRotation, ambientOcclusionLevel); configurePipeline's textures, buffers, object shaders and per-stage command lists; exportBool/Int/Float and defineGlobally for options; TextureReference.pointTo [inferred: a history swap].
@@ -105,12 +105,13 @@ Each lists facts, then D (determinism), I (Iris 1.11.7 on 3.3 core), A (Aperture
 - A check rule: under BENCH_DETERMINISTIC nothing from the never list, and every frameCounter modulus divides 720720.
 - pipeline.json gains resource names and a history flag per output. No capability option faces the player.
 ### Budget hypothesis
-- Iris's costs scale with resolution, not content: equal on every view type. The pack's copies (0.15-0.3 ms each) and mip chains (0.06-0.1 ms each) stay under 0.5 ms on every perf view [inferred].
+- A count, not a ceiling [inferred]: Iris's depthtex1 and depthtex2 copies (~0.29 ms replayed, above), two mip chains (0.12-0.2 ms) and the TAA history pair: with (c) nothing more, 0.4-0.5 ms in all; with (a) a 0.15-0.3 ms copy, 0.55-0.8; with (b) that copy plus a 0.15-0.3 ms read and write, 0.7-1.1. Resolution sets their bytes, but content, cache state and scheduling still move their time: cost rows on every perf view (docs/research/synthesis.md#budget).
 ### Measurements
-- Capability probe: one pack per flag, each with a stage using it, plus one failing below MC_GLSL_VERSION 430; the mod's shaders.reload answers ok or iris-compile-error (docs/roadmap.md#findings-assigned F5). One launch, no visual tier; R9 predicts compute and SSBOs fail.
+- Capability probe: one pack per flag, each with a stage using it, plus one failing below MC_GLSL_VERSION 430; the mod's shaders.reload answers ok or iris-compile-error (docs/roadmap.md#findings-assigned F5). One launch, no visual tier; R9 predicts compute and SSBOs fail. Images (c) also need a functional probe: imageStore and reads alternating across frames, the values checked.
 - Copy and mip cost: history Clear false against true, a mip flag on against off; cost rows, so frames above the CPU floor or timer rows (docs/measurement.md#verdicts-and-cost-rows).
-- Ping-pong (a) against (b): an optimization verdict, tier identical; (b) expected slower by a write.
+- Ping-pong (a) against (b): an optimization verdict, tier identical; (b) expected slower by a full-screen read and write.
 - Tick-delta and PER_TICK uniforms: the TAA-off check, perf views identical across 2 sessions, on the M4 base (docs/design.md#8-open-decisions E4).
+- The flush: A12's two flush and capture cycles reached from different histories on purpose (another view or a camera move before each flush), at one phase, and the same across two sessions (docs/mod.md#12-acceptance); the TAA-off check cannot test it [inferred].
 - Stale previous matrices: L4 RenderDoc reads of a gbuffers program's uniform in consecutive captures (explain only).
 ### L3 goldens
 - Custom uniforms in Iris's engine against the GLSL in float32: the sun vector from gbufferModelView; the history-valid truth table over hideGUI and frameCounter 0-2; frameCounter % N across the 720719 -> 0 wrap.

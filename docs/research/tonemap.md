@@ -84,8 +84,8 @@ Judged on the look: Optilux starts "from a similar tonemap" (user, 2026-10-20; d
 - Constraints: (1) static per pixel (cycle 1), as Unbound's final; if animated, frameCounter mod the pack's cycle; (2) customTexture for blue noise [verify in jar]; (3) trivial; (4) triangular IGN, two hashes or one remap: ~10-15 ALU, ~0.01 ms [inferred].
 
 ### T6 TAA against the tonemap
-- After the tonemap (Unbound, PB): values in [0, 1] allow an RGB10_A2 history, 4 B/px against RGB16F's 8 (docs/playbook.md#54-sample-count-and-precision-trades), and N_conv's w^n <= 1/255 (docs/measurement.md#visual-protocol) bounds a residue in display codes; before it the bound scales with the HDR peak [inferred].
-- Before the tonemap: resolve in a reversible space, c / (1 + max3(c)) and back; max3 "removes the hue shift on mixed color edges of similar value", where R10's luma weight varies with hue (R11). Needs an HDR history.
+- After the tonemap (Unbound, PB): values in [0, 1] allow an RGB10_A2 history, 4 B/px against RGB16F's 8 (docs/playbook.md#54-sample-count-and-precision-trades), and N_conv's w^n <= 1/255 (docs/measurement.md#visual-protocol) bounds a residue in display codes; before it the bound scales with the HDR peak [inferred], unless the resolve runs in the reversible space, whose values lie in [0, 1), A12's settling check proving the displayed residue (docs/research/taa.md#4-history-weight-w-and-nconv).
+- Before the tonemap: resolve in a reversible space, c / (1 + max3(c)) and back; max3 "removes the hue shift on mixed color edges of similar value", where R10's luma weight varies with hue (R11). Needs an HDR history. Recommended (D74, docs/roadmap.md#decisions): this HDR resolve, which spares ordinary edges the gamma-space darkening and gives bloom a resolved frame (docs/research/taa.md#4-history-weight-w-and-nconv); after the tonemap stays the cheaper option.
 - The LDR target is gamma-encoded: 10-bit linear steps 10 % at 0.01 [inferred]. Unbound's RGBA8 target quantizes TAA's input to 8 bits; RGB10_A2 costs the same bytes [inferred].
 - Constraints: (1) the placement adds no frame-varying term; PB's +-1/2-step write dither on an RGB10_A2 history takes frameCounter mod the pack's cycle and, as all history, rests on the flush and N_conv (A12): under E4's fallback TAA-on frames get review only; (2) RGB10_A2 is listed (R17) [verify in jar]; (3) Unbound and Photon update history in place through the flip; Optilux reads one texture and writes another (docs/shader.md#pipeline-spec), the alternation being taa's; (4) RGB10_A2 saves ~0.05 ms per full-screen history read or write at 624 GB/s [inferred], in a memory-bound pass (docs/gpu-iris.md#bandwidth).
 
@@ -93,7 +93,7 @@ Judged on the look: Optilux starts "from a similar tonemap" (user, 2026-10-20; d
 - First version (M4):
   - scene colour R11G11B10F, RGBA16F its A/B variant; a pass needing alpha keeps its own buffer;
   - one pass ends the HDR chain: bloom in (post), grade matrix, exposure, an Unbound-like Lottes curve, sRGB encode, the three look terms, display saturation; output RGB10_A2, gamma-encoded; the maths in one Iris-free include;
-  - TAA after it (M5); final: sharpening (M5), a static triangular IGN dither, the screen;
+  - TAA before it (M5), resolving the HDR scene in the reversible space (T6); final: sharpening (M5), a static triangular IGN dither, the screen;
   - exposure fixed per dimension; eye adaptation waits for D72's look target (docs/roadmap.md#decisions);
   - nothing in this path reads smooth(), eyeBrightnessSmooth, frameTime or random().
 - Options, fewer than Unbound's: exposure, contrast, white path, saturation; dither On/Off; later eye adaptation Off/Low/Medium/High.

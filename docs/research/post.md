@@ -118,14 +118,14 @@ Post chain (program/*.glsl, R15):
 
 ## For Optilux
 - First version. The final pass lands in M4 with the tonemap; bloom, sharpening and distortion in M5.
-  1. bloom-prefilter: a 2:1 13-tap Karis-weighted downsample of the HDR scene into P (R11F_G11F_B10F, 1/2 size), mipmapped.
+  1. bloom-prefilter: a 2:1 13-tap Karis-weighted downsample of TAA's resolved HDR frame (the scene with TAA off) into P (R11F_G11F_B10F, 1/2 size), mipmapped.
   2. bloom-tiles: levels 1/4 to 1/128 from P's mips, a 16-tap linear-sampled Gaussian per texel, into atlas T (R11F_G11F_B10F), viewport-scaled to its corner, padded.
   3. In the tonemap pass: tiles read bilinearly, weighted to sum to 1, lerped into the HDR colour before exposure and the curve.
   4. present (final): underwater distortion, RCAS-style sharpening, then a static triangular dither.
   - One writer per texture per frame, read after; nothing relies on blending or flip=false. If the live pass shows pulsing, v2 is the explicit chain, dual Kawase first.
 - Options: BLOOM Off, Low (5 levels), Medium (6), High (7), Off removing both passes, the mix and the mip const (docs/playbook.md#55-config-level; docs/playbook.md#4-design-defaults); BLOOM_STRENGTH; SHARPENING (Off, or 0 to 1); UNDERWATER_DISTORTION (on, off). No dither option.
 - Budget hypothesis, 4K, every view [inferred from R16, R5 scaled, docs/gpu-iris.md#bandwidth]: bloom 0.10-0.20 ms, mostly the prefilter's full-frame read and the mix's taps in every pixel; sharpening 0.02-0.05 ms; dither under 0.01 ms; distortion under 0.02 ms at underwater. Sharpening and dither likely sit inside the 0.5 % threshold floor (docs/measurement.md#calibration): they need timer rows, none yet (docs/measurement.md#verdicts-and-cost-rows).
-- Dependencies: tonemap (mix before exposure; its output encoding sets sharpening's domain and the dither step); taa (bloom before it, sharpening after it, N_conv); fog-volumetrics (bloom fog); water (distortion beside refraction); lighting and sky (the HDR peaks that bloom).
+- Dependencies: tonemap (mix before exposure; its output encoding sets sharpening's domain and the dither step); taa (bloom after its HDR resolve, sharpening after the tonemap, N_conv); fog-volumetrics (bloom fog); water (distortion beside refraction); lighting and sky (the HDR peaks that bloom).
 - Confirmation: cost rows for bloom off against each level on all 11 views, sharpening off against on, distortion at underwater; viewport scaling identical; features to review against Unbound's played frames (docs/measurement.md#visual-protocol); live pass: pulsing bloom, sharpening halos.
 - L3 golden tests (docs/offline.md#levels): linear-sampled weights reproduce the discrete kernel on an impulse within bilinear rounding (R4); DC gain 1; a lone firefly within the Karis bound; a ramp through each odd-sized level unshifted; tiles and mix satisfy f(k·x) = k·f(x), the Karis prefilter not, by design; sharpening with a zero lobe returns the input (RCAS's 0 stops is its maximum) and keeps [0, 1] in [0, 1], overshooting the neighbourhood's range by design; the dither has zero mean, stays within ±1 step and reads no frameCounter.
 

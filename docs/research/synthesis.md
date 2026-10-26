@@ -8,7 +8,7 @@ Index · Architecture · Temporal · Iris gates · Budget · D72 input · Milest
 Tags: [inferred] reasoning, [m] measured, [verify in jar] not yet read in the pinned jar. D72 is the user's (docs/roadmap.md#decisions), E2 is decided by measurement, closed decisions stand.
 - docs/research/lighting.md: deferred (D) on a 64-bit integer G-buffer, translucents forward through the same include; forward (F) a dev option until E2.
 - docs/research/tonemap.md: R11G11B10F scene; one pass ends HDR (bloom mix, grade, fixed exposure, a Lottes-like curve) into gamma-encoded RGB10_A2.
-- docs/research/taa.md: after the tonemap; Halton(2,3) over 16 phases, Catmull-Rom history, w 0.9; a v0 first for the flush.
+- docs/research/taa.md: an HDR resolve before bloom and the tonemap in a reversible max3 space (D74), post-tonemap the cheaper option; Halton(2,3) over 16 phases, Catmull-Rom history, w 0.9; a v0 first for the flush.
 - docs/research/shadows.md: one distorted 2048^2 map, depth-only solid and cutout programs, noise-free hardware PCF, no Nether pass.
 - docs/research/ao.md: GTAO-style at half resolution, a spatial filter, indirect light only, no AO history.
 - docs/research/sky.md: deferred sky; a gradient in M4; Hillaire LUTs rebuilt each frame in prepare passes in M5.
@@ -16,16 +16,16 @@ Tags: [inferred] reasoning, [m] measured, [verify in jar] not yet read in the pi
 - docs/research/fog-volumetrics.md: analytic fogs in one include; only the End beams march, at half resolution.
 - docs/research/water.md: everything in gbuffers_water; refraction from a pre-fog copy; Sky/Low/Medium reflections.
 - docs/research/reflections.md: single-frame screen-space block reflections with mip roughness; puddles on raw rainStrength.
-- docs/research/post.md: mip-tile bloom with a Karis prefilter; RCAS-style sharpening after TAA; a static dither last.
+- docs/research/post.md: mip-tile bloom on TAA's resolved frame with a Karis prefilter; RCAS-style sharpening after TAA; a static dither last.
 - docs/research/next-gen.md: integer floodfill colored light and half-res shafts if a probe and cost rows allow; path tracing not.
 - docs/research/iris.md: fragment programs only in M4; compute, SSBO and images after one probe; nothing smoothed under BENCH_DETERMINISTIC.
-- docs/research/programs.md: the coverage programs no topic held, all written in M4; lightning and lines into the overlay; particles, weather and lightning off under BENCH_DETERMINISTIC; the base 0.6-1.7 ms a view type [inferred].
+- docs/research/programs.md: the coverage programs no topic held, all written in M4; lightning into emit, lines and text into trans; particles, weather and lightning off under BENCH_DETERMINISTIC; the base 0.6-1.7 ms a view type [inferred].
 
 ## Architecture
 ### Lighting path (E2's candidates)
-- D: opaque gbuffers (terrain_solid without discard, terrain_cutout on alphaTestRef, entities, block, hand, opaque particles via particles.ordering=mixed) write `gbuf` RGBA16UI: albedo 3x8, octahedral normal 2x7, block and sky light 7 each, vanilla AO 6, material 6. Blended draws before deferred (spider eyes, damaged block, beacon beam, glint, translucent entities and text, lightning, lines [inferred]) write `overlay` RGBA8 with a mode in alpha, 0 (the clear) meaning add: spidereyes' forced blend keeps alpha (docs/research/programs.md#spider-eyes); an R8 `mask` serves TAA. Every later pass reads only these and depth.
+- D: opaque gbuffers (terrain_solid without discard, terrain_cutout on alphaTestRef, entities, block, hand, opaque particles via particles.ordering=mixed) write `gbuf` RGBA16UI: albedo 3x8, octahedral normal 2x7, block and sky light 7 each, vanilla AO 6, material 6. Blended draws before deferred write one target per operation, as one colour and a mode cannot hold a multiply under an add (docs/research/lighting.md#overlay-targets): `mod` RGBA8 multiplied (damaged block), `emit` R11G11B10F added (glint, spider eyes, beacon beam, lightning), `trans` RGBA16F premultiplied over (translucent entities, block entities and text lit forward; lines); their depth writes are premise 17; an R8 `mask` serves TAA. Every later pass reads only these and depth.
 - F (LIGHT_PATH, dev): the include per fragment; it still exports normal and material for AO and SSR [inferred].
-- M4 draws a shadow pass: the coverage list holds `shadow` (docs/shader.md#coverage-list) and M4 builds every coverage-list program (docs/roadmap.md#m1-to-m6). So E2 can time a real 1-tap lookup plus E2_LOAD, which corrects lighting's "M4 has no shadows" and may lift separateAo's shadow-pass caveat.
+- M4 draws a shadow pass: the coverage list holds `shadow` (docs/shader.md#coverage-list) and M4 builds every coverage-list program (docs/roadmap.md#m1-to-m6). So E2 can time a real 1-tap lookup plus E2_LOAD, which may lift separateAo's shadow-pass caveat.
 
 ### Pass order (iris-gl)
 Rules: what gbuffers_water samples sits at colortex4+ (colortex0-3 "are only able to be sampled from fullscreen passes", docs/research/iris.md); one size per pass; no pass reads what it writes (docs/shader.md#pipeline-spec). Scale 1 unless marked.
@@ -36,21 +36,21 @@ Rules: what gbuffers_water samples sits at colortex4+ (colortex0-3 "are only abl
 | sky-lut (prepare-prepare2, overworld) | 5 | uniforms | 256x64, 32x32 RGBA16F; skyview 192x108 R11G11B10F |
 | maps (prepare3) | 5 | worldTime; cameraPosition and, off the define, frameTimeCounter (beams) | nebula 512x256 RGBA16F; End beam map |
 | surface (opaque gbuffers) | 4 | gtexture, vaUV2, mc_Entity | gbuf RGBA16UI; mask R8 |
-| overlay (blended, before deferred) | 4 | as surface | overlay RGBA8 |
+| overlay (blended, before deferred) | 4 | as surface | mod RGBA8, emit R11G11B10F, trans RGBA16F |
 | ao (deferred, deferred1) | 5 | depth, gbuf | RG16F (AO, 1/viewZ), 0.5 |
 | clouds (deferred2) | 5 | skyview, noise | RGBA16F + RG16F, 0.5 |
-| light (deferred3) | 4 | gbuf, overlay, shadowtex, ao, clouds, skyview | scene-lit R11G11B10F: lit, sky, clouds, no fog |
+| light (deferred3) | 4 | gbuf, mod, emit, trans, shadowtex, ao, clouds, skyview | scene-lit R11G11B10F: lit, sky, clouds, no fog |
 | ssr (deferred4, mips of scene-lit) | 5 | scene-lit, gbuf, depthtex1 | refl RGBA16F, confidence in alpha, 0.5 |
 | resolve (deferred5) | 4 | scene-lit, refl, gbuf | scene R11G11B10F: reflections, opaque fog |
 | forward (water, hand_water, weather, translucent particles) | 4 | depthtex1, scene-lit, skyview | blends into scene |
 | beams (composite, End) | 5 | beam map, depth | RGBA16F, 0.5 |
-| bloom (composite1-2) | 5 | scene, beams | P R11G11B10F 0.5 mipmapped; tile atlas |
-| tonemap (composite3) | 4 | scene, beams, atlas | ldr RGB10_A2, gamma-encoded |
-| taa (composite4) | 5 | ldr, history, depth, mask | history RGBA16F, an explicit pair |
-| present (final) | 4 | history, or ldr | screen: distortion, RCAS, dither |
+| taa (composite1) | 5 | scene, beams, history, depth, mask | history RGBA16F, an explicit pair: the resolved frame |
+| bloom (composite2-3) | 5 | history, or scene and beams | P R11G11B10F 0.5 mipmapped; tile atlas |
+| tonemap (composite4) | 4 | history, or scene and beams; atlas | ldr RGB10_A2, gamma-encoded |
+| present (final) | 4 | ldr | screen: distortion, RCAS, dither |
 
 - One pre-fog copy (scene-lit) serves refraction and SSR, as Unbound's deferred1 copy does; R11G11B10F settles water's format against reflections' RGBA16F. M4 may fuse light and resolve.
-- Fog sits where its doc puts it: opaque in deferred, translucents forward at their own depth; no fog composite. Beams join the bloom prefilter at its matching half size and the scene in the tonemap pass [inferred].
+- Fog sits where its doc puts it: opaque in deferred, translucents forward at their own depth; no fog composite. Beams join the scene in the TAA pass, which denoises them, or in bloom's prefilter and the tonemap with TAA off [inferred]. TAA resolves in HDR in a reversible max3 space before bloom and the tonemap (D74; docs/research/taa.md#4-history-weight-w-and-nconv), as Photon does; Unbound's post-tonemap placement stays the cheaper option.
 - pipeline.json v1 adds resource names, a history flag per output and budgets (docs/research/iris.md).
 
 ### Shared infrastructure
@@ -63,8 +63,8 @@ Rules: what gbuffers_water samples sits at colortex4+ (colortex0-3 "are only abl
 - TAA denoises: TAA itself, AO's rotation, clouds' dither and LOD switches, the End beams, High SSR; later rotated PCF, PCSS, shafts, SSGI, stochastic SSR, path tracing. Their TAA-off frames stay deterministic (frame offset 0 over a fixed spatial pattern, static dither). Nothing else accumulates.
 - No state outside TAA in v1: AO, cloud and reflection histories are rejected (a 0.965 weight needs 156 frames). An fp16 floodfill needs the flush and 100-200 frames; the integer form converges within 15 steps, no flush [inferred].
 - C = 16: Halton(2,3) indices 1-16 minus their mean, phase frameCounter mod 16; every frame term uses 16 or a divisor. 720720 = 2^4 x 3^2 x 5 x 7 x 11 x 13, so 32, 64, 600 and 3600 fail. pipeline.json's cycle becomes 16 with TAA on.
-- N_conv = 53 (smallest n with 0.9^n <= 1/255). Sharpening adds ceil(ln G / ln(1/0.9)) frames for weight sum G, 11 at G = 3, 19 at RCAS's cap (G up to 7: centre 4, four lobes -0.75 in ffx_fsr1.h, https://github.com/GPUOpen-Effects/FidelityFX-FSR) [inferred]: capture 64 frames after an aligned flush, at phase 0, while G <= 3.3, else 80; SHARPENING's strength sets G. History sticks up to 5 steps off, so only the flush makes frames repeat.
-- Flush: hideGUI 0 for one frame invalidates every Clear=false buffer through one history-valid uniform. F12 (docs/roadmap.md#findings-assigned): at entities and coverage views with `hand`, hideGUI reads 0 every frame. Options: a flush at frameCounter mod K (K a multiple of 16 dividing 720720, e.g. 240), an invisible option-driven uniform, or the hand shown another way; the user's, in M5.
+- N_conv = 53 (smallest n with 0.9^n <= 1/255). Sharpening adds ceil(ln G / ln(1/0.9)) frames for weight sum G, 11 at G = 3, 19 at RCAS's cap (G up to 7: centre 4, four lobes -0.75 in ffx_fsr1.h, https://github.com/GPUOpen-Effects/FidelityFX-FSR) [inferred]: capture 64 frames after an aligned flush, at phase 0, while G <= 3.3, else 80; SHARPENING's strength sets G. History sticks up to 5 steps off, so only the flush makes frames repeat. The 0.9 contraction holds on the still views, where history is fetched at the pixel centre and Catmull-Rom adds no overshoot; on a path no bound holds, so N_conv is a settling target and A12 checks it, frame 64 against frame 80 after one flush [inferred].
+- Flush: hideGUI 0 for one frame invalidates every Clear=false buffer through one history-valid uniform. F12 (docs/roadmap.md#findings-assigned): at entities and coverage views with `hand`, hideGUI reads 0 every frame. Options: a flush at frameCounter mod K (K a multiple of 16 dividing 720720, e.g. 240, which makes the cycle K and aligns captures to its phase), an invisible option-driven uniform, or the hand shown another way; the user's, in M5.
 - E4's fallback (docs/design.md#8-open-decisions): TAA, its masks and ladder get review and the live pass only; AO, clouds and beams keep identical or near verdicts for optimizations on TAA-off frames, their converged look goes to review; sharpening is under-represented with TAA off; High SSR and the later TAA-denoised items are review only; TAAU, leaving no TAA-off frame, waits on A12; nothing else loses.
 
 ## Iris gates
@@ -96,23 +96,26 @@ Every row is [verify in jar] by its class (under net.irisshaders.iris); state as
 | final target format, RGBA8 assumed | open | FinalPassRenderer |
 
 ## Budget
-- 26.3 baseline [m], Unbound played GPUBusy (results/records/m3-shadows-full-1.json): forest_noon 8.20, end_city 8.18, end_dragon 8.16, rain 7.60, underwater 7.46, ocean_sunset 7.38, nether_soul 6.50, nether_crimson 5.91, night 5.51, cave 5.39, entities 5.38 ms; shadows off -0.86 mean. ALC's 1.21.11 ablations are context (config/profiles/complementary-unbound-played.json): TAA 0.579, clouds 0.302, water reflection 0.192, SSAO 0.138, bloom 0.128 ms.
-- Medium per feature [inferred]: lighting 0.2-0.65, +0.02 held light; tonemap 0.1-0.25; TAA 0.3-0.45, +0.1-0.3 if history flips; shadows 0.35-0.9 (0 Nether); AO to 0.25 (end_dragon under 0.08); sky to 0.12; clouds 0-0.33 (0.02-0.05 without sky, 0 Nether and End); fog to 0.08; End beams 0.3-0.55; water 0.6-1.1 on open water (Medium + refraction; Low 0.35-0.55), else 0.05-0.1; reflections to 0.1, rain 0.2-0.8; bloom 0.1-0.2; sharpening 0.02-0.05.
+- 26.3 baseline [m]: Unbound played's GPUBusy per view in the table below (results/records/m3-shadows-full-1.json); shadows off -0.86 ms mean. ALC's 1.21.11 ablations are context (config/profiles/complementary-unbound-played.json): TAA 0.579, clouds 0.302, water reflection 0.192, SSAO 0.138, bloom 0.128 ms.
+- Medium per feature [inferred]: lighting 0.22-0.67 with held light, +0.02-0.2 for the overlay targets' read; tonemap 0.1-0.25; TAA 0.3-0.45; shadows 0.35-0.9 (0 Nether); AO 0.08-0.25 (end_dragon 0.04-0.08); sky 0-0.08 (ocean_sunset to 0.1, night 0.05-0.12, Nether 0.01); clouds 0.05-0.33 under sky, 0.02-0.05 without, 0 Nether and End; fog 0-0.08; End beams 0.3-0.55; water 0.6-1.1 on open water (ocean_sunset, night; Low 0.35-0.55), else 0.05-0.1, 0 Nether and End; reflections 0-0.1, rain 0.2-0.8; bloom 0.1-0.2; sharpening 0.02-0.05.
+- Fixed per view [inferred]: the base (docs/research/programs.md#base-cost), from passthrough and hello-pack records of other identities, so context only; Iris's depth copies, two mip chains and the TAA history pair, 0.4 ms with images (c) to 1.1 with a copy pass (b) (docs/research/iris.md#budget-hypothesis).
 
-| View type | Unbound ms | Optilux features ms |
-|---|---|---|
-| day (forest_noon, ocean_sunset, entities) | 5.4-8.2 | 1.5-4.1 |
-| night | 5.5 | 2.0-3.9 |
-| rain | 7.6 | 1.7-3.7 |
-| underwater | 7.5 | 1.5-3.2 |
-| cave | 5.4 | 1.2-2.5 |
-| Nether | 5.9-6.5 | 1.0-2.0 |
-| End | 8.2 | 1.5-3.5 |
+| View | Unbound ms | Features | Base | Total ms |
+|---|---|---|---|---|
+| forest_noon | 8.20 | 1.2-3.7 | 0.9-1.5 | 2.5-6.3 |
+| ocean_sunset | 7.38 | 1.8-4.7 | 0.9-1.5 | 3.1-7.3 |
+| entities | 5.38 | 1.2-3.7 | 0.9-1.5 | 2.5-6.3 |
+| night | 5.51 | 1.8-4.7 | 0.6-0.9 | 2.8-6.7 |
+| rain | 7.60 | 1.4-4.4 | 1.1-1.7 | 2.9-7.2 |
+| underwater | 7.46 | 1.2-3.4 | 0.8-1.3 | 2.4-5.8 |
+| cave | 5.39 | 1.2-3.4 | 0.6-1.0 | 2.2-5.5 |
+| nether_crimson, nether_soul | 5.91, 6.50 | 0.8-2.3 | 0.7-1.2 | 1.9-4.6 |
+| end_dragon | 8.16 | 1.4-3.7 | 0.7-0.9 | 2.5-5.7 |
+| end_city | 8.18 | 1.4-3.8 | 0.7-0.9 | 2.5-5.8 |
 
-- Outside the sums [inferred]: the base, opaque raster with the gbuf and mask exports and clears (docs/research/programs.md#base-cost): day 0.9-1.5, night 0.6-0.9, rain 1.1-1.7, underwater 0.8-1.3, cave 0.6-1.0, Nether 0.7-1.2, End 0.7-0.9 ms, from passthrough and hello-pack records of other identities, so context only; lighting's D row already holds 4 B of its export. Iris copies and mips, under 0.5 ms. With both, every type stays under 8.3 ms, closest to Unbound at night (up to 5.3 against 5.5); a 4.17 ms Low keeps 2.0-3.1 ms for features.
+- Each row sums its features' ends, lows rounded down and highs up. At the upper ends entities (6.3 against 5.38), night (6.7 against 5.51) and cave (5.5 against 5.39) pass Unbound, so beating it is a target, not a prediction; the highest is 7.3 ms, and a 4.17 ms Low leaves 1.3-3.1 ms for features.
 - End: 73 % of the record's 8.16 ms is about 6 ms for Unbound's march [inferred, a 1.21.11 share], which puts fog's Medium beams at 0.44 ms plus the upsample, at their 0.5 ms budget.
-- ALU rates mix 2.124 and 2.43 GHz (14 %); water's dual-issue 37.3 TFLOPS was corrected and no other doc used it.
-- Proposal: per-feature budgets at Medium's upper ends in pipeline.json; the default profile under Unbound played on every perf view and under 8.3 ms (120 fps); a Low profile toward 4.17 ms, Sodium's 3840x2160@240 target (docs/platform.md#mc-263-verified); taken-back features under 1.5 ms mean.
+- Proposal: per-feature budgets at Medium's upper ends in pipeline.json; the default profile under 8.3 ms (120 fps) on every perf view, and under Unbound played as a target the cost rows check; a Low profile toward 4.17 ms, Sodium's 3840x2160@240 target (docs/platform.md#mc-263-verified); taken-back features under 1.5 ms mean.
 
 ## D72 input
 | Candidate | ms [inferred] | Determinism | Aperture | Rec |
@@ -154,7 +157,7 @@ Look-target questions:
 9. M6's ratio narrowed to shared features; block SSR needs Unbound's IPBR, so a cost row only.
 
 ## Milestones
-- D73 stands (user, 2026-10-26): M4 and M5 keep their cut; merged, the plan would be about twice the 40,960-byte cap (docs/roadmap.md#decisions).
+- M4 and M5 keep their cut (docs/roadmap.md#decisions D73).
 - M4 (docs/roadmap.md#m1-to-m6): D72 first; every coverage-list program, shadow included; lighting; tonemap and final; the gradient sky; edge fog; E2; cost and timer rows; L3-L4. M5: shadow filters, sky, clouds, water, fogs, AO, bloom, full TAA, the flush, A6, A12, controls, live pass.
 - M4, the remaining programs (docs/research/programs.md#for-optilux): each written, lightning and damaged block too; particles.ordering=mixed; under BENCH_DETERMINISTIC weather=false false and a particle vertex cull, each an identical-tier A/B against the discard, glint unscrolled, the beam drawn; a define-off coverage variant for particles, weather and lightning, judged within its launch; lines, lightning, spider eyes, damaged block, hand_water, name tags and snow each a written waiver or a views or world change (identity, so recalibration), the user's.
 - Unnamed in-scope features: the material map, held-item light and flicker in M4 with lighting; vanilla weather in M4 (coverage list; discarded under BENCH_DETERMINISTIC); block reflections and rain puddles in M5 with water (one ssr include); image sharpening with TAA and underwater distortion in final, M5; entity shadows in M5 with shadows; End beams in M5 with fog; the End flash's light term in M4, its glow in M5 with sky.
@@ -178,11 +181,12 @@ M4.P00 verifies each at its source, or marks it open:
 14. The final target's format, which sets the dither step.
 15. Iris 1.11.7 against branches 26.3 (head 1.11.6), 26.1, 1.21.9 and multiloader-new (F9).
 16. Where 26.3 splits opaque from translucent particles; Iris's line patch on a pack's own gbuffers_line; blend.gbuffers_spidereyes against ProgramId's forced blend; readiness against Sodium's sort tasks (docs/research/programs.md#open-questions).
+17. Whether entities_translucent, block_translucent, text and lines write depth before deferred, and blend.<program>.<buffer> giving mod a multiply and emit an add (docs/research/lighting.md#overlay-targets).
 
 ## Risks
 - Compute and SSBOs are likely absent; Iris builds computes unchecked, so a refused one fails the load, and an unsupported bufferObject throws: colored light, world-space reflections, Hi-Z and froxels each need a fragment path.
 - F12 open voids entities' TAA-on rows.
-- The portable history pair costs Iris a copy plus a write; image parity waits on the probe.
+- The portable history pair costs Iris a copy plus a read and a write; image parity waits on a probe that also proves its barrier (docs/research/iris.md#history-and-previous-frame-data).
 - Tick-delta uniforms are untested: the hello pack reads none.
 - E2's tier: near only under one 8-bit step of quantization, else close (user sign-off); the bench lacks MoreCulling (played tier), so it sees more leaf overdraw.
 - ~20 resources against colortex0-15 verified (docs/gpu-iris.md#passes-and-buffers), 32 in source; dimensions can reuse indices [inferred].
