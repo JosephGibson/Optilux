@@ -2,7 +2,7 @@
 Status: milestones M0-M6, the current one in detail, the findings assigned and the decisions.
 
 ## Contents
-Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M3 visual loop · M1 to M6 · Findings assigned · Decisions · Estimates
+Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M3 visual loop · M4 shader base · M4 phases · M1 to M6 · Findings assigned · Decisions · Estimates
 
 ## Rules
 - Commits and versions (D33): Conventional Commits, each one logical, test-green change (`optilux test` and `optilux verify docs` pass before it), a phase one or more of them (workflow.md#git); the version in VERSION, a milestone a minor release, one PR and one release per milestone plus patches (workflow.md#release). Phases are M<N>.P<PP>; M0's and M1's are 0.MM.PP.
@@ -27,12 +27,82 @@ Rules · M0 foundation · M0 phases · M1 game control · M2 perf loop · M3 vis
 ## M3 visual loop
 - Closed with release v0.4.0 (2026-10-25): `verify similarity`, `check L0`, `check L1`, `check L2`; `run`'s visual and dump kinds and A5 (failed, 17 of 33 waits: the visual settle kept); `compare`'s tiers and review.html; frames.capture's align, ready and image-less captures; the hello pack with BENCH_DETERMINISTIC and pipeline.json v0, identical on the 11 perf views across launches; the iso profile v1; the static-textures pack in every session; the coverage views; both modes recalibrated on the deterministic set; about 19.3 h against 25 estimated. Plan: plans/m3.md; prompts: prompts/m3.md; what happened: the M3.P11 handoff in git history; its open rows: Findings assigned.
 
+## M4 shader base
+- Goal (plans/m4.md section 1): Optilux's base pack draws every program Iris draws with its own deferred lighting, Low shadows, sky and tonemap; function tests and frame captures check it before a measured session, its cost is measured on every view against its options and against Unbound, and E2 is decided.
+- Verbs (design.md#5-interfaces, From = M4): `check L3`, `check L4`; `run`'s capture kind, measured runs of `optilux` and `optilux@<ref>`, visual runs over a list of views.
+- Not in M4 (plans/m4.md section 2): shadow filters and colour, sky LUTs, clouds, water's features, analytic fogs, End beams, AO, bloom, TAA, sharpening, the flush, A6, A12, temporal controls, the live pass (M5); the not-yet list (D72); timer rows, Viewfinder's A8 and A11 and E5's check (plans/m4.md D82, F6); compute, SSBOs and images; F12 (M5); F24.
+- Exit, all of (plans/m4.md section 1): the verbs above run, tests green; the M4 pack passing `check L0` with its determinism rule, `check L3` and `verify similarity`; every coverage-list program written, each with its coverage views or a waiver in pipeline.json v1; two visual sessions of the M4 pack on the 11 perf views identical; a quick and a full calibration of M4's identity, each mode's twin inside its threshold and shadows off beyond it; full-mode cost rows on every perf view, the define and each option against its off, the default faster than Unbound played on every view (plans/m4.md D84); E2 decided and E3's evidence recorded; CI green on every push and on the PR; the user's rebase merge and release v0.5.0; docs/handoff.md written.
+- Branch m4; M4.P00 (the plan) precedes the phases M4.P01 to M4.P12. Plan: plans/m4.md, premises verified 2026-10-26, its decisions D75-D86, approved by the user on 2026-10-26 (its section 10). Prompts: prompts/m4.md.
+
+## M4 phases
+Change, exit and estimate per phase; files and tests are in plans/m4.md section 5, its decisions D75-D86 in section 6.
+
+### M4.P01 Tools
+- Change: RenderDoc 1.46 pinned and installed; moderngl 5.13.0 and glcontext 3.1.0 locked; a runner of Iris's expression engine on the pinned jar.
+- Exit: `install` reports RenderDoc hash-checked and `renderdoccmd version` prints 1.46; moderngl opens a context; the runner evaluates its fixtures.
+- Estimate: 1.5 h; machine: downloads.
+
+### M4.P02 check L3 and L0's determinism rule
+- Change: `check L3`: Iris-free includes under moderngl against numpy goldens, custom uniforms in Iris's engine; L0 refuses a wall-clock or smoothed uniform under BENCH_DETERMINISTIC and a frameCounter modulus not dividing 720720 (D79).
+- Exit: L3 passes on the hello pack and fails on a broken copy; L0 refuses frameTimeCounter under the define.
+- Estimate: 3 h; machine: none.
+
+### M4.P03 Measured runs of the Optilux pack
+- Change: measurement runs take `optilux` and `optilux@<ref>` as baseline or candidate, built and L0-gated as a visual run's (D80); the stale help strings fixed.
+- Exit: a budget run of the hello pack against itself on quick mode's views ends ok.
+- Estimate: 2.5 h; machine: 1 launch. Attended: the machine left alone while it runs.
+
+### M4.P04 RenderDoc captures
+- Change: `launch` passes the debug tier's JVM properties; `run`'s capture kind, F12 through SendInput at each view (D81); visual runs over a list of views.
+- Exit: a capture run of the hello pack and Unbound on quick mode's views writes one hashed .rdc per view and variant.
+- Estimate: 3 h; machine: 2 launches. Attended: the machine left alone (input is sent).
+
+### M4.P05 check L4 and E3's evidence
+- Change: `check L4`: shares per program and Iris group (explain), pass outputs compared on their used pixels (close), replay A/B in shares (predict); underwater's ungrouped share with Unbound's shadows on and off (D82).
+- Exit: the shares and the ungrouped share printed; two captures of a view give identical pass outputs.
+- Estimate: 3 h; machine: 1 launch. Attended: the machine left alone (input is sent).
+
+### M4.P06 The base pack
+- Change: a probe build first (the extension list, the RGBA16UI readback, renderStage); the G-buffer programs, deferred lighting with one Low shadow tap, the shadow programs, the gradient sky, the edge fog, the tonemap and final's dither; LIGHT_PATH and E2_LOAD (D75-D78).
+- Exit: the pack loads in all three dimensions without an error or fallback; a visual run on quick mode's views ends ok; L0 and L3 pass.
+- Estimate: 4 h; machine: 3 launches. Attended: the machine left alone while they run.
+
+### M4.P07 Every other program
+- Change: every remaining coverage-list program, forward after deferred, the pre-deferred blended draws in their targets (D76); the define's rules (D79); the options; pipeline.json v1.
+- Exit: the coverage views' visual run, the define on and off, ends ok; L4 names each program drawn and no fallback; the weather directive and the discard identical at rain.
+- Estimate: 4 h; machine: 4 launches. Attended: the machine left alone while they run.
+
+### M4.P08 Coverage and determinism
+- Change: coverage content (D83), the snapshot retaken; the coverage list from captures at every view; review.html beside Unbound played (D86).
+- Exit: world prep counts every item; two visual runs on the 11 perf views identical on every view; every pass has views or a waiver.
+- Estimate: 3 h; machine: about 8 launches and the prep. Attended: the machine left alone while they run.
+
+### M4.P09 Recalibration
+- Change: identity frozen; quick and full calibrations on Unbound played; shadows off per mode.
+- Exit: both calibrations committed; per mode the twin inside and shadows off beyond.
+- Estimate: 1.5 h; machine: about 135 launches, about 5 h. Attended: the user's go, the machine left alone.
+
+### M4.P10 E2
+- Change: deferred against forward at E2_LOAD 0, 4, 8 and 16, full mode; the winner made the default (D85).
+- Exit: both paths' rows on every perf view; E2 decided in design.md#8-open-decisions.
+- Estimate: 2 h; machine: about 34 launches, about 1 h. Attended: the machine left alone.
+
+### M4.P11 Cost rows
+- Change: the define off and each option off against the default, full mode; the default against Unbound played (D84); the uniform-work scan (F28); pipeline.json's budgets.
+- Exit: a cost row per candidate on every perf view; the default faster than Unbound played on every view.
+- Estimate: 2.5 h; machine: about 45 launches, about 1.5 h. Attended: the machine left alone.
+
+### M4.P12 The close
+- Change: the docs as built; CHANGELOG's 0.5.0 entry completed; the findings marked landed.
+- Exit: `optilux status` prints the Release prompt.
+- Estimate: 1 h; machine: none.
+
 ## M1 to M6
 One line each, from design.md#6-milestones; phase lists are provisional until each plan is approved. F and Q numbers refer to Findings assigned.
 - M1 game control: closed (above); exit: design.md#6-milestones M1.
 - M2 perf loop: closed (above); exit: design.md#6-milestones M2.
 - M3 visual loop: closed (above); exit: design.md#6-milestones M3.
-- M4 shader base: D72 decided first; every coverage-list program, lighting, tonemap; cost rows, timer rows below the CPU floor; offline L3-L4; debug-tier attribution; E2 decided.
+- M4 shader base: detailed above (M4 shader base, M4 phases); exit: design.md#6-milestones M4.
 - M5 features and temporal: shadows, sky, clouds, water, fog, AO, bloom, full TAA; the history flush (E4, F12), A6, A12; temporal positive controls; live pass.
 - M6 1.0: ratio vs Unbound iso reported; live pass; look review; README; release, as 1.0.0, which its first commit writes into VERSION by hand (workflow.md#release). Post-1.0: optimization, the JVM track, the lod tier, the Aperture backend.
 
@@ -46,7 +116,7 @@ The Phase -1 spike's handoff findings (2026-10-06) and later ones, each with the
 | F3 | options.txt needs version:5023 and graphicsPreset custom; Sodium forces exclusiveFullscreen on a fresh file; the dev tier needs use_no_error_g_l_context=false | landed in 0.01.03 (pre-launch files) | the harness writes suite.json display.optionsTxt verbatim and the Sodium file with both keys; every written key and the Sodium file's hash are identity (run-record.md#identity); simulationDistance stays 12 (user, 2026-10-06) |
 | F4 | Dev-tier reload memory: 20.6 MiB heap and 320 MiB private bytes per reload over 50 reloads | landed in 0.01.09 (reload table) and M2.P06 (the cap) | 50 `shaders.reload` on the bench tier through the mod, heap after GC and private bytes every 10 reloads, written as an acceptance record; M2 sets capture.reloadCap and the session budget from it, replacing ALC's 288 |
 | F5 | Iris error path: in a world a failed load goes to chat; read `isFallback()`, hook `handleException` | landed in 0.01.07 (Iris adapter); A4 in 0.01.09 | `shaders.reload` answers `iris-compile-error` from the hooked message; A4 proves it (platform.md#mod-adapter-surface) |
-| F6 | Viewfinder has no server-command tool; terrain shows only as "Terrain solid"; 30 fps under the debug context | landed in 0.01.10 (dev session 1); E5's check in M4, E3 having reopened (M2.P10, plans/m2.md D53) | /tick, /summon and /setblock go through the mod's `command` (V2's freeze findings: platform.md#mc-263-verified); dev session 1 runs the deferred batch: the look review of the L1, V1 and V6 captures (user), the /mcp reconnect and one Viewfinder call from Claude Code, V2 with /summon and /setblock; E5's overhead check separates the debug context from the mod |
+| F6 | Viewfinder has no server-command tool; terrain shows only as "Terrain solid"; 30 fps under the debug context | landed in 0.01.10 (dev session 1); E5's check at Viewfinder's next use: M4 takes no timer rows, both timer sources missing cutout terrain (plans/m4.md D82, P10) | /tick, /summon and /setblock go through the mod's `command` (V2's freeze findings: platform.md#mc-263-verified); dev session 1 runs the deferred batch: the look review of the L1, V1 and V6 captures (user), the /mcp reconnect and one Viewfinder call from Claude Code, V2 with /summon and /setblock; E5's overhead check separates the debug context from the mod |
 | F7 | Dev-tier quit: WM_CLOSE saves the world, then the watchdog writes a crash report and the process exits -8 | closed (user, 2026-10-06) | accepted as known in platform.md#mod-tiers; the dev-session protocol treats exit -8 after "Saving worlds" as a clean quit; no shutdown step |
 | F8 | 26.3 stores the singleplayer player under players/data/<uuid>.dat | landed in 0.01.03 (launch) and M2.P04 (world verbs) | `launch` takes `--uuid` from that file name when the snapshot has one; `world snapshot` records it (platform.md#install-and-launch) |
 | F9 | Iris has no release tags since 1.7.3; the 26.3 branch head says MOD_VERSION 1.11.6 | landed in 0.01.04 | the pinned jar's bytecode is the authority (`javap -c -p`); the source at commit adc75283b is context; the mixin-target test reads every target from the hash-checked jars with ASM (mod.md#11-build-and-test) |
@@ -66,11 +136,11 @@ The Phase -1 spike's handoff findings (2026-10-06) and later ones, each with the
 | F22 | The session (0.01.12's review; D31's reading 2): a failed selftest does not end a session (c5); the GUI hidden at entities, whose torch measurement.md#session keeps (c1); perform keeps the session skeleton inline and the end-the-game policies apart (simp2, simp20); the spec's notes, pack and resource_packs unread (simp11); wait_rows re-reads the CSV at every poll (cr10) | landed in M2.P05 | the measured session's runner |
 | F23 | The jar (0.01.12's review): a hello after its own disconnect cancels the 10 s release (conc2); a stopped capture's frames outlive its resource (conc5); the game adapter's delegates are dead code | landed in M2.P02 | one jar change with `window.measure` |
 | F24 | Gradle's other downloads are trusted by coordinate (0.01.12) | the mod's next dependency change | verification metadata not taken (D28); M2 plans no dependency change |
-| F25 | A pack near 1 ms a frame meets PresentMon's row loss before the 90 % rule: the passthrough's captures were cut invalid on cave, night, entities, nether_crimson and nether_soul at 1,850-2,060 fps (m2-survey-1, -2; M2.P08's handoff) | landed in M3.P11 (plans/m3.md D67: no row in 0.4.0, measurement.md#session step 9); the row in M4 | no GPUBusy row for a pack that light: BENCH_DETERMINISTIC's cost row and the hello pack's timings wait for a heavier base or timer rows (E3) |
+| F25 | A pack near 1 ms a frame meets PresentMon's row loss before the 90 % rule: the passthrough's captures were cut invalid on cave, night, entities, nether_crimson and nether_soul at 1,850-2,060 fps (m2-survey-1, -2; M2.P08's handoff) | landed in M3.P11 (plans/m3.md D67: no row in 0.4.0, measurement.md#session step 9); the row in M4.P11 | no GPUBusy row for a pack that light: BENCH_DETERMINISTIC's cost row and the hello pack's timings wait for a heavier base or timer rows (E3) |
 | F26 | Quick mode's first Ci slot reads slow: each view's first measured baseline follows a dimension change and reads 0.13-0.16 % below the second, so slot 1, a candidate's and never the twin's, reads +0.085 % on the geo-mean (M2.P09's review 1) | landed in M3.P09 (plans/m3.md D65: the twin first) | the schedule changes before M3's calibration, so no candidate sits unwatched in that slot |
 | F27 | Each reload leaks about 0.5 GiB of GPU memory under driver 32.0.31041.3013, which an AMD installer put in place of 32.0.32015.2008 on 2026-10-10 (M1's 46 MiB of private bytes a reload), hence capture.reloadCap 20 (M2.P06; M2.P09's handoff) | landed in M3.P10 (plans/m3.md D66: the driver as found, 32.0.31041.1004; m3-diag-alone-1 leaked 580 MiB of GPU memory a reload, so the cap stays 20) | a newer driver and one budget run of m2-diag-alone-1's spec may let plans/m2.md D43 raise the cap: fewer launches a full session |
-| F28 | The uniform-work scan (PB): uniform-only math left in pixel stages, which a custom uniform would compute once a frame; the hello pack had none to scan (plans/m3.md D70) | M4 | `check L2` lists it per stage of a dump of M4's pack, explain only (offline.md#decision-powers) |
-| F29 | Peaceful refuses monsters, so no view draws spider eyes; the world's difficulty is the user's (plans/m3.md P22 and section 2) | M4 | a waiver in pipeline.json, or a NoAI spider at the coverage site once the user raises the difficulty, before M4's recalibration |
+| F28 | The uniform-work scan (PB): uniform-only math left in pixel stages, which a custom uniform would compute once a frame; the hello pack had none to scan (plans/m3.md D70) | M4.P11 | `check L2` lists it per stage of a dump of M4's pack, explain only (offline.md#decision-powers) |
+| F29 | Peaceful refuses monsters, so no view draws spider eyes; the world's difficulty is the user's (plans/m3.md P22 and section 2) | M4.P08: waived, Peaceful kept (plans/m4.md D83) | a waiver in pipeline.json, or a NoAI spider at the coverage site once the user raises the difficulty, before M4's recalibration |
 
 ## Decisions
 Owner: who decides. Recommendation: what an unattended run takes. The user's decisions of 2026-10-05 live in design.md#7-decisions-taken-user-2026-10-05, later closed ones in this table; evidence decisions E1-E5 in design.md#8-open-decisions.
@@ -98,7 +168,7 @@ Owner: who decides. Recommendation: what an unattended run takes. The user's dec
 | D33 | Commits, versions and releases | user | closed: commits in Conventional Commits form, `type(scope)!: summary` (feat, fix, perf, refactor, test, docs, build, ci, chore, revert), one line of at most 72 characters, no body or trailer, the subject naming no milestone, phase, version or date; a commit is one logical, test-green change and a phase may take several. One version source, the root file VERSION (MAJOR.MINOR.PATCH), read by `optilux status`, CI and `pack`; the mod jar keeps its own version, its sha512 being identity. Before 1.0 a milestone is a minor release (M1 0.2.0, M2 0.3.0), set by its first commit, which CI checks against origin/main's; PATCH for a bad release or an urgent fix, through its own PR; M0's v0.00.06 stays. Phases M<N>.P<PP> from M2, the last one done in docs/handoff.md's `Last phase:` line, which Status lines no longer repeat. CHANGELOG `## <version> <Name>`, release `Optilux <version>: <Name>`, PR `<version> <Name>: <what it delivers>`. A merge to main with a released version fails release.yml; CI's check on the PR refuses it first. Supersedes D4's message format, D6's heading and D32 (user, 2026-10-07) | closed |
 | D34 | Per-pass timers (A8, A11, `timers.*`, E3): M2 or M4 | user | closed: kept in M2, as design.md#6-milestones has them (user, 2026-10-08), against the recommendation to move them to M4, which first needs timer rows; plans/m2.md builds the helper's own timers before calibration and runs A8 and A11 after it | closed |
 | D71 | The shader's direction | user | closed: an original, next-generation pack, heavily inspired by Complementary Unbound but with a look of its own, every feature on a measured cost budget; Unbound stays the reference pack and the side-by-side look reference, not the target; the drop list becomes a not-yet list; M3 runs as planned, its iso profile included (user, 2026-10-20) | closed |
-| D72 | What next-generation means for Optilux: the look target (reference images, art direction); the features taken back from the not-yet list (ray or path tracing and colored light among the candidates); a frame-time budget at 3840x2160; M6's ratio vs Unbound iso kept, narrowed to the shared features or dropped | user | asked at M4's Plan prompt, each candidate with Claude's research of its cost and of its fit with TAA-on determinism (A12) and the Aperture port (platform.md#renderer-transition); until then nothing on the not-yet list is built | M4's plan |
+| D72 | What next-generation means for Optilux: the look target (reference images, art direction); the features taken back from the not-yet list (ray or path tracing and colored light among the candidates); a frame-time budget at 3840x2160; M6's ratio vs Unbound iso kept, narrowed to the shared features or dropped | user | closed: Unbound the side-by-side reference (D71), the tonemap operator picked at M4's look review from re-tonemapped captures, exposure fixed; nothing from the not-yet list in M4, each later candidate decided in M5's or M6's plan on its cost rows; the budget per view against Unbound played: the default faster than Unbound played on every perf view (plans/m4.md D84); M6's ratio kept, over the features both packs have (user, 2026-10-26) | closed |
 | D73 | Shader research before M4's plan | user | closed: M4 and M5 keep their cut (merged, the plan would be about twice the 40,960-byte cap), but M4's choices are made for M5's features (the per-pixel data, TAA as the denoiser), so one research step on branch m4 before M4.P00, outside the phase numbering, covers both: 13 topics (lighting, tonemap, TAA, shadows, AO, sky, clouds, fog and volumetrics, water, reflections, post, D72's candidates, Iris's capabilities), each by a read-only researcher and an adversarial verifier, then a synthesis, in docs/research/ for D72, E2 and the plan, which reads it; then a targeted pass: the coverage-list programs no topic held and the base cost, the not-yet items none assessed, the topic docs brought in line with the synthesis; the Iris facts stay [verify in jar] for M4.P00's premises (user, 2026-10-26) | closed |
 | D74 | Unbound as a springboard | user | closed: Optilux diverges from Unbound wherever a technique is faster, more performant or more modern; matching Unbound's approach is never a reason on its own, so research, plans and phases recommend the faster or more modern option, judged by cost rows and the visual tiers, and may go ahead with it; D71's roles stand (Unbound the reference pack and the look reference beside Optilux's frames), and D72 keeps the look target and M6's ratio (user, 2026-10-26) | closed |
 
@@ -107,4 +177,5 @@ Owner: who decides. Recommendation: what an unattended run takes. The user's dec
 - M1: 28 h agent from plans/m1.md (2, 2, 2, 3, 3, 3, 2.5, 2, 1.5, 2, 3, 2; 25 h before the QA pass became two phases, D27; the mod phases carry 3 h each: ALC's mod ran 3x its line estimate, lessons.md#mod).
 - M2: 26.5 h agent from plans/m2.md (2, 2.5, 3.5, 3, 3.5, 1.5, 5, 1.5, 1.5, 1, 1.5, P03, P05 and P07 raised from 3 h on 2026-10-12 to size XL, Opus 5.5 Max, P07 to 5 h on 2026-10-13 for D43's split; its section 8 has the basis); machine time apart: 104-113 launches, M2.P09's sessions about 4 h.
 - M3: 25 h agent from plans/m3.md (1.5, 2, 2.5, 2, 3, 3.5, 2.5, 3, 2.5, 1.5, 1; its section 8 has the basis); machine time apart: about 146 launches, M3.P10's sessions about 5 h.
+- M4: 31 h agent from plans/m4.md (1.5, 3, 2.5, 3, 3, 4, 4, 3, 1.5, 2, 2.5, 1; its section 8 has the basis); machine time apart: about 233 launches, M4.P09's sessions about 5 h.
 - Tripwire baseline: M0-M3 summed 87.3 h (7.8 + 28 + 26.5 + 25; 72.3 h with M3's rough 10 h); the trip is at 174.6 h, recomputed whenever a plan replaces a rough figure. Actuals: M0 about 3.3 h; M1 about 20.3 h against 28 (18.6 h through 0.01.13, its handoff in git history, and 1.7 h for the workflow pass); M2 about 21.3 h against 26.5 (the M2.P11 handoff in git history); M3 about 19.3 h against 25 (the M3.P11 handoff in git history): 64.2 h in all.
