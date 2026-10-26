@@ -1,8 +1,8 @@
 # Handoff
-Status: the latest stop: M3.P11 done, the milestone closed: its docs as built and checked against the code and the records, the 0.4.0 release notes complete, M3's findings marked landed; the Release prompt is next.
+Status: the latest stop: M3 closed and released as v0.4.0, then on branch m4 the shader research before M4's plan (roadmap.md#decisions D73, D74), committed and pushed. M4.P00 is next.
 
 ## Contents
-Outcome · The milestone · Review · Choices · Checks · Open questions · Weak points · Commits and time · Next
+Outcome · The milestone · Review · Choices · Checks · Open questions · Weak points · Commits and time · Research step · Next
 
 ## Outcome
 Last phase: M3.P11
@@ -51,5 +51,14 @@ Neither the prompt nor the plan names these:
 - M3: about 19.3 h against 25 h (P00 2.0, P01 0.8, P02 0.8, P03 1.9, P04 1.9, P05 1.4, P06 2.1, P07 2.1, P08 1.8, P09 1.4, P10 2.1, P11 1.0; 17.3 h without P00). Machine apart: 162 launches against about 146, about 5.2 h: 159 recorded (300.7 min: P03 1, P05 2, P06 2, P07 3, P08 2, P09 5, P10 144) and P07's 3 world-prep launches (about 9 min).
 - Tripwire: actuals about 64.2 h (M0 3.3, M1 20.3, M2 about 21.3, M3 about 19.3) against M0-M3's 87.3 h; the trip at 174.6 h.
 
+## Research step
+Outside the phase numbering, 2026-10-26, on m4 (D73), before M4.P00; no launch, machine none.
+- docs/research/: 13 topic docs and synthesis.md, each topic by a read-only researcher and an adversarial verifier (27 agents, 932 claims confirmed at their sources, 290 corrected, 14 removed, 31 left [unverified]); a targeted pass (9 agents): programs.md (the coverage programs no topic held, the base cost), next-gen.md's other not-yet items, the topic docs aligned with the synthesis; then gpt-6.1-sol critiques of synthesis, lighting, taa and iris: 16 findings, 15 folded in, the NoAI one reworded (the entities view was identical across launches, m3-determinism-2, -3).
+- What the critiques changed: the overlay split into mod, emit and trans, their depth writes premise 17; TAA resolves in HDR before bloom and the tonemap (D74), post-tonemap the option; the budget a per-view ledger whose upper ends pass Unbound at entities, night and cave, a target, not a prediction; Iris's fixed costs 0.4-1.1 ms; a periodic flush makes the cycle its period; the Slang mul() rule.
+- D74 (user): Unbound a springboard, not a template.
+- For M4.P00: VERSION 0.5.0 and `## 0.5.0 Shader base` are in (16b9033: the hook refuses any m4 commit without them), so step 2 is left with M3's roadmap line and step 7's first commit is taken; the goal paragraph may be rewritten from the approved plan. Read synthesis.md first: Premises for M4's plan (17), D72 input with nine look questions, Milestones (an M5 split proposed).
+- Weak points: every Iris fact [verify in jar]; costs [inferred], about 2x; synthesis.md's margin 110 bytes.
+- Commits: 16b9033 (the version, and by mistake D73 and the Plan prompt's reading list, left staged by a refused commit: pushed, no force push), 3d7f8b4, 1dad62c (CI's first attempt failed on test_logman_lists_sessions_on_this_machine, `logman query -ets` exiting 2147946600 on the runner; the rerun passed), 21ba028, cee6cef, then this handoff; each pushed after the last one's CI ended green.
+
 ## Next
-/optilux-next prints the Release prompt (/optilux-release): the PR from m3, its checks, then the user's rebase merge and release v0.4.0.
+/optilux-next prints M4.P00 Plan M4 (docs/prompts/standing.md#plan), which now reads docs/research/; Fable 5.1 xHigh suggested, in a fresh session.
