@@ -509,10 +509,12 @@ def check_options(where: str, options: Any) -> dict[str, str | bool]:
 
 def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict, ...]:
     """A measured run's variants: objects of id, pack, profile and optionally options and timers;
-    the first the baseline, ids unique and never a twin's; each pack the reference pack `pack`, or
-    a measurement run's candidate the passthrough pack with no profile, options or timers (D46); a
-    calibration run holds the baseline alone, as the runner adds its twins. Each checked
-    variant's options: the profile's with the spec's over them."""
+    the first the baseline, ids unique and never a twin's; each pack the reference pack `pack`, a
+    measurement run's candidate the passthrough pack with no profile, options or timers (D46), or
+    a measurement run's baseline or candidate the Optilux pack, `optilux` or `optilux@<ref>`
+    (optilux_build), profile null (plans/m4.md D80); a calibration run holds the reference pack's
+    baseline alone, as the runner adds its twins. Each checked variant's options: the profile's
+    with the spec's over them; its `build`, an Optilux variant's."""
     variants = data["variants"]
     kind = data["kind"]
     if not isinstance(variants, list) or not variants:
@@ -542,6 +544,7 @@ def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict
             )
         if vid in (v["id"] for v in found):
             raise RecordError(f"{where}: id {vid} is listed twice; fix: rename one")
+        build = None
         if variant["pack"] == PASSTHROUGH:
             if index == 0 or kind != "measurement":
                 raise RecordError(
@@ -554,10 +557,29 @@ def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict
                     f"{where}: the passthrough pack has no options, and timers would add their "
                     "cost to its floor; fix: profile null, no options, timers false"
                 )
+        elif is_optilux(variant["pack"]):
+            if kind != "measurement":
+                why = (
+                    "a calibration run measures the reference pack, whose shadows off is the "
+                    "known positive"
+                    if kind == "calibration"
+                    else "A8 and A11 measure the reference pack, as their calibration did"
+                )
+                raise RecordError(
+                    f"{where}: {variant['pack']} is measured in a measurement run; {why} "
+                    f"(plans/m4.md D80); fix: the reference pack {pack}"
+                )
+            if variant["profile"] is not None:
+                raise RecordError(
+                    f"{where}: {variant['pack']} has no profile (config/profiles/ holds the "
+                    "reference pack's); fix: profile null, its values in `options`"
+                )
+            build = optilux_build(root, variant["pack"])
         elif variant["pack"] != pack:
             raise RecordError(
-                f"{where}: pack {variant['pack']!r}; fix: the reference pack {pack}, or the "
-                f"passthrough pack {PASSTHROUGH} as a measurement run's candidate"
+                f"{where}: pack {variant['pack']!r}; fix: the reference pack {pack}, {OPTILUX} or "
+                f"{OPTILUX_AT}<ref> (plans/m4.md D80), or the passthrough pack {PASSTHROUGH} as a "
+                "measurement run's candidate"
             )
         profile = variant["profile"]
         if profile is not None and not isinstance(profile, str):
@@ -579,6 +601,7 @@ def check_variants(root: Path, data: dict, suite: dict, pack: str) -> tuple[dict
                 "profile": profile,
                 "options": options,
                 "timers": timers,
+                "build": build,
             }
         )
     return tuple(found)
@@ -625,15 +648,17 @@ def check_spec(
 ) -> Spec:
     """A run spec checked before anything launches (run-record.md#run-spec): its fields, a
     single-use name, the kind, the bench tier, the views file and its snapshot, the world under
-    `saves`, the standard resource-pack set and the session's reload budget. An acceptance run
-    without a mode: one variant of the reference pack `pack` at its defaults, items `run`
-    performs, F4's reload count (`reloads`, a multiple of RELOAD_EVERY). A measured run (`mode`
-    quick or full; measurement, calibration, or acceptance of A8 and A11): its variants
-    (check_variants), `calibration` null (plans/m2.md D40) or a calibration matching it
-    (check_calibration), A8 and A11 in full mode, `heap` true or false, a budget run's or the
-    survey's keys (check_budget), no treatment and no reloads; a session over the cap cut into
-    launches of views (split_groups). Each refusal names its fix. `fresh` False skips the
-    single-use name (`calibrate` builds the identity before naming a session)."""
+    `saves`, the deterministic resource-pack set (PACK_SET) and the session's reload budget. A
+    visual run (check_visual_spec) or a dump run (check_dump_spec): its variants and views, never
+    split. An acceptance run without a mode (check_acceptance_spec): one variant at its pack's
+    defaults, the reference pack `pack` or the Optilux pack, items `run` performs, F4's reload
+    count (`reloads`, a multiple of RELOAD_EVERY). A measured run (`mode` quick or full;
+    measurement, calibration, or acceptance of A8 and A11): its variants (check_variants: the
+    reference pack, the passthrough or the Optilux pack), `calibration` null (plans/m2.md D40) or
+    a calibration matching it (check_calibration), A8 and A11 in full mode, `heap` true or false,
+    a budget run's or the survey's keys (check_budget), no treatment and no reloads; a session
+    over the cap cut into launches of views (split_groups). Each refusal names its fix. `fresh`
+    False skips the single-use name (`calibrate` builds the identity before naming a session)."""
     if not isinstance(data, dict):
         raise RecordError("the spec is no JSON object; fix: give its fields as an object")
     missing = [key for key in SPEC_REQUIRED if key not in data]

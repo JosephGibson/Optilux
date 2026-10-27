@@ -332,14 +332,22 @@ def test_the_twins_are_byte_copies_checked_by_sha512(tmp_path: Path) -> None:
     owned: list[Path] = []
     made = measure.make_twins(tmp_path, found, packs / PACK, digest, owned.append)
     assert [m["file"] for m in made] == [f"optilux-twin1-{PACK}", f"optilux-twin2-{PACK}"]
-    assert [p.name for p in owned] == [m["file"] for m in made]  # taken before each copy
+    assert [p.name for p in owned] == [  # each taken with its part file before its copy
+        name for m in made for name in (m["file"], f"{m['file']}.part")
+    ]
     assert (packs / f"optilux-twin2-{PACK}").read_bytes() == (packs / PACK).read_bytes()
     again: list[Path] = []
     with pytest.raises(session.RunError, match="exists in shaderpacks"):
         measure.make_twins(tmp_path, found, packs / PACK, digest, again.append)
     assert again == []  # a copy already there is not this run's: never taken, never deleted
-    assert measure.remove_files(owned) == {"removed": [p.name for p in owned], "kept": []}
+    removed = [m["file"] for m in made]  # the part files were renamed into them
+    assert measure.remove_files(owned) == {"removed": removed, "kept": []}
     assert sorted(p.name for p in packs.iterdir()) == [PACK]
+    settings = packs / f"optilux-twin1-{PACK}.txt"  # one the run did not write: never taken
+    settings.write_text("SHADOW_QUALITY=-1\n", encoding="utf-8")
+    with pytest.raises(session.RunError, match=rf"optilux-twin1-{re.escape(PACK)}.txt exists"):
+        measure.make_twins(tmp_path, found, packs / PACK, digest, again.append)
+    assert again == [] and settings.is_file()
 
 
 PASS = {"id": "passthrough", "pack": record.PASSTHROUGH, "profile": None}
@@ -387,14 +395,22 @@ def test_the_passthrough_pack_is_written_and_owned_before_the_launch(tmp_path: P
     made = measure.make_passthrough(tmp_path, [base, through], owned.append)
     digest = hashlib.sha512(measure.passthrough_zip()).hexdigest()
     assert made == {"file": record.PASSTHROUGH, "sha512": digest}
-    assert owned == [packs / record.PASSTHROUGH]  # taken before it is written
+    part = packs / f"{record.PASSTHROUGH}.part"
+    assert owned == [packs / record.PASSTHROUGH, part]  # taken before they are written
     assert (packs / record.PASSTHROUGH).read_bytes() == measure.passthrough_zip()
-    assert measure.variant_sha512(through, "ref") == digest
-    assert measure.variant_sha512(base, "ref") == "ref"
+    assert measure.variant_sha512(through, {PACK: "ref"}) == digest
+    assert measure.variant_sha512(base, {PACK: "ref"}) == "ref"  # by its source, the pin's file
+    with pytest.raises(session.RunError, match="no zip this run pinned or built"):
+        measure.variant_sha512(base, {"optilux.zip": "built"})
     again: list[Path] = []
     with pytest.raises(session.RunError, match="exists in shaderpacks"):
         measure.make_passthrough(tmp_path, [base, through], again.append)
     assert again == []  # a file already there is not this run's: never taken, never deleted
+    (packs / record.PASSTHROUGH).unlink()
+    (packs / f"{record.PASSTHROUGH}.txt").write_text("", encoding="utf-8")
+    with pytest.raises(session.RunError, match=r"passthrough.zip.txt exists in shaderpacks"):
+        measure.make_passthrough(tmp_path, [base, through], again.append)
+    assert again == []
 
 
 def test_the_effective_options_must_equal_the_written_ones() -> None:
@@ -706,12 +722,54 @@ def test_the_survey_measures_the_passthrough_pack_as_a_candidate(bench_root) -> 
     survey = measured(mode="full", variants=[BASE, PASS], rounds=1, warmup=True)
     spec = record.check_spec(root, survey, PLAT, SUITE, saves, PACK)
     assert [len(g) for g in spec.groups] == [3, 3, 3, 2] and spec.warmup is True
-    assert spec.variants[1] == {**PASS, "options": {}, "timers": False}
+    assert spec.variants[1] == {**PASS, "options": {}, "timers": False, "build": None}
     found = measure.variants(spec, SUITE)
     assert [(v.id, v.role, v.pack, v.source) for v in found] == [
         ("baseline", "baseline", PACK, PACK),
         ("passthrough", "candidate", record.PASSTHROUGH, record.PASSTHROUGH),
         ("twin", "twin", f"optilux-twin1-{PACK}", PACK),
+    ]
+
+
+def test_a_measurement_run_takes_the_optilux_pack_as_baseline_or_candidate(bench_root) -> None:
+    """plans/m4.md D80: `optilux` and `optilux@<ref>` as a measurement run's baseline or
+    candidate, profile null, options as text, each with its build (the ref resolved at the check);
+    each loads its zip as built and the twin copies the baseline's; the reference pack beside one
+    (D84's run of the default against Unbound played); the passthrough after an Optilux baseline."""
+    root, saves = bench_root
+    git(root, "init", "-q", "-b", "m4")
+    who = ("-c", "user.name=F", "-c", "user.email=f@x.invalid")
+    git(root, *who, "commit", "-q", "--allow-empty", "-m", "chore: a commit")
+    sha = git(root, "rev-parse", "HEAD").stdout.strip()
+    at = {"id": "at-head", "pack": "optilux@HEAD", "profile": None, "options": {"SHADOWS": "0"}}
+    spec = record.check_spec(root, measured(variants=[OPTILUX_BASE, at]), PLAT, SUITE, saves, PACK)
+    assert [v["build"] for v in spec.variants] == [
+        {"variant": "optilux", "ref": None, "commit": None},
+        {"variant": "optilux@HEAD", "ref": "HEAD", "commit": sha},
+    ]
+    assert [v["options"] for v in spec.variants] == [{}, {"SHADOWS": "0"}] and spec.planned == 20
+    zipped = f"optilux-{sha[:12]}.zip"
+    assert [(v.id, v.role, v.pack, v.source) for v in measure.variants(spec, SUITE)] == [
+        ("hello", "baseline", "optilux.zip", "optilux.zip"),
+        ("at-head", "candidate", zipped, zipped),
+        ("twin", "twin", "optilux-twin1-optilux.zip", "optilux.zip"),
+    ]
+    played = measured(mode="full", variants=[BASE, OPTILUX_BASE])
+    spec = record.check_spec(root, played, PLAT, SUITE, saves, PACK)
+    assert [v["build"] for v in spec.variants] == [
+        None,
+        {"variant": "optilux", "ref": None, "commit": None},
+    ]
+    assert [(v.pack, v.source) for v in measure.variants(spec, SUITE)][1:] == [
+        ("optilux.zip", "optilux.zip"),
+        (f"optilux-twin1-{PACK}", PACK),
+    ]
+    floor = measured(variants=[OPTILUX_BASE, PASS], heap=True)
+    spec = record.check_spec(root, floor, PLAT, SUITE, saves, PACK)
+    assert [v.pack for v in measure.variants(spec, SUITE)] == [
+        "optilux.zip",
+        record.PASSTHROUGH,
+        "optilux-twin1-optilux.zip",
     ]
 
 
@@ -727,6 +785,7 @@ def test_a_split_sessions_name_leaves_room_for_its_parts(bench_root) -> None:
 
 BASE = {"id": "baseline", "pack": PACK, "profile": "played"}
 TIMED = {**BASE, "id": "timed", "timers": True}
+OPTILUX_BASE = {"id": "hello", "pack": "optilux", "profile": None}
 SPEC_REFUSALS = [
     (dict(mode=None), "measures a mode's schedule"),
     (dict(mode="slow"), "one of quick, full"),
@@ -804,6 +863,27 @@ SPEC_REFUSALS = [
     (dict(heap=True, windows=0), "true or false"),
     (dict(heap=True, alone=True, variants=[BASE, {**BASE, "id": "other"}]), "the baseline only"),
     (dict(heap=True, windows=False, variants=[{**BASE, "timers": True}]), "timers false"),
+    # plans/m4.md D80: the Optilux pack in a measurement run only, profile null, options as text.
+    (dict(variants=[{**OPTILUX_BASE, "profile": "played"}]), "optilux has no profile"),
+    (dict(variants=[BASE, {**OPTILUX_BASE, "profile": "iso"}]), "its values in `options`"),
+    (dict(kind="calibration", variants=[OPTILUX_BASE]), "a calibration run measures the reference"),
+    (
+        dict(kind="calibration", variants=[{**OPTILUX_BASE, "pack": "optilux@HEAD"}]),
+        "(plans/m4.md D80); fix: the reference pack",
+    ),
+    (
+        dict(
+            mode="full",
+            kind="acceptance",
+            items=["A8"],
+            variants=[OPTILUX_BASE, {**OPTILUX_BASE, "id": "timed", "timers": True}],
+        ),
+        "A8 and A11 measure the reference pack",
+    ),
+    (dict(variants=[{**OPTILUX_BASE, "pack": "optilux@no-such-ref"}]), "names no commit"),
+    (dict(variants=[{**OPTILUX_BASE, "pack": "optilux@-x"}]), "is no ref a spec may name"),
+    (dict(variants=[{**OPTILUX_BASE, "options": {"SHADOWS": 0}}]), "the pack's own text"),
+    (dict(variants=[PASS, OPTILUX_BASE]), "the passthrough after it in a measurement run"),
 ]
 
 
@@ -2812,6 +2892,173 @@ def test_the_switch_reads_an_empty_settings_file_and_every_file_is_journaled(fak
         f"{folder}/optilux.zip.part",
         f"{folder}/optilux.zip.txt",
     ]
+
+
+# A measurement run of the Optilux pack (plans/m4.md D80).
+
+
+def measured_optilux(**changes: Any) -> dict:
+    """The working tree's zip as the baseline against HEAD's as the candidate."""
+    at = {"id": "at-head", "pack": "optilux@HEAD", "profile": None}
+    return measured(name="m4-measured-test", variants=[OPTILUX_BASE, at], **changes)
+
+
+def built_sha512(root: Path, out: Path, ref: str | None) -> str:
+    return hashlib.sha512(pack_verb.build(root, out, "0.4.0", ref).path.read_bytes()).hexdigest()
+
+
+def test_a_measurement_run_writes_gates_and_twins_the_optilux_zips(
+    fake_run, monkeypatch, tmp_path: Path
+) -> None:
+    """D80 on the fake: each Optilux zip built as `pack build` builds it and passed by `check L0`
+    once before anything is written; both written into shaderpacks/ before the launch, the twin a
+    byte copy of the baseline's there; every capture measured; each variant's sha512 its zip's
+    (the twin's its baseline's) beside its build and L0 summary; every file deleted after the
+    quit."""
+    root, spec_path, fake, host = fake_run
+    commit = optilux_tree(root)  # the tree's final.fsh edited: the two zips differ
+    tree, head = built_sha512(root, tmp_path / "tree", None), built_sha512(root, tmp_path, "HEAD")
+    assert tree != head
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    at_head = f"optilux-{commit[:12]}.zip"
+    gated: list[tuple[str, str]] = []
+
+    def gate(root_: Path, zipped: dict, variant: str) -> dict:
+        assert not (packs / zipped["file"]).exists()  # gated before anything is written
+        gated.append((variant, zipped["sha512"]))
+        return passing_l0(root_, zipped, variant)
+
+    seen: dict[str, bytes] = {}
+    launching = launch.launch
+
+    def launched(*args: Any, **kwargs: Any) -> launch.Launched:
+        seen.update({p.name: p.read_bytes() for p in packs.iterdir()})
+        return launching(*args, **kwargs)
+
+    monkeypatch.setattr(run_verb, "check_l0", gate)
+    monkeypatch.setattr(launch, "launch", launched)
+    spec_path.write_text(json.dumps(measured_optilux()), encoding="utf-8")
+    found = run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    assert found["status"] == "ok", found["reason"]
+    assert gated == [("optilux", tree), ("optilux@HEAD", head)]
+    assert sorted(seen) == sorted([PACK, "optilux.zip", at_head, "optilux-twin1-optilux.zip"])
+    assert seen["optilux-twin1-optilux.zip"] == seen["optilux.zip"]  # the twin: a byte copy
+    assert hashlib.sha512(seen["optilux.zip"]).hexdigest() == tree
+    assert hashlib.sha512(seen[at_head]).hexdigest() == head
+    captures = found["captures"]
+    assert len(captures) == 3 + 3 * 5 and all(c["valid"] for c in captures)
+    assert {c["variant"] for c in captures} == {"hello", "at-head", "twin"}
+    hello, candidate, twin = found["variants"]
+    assert [(v["id"], v["role"], v["pack"], v["sha512"]) for v in found["variants"]] == [
+        ("hello", "baseline", "optilux.zip", tree),
+        ("at-head", "candidate", at_head, head),
+        ("twin", "twin", "optilux-twin1-optilux.zip", tree),
+    ]
+    assert hello["build"] == twin["build"] == {"variant": "optilux", "ref": None, "commit": None}
+    assert candidate["build"] == {"variant": "optilux@HEAD", "ref": "HEAD", "commit": commit}
+    assert [v["l0"]["sha512"] for v in found["variants"]] == [tree, head, tree]
+    assert twin["effective"]["fromBaseline"] == {} and "values" in candidate["effective"]
+    session_facts = found["session"]
+    assert [(z["file"], z["sha512"]) for z in session_facts["zips"]] == [
+        ("optilux.zip", tree),
+        (at_head, head),
+    ]
+    assert session_facts["twins"] == [{"file": "optilux-twin1-optilux.zip", "sha512": tree}]
+    assert fake.game["pack"] == "optilux.zip"  # the last capture's, the baseline's
+    assert session_facts["filesCleanup"]["kept"] == []
+    assert sorted(p.name for p in packs.iterdir()) == [PACK]
+
+
+def test_a_split_session_whose_optilux_zip_moved_launches_no_further_part(
+    fake_run, monkeypatch
+) -> None:
+    """Over a cap of 12 the session runs as two launches; the working tree edited after part 1
+    builds part 2 another zip under the same identity (the pack is a variant field), so the
+    session ends invalid before part 2 launches, naming the variant and both hashes."""
+    root, spec_path, fake, host = fake_run
+    optilux_tree(root)
+    set_suite(root, capture__reloadCap=12, capture__warmupPass=False)
+    fresh_games(monkeypatch, fake, host)
+    written = run_verb.write_launch
+
+    def then_edit(root_: Path, found: dict, say: Any) -> Path:
+        path = written(root_, found, say)
+        (root / "shader/shaders/final.fsh").write_bytes(b"void main() { } // edited\n")
+        return path
+
+    monkeypatch.setattr(run_verb, "write_launch", then_edit)
+    spec_path.write_text(json.dumps(measured_optilux()), encoding="utf-8")
+    found, path = run_verb.run_session(root, spec_path, host, FakeMachine(), print, print)
+    assert path == root / record.RECORDS / "m4-measured-test.json"
+    assert found["status"] == "invalid" and found["parts"] == ["m4-measured-test-p1"]
+    assert re.search(
+        r"part 2's hello would load optilux.zip \(sha512 [0-9a-f]{12}\.\.\.\), "
+        r"m4-measured-test-p1 loaded optilux.zip \(sha512 [0-9a-f]{12}\.\.\.\)",
+        found["reason"],
+    )
+    assert "their variants' zips" in found["reason"] and launches(fake) == 1
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert sorted(p.name for p in packs.iterdir()) == [PACK]
+
+
+def test_a_measurement_runs_optilux_zip_is_gated_by_check_l0_in_a_child(fake_run, monkeypatch):
+    """The gate is `check L0` in a child process, as a visual run's (plans/m3.md D63): the fake
+    root has no glslang, so the child cannot check the zip and the run is refused before anything
+    is written."""
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    monkeypatch.setattr(run_verb, "check_l0", REAL_CHECK_L0)
+    spec_path.write_text(json.dumps(measured_optilux()), encoding="utf-8")
+    with pytest.raises(
+        record.RecordError, match=r"optilux: `check L0` cannot check its zip: .*glslang"
+    ):
+        run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert sorted(p.name for p in packs.iterdir()) == [PACK]
+    assert not (root / record.RAW / "m4-measured-test").exists()
+
+
+def test_a_twin_unlike_its_optilux_baseline_is_refused(tmp_path: Path) -> None:
+    """The twin is copied from the baseline's zip on disk and held to the sha512 it was built
+    with: a zip that changed after it was written gives a twin the run refuses."""
+    packs = tmp_path / "shaderpacks"
+    packs.mkdir()
+    (packs / "optilux.zip").write_bytes(b"PK edited after the build")
+    built = hashlib.sha512(b"PK as built").hexdigest()
+    base = measure.Variant("hello", "baseline", "optilux.zip", "optilux.zip", None, {}, False)
+    twin = measure.Variant(
+        "twin", "twin", "optilux-twin1-optilux.zip", "optilux.zip", None, {}, False
+    )
+    owned: list[Path] = []
+    with pytest.raises(session.RunError, match=r"optilux-twin1-optilux.zip hashes [0-9a-f]{12}"):
+        measure.make_twins(tmp_path, [base, twin], packs / "optilux.zip", built, owned.append)
+    twin_file = packs / "optilux-twin1-optilux.zip"
+    assert owned == [twin_file, packs / "optilux-twin1-optilux.zip.part"]  # deleted after it
+
+
+def test_run_check_prints_a_measured_runs_zips_and_their_sha512(fake_run, capsys) -> None:
+    """`run --check` of a measured spec builds and gates its zips and prints each, its sha512
+    among its fields, nothing written."""
+    root, spec_path, _, _ = fake_run
+    commit = optilux_tree(root)
+    tree = built_sha512(root, root.parent / "tree", None)
+    head = built_sha512(root, root.parent / "head", "HEAD")
+    spec_path.write_text(json.dumps(measured_optilux(heap=True)), encoding="utf-8")
+    assert cli.main(["run", str(spec_path), "--check"]) == 0
+    out = capsys.readouterr().out
+    (line,) = [x for x in out.splitlines() if x.startswith("measured: ")]
+    head_line, zips = line.split("; zips: ")
+    assert head_line == "measured: 20 reloads on forest_noon, nether_crimson, end_dragon"
+    assert [(z["file"], z["sha512"], z["l0"]["sha512"]) for z in json.loads(zips)] == [
+        ("optilux.zip", tree, tree),
+        (f"optilux-{commit[:12]}.zip", head, head),
+    ]
+    assert cli.main(["run", str(spec_path), "--check", "--json"]) == 0
+    checked = json.loads(capsys.readouterr().out)
+    assert [z["sha512"] for z in checked["zips"]] == [tree, head] and checked["planned"] == 20
+    packs = root / "runtime" / PLAT.id / "game" / "shaderpacks"
+    assert sorted(p.name for p in packs.iterdir()) == [PACK]
+    assert not (root / record.RAW / "m4-measured-test").exists()
 
 
 # A5 (mod.md#12-acceptance, plans/m3.md D68).

@@ -23,8 +23,10 @@ raw/<name>/partial.json follows the run.
   list holds no optilux- pipe, latest.log no applied mixin and no active line, the JVM's thread
   dump no optilux- thread; WM_CLOSE ends it.
 - A measured run (measurement, calibration, or acceptance of A8 and A11 on a mode's schedule):
-  optilux/measure.py's session, the twins copied and the passthrough pack written before the
-  launch, the variants' files, the twins and the passthrough deleted after the quit, every window
+  optilux/measure.py's session; a measurement run's Optilux variants' zips built and passed by
+  `check L0` before anything is written, as a visual run's (plans/m4.md D80); before the launch
+  those zips written, the twins copied from the baseline's zip and the passthrough pack written,
+  all deleted with the variants' files after the quit; every window
   cut from the run's one PresentMon CSV. A run that
   names its calibration is refused unless the calibration's identity equals its own key by key,
   and its record holds the verdicts (optilux/stats.py: each candidate's, the twin's check and the
@@ -120,11 +122,8 @@ PREFIX = "optilux run"
 STEPS = "steps.json"
 EVENTS = "events.json"
 CAPTURES = "captures.json"
-# An acceptance run's Optilux variant under shaderpacks/ (plans/m3.md D63): the working tree's
-# zip, or a commit's, named by its sha.
-OPTILUX_ZIP = "optilux.zip"
-OPTILUX_COMMIT_ZIP = "optilux-{commit}.zip"
-# `check L0` on that zip (plans/m3.md M3.P04): a child process reading the zip on its stdin, so
+# `check L0` on an Optilux variant's zip (plans/m3.md M3.P04; its file under shaderpacks/:
+# measure.zip_name): a child process reading the zip on its stdin, so
 # the check's modules stay out of the measured closure (run-record.md#identity: harness).
 L0_COMMAND = ("-m", "optilux.cli", "check", "L0", "-", "--json")
 L0_TIMEOUT = 600
@@ -159,14 +158,9 @@ class Prepared:
     identity: dict
     recorded: dict
     optilux: dict | None = None  # an Optilux variant's zip, built in memory (optilux_zip)
-    zips: tuple[dict, ...] = ()  # a visual run's Optilux zips, each built once (visual_zips)
+    # A visual, dump or measurement run's Optilux zips, each built once (variant_zips).
+    zips: tuple[dict, ...] = ()
     cycle: int = 1  # a visual run's align (pipeline_cycle)
-
-
-def zip_name(build: dict) -> str:
-    """An Optilux variant's file under shaderpacks/: the working tree's, or a commit's, its sha."""
-    commit = build["commit"]
-    return OPTILUX_ZIP if commit is None else OPTILUX_COMMIT_ZIP.format(commit=commit[:12])
 
 
 def optilux_zip(root: Path, build: dict) -> dict:
@@ -183,23 +177,40 @@ def optilux_zip(root: Path, build: dict) -> dict:
     except packzip.PackError as error:
         raise record.RecordError(f"{build['variant']}: {error}") from None
     data = packzip.zip_bytes(sources)
-    digest = hashlib.sha512(data).hexdigest()
-    return {"file": zip_name(build), "data": data, "entries": len(sources), "sha512": digest}
+    name, digest = measure.zip_name(build), hashlib.sha512(data).hexdigest()
+    return {"file": name, "data": data, "entries": len(sources), "sha512": digest}
 
 
-def visual_zips(root: Path, spec: record.Spec) -> tuple[dict, ...]:
-    """Each Optilux zip a visual run's variants load (plans/m3.md D63), built once however many
-    variants share it, each refused unless it passes `check L0` (check_l0), in the variants'
-    order; each with its build."""
+def variant_zips(root: Path, spec: record.Spec) -> tuple[dict, ...]:
+    """Each Optilux zip a visual, dump or measurement run's variants load (plans/m3.md D63,
+    plans/m4.md D80), built once however many variants share it, each refused unless it passes
+    `check L0` (check_l0), in the variants' order; each with its build."""
     found: dict[str, dict] = {}
     for variant in spec.variants:
         build = variant["build"]
-        if build is None or zip_name(build) in found:
+        if build is None or measure.zip_name(build) in found:
             continue
         zipped = optilux_zip(root, build)
         zipped["l0"] = check_l0(root, zipped, build["variant"])
         found[zipped["file"]] = {**zipped, "build": build}
     return tuple(found.values())
+
+
+def zip_pins(ready: Prepared) -> dict[str, str]:
+    """The sha512 of each zip a variant may load, by its file under shaderpacks/: the reference
+    pack's pin and each Optilux zip's as built (measure.variant_sha512)."""
+    return {ready.pack.file: ready.pack.sha512, **{z["file"]: z["sha512"] for z in ready.zips}}
+
+
+def zip_build(ready: Prepared, variant: measure.Variant) -> dict:
+    """An Optilux variant's own build as its spec named it (two refs may name one commit, so one
+    zip; a twin's, its baseline's) and its zip's `check L0` summary; nothing for another pack."""
+    zipped = next((z for z in ready.zips if z["file"] == variant.source), None)
+    if zipped is None:
+        return {}
+    named = ready.spec.variants[0]["id"] if variant.role == "twin" else variant.id
+    build = next(v["build"] for v in ready.spec.variants if v["id"] == named)
+    return {"build": build, "l0": zipped["l0"]}
 
 
 def pipeline_cycle(root: Path) -> int:
@@ -356,9 +367,9 @@ def prepare(
     zips: tuple[dict, ...] = ()
     cycle = 1
     if spec.kind == record.VISUAL:
-        zips, cycle = visual_zips(root, spec), pipeline_cycle(root)
-    elif spec.kind == record.DUMP:
-        zips = visual_zips(root, spec)
+        zips, cycle = variant_zips(root, spec), pipeline_cycle(root)
+    elif spec.kind == record.DUMP or spec.mode is not None:  # a measured run's too (D80)
+        zips = variant_zips(root, spec)
     elif spec.a5 is not None:  # aligned on the pack's cycle, as a visual run's captures
         cycle = pipeline_cycle(root)
         if spec.a5["first"] is not None and optilux is not None:
@@ -940,7 +951,7 @@ def optilux_files(run: Runner, s: Session) -> None:
     settings file written empty, so the reload loads it at its defaults (measure.variant_files;
     Iris re-reads both at a reload, spike R4); the settings file journaled first, as the zip."""
     name = run.pack_file
-    variant = measure.Variant(OPTILUX_ZIP, "baseline", name, name, None, {}, False)
+    variant = measure.Variant(measure.OPTILUX_ZIP, "baseline", name, name, None, {}, False)
     display = run.ready.suite["display"]
     for path, data in measure.variant_files(
         s.launched.game, display, run.spec.tier, variant
@@ -989,10 +1000,12 @@ def measured_plan(run: Runner) -> str:
 
 
 def measured_before(run: Runner) -> None:
-    """The twins' zips copied and the passthrough pack written before the launch, the run's files
-    journaled first (D41)."""
+    """Before the launch, the run's files journaled first (D41): each Optilux zip written
+    (write_zip, plans/m4.md D80), then the twins' zips copied from the baseline's zip on disk and
+    held to its sha512, the passthrough pack written."""
     ready = run.ready
     game = ready.base / launch.GAME
+    pins = zip_pins(ready)
     run.journal.set(
         "variants",
         [
@@ -1000,7 +1013,8 @@ def measured_before(run: Runner) -> None:
                 "id": v.id,
                 "role": v.role,
                 "pack": v.pack,
-                "sha512": measure.variant_sha512(v, ready.pack.sha512),
+                "sha512": measure.variant_sha512(v, pins),
+                **zip_build(ready, v),
                 "profile": v.profile,
                 "options": v.options,
                 "timers": v.timers,
@@ -1009,8 +1023,12 @@ def measured_before(run: Runner) -> None:
         ],
     )
     run.journal.set("validity", ready.suite["validity"])  # an orphan's flags use its own suite
-    source = game / launch.SHADER_PACKS / ready.pack.file
-    run.facts["twins"] = measure.make_twins(game, run.found, source, ready.pack.sha512, run.own)
+    if ready.zips:
+        run.facts["zips"] = [write_zip(run, zipped, zipped["build"]) for zipped in ready.zips]
+    base = run.found[0]
+    source = game / launch.SHADER_PACKS / base.pack
+    digest = measure.variant_sha512(base, pins)
+    run.facts["twins"] = measure.make_twins(game, run.found, source, digest, run.own)
     passthrough = measure.make_passthrough(game, run.found, run.own)
     if passthrough is not None:
         run.facts["passthrough"] = passthrough
@@ -1051,10 +1069,13 @@ def measured_fields(run: Runner) -> dict:
     run.problems += measure.measured_problems(
         captures, planned, run.status == "ok" and not run.problems
     )
+    ready = run.ready
     found: dict[str, Any] = {
         "mode": spec.mode,
         "calibration": spec.calibration,
-        "variants": measure.variant_records(m, run.ready.pack.sha512) if m else [],
+        "variants": (
+            measure.variant_records(m, zip_pins(ready), lambda v: zip_build(ready, v)) if m else []
+        ),
         "captures": [{k: v for k, v in c.items() if k != "problems"} for c in captures],
     }
     if spec.heap:
@@ -1209,34 +1230,13 @@ def visual_variants(ready: Prepared) -> list[measure.Variant]:
     found = []
     for n, variant in enumerate(ready.spec.variants):
         build = variant["build"]
-        pack = ready.pack.file if build is None else zip_name(build)
+        pack = ready.pack.file if build is None else measure.zip_name(build)
         role = "baseline" if n == 0 else "candidate"
         options = dict(variant["options"])
         found.append(
             measure.Variant(variant["id"], role, pack, pack, variant["profile"], options, False)
         )
     return found
-
-
-def visual_sha512(ready: Prepared, pack: str) -> str:
-    """The sha512 of the zip a visual variant loads: its built zip's, or the reference pack's
-    pin; RunError for any other file, which no visual variant loads."""
-    built = {zipped["file"]: zipped["sha512"] for zipped in ready.zips}
-    if pack in built:
-        return built[pack]
-    if pack == ready.pack.file:
-        return ready.pack.sha512
-    raise RunError(f"{pack} is no zip this run built and not the reference pack")
-
-
-def visual_build(ready: Prepared, variant: measure.Variant) -> dict:
-    """An Optilux variant's own build as its spec named it (two refs may name one commit, so one
-    zip) and its zip's `check L0` summary; nothing for the reference pack."""
-    build = next(v["build"] for v in ready.spec.variants if v["id"] == variant.id)
-    if build is None:
-        return {}
-    zipped = next(z for z in ready.zips if z["file"] == variant.pack)
-    return {"build": build, "l0": zipped["l0"]}
 
 
 def visual_plan(run: Runner) -> str:
@@ -1259,8 +1259,8 @@ def visual_before(run: Runner) -> None:
                 "id": v.id,
                 "role": v.role,
                 "pack": v.pack,
-                "sha512": visual_sha512(ready, v.pack),
-                **visual_build(ready, v),
+                "sha512": measure.variant_sha512(v, zip_pins(ready)),
+                **zip_build(ready, v),
                 "profile": v.profile,
                 "options": v.options,
                 "timers": False,
@@ -1330,8 +1330,8 @@ def loaded_variants(run: Runner) -> list[dict]:
                 "id": v.id,
                 "role": v.role,
                 "pack": v.pack,
-                "sha512": visual_sha512(ready, v.pack),
-                **visual_build(ready, v),
+                "sha512": measure.variant_sha512(v, zip_pins(ready)),
+                **zip_build(ready, v),
                 "profile": v.profile,
                 "options": v.options,
                 "effective": None
@@ -1599,8 +1599,8 @@ def configure(parser: argparse.ArgumentParser) -> None:
 
 def check(ready: Prepared, as_json: bool) -> int:
     """`--check`: the identity `run` would record, key by key, the calibration that matched it,
-    a split session's launches and an Optilux variant's zip as built (a visual run's, each);
-    nothing launched or written."""
+    a split session's launches and an Optilux variant's zip as built (a visual, dump or measured
+    run's, each with its sha512); nothing launched or written."""
     cid = ready.spec.calibration
     groups = [list(g) for g in ready.spec.groups]
     zipped = None
@@ -1608,6 +1608,7 @@ def check(ready: Prepared, as_json: bool) -> int:
         zipped = {k: v for k, v in ready.optilux.items() if k != "data"}
         zipped["build"] = ready.spec.optilux
     zips = [{k: v for k, v in z.items() if k != "data"} for z in ready.zips]
+    measured = ready.spec.mode is not None and ready.spec.kind != record.VISUAL
     if as_json:
         found = {"ok": True, "name": ready.spec.name, "launched": False, "calibration": cid}
         found["optilux"] = zipped
@@ -1615,6 +1616,8 @@ def check(ready: Prepared, as_json: bool) -> int:
             found.update(zips=zips, cycle=ready.cycle, planned=ready.spec.planned)
         if ready.spec.kind == record.DUMP:
             found.update(zips=zips, views=list(ready.spec.view_ids), planned=ready.spec.planned)
+        if measured:
+            found.update(zips=zips, planned=ready.spec.planned)
         print(json.dumps({**found, "groups": groups, "identity": ready.identity}))
         return 0
     judged = f"; calibration {cid[:24]}... matches it key by key" if cid else ""
@@ -1636,6 +1639,11 @@ def check(ready: Prepared, as_json: bool) -> int:
         print(
             f"dump: {ready.spec.planned} reloads, one view per dimension: "
             f"{', '.join(ready.spec.view_ids)}; zips: {json.dumps(zips)}"
+        )
+    if measured:
+        print(
+            f"measured: {ready.spec.planned} reloads on {', '.join(ready.spec.view_ids)}; zips: "
+            f"{json.dumps(zips)}"
         )
     a5 = ready.spec.a5
     if a5 is not None:
@@ -1773,10 +1781,15 @@ def run_split(
         if done:
             ready = prepare(root, data, machine, match=False)
             differ = record.identity_differences(ready.identity, done[0]["identity"])
-            if differ:
+            moved = None if differ else zips_moved(ready, done[0])
+            if differ or moved:
                 why = (
-                    f"part {n}'s identity differs from {done[0]['name']}'s: {', '.join(differ)} "
-                    "(a split session's parts share one identity; never resumed: start a new one)"
+                    f"part {n}'s identity differs from {done[0]['name']}'s: {', '.join(differ)}"
+                    if differ
+                    else f"part {n}'s {moved}"
+                ) + (
+                    " (a split session's parts share one identity and their variants' zips; "
+                    "never resumed: start a new one)"
                 )
                 return write_session(root, data, spec, done, "invalid", why, say)
         say(f"{PREFIX}: {spec.name}: part {n} of {len(spec.groups)} as {name}: {', '.join(views)}")
@@ -1787,6 +1800,23 @@ def run_split(
             return found, path
         done.append(found)
     return write_session(root, data, spec, done, "ok", None, say)
+
+
+def zips_moved(ready: Prepared, first: dict) -> str | None:
+    """Why a split session's next part, as prepared, would load other bytes than its first ok part
+    did: a variant whose file or sha512 differs (an Optilux variant's working tree or ref moved
+    between the launches, plans/m4.md D80); None when each loads the same zip."""
+    pins = zip_pins(ready)
+    held = {v.get("id"): (v.get("pack"), v.get("sha512")) for v in first.get("variants") or []}
+    for v in measure.variants(ready.spec, ready.suite):
+        digest = measure.variant_sha512(v, pins)
+        if held.get(v.id) != (v.pack, digest):
+            pack, sha512 = held.get(v.id, (None, None))
+            return (
+                f"{v.id} would load {v.pack} (sha512 {digest[:12]}...), {first['name']} loaded "
+                f"{pack} (sha512 {str(sha512)[:12]}...)"
+            )
+    return None
 
 
 # A variant as its parts must agree on it: its file and pin, the options written (a profile's

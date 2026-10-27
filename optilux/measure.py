@@ -6,7 +6,9 @@ through it and the orphans the next run finishes (D41).
 - Variants: the spec's (record.check_variants) and the twins the runner adds, a measurement run's
   one A/A twin, a calibration run's statistics.calibration.twinsPerSession, each a byte copy of the
   baseline's zip under shaderpacks/ with the baseline's settings (D35); a measurement run's
-  passthrough candidate, a zip built here and written beside them (D46). Before every reload the
+  passthrough candidate, a zip built here and written beside them (D46); a measurement run's
+  Optilux variant, its zip built and passed by `check L0` before anything is written, as a visual
+  run's (plans/m4.md D80), loaded as zip_name names it. Before every reload the
   variant's files are written: iris.properties naming its pack and the pack's settings file
   shaderpacks/<pack>.txt with its option values (Iris re-reads both at a reload, spike R4). After
   the reload its pack and every written option's effective value are checked, and the variant's
@@ -77,6 +79,10 @@ from optilux.verbs.install import RUNTIME, Say, shown
 INDEPENDENT_FLIP = "Hardware: Independent Flip"
 # A twin's file under shaderpacks/: optilux-twin<n>-<the baseline's zip>.
 TWIN_PREFIX = "optilux-twin"
+# An Optilux variant's file under shaderpacks/ (plans/m3.md D63): the working tree's zip, or a
+# commit's, named by its sha.
+OPTILUX_ZIP = "optilux.zip"
+OPTILUX_COMMIT_ZIP = "optilux-{commit}.zip"
 # The passthrough pack (plans/m2.md D46), record.PASSTHROUGH under shaderpacks/: a `shaders`
 # directory, which Iris looks for in a zip, and an empty shaders.properties. The pinned Iris jar
 # (P17, read with javap in M2.P08) draws every program the pack lacks with its fallback into
@@ -216,17 +222,31 @@ class Variant:
     timers: bool
 
 
+def zip_name(build: dict) -> str:
+    """An Optilux variant's file under shaderpacks/: the working tree's, or a commit's, its sha."""
+    commit = build["commit"]
+    return OPTILUX_ZIP if commit is None else OPTILUX_COMMIT_ZIP.format(commit=commit[:12])
+
+
+def pack_file(variant: dict) -> str:
+    """The file Iris loads from shaderpacks/ for a checked spec variant: an Optilux variant's zip
+    (plans/m4.md D80), else the pack the spec names."""
+    build = variant.get("build")
+    return variant["pack"] if build is None else zip_name(build)
+
+
 def variants(spec: record.Spec, suite: dict) -> list[Variant]:
     """The spec's variants, the baseline first, then the twins the runner adds after its
     candidates: one A/A twin (`twin`) for a measurement or A8 and A11 run, twinsPerSession
-    (`twin-1`...) for a calibration run; each twin the baseline's settings on a copy of its zip."""
+    (`twin-1`...) for a calibration run; each twin the baseline's settings on a copy of its zip
+    (an Optilux baseline's zip as built: pack_file)."""
     base, *others = spec.variants
     found = [
         Variant(
             base["id"],
             "baseline",
-            base["pack"],
-            base["pack"],
+            pack_file(base),
+            pack_file(base),
             base["profile"],
             dict(base["options"]),
             base["timers"],
@@ -236,8 +256,8 @@ def variants(spec: record.Spec, suite: dict) -> list[Variant]:
         Variant(
             v["id"],
             "candidate",
-            v["pack"],
-            v["pack"],
+            pack_file(v),
+            pack_file(v),
             v["profile"],
             dict(v["options"]),
             v["timers"],
@@ -252,8 +272,8 @@ def variants(spec: record.Spec, suite: dict) -> list[Variant]:
             Variant(
                 record.TWIN if twins == 1 else f"{record.TWIN}-{n}",
                 "twin",
-                f"{TWIN_PREFIX}{n}-{base['pack']}",
-                base["pack"],
+                f"{TWIN_PREFIX}{n}-{pack_file(base)}",
+                pack_file(base),
                 base["profile"],
                 dict(base["options"]),
                 base["timers"],
@@ -292,16 +312,19 @@ def make_twins(
     game: Path, found: list[Variant], source: Path, sha512: str, own: Callable[[Path], None]
 ) -> list[dict]:
     """Each twin's zip, a byte copy of the baseline's (D35), written through a part name and
-    checked by sha512 against the pin; RunError for a copy already there (an orphan's: `run`
-    finishes orphans first) or one that differs. `own` takes each file before it is written, so
-    the run deletes what it wrote and nothing else."""
+    checked by sha512 against `sha512`, the baseline's as pinned or built; RunError for a copy or
+    its settings file already there (an orphan's: `run` finishes orphans first) or a copy that
+    differs. `own` takes each file and its part file before they are written, so the run deletes
+    what it wrote and nothing else."""
     made = []
     for twin in (v for v in found if v.role == "twin"):
         target = game / launch.SHADER_PACKS / twin.pack
-        if target.exists():
-            raise RunError(f"{target.name} exists in shaderpacks/; fix: delete it, then rerun")
-        own(target)
         part = target.with_name(target.name + ".part")
+        for path in (target, part, target.with_name(SETTINGS.format(pack=target.name))):
+            if path.exists():
+                raise RunError(f"{path.name} exists in shaderpacks/; fix: delete it, then rerun")
+        own(target)
+        own(part)
         shutil.copyfile(source, part)
         part.replace(target)
         digest = platform.sha512(target)
@@ -323,26 +346,32 @@ def passthrough_zip() -> bytes:
     return buffer.getvalue()
 
 
-def variant_sha512(variant: Variant, reference: str) -> str:
-    """The sha512 of the zip a variant loads: the passthrough's own, else the pinned reference
-    pack's `reference` (a twin's is its source's)."""
+def variant_sha512(variant: Variant, pins: dict[str, str]) -> str:
+    """The sha512 of the zip a variant loads: the passthrough's own, else its source's in `pins`
+    (by file under shaderpacks/: the reference pack's pin, each Optilux zip's as built; a twin's
+    is its source's); RunError for a source `pins` lacks."""
     if variant.source == record.PASSTHROUGH:
         return hashlib.sha512(passthrough_zip()).hexdigest()
-    return reference
+    if variant.source not in pins:
+        raise RunError(f"{variant.id}: {variant.source} is no zip this run pinned or built")
+    return pins[variant.source]
 
 
 def make_passthrough(game: Path, found: list[Variant], own: Callable[[Path], None]) -> dict | None:
     """The passthrough pack under shaderpacks/ when a variant runs it (D46), written through a
-    part name and checked by sha512; RunError for a file already there (an orphan's: `run`
-    finishes orphans first). `own` takes it before it is written, as make_twins does."""
+    part name and checked by sha512; RunError for it, its part or its settings file already there
+    (an orphan's: `run` finishes orphans first). `own` takes it and its part file before they are
+    written, as make_twins does."""
     if not any(v.source == record.PASSTHROUGH for v in found):
         return None
     target = game / launch.SHADER_PACKS / record.PASSTHROUGH
-    if target.exists():
-        raise RunError(f"{target.name} exists in shaderpacks/; fix: delete it, then rerun")
-    own(target)
-    data = passthrough_zip()
     part = target.with_name(target.name + ".part")
+    for path in (target, part, target.with_name(SETTINGS.format(pack=target.name))):
+        if path.exists():
+            raise RunError(f"{path.name} exists in shaderpacks/; fix: delete it, then rerun")
+    own(target)
+    own(part)
+    data = passthrough_zip()
     part.write_bytes(data)
     part.replace(target)
     digest, wanted = platform.sha512(target), hashlib.sha512(data).hexdigest()
@@ -1623,12 +1652,15 @@ def unsummarized(entry: dict, why: str) -> dict:
     return {**found, "frames": frames, "valid": False, "unsummarized": why}
 
 
-def variant_records(m: Measured, sha512: str) -> list[dict]:
-    """The record's variants (run-record.md#fields): id, role, pack and the zip's sha512 (the
-    reference pack's `sha512`, the passthrough's own), profile, the written options, timers, and
-    the effective options read back after the reload: the whole map of the baseline and of a
-    variant of another pack (the passthrough's), each other variant's sha256 and the values that
-    differ from the baseline's."""
+def variant_records(
+    m: Measured, pins: dict[str, str], builds: Callable[[Variant], dict] | None = None
+) -> list[dict]:
+    """The record's variants (run-record.md#fields): id, role, pack and the zip's sha512 (by its
+    source in `pins`, the passthrough's own: variant_sha512), an Optilux variant's build and
+    `check L0` summary (`builds`), profile, the written options, timers, and the effective options
+    read back after the reload: the whole map of the baseline and of a variant of another pack
+    (the passthrough's, the reference pack's beside an Optilux baseline), each other variant's
+    sha256 and the values that differ from the baseline's."""
     base = m.effective.get(m.found[0].id)
     found = []
     for v in m.found:
@@ -1636,7 +1668,8 @@ def variant_records(m: Measured, sha512: str) -> list[dict]:
             "id": v.id,
             "role": v.role,
             "pack": v.pack,
-            "sha512": variant_sha512(v, sha512),
+            "sha512": variant_sha512(v, pins),
+            **(builds(v) if builds is not None else {}),
             "profile": v.profile,
             "options": v.options,
             "timers": v.timers,
