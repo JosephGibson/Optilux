@@ -23,7 +23,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from optilux import REPO_ROOT, l1, l2, offline, packzip, platform, record
+from optilux import REPO_ROOT, l1, l2, l3, offline, packzip, platform, record
 from optilux.verbs import Verb, verify
 from optilux.verbs.install import REFERENCE, RUNTIME, STORE, TOOLS, TOOLS_DIR, shown
 
@@ -81,6 +81,21 @@ def configure(parser: argparse.ArgumentParser) -> None:
     )
     l2_parser.add_argument("record", metavar="run", help="a dump record's run name")
     l2_parser.add_argument("--json", action="store_true", help="print JSON instead of text")
+    l3_parser = levels.add_parser(
+        "L3",
+        help="function tests: the pack's includes run on the GPU against numpy goldens",
+        description=(
+            "Run each include under the pack's shaders/lib/ that has a test file under tests/l3/ "
+            "on the GPU (moderngl, GL 3.3 core): its functions over each test's cases, held to "
+            "numpy goldens within the test's tolerance (docs/offline.md#levels)."
+        ),
+    )
+    l3_parser.add_argument(
+        "pack",
+        nargs="?",
+        help="a folder holding shaders/, a pack's .zip, or - for a zip on stdin; default: shader/",
+    )
+    l3_parser.add_argument("--json", action="store_true", help="print JSON instead of text")
 
 
 def load_pack(root: Path, named: str | None) -> offline.Pack:
@@ -805,7 +820,86 @@ def print_l2(result: dict) -> None:
     )
 
 
+# L3 (docs/offline.md#levels, plans/m4.md M4.P02): optilux/l3.py on the pack's includes.
+
+L3_PREFIX = "optilux check L3"
+
+
+def run_l3(root: Path, named: str | None) -> dict:
+    """`check L3`'s whole result: the pack, the context, per include its tests' functions or
+    none, every problem, and whether all passed."""
+    started = time.perf_counter()
+    pack = load_pack(root, named)
+    found_macros = macros(root)
+    ctx = l3.context()
+    try:
+        gl = l3.renderer(ctx)
+        found = l3.check(ctx, pack, root / l3.TESTS_DIR, found_macros)
+    finally:
+        ctx.release()
+    return {
+        "ok": not found["problems"],
+        "pack": pack.label,
+        "files": len(pack.files),
+        "sha512": pack.sha512,
+        "opengl": gl,
+        "tests": l3.TESTS_DIR,
+        **found,
+        "seconds": round(time.perf_counter() - started, 2),
+    }
+
+
+def print_l3(found: dict) -> None:
+    digest = f", zip sha512 {found['sha512'][:12]}..." if found["sha512"] else ""
+    print(
+        f"{L3_PREFIX}: {found['pack']}: {found['files']} files{digest}; OpenGL {found['opengl']}; "
+        f"tests under {found['tests']}/"
+    )
+    for entry in found["includes"]:
+        functions = entry["functions"]
+        if entry["test"] is None:
+            print(f"{entry['include']}: no L3 test")
+            continue
+        cases = sum(f["cases"] for f in functions)
+        print(
+            f"{entry['include']} ({entry['test']}): {len(functions)} functions over {cases:,} cases"
+        )
+        for f in functions:
+            allowed = l3.number(f["tolerance"]) + (
+                f" + {l3.number(f['relative'])} x |golden|" if f["relative"] else ""
+            )
+            state = "ok" if not f["problems"] else "FAIL"
+            print(
+                f"  {state} {f['function']} at {f['options']}: {f['cases']:,} cases, "
+                f"{f['failed']} failed, worst {l3.number(f['worst'])} within {allowed}"
+            )
+    for problem in found["problems"]:
+        print(f"FAIL {problem}")
+    tested = [e for e in found["includes"] if e["test"] is not None]
+    functions = [f for e in tested for f in e["functions"]]
+    verdict = "pass" if found["ok"] else f"FAIL ({len(found['problems'])} problems)"
+    print(
+        f"{L3_PREFIX}: {verdict}: {len(tested)} of {len(found['includes'])} includes tested, "
+        f"{len(functions)} functions over {sum(f['cases'] for f in functions):,} cases, in "
+        f"{found['seconds']} s"
+    )
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.level == "L3":
+        try:
+            found = run_l3(REPO_ROOT, args.pack)
+        except (l3.L3Error, offline.L0Error, platform.PlatformError, OSError) as error:
+            if args.json:
+                print(json.dumps({"ok": False, "error": str(error)}))
+            else:
+                print(f"{L3_PREFIX}: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(found))
+        else:
+            print_l3(found)
+        return 0 if found["ok"] else 1
     if args.level == "L2":
         try:
             found = run_l2(REPO_ROOT, args.record)

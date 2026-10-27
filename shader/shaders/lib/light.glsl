@@ -5,6 +5,8 @@
 #ifndef OPTILUX_LIGHT
 #define OPTILUX_LIGHT 1
 
+#include "/lib/options.glsl"
+
 uniform sampler2D lightmap;
 
 #ifdef BENCH_DETERMINISTIC
