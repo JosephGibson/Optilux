@@ -512,3 +512,58 @@ def test_a_preprocessor_error_fails_its_stage(tmp_path: Path) -> None:
     )
     steps = {(c.program, f.step, f.stage) for c in matrix.failed for f in c.failures}
     assert steps == {("gbuffers_basic", "preprocess", "shaders/gbuffers_basic.vsh")}
+
+
+# shaders.properties as Iris's PropertiesPreprocessor reads it (javap, M4.P02).
+
+PROPERTIES = (
+    "# a comment line, no JCPP command\n"
+    "screen = FAST QUALITY\n"
+    "#ifdef FAST\n"
+    "uniform.float.a = frameCounter % 16\n"
+    "#elif QUALITY >= 2\n"
+    "uniform.float.a = 2.0\n"
+    "#else\n"
+    "uniform.float.a = 3.0\n"
+    "#endif\n"
+    "#if defined(IS_IRIS) && !defined SLOW || 0\n"
+    "variable.vec3.b = vec3(1.0, \\\n"
+    "    2.0, 3.0)\n"
+    "#endif\n"
+)
+
+
+def test_properties_take_jcpps_branches_and_pass_other_lines_verbatim() -> None:
+    pack = fixture_pack()
+    pack.files["shaders.properties"] = PROPERTIES
+    options = offline.declared(pack)
+    defines = offline.property_defines(options, offline.Variant(), [("IS_IRIS", None)])
+    assert {k: defines.get(k) for k in ("FAST", "SLOW", "QUALITY", "IS_IRIS")} == {
+        "FAST": "1",  # JCPP's addMacro(name)
+        "SLOW": None,  # off: undefined
+        "QUALITY": "2",
+        "IS_IRIS": "1",
+    }
+    kept = offline.preprocessed_properties(PROPERTIES, defines, "p")
+    assert (2, "screen = FAST QUALITY") in kept  # never macro-expanded
+    found = offline.customs(pack, options, offline.Variant(), [("IS_IRIS", None)])
+    assert [(c.kind, c.type, c.name, c.expression, c.line) for c in found] == [
+        ("uniform", "float", "a", "frameCounter % 16", 4),
+        ("variable", "vec3", "b", "vec3(1.0, 2.0, 3.0)", 11),  # a continued line
+    ]
+    slow = offline.customs(pack, options, offline.Variant((("FAST", "false"),)), [])
+    assert [(c.name, c.expression) for c in slow] == [("a", "2.0")]  # IS_IRIS undefined: no b
+
+
+@pytest.mark.parametrize(
+    ("source", "message"),
+    [
+        ('#include "other.properties"\n', r"p:1: #include, which L0 does not model"),
+        ("#if A + 1\n#endif\n", r"p:1: #if A \+ 1: L0 evaluates defined"),
+        ("#ifdef A\n", r"p: 1 #if without #endif"),
+        ("#endif\n", r"p:1: #endif without its #if"),
+    ],
+)
+def test_properties_l0_cannot_read_are_refused(source: str, message: str) -> None:
+    with pytest.raises(offline.L0Error, match=message):
+        offline.preprocessed_properties(source, {}, "p")

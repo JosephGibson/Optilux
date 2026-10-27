@@ -16,7 +16,7 @@ of float32, each golden computed from the formula the function implements, never
 import hashlib
 import importlib.util
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 
@@ -479,13 +479,284 @@ def draw(
     return np.frombuffer(target.read(), np.float32).reshape(cases, 4).copy()
 
 
+# Custom uniforms: each held to the GLSL it replaces (gpu-iris.md#custom-uniforms), its definition
+# evaluated by Iris's own engine (optilux/expressions.py), the GLSL on the GPU.
+
+UNIFORMS_FILE = "uniforms.py"
+# The runner takes one value per name, so case k's inputs and definitions carry this suffix.
+CASE = "_l3c{}"
+# Iris's functions that follow the clock or an unseeded Random (SmoothFloat, IrisFunctions): the
+# runner's clock is not the game's, so no golden holds them.
+CLOCKED = re.compile(r"\b(?:smooth|random|randomInt)\s*\(")
+# A name an expression reads: not a member after a dot, not a function before a parenthesis.
+NAME = re.compile(r"(?<![\w.])[A-Za-z_]\w*(?![\w(])(?!\s+\()")
+
+# (inputs, expressions) -> values by name, as expressions.evaluate takes and returns them.
+Engine = Callable[[list, list], dict]
+
+
+@dataclass(frozen=True)
+class Uniform:
+    """A custom uniform of shaders.properties held to the GLSL it replaces, per case: Iris's engine
+    evaluates its definition and the definitions it reads, each after those it reads (Iris
+    resolves forward references), over `inputs`; the GPU evaluates `glsl` over the same inputs set
+    as uniforms, after `includes` (paths under shaders/) for the functions it calls. The engine's
+    value is the golden, within `tolerance` plus `relative` times its magnitude; both read the
+    pack at `options`."""
+
+    name: str
+    glsl: str
+    inputs: tuple[Argument, ...]
+    tolerance: float
+    relative: float = 0.0
+    options: Mapping[str, str] = field(default_factory=dict)
+    includes: tuple[str, ...] = ()
+    note: str = ""
+
+
+def resolved(
+    target: offline.Custom, definitions: Mapping[str, offline.Custom]
+) -> list[offline.Custom]:
+    """The definitions the target reads, then itself, each after those it reads."""
+    order: list[offline.Custom] = []
+    state: dict[str, str] = {}
+
+    def visit(custom: offline.Custom, path: tuple[str, ...]) -> None:
+        if state.get(custom.name) == "done":
+            return
+        if state.get(custom.name) == "open":
+            raise L3Error(f"{' -> '.join((*path, custom.name))} reads itself; fix: cut the cycle")
+        state[custom.name] = "open"
+        for name in NAME.findall(custom.expression):
+            if name in definitions:
+                visit(definitions[name], (*path, custom.name))
+        state[custom.name] = "done"
+        order.append(custom)
+
+    visit(target, ())
+    return order
+
+
+def renamed(expression: str, names: set[str], suffix: str) -> str:
+    """The expression with each of `names` it reads carrying the case's suffix."""
+    return NAME.sub(lambda m: m[0] + suffix if m[0] in names else m[0], expression)
+
+
+def case_value(kind: str, row: np.ndarray) -> object:
+    """One case's value of an input, as the runner and moderngl take it."""
+    if kind == "bool":
+        return bool(row[0] > 0.5)
+    if kind == "int":
+        return int(row[0])
+    if kind == "float":
+        return np.float32(row[0])
+    return row
+
+
+def engine_value(value: object) -> np.ndarray:
+    """A value the runner printed as float32 components, a bool as 1 or 0."""
+    if isinstance(value, bool):
+        return np.array([1.0 if value else 0.0], np.float32)
+    return np.atleast_1d(np.asarray(value, np.float32)).ravel()
+
+
+def uniform_harness(test: Uniform, kind: str, undeclared: Sequence[str]) -> list[str]:
+    """The inputs no include declares, then main writing the GLSL's value."""
+    types = {a.name: a.type for a in test.inputs}
+    return [
+        *(f"uniform {types[name]} {name};" for name in undeclared),
+        f"layout(location = 0) out vec4 {OWN}result;",
+        "void main() {",
+        f"    {OWN}result = {WRITE[kind].format(test.glsl)};",
+        "}",
+    ]
+
+
+def run_uniform(
+    ctx: moderngl.Context,
+    pack: offline.Pack,
+    test: Uniform,
+    macros: Sequence[tuple[str, str | None]],
+    engine: Engine,
+) -> dict:
+    """One Uniform: its definitions through the engine and its GLSL on the GPU, per case."""
+    where = label(test.options) + (f", {test.note}" if test.note else "")
+    shown = f"{offline.SHADERS}/{offline.PROPERTIES}"
+    entry: dict = {
+        "uniform": test.name,
+        "options": where,
+        "line": None,
+        "reads": [],
+        "cases": 0,
+        "failed": 0,
+        "worst": 0.0,
+        "tolerance": test.tolerance,
+        "relative": test.relative,
+        "problems": [],
+    }
+    try:
+        values = option_values(pack, test.options)
+        variant = offline.Variant(tuple(sorted(values.items())))
+        try:
+            found = offline.customs(pack, offline.declared(pack), variant, macros)
+        except offline.L0Error as error:
+            raise L3Error(str(error)) from None
+        definitions = {c.name: c for c in found}
+        target = definitions.get(test.name)
+        if target is None or target.kind != "uniform":
+            raise L3Error(f"{shown} defines no uniform {test.name} at {where}; fix: its name")
+        entry["line"] = target.line
+        chain = resolved(target, definitions)
+        entry["reads"] = [c.name for c in chain[:-1]]
+        for custom in chain:
+            if CLOCKED.search(custom.expression):
+                raise L3Error(
+                    f"{shown}:{custom.line}: {custom.kind} {custom.name} calls smooth(), random() "
+                    "or randomInt(), which follow the clock or an unseeded Random: no golden holds "
+                    "it; fix: test a uniform that reads none"
+                )
+            if custom.type not in WRITE:
+                raise L3Error(f"{shown}:{custom.line}: {custom.name}'s type {custom.type!r}")
+        cases = len(np.asarray(test.inputs[0].values)) if test.inputs else 1
+        rows = {a.name: argument_values(a, cases) for a in test.inputs}
+        names = {a.name for a in test.inputs}
+        head, _ = program_source(pack, test.includes, values, macros, [])
+        undeclared = declared_names(head, [a.name for a in test.inputs])
+        harness_lines = uniform_harness(test, target.type, undeclared)
+        source, origins = program_source(pack, test.includes, values, macros, harness_lines)
+    except L3Error as error:
+        entry["problems"].append(f"{shown}: uniform {test.name} at {where}: {error}")
+        return entry
+    defined = names | {c.name for c in chain}
+    inputs, expressions = [], []
+    for case in range(cases):
+        suffix = CASE.format(case)
+        inputs += [
+            (a.type, a.name + suffix, case_value(a.type, rows[a.name][case])) for a in test.inputs
+        ]
+        expressions += [
+            (c.type, c.name + suffix, renamed(c.expression, defined, suffix)) for c in chain
+        ]
+    try:
+        printed = engine(inputs, expressions)
+        golden = np.stack(
+            [engine_value(printed[test.name + CASE.format(case)]) for case in range(cases)]
+        )
+    except L3Error as error:
+        entry["problems"].append(f"{shown}:{target.line}: uniform {test.name}: {error}")
+        return entry
+    try:
+        program = ctx.program(vertex_shader=VERTEX, fragment_shader=source)
+    except moderngl.Error as error:
+        entry["problems"] += [
+            f"{shown}:{target.line}: uniform {test.name}'s GLSL at {where} does not compile: {line}"
+            for line in driver_lines(str(error), origins)
+        ]
+        return entry
+    owned: list = [program]
+    try:
+        got = draw_cases(ctx, program, test, rows, cases, owned)
+    finally:
+        for thing in owned:
+            thing.release()
+    entry["cases"] = cases
+    got = got[:, : golden.shape[1]]
+    failed, diff = judge(got, golden, test.tolerance, test.relative)
+    entry["failed"] = int(failed.sum())
+    entry["worst"] = float(diff.max(initial=0.0))
+    allowed = number(test.tolerance) + (
+        f" + {number(test.relative)} x |golden|" if test.relative else ""
+    )
+    for case in np.flatnonzero(failed)[:SHOWN]:
+        at = ", ".join(f"{a.name} {shown_value(a.type, rows[a.name][case])}" for a in test.inputs)
+        entry["problems"].append(
+            f"{shown}:{target.line}: uniform {test.name} at {at}: Iris's engine "
+            f"{shown_value(target.type, golden[case])}, its GLSL {test.glsl!r} "
+            f"{shown_value(target.type, got[case])}, off by {number(float(diff[case]))} beyond "
+            f"{allowed}, at {where} (case {case} of {cases})"
+        )
+    if entry["failed"] > SHOWN:
+        entry["problems"].append(
+            f"{shown}: uniform {test.name} at {where}: {entry['failed']} of {cases} cases fail"
+        )
+    return entry
+
+
+def draw_cases(
+    ctx: moderngl.Context,
+    program: moderngl.Program,
+    test: Uniform,
+    rows: Mapping[str, np.ndarray],
+    cases: int,
+    owned: list,
+) -> np.ndarray:
+    """The program drawn once per case into its texel of a (cases, 1) RGBA32F target, the case's
+    inputs set as uniforms first; read back as (cases, 4)."""
+    target = ctx.texture((cases, 1), 4, dtype="f4")
+    owned.append(target)
+    frame = ctx.framebuffer(color_attachments=[target])
+    owned.append(frame)
+    frame.use()
+    shape = ctx.vertex_array(program, [])
+    owned.append(shape)
+    for case in range(cases):
+        for arg in test.inputs:
+            set_uniform(program, arg.name, case_value(arg.type, rows[arg.name][case]))
+        ctx.viewport = (case, 0, 1, 1)
+        shape.render(moderngl.TRIANGLES, vertices=3)
+    return np.frombuffer(target.read(), np.float32).reshape(cases, 4).copy()
+
+
+def check_uniforms(
+    ctx: moderngl.Context,
+    pack: offline.Pack,
+    tests: Path,
+    macros: Sequence[tuple[str, str | None]],
+    engine: Engine | None,
+) -> dict:
+    """Every custom uniform of shaders.properties at the defaults named by a test of
+    tests/l3/uniforms.py, and each of its tests run."""
+    shown = f"{offline.SHADERS}/{offline.PROPERTIES}"
+    path = tests / UNIFORMS_FILE
+    found: dict = {"file": shown, "test": None, "defined": [], "tests": [], "problems": []}
+    try:
+        defaults = offline.customs(pack, offline.declared(pack), offline.Variant(), macros)
+    except offline.L0Error as error:
+        found["problems"].append(str(error))
+        return found
+    found["defined"] = [c.name for c in defaults if c.kind == "uniform"]
+    entries: list[Uniform] = []
+    if path.is_file():
+        found["test"] = shown_path(path, tests)
+        try:
+            entries = load(path, "UNIFORMS", Uniform)
+        except L3Error as error:
+            found["problems"].append(f"{found['test']}: {error}")
+    named = {t.name for t in entries}
+    found["problems"] += [
+        f"{shown}:{c.line}: uniform {c.name} has no test in {TESTS_DIR}/{UNIFORMS_FILE} holding "
+        "it to the GLSL it replaces; fix: add one"
+        for c in defaults
+        if c.kind == "uniform" and c.name not in named
+    ]
+    if entries and engine is None:
+        found["problems"].append(f"{len(entries)} uniform tests and no expression engine to run")
+        return found
+    for test in entries:
+        found["tests"].append(run_uniform(ctx, pack, test, macros, engine))  # type: ignore[arg-type]  # set above
+    found["problems"] += [p for t in found["tests"] for p in t["problems"]]
+    return found
+
+
 def check(
     ctx: moderngl.Context,
     pack: offline.Pack,
     tests: Path,
     macros: Sequence[tuple[str, str | None]],
+    engine: Engine | None = None,
 ) -> dict:
-    """L3 over a pack: per include under lib/ its test file's functions, or none; the problems."""
+    """L3 over a pack: per include under lib/ its test file's functions, or none; the custom
+    uniforms of shaders.properties; every problem."""
     files, problems = test_files(tests, pack)
     includes = []
     for include in sorted(p for p in pack.files if is_library(p)):
@@ -504,8 +775,9 @@ def check(
                 entry["problems"].append(f"{shown_path(path, tests)}: {error}")
         entry["problems"] += [p for f in entry["functions"] for p in f["problems"]]
         includes.append(entry)
-    problems += [p for entry in includes for p in entry["problems"]]
-    return {"includes": includes, "problems": problems}
+    uniforms = check_uniforms(ctx, pack, tests, macros, engine)
+    problems += [p for entry in includes for p in entry["problems"]] + uniforms["problems"]
+    return {"includes": includes, "uniforms": uniforms, "problems": problems}
 
 
 def is_library(path: str) -> bool:

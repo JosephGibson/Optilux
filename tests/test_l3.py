@@ -213,3 +213,102 @@ def test_a_broken_copy_fails_naming_the_function_and_input(gl, tmp_path: Path) -
     assert found["problems"]
     assert all(p.startswith("shaders/lib/fog.glsl: fogDistances(") for p in found["problems"][:3])
     assert "fromCamera (" in found["problems"][0]
+
+
+# Custom uniforms (gpu-iris.md#custom-uniforms): Iris's engine against the GLSL they replace.
+
+needs_runtime = pytest.mark.skipif(
+    not (REPO_ROOT / "runtime").is_dir(), reason="no runtime/ (`optilux install`)"
+)
+PROPERTIES = (
+    "# the uniform before the variable it reads: Iris resolves forward references\n"
+    "uniform.vec3.upView = vec3(upColumn.x, upColumn.y, upColumn.z)\n"
+    "variable.vec4.upColumn = gbufferModelView.y\n"
+    "uniform.int.phase = frameCounter % 16\n"
+    "#ifdef DOUBLED\n"
+    "uniform.float.doubled = 3.0 * offset + 0.5\n"
+    "#endif\n"
+)
+
+
+def uniform_pack(properties: str = PROPERTIES) -> offline.Pack:
+    pack = curve_pack()
+    pack.files["shaders.properties"] = properties
+    return pack
+
+
+def uniform_tests(up_glsl: str = "gbufferModelView[1].xyz") -> list[l3.Uniform]:
+    rng = np.random.default_rng(26)
+    matrices = rng.uniform(-10, 10, (16, 4, 4)).astype(F)
+    frames = np.array([*range(720_710, 720_720), *range(6)])  # across the wrap to 0
+    return [
+        l3.Uniform(
+            "upView", up_glsl, (l3.Argument("gbufferModelView", "mat4", matrices),), tolerance=0.0
+        ),
+        l3.Uniform(
+            "phase", "frameCounter % 16", (l3.Argument("frameCounter", "int", frames),), 0.0
+        ),
+        l3.Uniform(
+            "doubled",
+            "twice(offset) + 0.5",  # twice() adds offset itself
+            (l3.Argument("offset", "float", np.linspace(-3, 3, 7, dtype=F)),),
+            tolerance=0.0,
+            includes=("lib/curve.glsl",),
+        ),
+    ]
+
+
+def test_definitions_resolve_after_what_they_read_and_a_cycle_is_refused() -> None:
+    found = offline.customs(uniform_pack(), offline.declared(uniform_pack()), offline.Variant(), [])
+    definitions = {c.name: c for c in found}
+    assert [c.name for c in l3.resolved(definitions["upView"], definitions)] == [
+        "upColumn",
+        "upView",
+    ]
+    assert l3.renamed("vec3(upColumn.x, m.y)", {"upColumn", "m"}, "_l3c4") == (
+        "vec3(upColumn_l3c4.x, m_l3c4.y)"
+    )
+    looped = {
+        "a": offline.Custom("variable", "float", "a", "b + 1.0", 1),
+        "b": offline.Custom("variable", "float", "b", "a * 2.0", 2),
+    }
+    with pytest.raises(l3.L3Error, match="a -> b -> a reads itself"):
+        l3.resolved(looped["a"], looped)
+
+
+def test_a_uniform_without_a_test_is_named(tmp_path: Path) -> None:
+    found = l3.check_uniforms(None, uniform_pack(), tmp_path, [], None)  # type: ignore[arg-type]
+    assert found["defined"] == ["upView", "phase", "doubled"]
+    assert found["problems"][0] == (
+        "shaders/shaders.properties:2: uniform upView has no test in tests/l3/uniforms.py "
+        "holding it to the GLSL it replaces; fix: add one"
+    )
+
+
+@needs_runtime
+def test_custom_uniforms_match_the_glsl_they_replace(gl) -> None:
+    engine = check_verb.engine(REPO_ROOT)
+    found = [l3.run_uniform(gl, uniform_pack(), t, [], engine) for t in uniform_tests()]
+    assert [(u["uniform"], u["reads"], u["cases"], u["failed"], u["problems"]) for u in found] == [
+        ("upView", ["upColumn"], 16, 0, []),
+        ("phase", [], 16, 0, []),
+        ("doubled", [], 7, 0, []),
+    ]
+
+
+@needs_runtime
+def test_a_uniform_off_its_glsl_names_the_uniform_and_input(gl) -> None:
+    engine = check_verb.engine(REPO_ROOT)
+    (test, *_) = uniform_tests(up_glsl="gbufferModelView[2].xyz")
+    found = l3.run_uniform(gl, uniform_pack(), test, [], engine)
+    assert found["failed"] == 16
+    first = found["problems"][0]
+    assert first.startswith("shaders/shaders.properties:2: uniform upView at gbufferModelView mat4")
+    assert "its GLSL 'gbufferModelView[2].xyz'" in first and "(case 0 of 16)" in first
+
+
+def test_a_clocked_function_is_refused_before_the_engine_runs() -> None:
+    pack = uniform_pack("uniform.float.eased = smooth(rainStrength, 2.0, 2.0)\n")
+    test = l3.Uniform("eased", "rainStrength", (l3.Argument("rainStrength", "float", [0.5]),), 0.0)
+    found = l3.run_uniform(None, pack, test, [], lambda i, e: {})  # type: ignore[arg-type]
+    assert "calls smooth(), random() or randomInt()" in found["problems"][0]

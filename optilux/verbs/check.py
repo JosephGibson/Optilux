@@ -23,7 +23,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from optilux import REPO_ROOT, l1, l2, l3, offline, packzip, platform, record
+from optilux import REPO_ROOT, expressions, l1, l2, l3, offline, packzip, platform, record
 from optilux.verbs import Verb, verify
 from optilux.verbs.install import REFERENCE, RUNTIME, STORE, TOOLS, TOOLS_DIR, shown
 
@@ -87,7 +87,9 @@ def configure(parser: argparse.ArgumentParser) -> None:
         description=(
             "Run each include under the pack's shaders/lib/ that has a test file under tests/l3/ "
             "on the GPU (moderngl, GL 3.3 core): its functions over each test's cases, held to "
-            "numpy goldens within the test's tolerance (docs/offline.md#levels)."
+            "numpy goldens within the test's tolerance; evaluate each custom uniform of "
+            "shaders.properties in Iris's own expression engine and hold it to the GLSL it "
+            "replaces (tests/l3/uniforms.py) (docs/offline.md#levels)."
         ),
     )
     l3_parser.add_argument(
@@ -825,6 +827,18 @@ def print_l2(result: dict) -> None:
 L3_PREFIX = "optilux check L3"
 
 
+def engine(root: Path) -> l3.Engine:
+    """Iris's expression engine (optilux/expressions.py) as L3 calls it, its refusals L3's."""
+
+    def evaluate(inputs: list, found: list) -> dict:
+        try:
+            return expressions.evaluate(root, inputs, found)
+        except expressions.ExpressionError as error:
+            raise l3.L3Error(str(error)) from None
+
+    return evaluate
+
+
 def run_l3(root: Path, named: str | None) -> dict:
     """`check L3`'s whole result: the pack, the context, per include its tests' functions or
     none, every problem, and whether all passed."""
@@ -834,7 +848,7 @@ def run_l3(root: Path, named: str | None) -> dict:
     ctx = l3.context()
     try:
         gl = l3.renderer(ctx)
-        found = l3.check(ctx, pack, root / l3.TESTS_DIR, found_macros)
+        found = l3.check(ctx, pack, root / l3.TESTS_DIR, found_macros, engine(root))
     finally:
         ctx.release()
     return {
@@ -873,6 +887,22 @@ def print_l3(found: dict) -> None:
                 f"  {state} {f['function']} at {f['options']}: {f['cases']:,} cases, "
                 f"{f['failed']} failed, worst {l3.number(f['worst'])} within {allowed}"
             )
+    uniforms = found["uniforms"]
+    defined = ", ".join(uniforms["defined"]) or "none"
+    print(
+        f"custom uniforms: {uniforms['file']} defines {len(uniforms['defined'])} at the defaults "
+        f"({defined}); tests: {uniforms['test'] or 'none'}"
+    )
+    for u in uniforms["tests"]:
+        allowed = l3.number(u["tolerance"]) + (
+            f" + {l3.number(u['relative'])} x |golden|" if u["relative"] else ""
+        )
+        reads = f" (reads {', '.join(u['reads'])})" if u["reads"] else ""
+        state = "ok" if not u["problems"] else "FAIL"
+        print(
+            f"  {state} uniform {u['uniform']}{reads} at {u['options']}: {u['cases']:,} cases, "
+            f"{u['failed']} failed, worst {l3.number(u['worst'])} within {allowed}"
+        )
     for problem in found["problems"]:
         print(f"FAIL {problem}")
     tested = [e for e in found["includes"] if e["test"] is not None]
@@ -880,8 +910,9 @@ def print_l3(found: dict) -> None:
     verdict = "pass" if found["ok"] else f"FAIL ({len(found['problems'])} problems)"
     print(
         f"{L3_PREFIX}: {verdict}: {len(tested)} of {len(found['includes'])} includes tested, "
-        f"{len(functions)} functions over {sum(f['cases'] for f in functions):,} cases, in "
-        f"{found['seconds']} s"
+        f"{len(functions)} functions over {sum(f['cases'] for f in functions):,} cases, "
+        f"{len(uniforms['tests'])} uniform tests over "
+        f"{sum(u['cases'] for u in uniforms['tests']):,} cases, in {found['seconds']} s"
     )
 
 

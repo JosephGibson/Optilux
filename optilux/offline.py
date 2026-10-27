@@ -1077,6 +1077,273 @@ def glslang_version(glslang: Path) -> str:
     return match["version"]
 
 
+# shaders.properties as Iris 1.11.7 reads it (javap, M4.P02): PropertiesPreprocessor's
+# preprocessSource runs JCPP over the file with each on/off option that is on defined (JCPP's
+# addMacro(name): 1), each value option as its value and the environment defines (an empty one as
+# 1); its process() splits the file into lines and keeps a line starting with # and one of JCPP
+# 1.4.14's commands (PreprocessorCommand, PP_ dropped, lower case) as a directive, passing every
+# other line through verbatim, never macro-expanded; then java.util.Properties reads what is left.
+
+PROPERTIES = "shaders.properties"
+JCPP_COMMANDS = (  # noqa: SIM905 the jar's enum, kept as its words
+    "define elif else endif error if ifdef ifndef include line pragma undef warning include_next "
+    "import"
+).split()
+# The commands L0 evaluates; a file using another is refused at its line, never guessed.
+MODELED = ("define", "undef", "ifdef", "ifndef", "if", "elif", "else", "endif")
+DIRECTIVE = re.compile(r"#(?P<word>[a-z_]+)(?P<rest>.*)")
+CONDITION_TOKEN = re.compile(
+    r"\s*(?:(?P<number>\d+)[uUlL]*\b|(?P<name>[A-Za-z_]\w*)|(?P<op>&&|\|\||==|!=|<=|>=|[!<>()]))"
+)
+# Iris's custom uniforms and variables (ShaderProperties): uniform.<type>.<name> and
+# variable.<type>.<name>, the value the expression.
+CUSTOM_KEY = re.compile(r"(?P<kind>uniform|variable)\.(?P<type>[^.]+)\.(?P<name>[^.]+)")
+
+
+@dataclass(frozen=True)
+class Custom:
+    """A custom uniform or variable as Iris reads it: uniform or variable, its type, name and
+    expression, and the line of shaders.properties its definition starts on."""
+
+    kind: str
+    type: str
+    name: str
+    expression: str
+    line: int
+
+
+def property_defines(
+    options: Options, variant: Variant, macros: Iterable[tuple[str, str | None]]
+) -> dict[str, str]:
+    """The macros JCPP reads shaders.properties under at a variant."""
+    found = {}
+    for name, value in settings(options, variant).items():
+        if options.found[name].kind != "bool":
+            found[name] = value
+        elif value == "true":
+            found[name] = "1"
+    for name, value in macros:
+        found[name] = "1" if value is None else value
+    return found
+
+
+def condition(text: str, macros: Mapping[str, str], where: str) -> bool:
+    """An #if or #elif condition as JCPP evaluates it, over defined, !, &&, ||, the comparisons,
+    parentheses, integers and macros holding one (0 when undefined); anything else refused."""
+    tokens: list[tuple[str, str]] = []
+    rest = COMMENT.sub(" ", text).strip()
+    while rest:
+        match = CONDITION_TOKEN.match(rest)
+        if match is None:
+            raise L0Error(
+                f"{where}: #if {text.strip()}: L0 evaluates defined, !, &&, ||, comparisons and "
+                "integers only; fix: one of those, or model it in optilux/offline.py"
+            )
+        kind = match.lastgroup or "op"
+        tokens.append((kind, match[kind]))
+        rest = rest[match.end() :].strip()
+    at = 0
+
+    def take(value: str | None = None) -> str:
+        nonlocal at
+        if at >= len(tokens) or (value is not None and tokens[at][1] != value):
+            raise L0Error(f"{where}: #if {text.strip()} does not parse; fix: the condition")
+        at += 1
+        return tokens[at - 1][1]
+
+    def primary() -> int:
+        kind, value = tokens[at] if at < len(tokens) else ("", "")
+        if value == "(":
+            take("(")
+            found = either()
+            take(")")
+            return found
+        if value == "!":
+            take("!")
+            return int(not primary())
+        if value == "defined":
+            take()
+            parens = at < len(tokens) and tokens[at][1] == "("
+            if parens:
+                take("(")
+            name = take()
+            if parens:
+                take(")")
+            return int(name in macros)
+        take()
+        if kind == "number":
+            return int(value)
+        if kind == "name":
+            held = macros.get(value, "0").strip()
+            if not held.lstrip("-").isdigit():
+                raise L0Error(f"{where}: #if reads {value} = {held!r}, no integer; fix: an integer")
+            return int(held)
+        raise L0Error(f"{where}: #if {text.strip()} does not parse; fix: the condition")
+
+    def compared() -> int:
+        left = primary()
+        while at < len(tokens) and tokens[at][1] in ("==", "!=", "<", ">", "<=", ">="):
+            op, right = take(), primary()
+            left = int(
+                {
+                    "==": left == right,
+                    "!=": left != right,
+                    "<": left < right,
+                    ">": left > right,
+                    "<=": left <= right,
+                    ">=": left >= right,
+                }[op]
+            )
+        return left
+
+    def both() -> int:
+        found = compared()
+        while at < len(tokens) and tokens[at][1] == "&&":
+            take()
+            found = int(compared() and found)
+        return found
+
+    def either() -> int:
+        found = both()
+        while at < len(tokens) and tokens[at][1] == "||":
+            take()
+            found = int(both() or found)
+        return found
+
+    value = either()
+    if at != len(tokens):
+        raise L0Error(f"{where}: #if {text.strip()} does not parse; fix: the condition")
+    return bool(value)
+
+
+def preprocessed_properties(
+    source: str, defines: Mapping[str, str], where: str
+) -> list[tuple[int, str]]:
+    """The lines of shaders.properties JCPP keeps, each with its line number: the directives
+    evaluated, every other line in a taken branch kept verbatim."""
+    macros = dict(defines)
+    kept = []
+    stack: list[tuple[bool, bool]] = []  # per open #if: its parent's state, a branch taken
+    active = True
+    for number, line in enumerate(lines_of(source), start=1):
+        directive = DIRECTIVE.match(line)
+        command = next(
+            (c for c in JCPP_COMMANDS if directive and directive["word"].startswith(c)), None
+        )
+        if directive is None or command is None:
+            if active:
+                kept.append((number, line))
+            continue
+        at = f"{where}:{number}"
+        word, rest = directive["word"], directive["rest"]
+        if word not in MODELED:
+            raise L0Error(
+                f"{at}: #{word}, which L0 does not model; fix: one of #{', #'.join(MODELED)}"
+            )
+        if word in ("ifdef", "ifndef"):
+            name = rest.split()[0] if rest.split() else ""
+            taken = active and (name in macros) == (word == "ifdef")
+            stack.append((active, taken or not active))
+            active = taken
+        elif word == "if":
+            taken = active and condition(rest, macros, at)
+            stack.append((active, taken or not active))
+            active = taken
+        elif word in ("elif", "else"):
+            if not stack:
+                raise L0Error(f"{at}: #{word} without its #if; fix: balance them")
+            parent, done = stack[-1]
+            taken = parent and not done and (word == "else" or condition(rest, macros, at))
+            stack[-1] = (parent, done or taken)
+            active = taken
+        elif word == "endif":
+            if not stack:
+                raise L0Error(f"{at}: #endif without its #if; fix: balance them")
+            active = stack.pop()[0]
+        elif active and word == "define":
+            parts = rest.split(None, 1)
+            if parts:
+                macros[parts[0]] = parts[1].strip() if len(parts) > 1 else "1"
+        elif active and word == "undef" and rest.split():
+            macros.pop(rest.split()[0], None)
+    if stack:
+        raise L0Error(f"{where}: {len(stack)} #if without #endif; fix: balance them")
+    return kept
+
+
+def read_properties(lines: Iterable[tuple[int, str]]) -> list[tuple[int, str, str]]:
+    """java.util.Properties.load over the kept lines: (line, key, value) per logical line, a line
+    ending in an odd number of backslashes continued on the next with its leading whitespace
+    dropped, # and ! lines comments, the key ending at the first unescaped =, : or whitespace."""
+    found = []
+    pending: tuple[int, str] | None = None
+    for number, raw in lines:
+        if pending is None:
+            text = raw.lstrip(" \t\f")
+            if not text or text[0] in "#!":
+                continue
+            start = number
+        else:
+            start, text = pending[0], pending[1] + raw.lstrip(" \t\f")
+        slashes = len(text) - len(text.rstrip("\\"))
+        if slashes % 2:
+            pending = (start, text[:-1])
+            continue
+        pending = None
+        found.append((start, *property_pair(text)))
+    if pending is not None:
+        found.append((pending[0], *property_pair(pending[1])))
+    return found
+
+
+def property_pair(text: str) -> tuple[str, str]:
+    """A logical line's key and value, Properties' escapes read (\\t, \\n, \\r, \\f, else the
+    character itself; \\uXXXX as its code point)."""
+    key, value, at = [], [], 0
+    escapes = {"t": "\t", "n": "\n", "r": "\r", "f": "\f"}
+
+    def char(i: int) -> tuple[str, int]:
+        if text[i] != "\\" or i + 1 >= len(text):
+            return text[i], i + 1
+        following = text[i + 1]
+        if following == "u" and len(text) >= i + 6:
+            return chr(int(text[i + 2 : i + 6], 16)), i + 6
+        return escapes.get(following, following), i + 2
+
+    while at < len(text) and text[at] not in "=: \t\f":
+        c, at = char(at)
+        key.append(c)
+    while at < len(text) and text[at] in " \t\f":
+        at += 1
+    if at < len(text) and text[at] in "=:":
+        at += 1
+    while at < len(text) and text[at] in " \t\f":
+        at += 1
+    while at < len(text):
+        c, at = char(at)
+        value.append(c)
+    return "".join(key), "".join(value)
+
+
+def customs(
+    pack: Pack, options: Options, variant: Variant, macros: Iterable[tuple[str, str | None]]
+) -> list[Custom]:
+    """The pack's custom uniforms and variables at a variant, in file order, a key set twice
+    taking its last value (Properties)."""
+    source = pack.files.get(PROPERTIES)
+    if source is None:
+        return []
+    where = f"{SHADERS}/{PROPERTIES}"
+    kept = preprocessed_properties(source, property_defines(options, variant, macros), where)
+    found: dict[str, Custom] = {}
+    for line, key, value in read_properties(kept):
+        match = CUSTOM_KEY.fullmatch(key)
+        if match is not None:
+            found.pop(key, None)
+            found[key] = Custom(match["kind"], match["type"], match["name"], value.strip(), line)
+    return list(found.values())
+
+
 # The profile check.
 
 
