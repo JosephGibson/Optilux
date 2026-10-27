@@ -997,7 +997,8 @@ def run(args: argparse.Namespace) -> int:
 
 VERB = Verb(
     name="check",
-    help="offline levels (L0: glslang over the variant matrix, similarity, the profile check)",
+    help="offline levels (L0: the build checks; L1: a dump run's verdicts; L2: its GPU "
+    "analysis; L3: the function tests)",
     run=run,
     configure=configure,
 )

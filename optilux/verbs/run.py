@@ -1970,7 +1970,7 @@ def run(args: argparse.Namespace) -> int:
 
 VERB = Verb(
     name="run",
-    help="run a spec: an acceptance or measured session and its record",
+    help="run a spec: an acceptance, measured, visual or dump session and its record",
     run=run,
     configure=configure,
     structured=True,
