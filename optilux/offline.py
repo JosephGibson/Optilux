@@ -796,6 +796,7 @@ class Matrix:
     macros: list[tuple[str, str | None]]
     seconds: float
     problems: list[str] = field(default_factory=list)
+    deterministic: list[Variant] = field(default_factory=list)
 
     @property
     def runs(self) -> int:
@@ -906,29 +907,40 @@ def build_matrix(
     workers: int | None = None,
 ) -> Matrix:
     """The matrix's builds (plan), each distinct (folder, program, variant) preprocessed,
-    compiled and linked once, as a dimension changes only the folder."""
+    compiled and linked once, as a dimension changes only the folder; the determinism rule over
+    every variant under BENCH_DETERMINISTIC, its stages and shaders.properties."""
     started = time.perf_counter()
     options, points, builds, problems = plan(pack, passes)
     distinct = list(dict.fromkeys((b.folder, b.program, b.variant) for b in builds))
     flags = define_flags(macros)
+    held = [v for v in points if settings(options, v).get(DETERMINISTIC) == "true"]
+    problems += determinism_properties(pack, options, held, macros)
 
     def one(key: tuple[str, str, Variant]) -> Compiled:
-        return compile_build(pack, key[0], key[1], key[2], flags, glslang)
+        return compile_build(pack, key[0], key[1], key[2], flags, glslang, key[2] in held)
 
     with ThreadPoolExecutor(max_workers=workers or min(8, os.cpu_count() or 1)) as pool:
         compiled = list(pool.map(one, distinct))
     return Matrix(
-        options, points, builds, compiled, macros, time.perf_counter() - started, problems
+        options, points, builds, compiled, macros, time.perf_counter() - started, problems, held
     )
 
 
 def compile_build(
-    pack: Pack, folder: str, program: str, variant: Variant, flags: list[str], glslang: Path
+    pack: Pack,
+    folder: str,
+    program: str,
+    variant: Variant,
+    flags: list[str],
+    glslang: Path,
+    deterministic: bool = False,
 ) -> Compiled:
     """One distinct build: each stage expanded at the variant's values and preprocessed with
     glslang -E and Iris's macros, then the stages compiled and linked with -l, reflected with -q
     and their interface checked with --validate-io (a fragment input no vertex output writes fails
-    to link in the driver: gpu-iris.md#programs-and-alpha-tests)."""
+    to link in the driver: gpu-iris.md#programs-and-alpha-tests). A deterministic build (its
+    BENCH_DETERMINISTIC on) also has each preprocessed stage read by the determinism rule, whose
+    refusals leave the compile to run."""
     values = dict(variant.values)
     prefix = f"{folder}/" if folder else ""
     stages = program_stages(pack, folder, program)
@@ -980,7 +992,15 @@ def compile_build(
                 "\n".join(lines_of(ran.stdout)) + "\n", encoding="utf-8", newline="\n"
             )
             preprocessed.append((name, shown))
-        if done.failures or not preprocessed:
+            refused = [
+                f"{SHADERS}/{origins[name][n - 1][0]}:{origins[name][n - 1][1]}: {why}"
+                if 0 < n <= len(origins[name])
+                else f"{name}:{n}: {why}"
+                for n, why in (moving_reads(ran.stdout) if deterministic else [])
+            ]
+            if refused:
+                done.failures.append(Failure(DETERMINISM, shown, refused))
+        if any(f.step != DETERMINISM for f in done.failures) or not preprocessed:
             return done
         names = [name for name, _ in preprocessed]
         ran = glslang_run(glslang, ["-l", "-q", "--validate-io", *names], work)
@@ -988,12 +1008,13 @@ def compile_build(
     output = ran.stdout + ran.stderr
     if ran.returncode:
         found = errors(output)
+        before = len(done.failures)
         for name, shown in preprocessed:
             lines = mapped(found, name, origins[name])
             if lines:
                 done.failures.append(Failure("compile and link", shown, lines))
         loose = [text for where, _, text in found if not where]
-        if loose or not done.failures:
+        if loose or len(done.failures) == before:
             stages = " + ".join(shown for _, shown in preprocessed)
             done.failures.append(Failure("link", stages, loose or [output.strip()]))
         return done
@@ -1342,6 +1363,167 @@ def customs(
             found.pop(key, None)
             found[key] = Custom(match["kind"], match["type"], match["name"], value.strip(), line)
     return list(found.values())
+
+
+# The determinism rule (plans/m4.md D79): under BENCH_DETERMINISTIC no stage and no custom uniform
+# reads what moves with the wall clock, a smoothing or an unseeded Random (P18), and every
+# frameCounter modulus divides the counter's wrap. A stage is read after glslang -E, so only its
+# taken branches count; a custom uniform as Iris reads shaders.properties at the variant.
+
+DETERMINISTIC = "BENCH_DETERMINISTIC"
+DETERMINISM = "determinism"
+# frameCounter runs (count + 1) % 720720 (gpu-iris.md#frame-counters-and-reload): a modulus that
+# divides 720720 = 2^4 x 3^2 x 5 x 7 x 11 x 13 keeps its cycle across the wrap, 16 yes, 32 no.
+FRAME_WRAP = 720720
+WALL_CLOCK = "the wall clock"
+# Iris's hard-coded custom uniforms built on a SmoothedFloat, which decays by the last frame's time
+# (HardcodedCustomUniforms, javap of the pinned jar, M4.P02); velocity and the rest are not.
+SMOOTHED_HARDCODED = (  # noqa: SIM905 the jar's names, kept as its words
+    "rainStrengthS rainStrengthShiningStars rainStrengthS2 rainFactor isDry isRainy isSnowy "
+    "isEyeInCave starter frameTimeSmooth eyeBrightnessM isPrecipitationRain touchmybody "
+    "sneakSmooth burningSmooth effectStrength"
+).split()
+MOVING = {
+    "frameTime": f"the last frame's length on {WALL_CLOCK} (SystemTimeUniforms)",
+    "frameTimeCounter": f"seconds on {WALL_CLOCK} (SystemTimeUniforms)",
+    "currentDate": "the system's date (IrisTimeUniforms)",
+    "currentTime": "the system's time of day (IrisTimeUniforms)",
+    "currentYearTime": "the system's time of year (IrisTimeUniforms)",
+    "wetness": "rain smoothed by frame time (CommonUniforms)",
+    "eyeBrightnessSmooth": "eye brightness smoothed by frame time (CommonUniforms)",
+    "centerDepthSmooth": "the centre depth smoothed by frame time (CommonUniforms)",
+    # 26.3 eases both by each frame's wall-clock length, under /tick freeze too
+    # (docs/shader.md#determinism-and-taa).
+    "fogStart": f"eased by each frame's length on {WALL_CLOCK} (26.3's fog environments)",
+    "fogEnd": f"eased by each frame's length on {WALL_CLOCK} (26.3's fog environments)",
+    **{
+        name: "smoothed by frame time (Iris's HardcodedCustomUniforms)"
+        for name in SMOOTHED_HARDCODED
+    },
+}
+# Iris's expression functions that move: shaders.properties only, as GLSL's smooth is a qualifier.
+MOVING_FUNCTIONS = {
+    "smooth": "decays by the last frame's time (SmoothFloat)",
+    "random": "draws from an unseeded java.util.Random (IrisFunctions)",
+    "randomInt": "draws from an unseeded java.util.Random (IrisFunctions)",
+}
+READ_NAME = re.compile(r"(?<![\w.])(?P<name>[A-Za-z_]\w*)(?!\w)")
+DECLARATION = re.compile(r"\buniform\s+\w+\s+\w+(?:\s*,\s*\w+)*\s*;")
+CALL = re.compile(r"(?<![\w.])(?P<name>smooth|random|randomInt)\s*\(")
+MODULUS = re.compile(r"(?<![%&])(?P<op>%|&(?!&))=?")
+MOD_CALL = re.compile(r"(?<![\w.])mod\s*\(")
+INTEGER = re.compile(r"\(*\s*(?P<value>0[xX][0-9a-fA-F]+|\d+)[uU]?\s*\)*")
+FLOAT = re.compile(r"\(*\s*(?P<value>(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)[fF]?\s*\)*")
+FIX = f"fix: leave it out under {DETERMINISTIC} (plans/m4.md D79)"
+
+
+def operand(text: str, at: int) -> str:
+    """The operand that starts at `at`: a parenthesised group whole, else one token."""
+    rest = text[at:].lstrip()
+    if rest.startswith("("):
+        depth = 0
+        for end, char in enumerate(rest):
+            depth += {"(": 1, ")": -1}.get(char, 0)
+            if depth == 0:
+                return rest[: end + 1]
+        return rest
+    match = re.match(r"[\w.]+", rest)
+    return match[0] if match else rest[:1]
+
+
+def arguments(text: str, at: int) -> list[str]:
+    """A call's arguments, the call's ( at `at`; split at its own commas only."""
+    found, depth, start = [], 0, at + 1
+    for end in range(at, len(text)):
+        char = text[end]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return [*found, text[start:end].strip()]
+        elif char == "," and depth == 1:
+            found.append(text[start:end].strip())
+            start = end + 1
+    return found
+
+
+def modulus_problem(kind: str, text: str) -> str | None:
+    """Why a frameCounter modulus breaks the rule, or None: its divisor a literal dividing the
+    wrap (for & a mask, its value + 1 a power of two that does)."""
+    match = (FLOAT if kind == "mod" else INTEGER).fullmatch(text)
+    shown = {"%": f"% {text}", "&": f"& {text}", "mod": f"mod(..., {text})"}[kind]
+    if match is None:
+        return (
+            f"reads frameCounter on a line with {shown}, no literal L0 can check; fix: a literal "
+            f"divisor of {FRAME_WRAP}"
+        )
+    value = float(match["value"]) if kind == "mod" else int(match["value"], 0)
+    divisor = value + 1 if kind == "&" else value
+    power = kind != "&" or (divisor > 0 and int(divisor) & (int(divisor) - 1) == 0)
+    if divisor != int(divisor) or divisor <= 0 or not power or FRAME_WRAP % int(divisor):
+        return (
+            f"reads frameCounter on a line with {shown}, a cycle of {divisor:g} that does not "
+            f"divide its wrap at {FRAME_WRAP}, so it breaks there; fix: a divisor of {FRAME_WRAP} "
+            "(2^4 x 3^2 x 5 x 7 x 11 x 13)"
+        )
+    return None
+
+
+def moving_reads(source: str, functions: bool = False) -> list[tuple[int, str]]:
+    """The rule's refusals in a source, per line from 1: each read of a moving uniform (its
+    declaration aside), each call of a moving function (`functions`: an Iris expression), and on
+    each line that reads frameCounter each %, & or mod() whose divisor does not divide the wrap.
+    Comments are blanked, lines kept."""
+    bare = COMMENT.sub(lambda m: "\n" * m[0].count("\n"), source)
+    found = []
+    for number, line in enumerate(bare.split("\n"), start=1):
+        code = DECLARATION.sub(" ", line)
+        names = [m["name"] for m in READ_NAME.finditer(code)]
+        found += [
+            (number, f"reads {name}, {MOVING[name]}, under {DETERMINISTIC}; {FIX}")
+            for name in dict.fromkeys(names)
+            if name in MOVING
+        ]
+        if functions:
+            found += [
+                (number, f"calls {m['name']}(), which {MOVING_FUNCTIONS[m['name']]}; {FIX}")
+                for m in CALL.finditer(code)
+            ]
+        if "frameCounter" not in names:
+            continue
+        moduli = [(m["op"], operand(code, m.end())) for m in MODULUS.finditer(code)]
+        for call in MOD_CALL.finditer(code):
+            parts = arguments(code, call.end() - 1)
+            moduli.append(("mod", parts[1] if len(parts) == 2 else code[call.start() :]))
+        found += [
+            (number, f"{why} under {DETERMINISTIC}")
+            for kind, text in moduli
+            if (why := modulus_problem(kind, text)) is not None
+        ]
+    return found
+
+
+def determinism_properties(
+    pack: Pack, options: Options, held: Iterable[Variant], macros: Iterable[tuple[str, str | None]]
+) -> list[str]:
+    """The rule over shaders.properties' custom uniforms and variables at each of the variants
+    that sets BENCH_DETERMINISTIC on, each refusal once with the variants it holds at."""
+    found: dict[str, list[str]] = {}
+    macros = list(macros)
+    for variant in held:
+        if settings(options, variant).get(DETERMINISTIC) != "true":
+            continue
+        try:
+            entries = customs(pack, options, variant, macros)
+        except L0Error as error:
+            found.setdefault(str(error), []).append(variant.label)
+            continue
+        for custom in entries:
+            for _, why in moving_reads(custom.expression, functions=True):
+                where = f"{SHADERS}/{PROPERTIES}:{custom.line}: {custom.kind} {custom.name}"
+                found.setdefault(f"{where} {why}", []).append(variant.label)
+    return [f"{problem} (at {', '.join(labels)})" for problem, labels in found.items()]
 
 
 # The profile check.

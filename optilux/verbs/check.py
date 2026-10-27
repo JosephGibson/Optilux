@@ -288,6 +288,18 @@ def run_l0(root: Path, named: str | None) -> dict:
             "seconds": round(matrix.seconds, 2),
             "problems": matrix.problems,
             "failures": failures,
+            "determinism": {
+                "variants": [v.label for v in matrix.deterministic],
+                "refusals": sum(
+                    len(f.lines)
+                    for c in matrix.compiled
+                    for f in c.failures
+                    if f.step == offline.DETERMINISM
+                )
+                + sum(
+                    offline.DETERMINISTIC in p and offline.PROPERTIES in p for p in matrix.problems
+                ),
+            },
         },
         "similarity": similarity,
         "profiles": profiles,
@@ -336,6 +348,15 @@ def print_text(found: dict) -> None:
         f"{len(variants)} variants ({', '.join(variants)}) = {matrix['builds']} builds{shared}; "
         f"{matrix['glslangRuns']} glslang runs in {matrix['seconds']} s"
     )
+    rule = matrix["determinism"]
+    if rule["variants"]:
+        print(
+            f"determinism (plans/m4.md D79): {len(rule['variants'])} of {len(variants)} variants "
+            f"under {offline.DETERMINISTIC}, each stage and {offline.PROPERTIES} read: "
+            f"{rule['refusals']} refusals"
+        )
+    else:
+        print(f"determinism: no variant under {offline.DETERMINISTIC}, so the rule reads nothing")
     for problem in matrix["problems"]:
         print(f"FAIL {problem}")
     for entry in matrix["failures"]:

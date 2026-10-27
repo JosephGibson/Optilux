@@ -108,7 +108,7 @@ The user's list of 2026-10-05, now a not-yet list (user, 2026-10-20): each featu
 
 ## Determinism and TAA
 - BENCH_DETERMINISTIC from M3's hello pack, the first with programs (measurement.md#visual-protocol; roadmap.md#decisions D9).
-- As built in the hello pack (M3.P03; shaders/lib/options.glsl), on by default, cycle 1: nothing reads frameCounter, and no wall-clock or smoothed uniform is read (plans/m3.md P19). Under it:
+- As built in the hello pack (M3.P03; shaders/lib/options.glsl), on by default, cycle 1: nothing reads frameCounter, and no wall-clock or smoothed uniform is read (plans/m3.md P19); `check L0`'s determinism rule refuses either under it (offline.md#levels). Under it:
   - gbuffers_particles, weather, lightning and clouds discard every fragment: their state moves with the ticks before /tick freeze and the stepped ones (P22). Off, each draws its surface: particles and weather texture x colour x light, lightning and clouds their vertex colour;
   - gbuffers_textured_lit discards the end crystals by entityId (entity.properties: entity.1 = minecraft:end_crystal): a crystal's spin starts at a random angle every launch;
   - the lightmap's block light flickers by a random step every client tick, /tick freeze or not (26.3: GameRenderer.tick, called while a level is loaded and the game is not paused, ticks LightmapRenderStateExtractor; blockFactor = flicker + 1.4). The pack reads only the lightmap's column without block light, which holds still, and adds block light at the flicker's rest (1.4) with vanilla's curve and default tint (#FFD88C, which no 26.3 dimension or biome overrides); vanilla's brightness curve is not applied to that part. Off, it reads vanilla's lightmap;

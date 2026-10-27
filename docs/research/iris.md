@@ -102,7 +102,7 @@ Each lists facts, then D (determinism), I (Iris 1.11.7 on 3.3 core), A (Aperture
 - Provided but exercised by neither Unbound nor the hello pack: scale, terrain_solid and shadow_solid, separate hardware samplers, raw textures.
 - Compute, SSBOs and images only after the probe (Open questions 1), each an option with a fragment path.
 - One custom uniform for history validity (flush frame, first frames), read by every history consumer [inferred].
-- A check rule: under BENCH_DETERMINISTIC nothing from the never list, and every frameCounter modulus divides 720720.
+- A check rule: under BENCH_DETERMINISTIC nothing from the never list, and every frameCounter modulus divides 720720; built as L0's determinism rule (docs/offline.md#levels).
 - pipeline.json gains resource names and a history flag per output. No capability option faces the player.
 ### Budget hypothesis
 - A count, not a ceiling [inferred]: Iris's depthtex1 and depthtex2 copies (~0.29 ms replayed, above), two mip chains (0.12-0.2 ms) and the TAA history pair: with (c) nothing more, 0.4-0.5 ms in all; with (a) a 0.15-0.3 ms copy, 0.55-0.8; with (b) that copy plus a 0.15-0.3 ms read and write, 0.7-1.1. Resolution sets their bytes, but content, cache state and scheduling still move their time: cost rows on every perf view (docs/research/synthesis.md#budget).

@@ -567,3 +567,106 @@ def test_properties_take_jcpps_branches_and_pass_other_lines_verbatim() -> None:
 def test_properties_l0_cannot_read_are_refused(source: str, message: str) -> None:
     with pytest.raises(offline.L0Error, match=message):
         offline.preprocessed_properties(source, {}, "p")
+
+
+# The determinism rule (plans/m4.md D79).
+
+
+@pytest.mark.parametrize(
+    ("line", "refused"),
+    [
+        ("uniform float frameTimeCounter;", None),  # declared, not read
+        ("float t = frameTimeCounter * 0.5;", "reads frameTimeCounter, seconds on the wall clock"),
+        ("vec3 c = vec3(currentDate);", "reads currentDate, the system's date"),
+        ("float w = wetness; // frameTime in a comment", "reads wetness, rain smoothed"),
+        ("float s = rainStrengthS;", "reads rainStrengthS, smoothed by frame time"),
+        ("float f = fogEnd - fogStart;", "reads fogEnd, eased by each frame's length"),
+        ("smooth out vec3 x;", None),  # GLSL's qualifier, no Iris function
+        ("int a = frameCounter % 16;", None),
+        ("int a = frameCounter % (16u);", None),
+        ("bool first = frameCounter < 2;", None),  # no modulus: the first frames after a reload
+        ("int a = frameCounter % 32;", "with % 32, a cycle of 32 that does not divide its wrap"),
+        ("int a = (frameCounter + 1) % CYCLE;", "with % CYCLE, no literal L0 can check"),
+        ("float a = mod(float(frameCounter), 3600.0);", "a cycle of 3600 that does not divide"),
+        ("float a = mod(float(frameCounter), 16.0);", None),
+        ("int a = frameCounter & 15;", None),
+        ("int a = frameCounter & 0x1F;", "with & 0x1F, a cycle of 32"),
+    ],
+)
+def test_the_rule_reads_a_line(line: str, refused: str | None) -> None:
+    found = offline.moving_reads(line)
+    if refused is None:
+        assert found == []
+    else:
+        assert found and refused in found[0][1]
+
+
+def deterministic_pack(properties: str) -> offline.Pack:
+    pack = fixture_pack()
+    pack.files["lib/options.glsl"] += (
+        "#define BENCH_DETERMINISTIC // frames repeat\n#ifdef BENCH_DETERMINISTIC\n#endif\n"
+    )
+    pack.files["shaders.properties"] = properties
+    return pack
+
+
+def test_custom_uniforms_under_the_define_are_held_to_the_rule() -> None:
+    pack = deterministic_pack(
+        "uniform.float.phase = frameCounter % 16\n"
+        "#ifdef BENCH_DETERMINISTIC\n"
+        "uniform.float.eased = smooth(rainStrength, 2.0, 2.0)\n"
+        "variable.int.slow = frameCounter % 32\n"
+        "#else\n"
+        "uniform.float.clock = frameTimeCounter\n"
+        "#endif\n"
+    )
+    options = offline.declared(pack)
+    held = [v for v in offline.variants(options) if v.label != "BENCH_DETERMINISTIC false"]
+    found = offline.determinism_properties(pack, options, held, [])
+    labels = "defaults, FAST false, QUALITY 1, QUALITY 3, SLOW true, shadowDistance 64.0"
+    assert len(found) == 2 and all(p.endswith(f"(at {labels})") for p in found)
+    assert found[0].startswith(
+        "shaders/shaders.properties:3: uniform eased calls smooth(), which decays by the last "
+        "frame's time (SmoothFloat)"
+    )
+    assert found[1].startswith(
+        "shaders/shaders.properties:4: variable slow reads frameCounter on a line with % 32"
+    )
+    # off the define the wall clock may be read: the variant is not held
+    assert (
+        offline.determinism_properties(
+            pack, options, [offline.Variant((("BENCH_DETERMINISTIC", "false"),))], []
+        )
+        == []
+    )
+
+
+@needs_glslang
+def test_l0_refuses_a_read_of_frame_time_counter_under_the_define(tmp_path: Path) -> None:
+    home = hello_copy(tmp_path)
+    stage = home / "shaders" / "lib" / "surface_fragment.glsl"
+    text = stage.read_text(encoding="utf-8").replace(
+        "uniform float alphaTestRef;",
+        "uniform float alphaTestRef;\nuniform float frameTimeCounter;",
+    )
+    text = text.replace(
+        "    vec4 color = vertexColor;",
+        "    vec4 color = vertexColor;\n#ifdef BENCH_DETERMINISTIC\n"
+        "    color.a *= 1.0 + 0.0 * frameTimeCounter;\n#endif",
+    )
+    stage.write_text(text, encoding="utf-8")
+    found = check_verb.run_l0(REPO_ROOT, str(home))
+    assert not found["ok"]
+    refused = [f for f in found["matrix"]["failures"] if f["step"] == offline.DETERMINISM]
+    assert {f["variant"] for f in refused} == {"defaults"}  # off the define it may read it
+    assert {f["program"] for f in refused} == {p["program"] for p in passes()} - {
+        "final"
+    }  # every gbuffers program shares the fragment stage
+    (line,) = {line for f in refused for line in f["lines"]}
+    number = text.splitlines().index("    color.a *= 1.0 + 0.0 * frameTimeCounter;") + 1
+    assert line.startswith(
+        f"shaders/lib/surface_fragment.glsl:{number}: reads frameTimeCounter, seconds on the wall "
+        "clock (SystemTimeUniforms), under BENCH_DETERMINISTIC"
+    )
+    assert found["matrix"]["determinism"]["refusals"] == len(refused)
+    assert all(not f["failures"][1:] for f in refused)  # compiled and linked besides
