@@ -855,6 +855,30 @@ def game_arguments(template: list[str], values: dict[str, str]) -> list[str]:
     return found
 
 
+def tier_properties(root: Path, plat: platform.Platform, tier: str) -> tuple[list[str], list[dict]]:
+    """The tier's JVM properties as the command passes them (platform.md#mod-tiers): `-D<name>=`
+    its value, or its path resolved under the repo and refused unless a file is there (the
+    debug tier's renderdoc.dll: gfx-debuggers falls back to other installs when it finds none,
+    plans/m4.md P8); a name the token or the spec's JVM options set is refused. The arguments,
+    and the facts: each property's value, a path's sha256 beside it."""
+    arguments, facts = [], []
+    for entry in plat.jvm_properties(tier):
+        name = entry["name"]
+        if f"-D{name}=" == TOKEN_PROPERTY:
+            raise LaunchError(f"tier {tier} sets {name}, the token's property; fix: rename it")
+        value, fact = entry.get("value"), dict(entry)
+        if "path" in entry:
+            path = root / entry["path"]
+            if not path.is_file():
+                raise LaunchError(
+                    f"tier {tier}'s {name}: no file {entry['path']}; fix: run `optilux install`"
+                )
+            value, fact["sha256"] = str(path), platform.sha256(path)
+        arguments.append(f"-D{name}={value}")
+        facts.append(fact)
+    return arguments, facts
+
+
 def heap_arguments(java_profile: dict) -> list[str]:
     """-Xms and -Xmx from config/java/bench.json (equal, in MiB), then its flags."""
     heap = java_profile["heap"]
@@ -873,9 +897,11 @@ def build_command(
     uuid: str,
     token: str | None,
     version_type: str,
+    properties: Iterable[str] = (),
 ) -> list[str]:
-    """The game's command: Temurin's java, bench.json's heap and flags, the token, the spec's
-    JVM options, the main class (KnotClient), the game-argument template, quickPlay, offline."""
+    """The game's command: Temurin's java, bench.json's heap and flags, the token, the tier's
+    properties (tier_properties), the spec's JVM options, the main class (KnotClient), the
+    game-argument template, quickPlay, offline."""
     profile_id = spec["sources"]["fabricProfile"]["id"]
     values = {
         "natives_directory": str(base / "versions" / profile_id / "natives"),
@@ -895,7 +921,13 @@ def build_command(
     command = [str(java), *heap_arguments(java_profile)]
     if token is not None:
         command.append(TOKEN_PROPERTY + token)
-    command += [substitute(argument, values) for argument in spec["jvmOptions"]]
+    command += properties
+    jvm = [substitute(argument, values) for argument in spec["jvmOptions"]]
+    for argument in properties:
+        named = argument.split("=", 1)[0] + "="
+        if any(option.startswith(named) for option in jvm):
+            raise LaunchError(f"{named[2:-1]} is the launch spec's; fix: drop it from the tier")
+    command += jvm
     command.append(spec["mainClass"])
     command += game_arguments(spec["gameArguments"], values)
     command += [substitute(argument, values) for argument in spec["featureArguments"][QUICK_PLAY]]
@@ -924,12 +956,24 @@ def check_command(started: list[str], built: list[str]) -> list[str]:
 
 
 def command_facts(
-    started: list[str], spec: dict, java_profile: dict, java: Path, base: Path
+    started: list[str],
+    spec: dict,
+    java_profile: dict,
+    java: Path,
+    base: Path,
+    properties: Iterable[str] = (),
 ) -> list[str]:
-    """The started command line against the profile and the spec directly, so a builder bug
-    cannot pass by agreeing with itself: the java, the heap and flags, the main class once, the
-    classpath in the spec's order."""
+    """The started command line against the profile, the spec and the tier's properties
+    directly, so a builder bug cannot pass by agreeing with itself: the java, the heap and flags,
+    each property once before the main class and its name set nowhere else, the main class once,
+    the classpath in the spec's order."""
     found = []
+    main = started.index(spec["mainClass"]) if spec["mainClass"] in started else len(started)
+    for argument in properties:
+        named = argument.split("=", 1)[0] + "="
+        given = [a for a in started[:main] if a.startswith(named)]
+        if given != [argument]:
+            found.append(f"{named[:-1]} is {given or 'absent'}, not [{argument!r}]")
     if not started or norm(started[0]) != norm(str(java)):
         found.append(f"java is {started[0] if started else None!r}, not {str(java)!r}")
     found += [
@@ -1325,6 +1369,7 @@ def launch(
     packs = set_packs(base, plat, tier, suite, record.PACK_SET)
     files = [p["file"] for p in packs]
     pre = prelaunch(suite["display"], tier, pack.file, overrides, files)  # before any write
+    properties, property_facts = tier_properties(root, plat, tier)
     # Iris.loadExternalShaderpack reads a pack's saved options from shaderpacks/<pack>.txt (the
     # 1.11.7 jar's bytecode): M1 runs the reference pack at its defaults (profile null).
     saved = base / GAME / SHADER_PACKS / f"{pack.file}.txt"
@@ -1363,7 +1408,7 @@ def launch(
     )
     secret = secrets.token_urlsafe(TOKEN_BYTES) if token else None
     command = build_command(
-        spec, java_profile, java, base, world, username, uuid, secret, version_type
+        spec, java_profile, java, base, world, username, uuid, secret, version_type, properties
     )
     log = game / LOG
     mark = log_mark(log)
@@ -1380,14 +1425,16 @@ def launch(
         except psutil.Error as error:
             raise LaunchError(f"the started command line is unreadable ({error})") from None
         problems = check_command(started, command)
-        problems += command_facts(started, spec, java_profile, java, base)
+        problems += command_facts(started, spec, java_profile, java, base, properties)
         if problems:
             raise LaunchError(f"the started command line differs: {'; '.join(problems)}")
+        passed = ", ".join(a.split("=", 1)[0] for a in properties)
         say(
             f"started pid {process.pid}: {len(started)} arguments, KnotClient, "
             f"{len(spec['classpath'])} jars, --quickPlaySingleplayer {world}, token "
-            f"{'passed' if secret else 'absent (--no-token)'}; the command line read back equals "
-            "the spec and bench.json"
+            f"{'passed' if secret else 'absent (--no-token)'}"
+            + (f", the tier's {passed}" if passed else "")
+            + "; the command line read back equals the spec and bench.json"
         )
         seconds, line, logged = wait_join(process, log, mark, username, host, started_at)
         expected = sorted(
@@ -1438,6 +1485,7 @@ def launch(
         "settings": settings_facts(pre, secret is not None),
         "optionsFile": options_file,
         "command": {"arguments": redact(command), "check": "equal"},
+        "jvmProperties": property_facts,
         "join": {"seconds": round(seconds, 2), "line": line.strip()},
         "timings": {"prepareSeconds": round(prepared, 2), "joinSeconds": round(seconds, 2)},
     }

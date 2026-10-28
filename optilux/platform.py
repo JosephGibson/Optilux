@@ -10,6 +10,7 @@ pure, and `spec_diff` names every fact that moved.
 
 import hashlib
 import json
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,6 +32,12 @@ WORLD_PREP = "worldPrep"
 GAME_FOLDERS = {"resourcePack": "game/resourcepacks", "referencePack": "game/shaderpacks"}
 # Modrinth publishes sha512 and the platform file pins it (pinSource); 128 hex digits.
 SHA512_DIGITS = 128
+# A tier's JVM system properties (platform.md#mod-tiers; plans/m4.md P8, D81): each a name with a
+# `value`, or with a `path` relative to the repo under runtime/, which launch resolves; a tier's
+# chain passes its own, the root's first.
+JVM_PROPERTIES = "jvmProperties"
+PROPERTY_NAME = re.compile(r"[A-Za-z][A-Za-z0-9._-]{0,63}")
+PROPERTY_VALUE = re.compile(r"[A-Za-z0-9._/+-]{1,200}")
 
 # The launch spec (docs/platform.md#install-and-launch). The three note keys are documentation:
 # `spec_diff` compares every other key, so a changed fact is caught and a reworded note is not.
@@ -151,6 +158,37 @@ class Platform:
                 f"tier {tier!r} lists a file twice: {', '.join(twice)}; fix: pin it once"
             )
         return files
+
+    def jvm_properties(self, tier: str) -> list[dict]:
+        """The JVM system properties a tier's launch passes, its chain's in order: each {name,
+        value} or {name, path}, a path under runtime/ in POSIX form; PlatformError on a malformed
+        one or a name given twice."""
+        found: list[dict] = []
+        for name in self.chain(tier):
+            for entry in self.entry(name).get(JVM_PROPERTIES, []):
+                where = f"tier {name} {JVM_PROPERTIES} in {self.path.name}"
+                keys = set(entry) if isinstance(entry, dict) else set()
+                if keys not in ({"name", "value"}, {"name", "path"}):
+                    raise PlatformError(
+                        f"{where}: {entry!r} is not a name with a value or a path; fix: give one"
+                    )
+                prop = entry["name"]
+                if not isinstance(prop, str) or not PROPERTY_NAME.fullmatch(prop):
+                    raise PlatformError(f"{where}: name {prop!r}; fix: a Java property name")
+                if prop in (p["name"] for p in found):
+                    raise PlatformError(f"{where}: {prop} is given twice; fix: give it once")
+                text = entry.get("value", entry.get("path"))
+                parts = text.split("/") if isinstance(text, str) else []
+                bad = not isinstance(text, str) or not PROPERTY_VALUE.fullmatch(text)
+                if "path" in entry:
+                    bad = bad or parts[0] != "runtime" or any(p in ("", ".", "..") for p in parts)
+                if bad:
+                    raise PlatformError(
+                        f"{where}: {prop}'s {'path' if 'path' in entry else 'value'} {text!r}; "
+                        "fix: plain text, a path as runtime/<...> with / between its parts"
+                    )
+                found.append(dict(entry))
+        return found
 
     def pending(self, tier: str) -> list[str]:
         """The mods of a tier's chain pinned without a file (no build for this version yet)."""

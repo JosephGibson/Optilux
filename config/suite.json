@@ -72,11 +72,14 @@
    "maxShadowRenderDistance": "32"
   },
   "irisTiers": {
+   "debug": {
+    "enableDebugOptions": "true"
+   },
    "dev": {
     "enableDebugOptions": "true"
    }
   },
-  "irisPropertiesWhy": "launch writes config/iris.properties fresh before every launch: shaderPack (the reference pack until run builds variants), then these keys and the tier's from irisTiers; enableDebugOptions only on dev (the KHR_debug context per-pass timers need, platform.md#mod-tiers); disableUpdateMessage keeps Iris off the network; maxShadowRenderDistance 32 as the spike ran; Iris adds its other keys at their defaults when it rewrites the file (spike R4)"
+  "irisPropertiesWhy": "launch writes config/iris.properties fresh before every launch: shaderPack (the reference pack until run builds variants), then these keys and the tier's from irisTiers; enableDebugOptions only on debug and dev (the KHR_debug context Iris's groups and per-pass timers need, platform.md#mod-tiers; a debug capture's groups mark its passes, plans/m4.md D81); disableUpdateMessage keeps Iris off the network; maxShadowRenderDistance 32 as the spike ran; Iris adds its other keys at their defaults when it rewrites the file (spike R4)"
  },
  "java": "config/java/bench.json",
  "world": {

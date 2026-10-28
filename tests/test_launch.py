@@ -413,6 +413,52 @@ def test_the_started_command_line_is_checked(tmp_path: Path) -> None:
     assert TOKEN not in json.dumps(launch.redact(built))
 
 
+def test_the_debug_tiers_properties_are_passed_and_checked(tmp_path: Path) -> None:
+    """plans/m4.md D81: the debug tier's -Ddebugger and -Drenderdoc.path after the token and
+    before the spec's JVM options, the path the dll's own under the repo; each held to the started
+    line once before the main class, so a builder that drops or moves one is caught."""
+    base, java = paths(tmp_path)
+    plat = platform.load(REPO_ROOT)
+    dll = tmp_path / "runtime" / "tools" / "renderdoc-1.46" / "RenderDoc_1.46_64" / "renderdoc.dll"
+    with pytest.raises(launch.LaunchError, match=r"no file runtime/tools/renderdoc-1\.46/Render"):
+        launch.tier_properties(tmp_path, plat, "debug")
+    write(dll, b"MZ dll")
+    properties, facts = launch.tier_properties(tmp_path, plat, "debug")
+    assert properties == ["-Ddebugger=renderdoc", f"-Drenderdoc.path={dll}"]
+    assert facts[1] == {
+        "name": "renderdoc.path",
+        "path": "runtime/tools/renderdoc-1.46/RenderDoc_1.46_64/renderdoc.dll",
+        "sha256": hashlib.sha256(b"MZ dll").hexdigest(),
+    }
+    assert launch.tier_properties(tmp_path, plat, "bench") == ([], [])
+    args = (SPEC, BENCH, java, base, "spike", "optilux", UUID, TOKEN, "release")
+    built = launch.build_command(*args, properties)
+    assert built[3:6] == ["-Doptilux.token=" + TOKEN, *properties]
+    assert built[6:] == build(tmp_path)[4:]  # the bench command but for the two
+    assert launch.command_facts(built, SPEC, BENCH, java, base, properties) == []
+    bench = build(tmp_path)
+    assert launch.command_facts(bench, SPEC, BENCH, java, base, properties) == [
+        "-Ddebugger is absent, not ['-Ddebugger=renderdoc']",
+        f"-Drenderdoc.path is absent, not [{properties[1]!r}]",
+    ]
+    other = [a.replace(str(dll), "C:\\RenderDoc\\renderdoc.dll") for a in built]
+    assert launch.command_facts(other, SPEC, BENCH, java, base, properties) == [
+        "-Drenderdoc.path is ['-Drenderdoc.path=C:\\\\RenderDoc\\\\renderdoc.dll'], not "
+        f"[{properties[1]!r}]"
+    ]
+    twice = [*built[:5], *built[4:]]
+    assert launch.command_facts(twice, SPEC, BENCH, java, base, properties)[0].startswith(
+        "-Ddebugger is ['-Ddebugger=renderdoc', '-Ddebugger=renderdoc']"
+    )
+    # After the main class it is a game argument, never the JVM's.
+    late = [a for a in built if a != properties[0]] + [properties[0]]
+    assert launch.command_facts(late, SPEC, BENCH, java, base, properties) == [
+        "-Ddebugger is absent, not ['-Ddebugger=renderdoc']"
+    ]
+    with pytest.raises(launch.LaunchError, match=r"java\.library\.path is the launch spec's"):
+        launch.build_command(*args, ["-Djava.library.path=x"])
+
+
 @pytest.mark.windows
 def test_a_started_command_line_reads_back_equal_on_windows() -> None:
     """psutil parses the line Popen wrote (list2cmdline, then CommandLineToArgvW): launch's
@@ -899,10 +945,48 @@ def test_a_launch_end_to_end_through_a_fake_game(
     assert said[-1] == (
         "AMD after the join (recorded, never stopped): no PresentMon-x64.exe, no RSXTraceSession"
     )
+    assert facts["jvmProperties"] == []
     quit_facts = launch.quit_game(launched.process, host)
     assert quit_facts == {"how": "WM_CLOSE", "windows": 1, "exitCode": 0, "seconds": 0.0}
     back = launch.read_back(launched.game, launched.prelaunch)
     assert back["ok"] and back["options"] == {"keys": 24, "moved": {}}
+
+
+def test_a_tier_with_jvm_properties_launches_with_them(tmp_path: Path) -> None:
+    """A tier's properties on the started line and in the facts, a path's file hashed; a missing
+    file refused before anything is written; a wrapper dropping one ends the game."""
+    root = make_root(tmp_path)
+    game = root / "runtime" / PLATFORM / "game"
+    path = root / "config" / "platforms" / f"{PLATFORM}.json"
+    plat = json.loads(path.read_text(encoding="utf-8"))
+    plat["tiers"]["dev"]["jvmProperties"] = [
+        {"name": "debugger", "value": "renderdoc"},
+        {"name": "renderdoc.path", "path": "runtime/tools/rd/renderdoc.dll"},
+    ]
+    write(path, json.dumps(plat).encode())
+    host = FakeGame(game, FAKE_LOG.replace("\t- mod-a 1\n", "\t- mod-a 1\n\t- mod-b 1\n"))
+    before = (game / "options.txt").read_bytes()
+    with pytest.raises(launch.LaunchError, match=r"no file runtime/tools/rd/renderdoc\.dll; fix"):
+        launch.launch(root, "spike", "dev", host=host)
+    assert host.started is None and (game / "options.txt").read_bytes() == before
+    write(root / "runtime" / "tools" / "rd" / "renderdoc.dll", b"dll")
+    said: list[str] = []
+    launched = launch.launch(root, "spike", "dev", True, {}, said.append, host)
+    dll = root / "runtime" / "tools" / "rd" / "renderdoc.dll"
+    command = host.started["command"]
+    assert command[3:6] == [
+        "-Doptilux.token=" + launched.token,
+        "-Ddebugger=renderdoc",
+        f"-Drenderdoc.path={dll}",
+    ]
+    assert launched.facts["jvmProperties"][1]["sha256"] == hashlib.sha256(b"dll").hexdigest()
+    assert ", the tier's -Ddebugger, -Drenderdoc.path; the command line" in said[4]
+    launch.quit_game(launched.process, host)
+    host = FakeGame(game, FAKE_LOG.replace("\t- mod-a 1\n", "\t- mod-a 1\n\t- mod-b 1\n"))
+    host.edit = lambda command: [a for a in command if not a.startswith("-Ddebugger=")]
+    with pytest.raises(launch.LaunchError, match=r"-Ddebugger is absent, not \['-Ddebugger="):
+        launch.launch(root, "spike", "dev", host=host)
+    assert host.process.killed
 
 
 def test_a_closed_gate_or_a_bad_input_writes_nothing(tmp_path: Path) -> None:

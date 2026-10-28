@@ -6,6 +6,7 @@ differs from the JSON before it in exactly the asset index and the version JSON'
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -92,6 +93,41 @@ def test_every_tier_resolves_through_extends() -> None:
         assert pinned.tier in ("bench", "played", "referencePacks")
     assert plat.pending("lod") == ["voxy: latest 0.2.19-beta targets 26.2 (2026-08-29)"]
     assert plat.pending("bench") == []
+
+
+def test_the_debug_tier_names_its_jvm_properties(tmp_path: Path) -> None:
+    """plans/m4.md P8, D81: gfx-debuggers' debugger and renderdoc.path, the dll by tools.json's
+    unpack; no other tier passes one; a malformed property is refused."""
+    plat = platform.load(REPO_ROOT)
+    tools = json.loads((REPO_ROOT / "config" / "tools.json").read_text(encoding="utf-8"))
+    unpacked = f"runtime/tools/{tools['renderdoc']['unpack']}/RenderDoc_1.46_64/renderdoc.dll"
+    assert plat.jvm_properties("debug") == [
+        {"name": "debugger", "value": "renderdoc"},
+        {"name": "renderdoc.path", "path": unpacked},
+    ]
+    assert all(plat.jvm_properties(tier) == [] for tier in plat.tiers if tier != "debug")
+    for entry, why in [
+        ({"name": "a"}, "is not a name with a value or a path"),
+        ({"name": "a", "value": "1", "path": "runtime/x"}, "is not a name with a value or a path"),
+        ({"name": "-a", "value": "1"}, "name '-a'; fix: a Java property name"),
+        ({"name": "a", "value": "x y"}, "a's value 'x y'"),
+        ({"name": "a", "path": "C:/x.dll"}, "a's path 'C:/x.dll'"),
+        ({"name": "a", "path": "runtime/../x.dll"}, "a's path 'runtime/../x.dll'"),
+        ({"name": "a", "path": "runtime\\x.dll"}, "a's path"),
+    ]:
+        write_platform(
+            tmp_path, fixture_platform(bench={"extends": None, "jvmProperties": [entry]})
+        )
+        with pytest.raises(platform.PlatformError, match=re.escape(why)):
+            platform.load(tmp_path).jvm_properties("bench")
+    twice = {"extends": "bench", "jvmProperties": [{"name": "a", "value": "2"}]}
+    bench = {"extends": None, "jvmProperties": [{"name": "a", "value": "1"}]}
+    write_platform(tmp_path, fixture_platform(bench=bench, debug=twice))
+    assert platform.load(tmp_path).jvm_properties("bench") == [{"name": "a", "value": "1"}]
+    with pytest.raises(
+        platform.PlatformError, match=r"tier debug jvmProperties .* a is given twice"
+    ):
+        platform.load(tmp_path).jvm_properties("debug")
 
 
 def write_platform(root: Path, data: dict, platform_id: str = "mc-fixture") -> None:

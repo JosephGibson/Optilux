@@ -28,7 +28,7 @@ Concept · mc-26.3 · Renderer transition · Mod tiers · Mod adapter surface ·
   1. Stay on the newest MC version where OpenGL + Iris work. The bench forces OpenGL through suite.json's display.optionsTxt.
   2. Keep the pipeline spec backend-neutral (shader.md#pipeline-spec). An aperture backend then reuses passes, buffers, budgets, suite and run records.
   3. When Aperture is public, add a new platform (aperture backend) and port pass by pass. Each pass is compared against the iris-gl pass on the same views; identity differs, so it is a cost and look comparison, not a verdict.
-- Aperture facts to recheck when public, from a migration guide marked outdated [S8]: no buffer flipping (a texture cannot be read and written at two positions); every texture is explicit except mainDepthTex and solidDepthTex; uniforms are `ap.*` structs; command lists merge composite and compute.
+- Aperture facts to recheck when public, from a migration guide marked outdated [S8]: research/iris.md (no flipping, `ap.*` uniforms); command lists merge composite and compute.
 
 ## Mod tiers
 Data: config/platforms/mc-26.3.json (version, file, Modrinth id, sha512; the played tier's missing and excluded mods with their reasons), signed off as design.md D8 says.
@@ -37,14 +37,14 @@ Data: config/platforms/mc-26.3.json (version, file, Modrinth id, sha512; the pla
 |---|---|---|
 | bench | fabric-api, sodium, iris, optilux-helper; resource packs faithful-64x and optilux-static-textures (`install` builds it) | every measurement |
 | played | cloth-config, entityculling, ferrite-core, immediatelyfast, lithium, modmenu, moreculling, scalablelux, placeholder-api | compatibility smoke, never shader perf evidence |
-| debug | gfx-debuggers | RenderDoc attribution only |
+| debug | gfx-debuggers | RenderDoc captures only |
 | dev | viewfinder (its MCP server: offline.md#tools; tools in L2) | development and diagnostics with Claude Code; not evidence until measured (offline.md) |
 | lod | voxy (pending a 26.3 build) | Voxy compatibility |
 | jvm | chunky; lithium and c2me-fabric as axes | post-1.0 JVM track |
 
 - World prep set (not a tier, never in a session): the platform file's `worldPrep`, bench + Chunky 1.5.3; `install` and `launch` take it as `--tier worldPrep`, for `world prep`.
-- Shader perf evidence only on bench, with one declared exception, its tier in the identity: Viewfinder's per-pass timers on the dev tier after E5's overhead check and A11 (design.md#8-open-decisions). The JVM track's S4 runs on the played tier as JVM evidence (jvm.md#scenarios). ALC's reason for the rule: each extra mod changes the measured set (ModernFix startup, MoreCulling leaf geometry, ImmediatelyFast overlay cost, Voxy distant terrain).
-- Dev tier: `enableDebugOptions=true` creates a KHR_debug context and, on a fresh sodium-options.json, a modal Iris dialog over Sodium's `use_no_error_g_l_context` (L2): write it false first. The dev quit's exit -8 after the save (L2 quit) is accepted as known, no shutdown step (user, 2026-10-06).
+- Shader perf evidence only on bench, with one declared exception, its tier in the identity: Viewfinder's per-pass timers on the dev tier after E5's overhead check and A11 (design.md#8-open-decisions). The JVM track's S4 runs on the played tier as JVM evidence (jvm.md#scenarios). ALC's reason: each extra mod moves the measured set (ModernFix startup, MoreCulling leaves, ImmediatelyFast overlays, Voxy terrain).
+- Debug and dev tiers: irisTiers' `enableDebugOptions=true` makes a KHR_debug context: Iris's groups mark captures; Sodium's `use_no_error_g_l_context` false (L2, F3). The debug tier's `jvmProperties`: `debugger=renderdoc`, `renderdoc.path` the pinned dll itself, which gfx-debuggers loads at preLaunch (plans/m4.md P8). The dev quit's exit -8 after the save (L2 quit) is accepted as known, no shutdown step (user, 2026-10-06).
 
 ## Mod adapter surface
 What optilux-helper's adapter must provide on each platform (mod.md#4-architecture). Fragility is ALC's experience across versions; the mc-26.3 column holds what the spike and M1 read in the pinned jars.
@@ -82,12 +82,12 @@ No launcher (lessons.md#game-control). Nothing is installed system-wide; no Micr
   - sodium-options.json: sodiumOptionsFile for every tier, refused unless it hashes to sodiumOptions (its two flags: suite.json sodiumOptionsWhy; Mod tiers, dev);
   - config/iris.properties, fresh: shaderPack, irisProperties, the tier's irisTiers; a saved shaderpacks/<pack>.txt is refused (defaults).
 - `launch <world> [--tier] [--no-token] [--set k=v] [--quit-after S]`, refusing any mismatch:
-  1. the gate (F2): no process from runtime/<platform>/, no optilux-* ETW session, no Gradle build; AMD's PresentMon-x64.exe and RSXTraceSession and the other JVMs (idle Gradle daemons) recorded, never stopped;
+  1. the gate (F2): no process from runtime/<platform>/, no optilux-* ETW session, no Gradle build; AMD's PresentMon-x64.exe, RSXTraceSession and other JVMs (idle Gradle daemons) recorded, never stopped;
   2. the classpath jars, asset index and version JSON hashed against the spec, the packs against their pins;
   3. game/mods/ made to hold exactly the tier's jars plus optilux-helper from the store (sorted sha512: identity);
-  4. Java from the profile, `-Doptilux.token=<fresh>` (not with `--no-token`), the spec's JVM options, KnotClient, `--gameDir runtime/<platform>/game`, `--accessToken 0 --offlineDeveloperMode` (no --clientId or --xuid: Main defaults both), `--quickPlaySingleplayer <world>`; JAVA_TOOL_OPTIONS and kin dropped;
+  4. Java from the profile, `-Doptilux.token=<fresh>` (not with `--no-token`), the tier's properties, the spec's JVM options, KnotClient, `--gameDir runtime/<platform>/game`, `--accessToken 0 --offlineDeveloperMode` (no --clientId or --xuid: Main defaults both), `--quickPlaySingleplayer <world>`; JAVA_TOOL_OPTIONS and kin dropped;
   5. `--username optilux`, `--uuid` from the world's players/data/<uuid>.dat, else the platform file's `offlinePlayer` (F8), which `world snapshot` records;
-  6. the started command line (psutil) equal to the built one and to the profile and the spec, the token's value excepted (fresh per launch, never identity);
+  6. the started command line (psutil) equal to the built one and to the profile, the spec and each tier property, the token's value excepted (fresh per launch, never identity);
   7. the join in this session's latest.log within 120 s (F11), Fabric's mod list equal to the tier; a failed check ends the game; `--quit-after S` holds S s, quits through the mod's `quit` (WM_CLOSE without a mod session) and reads the files back: every written key, the Iris keys, Sodium's text (`--set` and `--no-token`: run-record.md#identity).
 
 ## mc-26.3 verified
