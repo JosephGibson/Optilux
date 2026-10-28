@@ -3,6 +3,8 @@ expects and the events each call injects."""
 
 import ctypes
 
+import pytest
+
 from optilux import sendinput
 
 
@@ -52,6 +54,25 @@ def test_f2_carries_its_scan_code_down_and_up() -> None:
     assert sendinput.key_press(sendinput.VK_F2, api, scan=sendinput.SCAN_F2) == 2
     up = sendinput.KEYEVENTF_KEYUP
     assert api.calls == [[("key", 0x71, 0x3C, 0), ("key", 0x71, 0x3C, up)]]
+
+
+def test_f12_is_held_down_then_released_even_when_the_wait_breaks() -> None:
+    """plans/m4.md D81: RenderDoc polls the key at its presents, so F12 goes down in one call,
+    is held, and comes up in another; the up is sent whatever stops the wait."""
+    api = FakeUser32()
+    waited: list[float] = []
+    sent = sendinput.key_hold(sendinput.VK_F12, 0.25, api, sendinput.SCAN_F12, waited.append)
+    up = sendinput.KEYEVENTF_KEYUP
+    assert sent == 2 and waited == [0.25]
+    assert api.calls == [[("key", 0x7B, 0x58, 0)], [("key", 0x7B, 0x58, up)]]
+
+    def broken(seconds: float) -> None:
+        raise KeyboardInterrupt
+
+    api = FakeUser32()
+    with pytest.raises(KeyboardInterrupt):
+        sendinput.key_hold(sendinput.VK_F12, 0.25, api, sendinput.SCAN_F12, broken)
+    assert api.calls == [[("key", 0x7B, 0x58, 0)], [("key", 0x7B, 0x58, up)]]
 
 
 def test_a_left_click_is_button_down_then_up() -> None:
