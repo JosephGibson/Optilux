@@ -306,9 +306,11 @@ def page(result: dict) -> str:
     e = html.escape
     name = result["name"]
     against = result.get("against")
+    mode = result["mode"]  # a mode, or a list of view ids (plans/m4.md M4.P04)
+    mode = f"{mode} mode" if isinstance(mode, str) else f"views {', '.join(mode)}"
     out = [
         f"<h1>{e(name)} review</h1>",
-        f'<p class="muted">visual run, {e(result["mode"])} mode; variants '
+        f'<p class="muted">visual run, {e(mode)}; variants '
         f"{e(', '.join(result['variants']))}"
         + (f"; against {e(against)}" if against else "")
         + ". Tiers: suite.json fidelity (measurement.md#visual-protocol); Claude pre-screens the "

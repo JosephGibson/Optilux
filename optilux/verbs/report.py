@@ -164,6 +164,15 @@ def pair_cells(capture: dict) -> dict:
     }
 
 
+def shown_mode(found: dict) -> str:
+    """The record's mode as the page and the summary name it: `mode quick`, a visual or capture
+    run's listed views, or `mode none`."""
+    mode = found.get("mode")
+    return (
+        f"views {', '.join(map(str, mode))}" if isinstance(mode, list) else f"mode {mode or 'none'}"
+    )
+
+
 def capture_cells(capture: dict) -> dict:
     """A capture's columns: ready's seconds, its .rdc's RenderDoc frame, MiB and sha256 prefix."""
     rdc = capture.get("rdc") or {}
@@ -182,7 +191,7 @@ def page(found: dict, captures: list[dict]) -> str:
     status = found.get("status")
     out = [
         f"<h1>{e(name)}</h1>",
-        f'<p class="muted">{e(found.get("kind"))}, mode {e(found.get("mode") or "none")}, '
+        f'<p class="muted">{e(found.get("kind"))}, {e(shown_mode(found))}, '
         f"{e(found.get('startedAt'))} to {e(found.get('endedAt'))}</p>",
         f'<p>Status <span class="{"ok" if status == "ok" else "bad"}">{e(status)}</span>'
         + (f": {e(found['reason'])}" if found.get("reason") else "")
@@ -273,7 +282,7 @@ def summary(found: dict, captures: list[dict]) -> list[str]:
     (its why, when its evidence holds one), the captures valid and, per view with an invalid
     capture, how many and their flags."""
     out = [
-        f"{PREFIX} {found['name']}: {found.get('kind')}, mode {found.get('mode') or 'none'}, "
+        f"{PREFIX} {found['name']}: {found.get('kind')}, {shown_mode(found)}, "
         f"{found.get('startedAt')} to {found.get('endedAt')}",
         f"  status {found.get('status')}" + (f": {found['reason']}" if found.get("reason") else ""),
     ]

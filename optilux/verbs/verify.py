@@ -226,13 +226,24 @@ def visual_capture_problem(capture: Any, ids: set) -> str | None:
     return None
 
 
+def mode_problems(found: dict) -> list[str]:
+    """A visual or capture record's mode: a perf mode, coverage (plans/m3.md D64) or a list of
+    view ids (plans/m4.md M4.P04), each once, which an ok record took and no other."""
+    mode = found.get("mode")
+    if isinstance(mode, list):
+        if not mode or not all(isinstance(v, str) for v in mode) or len(set(mode)) != len(mode):
+            return [f"mode {mode!r} is no list of view ids, each once"]
+        taken = {c.get("view") for c in found.get("captures") or [] if isinstance(c, dict)}
+        if found.get("status") == "ok" and taken != set(mode):
+            return [f"an ok record took views {sorted(map(str, taken))}, not its list"]
+        return []
+    return [] if mode in record.VISUAL_MODES else [f"mode {mode!r}"]
+
+
 def visual_problems(found: dict) -> list[str]:
-    """A visual record's own fields (plans/m3.md D63): its mode (a perf mode, or coverage: D64),
-    variants and pairs; an ok one holds a whole pair for every variant at every view it took, one
-    each."""
-    problems = []
-    if found.get("mode") not in record.VISUAL_MODES:
-        problems.append(f"mode {found.get('mode')!r}")
+    """A visual record's own fields (plans/m3.md D63): its mode (mode_problems), variants and
+    pairs; an ok one holds a whole pair for every variant at every view it took, one each."""
+    problems = mode_problems(found)
     variants, captures = found.get("variants"), found.get("captures")
     if not isinstance(variants, list) or not isinstance(captures, list):
         return [*problems, "no variants or captures list"]
@@ -288,8 +299,7 @@ def capture_problems(found: dict) -> list[str]:
     tier = ((found.get("identity") or {}).get("platform") or {}).get("tier")
     if found.get("identity") is not None and tier != record.CAPTURE_TIER:
         problems.append(f"tier {tier!r}, not {record.CAPTURE_TIER}")
-    if found.get("mode") not in record.VISUAL_MODES:
-        problems.append(f"mode {found.get('mode')!r}")
+    problems += mode_problems(found)
     variants, captures = found.get("variants"), found.get("captures")
     if not isinstance(variants, list) or not isinstance(captures, list):
         return [*problems, "no variants or captures list"]

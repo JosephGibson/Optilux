@@ -3279,7 +3279,7 @@ def test_a_coverage_visual_spec_takes_the_coverage_views_alone(bench_root) -> No
 
 VISUAL_REFUSALS = [
     ({"mode": "full"}, "plans 24 reloads (2 + 11 views x 2 variants), over capture.reloadCap 20"),
-    ({"mode": None}, "takes a mode's perf views or the coverage views"),
+    ({"mode": None}, "takes a mode's perf views, the coverage views or a list"),
     ({"mode": "slow"}, "mode 'slow'; fix: one of quick, full, coverage"),
     ({"resourcePacks": "standard"}, "every session runs the deterministic set"),
     ({"resourcePacks": "nope"}, "no set of suite.json"),
@@ -3725,7 +3725,7 @@ def test_a_capture_spec_takes_the_debug_tier_and_a_modes_views(bench_root) -> No
         ({"tier": "dev"}, "fix: set tier debug"),
         ({"calibration": None}, "calibration: no capture run's"),
         ({"heap": True, "rounds": 2}, "heap, rounds: no capture run's"),
-        ({"mode": None}, "a capture run takes a mode's perf views or the coverage views"),
+        ({"mode": None}, "a capture run takes a mode's perf views, the coverage views or a list"),
         ({"mode": "full"}, "the capture session plans 24 reloads"),
     ]:
         with pytest.raises(record.RecordError, match=re.escape(says)) as refused:
@@ -3960,3 +3960,63 @@ def test_a_capture_records_rdc_must_be_hashed_and_named_by_renderdoc() -> None:
     ) == ["RenderDoc's frames [10, 5] do not rise capture by capture"]
     other = {**found, "identity": {"platform": {"tier": "bench"}}, "mode": "slow"}
     assert verify.capture_problems(other) == ["tier 'bench', not debug", "mode 'slow'"]
+
+
+# A visual or capture run on a list of views (plans/m4.md M4.P04).
+
+
+def test_a_visual_or_capture_spec_takes_a_list_of_views(bench_root) -> None:
+    """The list's views, perf and coverage alike, in the views file's order, one reload a view and
+    variant; an empty list, a view off the file and a view twice refused, for both kinds; a
+    measured run takes no list."""
+    root, saves = bench_root
+    listed = ["coverage_items", "end_dragon", "forest_noon"]
+    spec = record.check_spec(root, visual(mode=listed), PLAT, SUITE, saves, PACK)
+    assert spec.view_ids == ("forest_noon", "end_dragon", "coverage_items")
+    assert spec.mode == listed and spec.planned == 2 + 3 * 2
+    every = [v["id"] for v in record.every_view(VIEWS)]
+    half = every[: len(every) // 2]  # two runs of two packs fit the cap at every view
+    one = record.check_spec(root, visual(mode=half), PLAT, SUITE, saves, PACK)
+    assert one.planned == 2 + len(half) * 2 <= SUITE["capture"]["reloadCap"]
+    taken = record.check_spec(root, capture(mode=["nether_crimson"]), PLAT, SUITE, saves, PACK)
+    assert (taken.kind, taken.view_ids, taken.planned) == ("capture", ("nether_crimson",), 4)
+    for data in (visual, capture):
+        for mode, says in [
+            ([], "mode lists no view; fix: name some, or a mode"),
+            (["forest_noon", "moon"], "mode names 'moon', which config/views/bench_263.json lacks"),
+            (["forest_noon", "forest_noon"], "mode lists forest_noon twice; fix: name each once"),
+            ("slow", "fix: one of quick, full, coverage, or a list of view ids"),
+        ]:
+            with pytest.raises(record.RecordError, match=re.escape(says)):
+                record.check_spec(root, data(mode=mode), PLAT, SUITE, saves, PACK)
+    with pytest.raises(
+        record.RecordError, match=r"mode \['forest_noon'\]; fix: one of quick, full$"
+    ):
+        record.check_spec(root, measured(mode=["forest_noon"]), PLAT, SUITE, saves, PACK)
+    assert record.mode_text("quick") == "quick mode"
+    assert record.mode_text(listed) == "views coverage_items, end_dragon, forest_noon"
+
+
+def test_a_visual_run_on_a_list_takes_those_views_alone(fake_run) -> None:
+    """A list of a perf and a coverage view on the fake: those two views in the views file's
+    order, the record's mode the list as written, which verify records holds to the views taken;
+    report names the views."""
+    root, spec_path, _, _ = fake_run
+    optilux_tree(root)
+    listed = ["coverage_items", "forest_noon"]
+    spec_path.write_text(json.dumps(visual(mode=listed, variants=[HELLO])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    path = root / record.RECORDS / "m3-visual-test.json"
+    found = json.loads(path.read_text(encoding="utf-8"))
+    assert (found["status"], found["mode"]) == ("ok", listed)
+    assert [c["view"] for c in found["captures"]] == ["forest_noon", "coverage_items"]
+    assert verify.record_problems(root, "m3-visual-test", path.read_bytes()) == ([], None)
+    assert report_verb.summary(found, found["captures"])[0].startswith(
+        "optilux report m3-visual-test: visual, views coverage_items, forest_noon, "
+    )
+    short = {**found, "captures": found["captures"][:1]}
+    assert verify.mode_problems(short) == ["an ok record took views ['forest_noon'], not its list"]
+    for mode in ([], ["a", "a"], [1]):
+        assert verify.mode_problems({**found, "mode": mode}) == [
+            f"mode {mode!r} is no list of view ids, each once"
+        ]

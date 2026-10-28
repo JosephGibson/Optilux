@@ -367,7 +367,7 @@ class Spec:
     notes: str | None
     data: dict
     reloads: int = 0
-    mode: str | None = None
+    mode: str | list[str] | None = None  # a visual or capture run's may list views
     calibration: str | None = None
     heap: bool = False
     variants: tuple[dict, ...] = ()
@@ -458,6 +458,31 @@ def split_groups(
 def part_name(session: str, n: int, retry: int = 0) -> str:
     """A part's run name: <session>-p<n>, a re-run's with the next letter (b, c, ...)."""
     return PART.format(session=session, n=n) + (RETRIES[retry - 1] if retry else "")
+
+
+def listed_views(wanted: list, views: dict) -> tuple[str, ...]:
+    """A visual or capture run's views named by id (plans/m4.md M4.P04: two packs fit the reload
+    cap over two runs at every view): each a perf or coverage view of the views file, once, in
+    the file's order; RecordError naming the fix."""
+    known = [view["id"] for view in every_view(views)]
+    name = f"{VIEWS}/{views['id']}.json"
+    if not wanted:
+        raise RecordError("mode lists no view; fix: name some, or a mode")
+    unknown = [vid for vid in wanted if vid not in known]
+    if unknown:
+        raise RecordError(
+            f"mode names {', '.join(map(repr, unknown))}, which {name} lacks; fix: the id of a "
+            "perf or coverage view there"
+        )
+    twice = sorted({vid for vid in wanted if wanted.count(vid) > 1})
+    if twice:
+        raise RecordError(f"mode lists {', '.join(twice)} twice; fix: name each once")
+    return tuple(vid for vid in known if vid in wanted)
+
+
+def mode_text(mode: Any) -> str:
+    """A mode as a plan or a report names it: `quick mode`, or the listed views."""
+    return f"{mode} mode" if isinstance(mode, str) else f"views {', '.join(mode)}"
 
 
 def mode_views(suite: dict, mode: str, views: dict) -> tuple[str, ...]:
@@ -698,14 +723,18 @@ def check_spec(
     mode = data.get("mode")
     if kind in VIEWED and mode is None:
         raise RecordError(
-            f"a {kind} run takes a mode's perf views or the coverage views; fix: mode quick, "
-            f"full or {COVERAGE}"
+            f"a {kind} run takes a mode's perf views, the coverage views or a list; fix: mode "
+            f"quick, full, {COVERAGE} or a list of view ids"
         )
     if kind not in ("acceptance", DUMP) and mode is None:
         raise RecordError(f"a {kind} run measures a mode's schedule; fix: mode quick or full")
     modes = VISUAL_MODES if kind in VIEWED else MODES
-    if mode is not None and mode not in modes and kind != DUMP:
-        raise RecordError(f"mode {mode!r}; fix: one of {', '.join(modes)}")
+    listed = kind in VIEWED and isinstance(mode, list)  # its views by id (plans/m4.md M4.P04)
+    if mode is not None and not listed and mode not in modes and kind != DUMP:
+        raise RecordError(
+            f"mode {mode!r}; fix: one of {', '.join(modes)}"
+            + (", or a list of view ids" if kind in VIEWED else "")
+        )
     if data.get("treatment") is not None:
         raise RecordError(
             "treatment: declared treatments come with the JVM track (run-record.md#comparison); "
@@ -801,6 +830,8 @@ def check_spec(
             f"{' and '.join(order)} run on full mode's schedule, judged by the full calibration "
             "(plans/m2.md M2.P10); fix: mode full"
         )
+    if not isinstance(mode, str):  # refused above: a list is a visual or capture run's
+        raise RecordError(f"mode {mode!r}; fix: quick or full")
     ids = mode_views(suite, mode, views_file)
     rounds, ids, alone, windows = check_budget(
         data, kind, heap, suite["modes"][mode]["rounds"], ids, views_file, variants
@@ -1135,11 +1166,11 @@ def check_visual_spec(
     cap: int,
 ) -> Spec:
     """A visual run (plans/m3.md D63) or a capture run (plans/m4.md D81, on CAPTURE_TIER): a
-    mode's perf views, or with mode `coverage` the views file's coverage views (D64), in the views
-    file's order; its variants (check_visual_variants); the session's reloads, selftest's and the
-    start-of-run reload, then one per view and variant, within capture.reloadCap: such a session
-    is never split, as its frames would come from launches apart. No measured run's or acceptance
-    run's keys."""
+    mode's perf views, with mode `coverage` the views file's coverage views (D64), or a list of
+    view ids (listed_views), in the views file's order; its variants (check_visual_variants);
+    the session's reloads, selftest's and the start-of-run reload, then one per view and variant,
+    within capture.reloadCap: such a session is never split, as its frames would come from
+    launches apart. No measured run's or acceptance run's keys."""
     kind = data["kind"]
     given = [key for key in VISUAL_REFUSED if key in data]
     if given:
@@ -1148,7 +1179,9 @@ def check_visual_spec(
             + ("it" if len(given) == 1 else "them")
         )
     variants = check_visual_variants(root, data["variants"], suite, pack)
-    if data["mode"] == COVERAGE:
+    if isinstance(data["mode"], list):
+        ids = listed_views(data["mode"], views_file)
+    elif data["mode"] == COVERAGE:
         ids = coverage_views(views_file)
     else:
         ids = mode_views(suite, data["mode"], views_file)

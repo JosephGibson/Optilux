@@ -1248,8 +1248,9 @@ def visual_plan(run: Runner) -> str:
     spec = run.spec
     ids = ", ".join(f"{v.id} ({v.pack})" for v in run.found)
     return (
-        f"a {spec.mode}-mode visual run of {ids} on {len(spec.view_ids)} views, {spec.planned} "
-        f"reloads, at each view and variant a pair of frames {measure.PAIR_MS / 1000:g} s apart"
+        f"a visual run ({record.mode_text(spec.mode)}) of {ids} on {len(spec.view_ids)} views, "
+        f"{spec.planned} reloads, at each view and variant a pair of frames "
+        f"{measure.PAIR_MS / 1000:g} s apart"
     )
 
 
@@ -1285,9 +1286,9 @@ def capture_plan(run: Runner) -> str:
     spec = run.spec
     ids = ", ".join(f"{v.id} ({v.pack})" for v in run.found)
     return (
-        f"a {spec.mode}-mode capture run of {ids} on {len(spec.view_ids)} views, {spec.planned} "
-        f"reloads, at each view and variant F12 held {measure.F12_HOLD_S:g} s through SendInput "
-        "(input.block on) for RenderDoc's capture of a frame"
+        f"a capture run ({record.mode_text(spec.mode)}) of {ids} on {len(spec.view_ids)} views, "
+        f"{spec.planned} reloads, at each view and variant F12 held {measure.F12_HOLD_S:g} s "
+        "through SendInput (input.block on) for RenderDoc's capture of a frame"
     )
 
 
