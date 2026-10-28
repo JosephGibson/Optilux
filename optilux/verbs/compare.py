@@ -60,6 +60,11 @@ def compare(root: Path, name: str, cid: str | None, against: str | None = None) 
                 "another run; fix: drop --calibration and --against"
             )
         return compare_a5(root, found)
+    if found.get("kind") == record.CAPTURE:
+        raise CompareError(
+            f"{name} is a capture run: its .rdc files are read by `check L4` (plans/m4.md M4.P05), "
+            "never tiered or judged; fix: compare a visual or measured run"
+        )
     if found.get("kind") == record.VISUAL:
         if found.get("name") != name:  # its raw folder and page go by the file's name
             raise CompareError(f"{name}'s record names {found.get('name')!r}; fix: restore it")

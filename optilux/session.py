@@ -97,6 +97,8 @@ INVALIDATING = ("hook.error", "focus.lost", "screen.opened", "reload.done", "dim
 
 
 JCMD_TIMEOUT = 60
+# GetTempPathW's buffer: MAX_PATH + 1 characters hold any path it returns.
+MAX_PATH = 260
 
 
 class RunError(RuntimeError):
@@ -199,6 +201,26 @@ class RunHost(launch.Host):
 
     def mouse_move(self, dx: int, dy: int) -> int:
         return sendinput.mouse_move(dx, dy)
+
+    def key_hold(self, vk: int, scan: int, seconds: float) -> int:
+        return sendinput.key_hold(vk, seconds, scan=scan)
+
+    def rdc_folder(self) -> Path:
+        """Where RenderDoc writes a capture by default: GetTempPathW()'s RenderDoc folder, the
+        temp path the game inherits from the run (RenderDoc 1.46's default template, plans/m4.md
+        D81). OSError when the call fails."""
+        import ctypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+        buffer = ctypes.create_unicode_buffer(MAX_PATH + 1)
+        if not kernel32.GetTempPathW(len(buffer), buffer):
+            raise OSError(ctypes.get_last_error(), "GetTempPathW failed")
+        return Path(buffer.value) / "RenderDoc"
+
+    def move(self, source: Path, target: Path) -> None:
+        """A file renamed into place; PermissionError while another process holds it open
+        without delete sharing (a capture RenderDoc is still writing)."""
+        os.replace(source, target)
 
     def foreground_pid(self) -> int:
         """The pid owning the foreground window (0 when none)."""

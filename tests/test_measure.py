@@ -33,6 +33,7 @@ from optilux import (
     platform,
     presentmon,
     record,
+    sendinput,
     session,
     world,
 )
@@ -3286,7 +3287,10 @@ VISUAL_REFUSALS = [
     ({"calibration": None}, "calibration: no visual run's"),
     ({"heap": False, "reloads": 10}, "heap, reloads: no visual run's"),
     ({"variants": []}, "variants lists none"),
-    ({"variants": [{**HELLO, "timers": True}]}, "a visual run times nothing; fix: timers false"),
+    (
+        {"variants": [{**HELLO, "timers": True}]},
+        "a visual or capture run times nothing; fix: timers false",
+    ),
     ({"variants": [{**HELLO, "seed": 1}]}, "unknown ['seed']"),
     ({"variants": [{**HELLO, "profile": "iso"}]}, "optilux has no profile"),
     ({"variants": [{**HELLO, "pack": "other.zip"}]}, "pack 'other.zip'"),
@@ -3694,3 +3698,265 @@ def test_a_dump_records_dumps_must_hash_to_their_manifests() -> None:
     broken = verify.dump_problems({**found, "dumps": {**dumps, "f" * 64: {"f": "x"}}})
     assert broken[0] == "`dumps` holds a file without its sha256"
     assert verify.dump_problems({**found, "mode": "quick", "dumps": dumps})[0].startswith("mode")
+
+
+# A capture run (plans/m4.md D81).
+
+RENDERDOC_DLL = "runtime/tools/renderdoc-1.46/RenderDoc_1.46_64/renderdoc.dll"
+LOADED = "2026.10.28_15.04"
+
+
+def capture(**changes: Any) -> dict:
+    return visual(**{"name": "m4-capture-test", "kind": "capture", "tier": "debug", **changes})
+
+
+def test_a_capture_spec_takes_the_debug_tier_and_a_modes_views(bench_root) -> None:
+    """D81: the visual spec's checks on the debug tier alone; another tier, a measured run's keys
+    and no mode refused; every other kind refused on the debug tier."""
+    root, saves = bench_root
+    spec = record.check_spec(root, capture(), PLAT, SUITE, saves, PACK)
+    assert (spec.kind, spec.tier, spec.mode) == ("capture", "debug", "quick")
+    assert spec.view_ids == ("forest_noon", "nether_crimson", "end_dragon")
+    assert spec.planned == 2 + 3 * 2 and spec.groups == ()
+    coverage = record.check_spec(root, capture(mode="coverage"), PLAT, SUITE, saves, PACK)
+    assert coverage.view_ids == ("coverage_items", "coverage_mobs", "coverage_beacon")
+    for changes, says in [
+        ({"tier": "bench"}, "a capture run needs RenderDoc in the game, which only the debug tier"),
+        ({"tier": "dev"}, "fix: set tier debug"),
+        ({"calibration": None}, "calibration: no capture run's"),
+        ({"heap": True, "rounds": 2}, "heap, rounds: no capture run's"),
+        ({"mode": None}, "a capture run takes a mode's perf views or the coverage views"),
+        ({"mode": "full"}, "the capture session plans 24 reloads"),
+    ]:
+        with pytest.raises(record.RecordError, match=re.escape(says)) as refused:
+            record.check_spec(root, capture(**changes), PLAT, SUITE, saves, PACK)
+        assert "fix:" in str(refused.value)
+    for data in (visual(tier="debug"), measured(tier="debug")):
+        with pytest.raises(record.RecordError, match="the debug tier is a capture run's alone"):
+            record.check_spec(root, data, PLAT, SUITE, saves, PACK)
+
+
+def renderdoc_run(fake_run, tmp_path: Path, monkeypatch, log: str | None = None) -> dict:
+    """fake_run on the debug tier: the pinned dll under runtime/tools/, the launch's properties
+    and gfx-debuggers' lines in latest.log, the game in front, and an F12 that writes the next
+    RenderDoc capture into a temp folder. Returns the host's presses and that folder."""
+    root, _, fake, host = fake_run
+    dll = root / RENDERDOC_DLL
+    dll.parent.mkdir(parents=True)
+    dll.write_bytes(b"MZ renderdoc")
+    folder = tmp_path / "temp" / "RenderDoc"
+    found: dict[str, Any] = {"presses": [], "folder": folder, "blocked": []}
+
+    def key_hold(vk: int, scan: int, seconds: float) -> int:
+        found["presses"].append((vk, scan, seconds))
+        found["blocked"].append(fake.game["inputBlocked"])
+        folder.mkdir(parents=True, exist_ok=True)
+        n = len(found["presses"])
+        (folder / f"java_{LOADED}_frame{1000 + 10 * n}.rdc").write_bytes(b"RDOC" + bytes(n))
+        return 2
+
+    monkeypatch.setattr(host, "key_hold", key_hold, raising=False)
+    monkeypatch.setattr(host, "rdc_folder", lambda: folder, raising=False)
+    monkeypatch.setattr(host, "foreground_pid", lambda: GAME_PID, raising=False)
+    fake_launch = launch.launch
+    lines = (
+        log
+        if log is not None
+        else (
+            f"[15:04:01] [main/INFO]: Found Renderdoc shared library at: {dll}\n"
+            "[15:04:01] [main/INFO]: Renderdoc loaded successfully.\n"
+        )
+    )
+
+    def with_renderdoc(*args: Any) -> launch.Launched:
+        launched = fake_launch(*args)
+        base = root / "runtime" / PLAT.id
+        mods = launch.wanted_mods(base, platform.load(root), "debug")  # gfx-debuggers too
+        launched.facts["mods"] = {"sha512": sorted(mods.values())}
+        launched.facts["jvmProperties"] = [
+            {"name": "debugger", "value": "renderdoc"},
+            {
+                "name": "renderdoc.path",
+                "path": RENDERDOC_DLL,
+                "sha256": hashlib.sha256(b"MZ renderdoc").hexdigest(),
+            },
+        ]
+        with launched.log.open("a", encoding="utf-8") as text:
+            text.write(lines)
+        return launched
+
+    monkeypatch.setattr(launch, "launch", with_renderdoc)
+    return found
+
+
+def test_a_capture_run_takes_one_rdc_per_view_and_variant(fake_run, tmp_path, monkeypatch) -> None:
+    """D81 on the fake: RenderDoc's load read in latest.log; the visual run's steps, then at each
+    view and variant F12 held through SendInput with input.block on, the one new .rdc moved under
+    raw/rdc/<view>/<variant>/, hashed, its frame and load minute from its name; the machine to
+    itself first (input is sent), the displays held; the record passes verify records and
+    report names the captures; compare refuses it."""
+    root, spec_path, _, _ = fake_run
+    optilux_tree(root)
+    found_host = renderdoc_run(fake_run, tmp_path, monkeypatch)
+    spec_path.write_text(json.dumps(capture(variants=[HELLO, UNBOUND])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path), "--check"]) == 0
+    assert cli.main(["run", str(spec_path)]) == 0
+    path = root / record.RECORDS / "m4-capture-test.json"
+    found = json.loads(path.read_text(encoding="utf-8"))
+    assert (found["status"], found["kind"], found["mode"]) == ("ok", "capture", "quick")
+    assert found["identity"]["platform"]["tier"] == "debug"
+    assert found["identity"]["settings"]["iris"]["enableDebugOptions"] == "true"
+    captures = found["captures"]
+    views = ("forest_noon", "nether_crimson", "end_dragon")
+    assert [(c["view"], c["variant"]) for c in captures] == [
+        (view, variant) for view in views for variant in ("hello", "unbound")
+    ]
+    raw = root / found["raw"]
+    for n, c in enumerate(captures, start=1):
+        rdc = c["rdc"]
+        name = f"java_{LOADED}_frame{1000 + 10 * n}.rdc"
+        assert rdc["path"] == f"rdc/{c['view']}/{c['variant']}/{name}"
+        assert hashlib.sha256((raw / rdc["path"]).read_bytes()).hexdigest() == rdc["sha256"]
+        assert (rdc["frame"], rdc["loaded"], rdc["bytes"]) == (1000 + 10 * n, LOADED, 4 + n)
+        assert c["press"]["inserted"] == 2 and c["press"]["heldS"] == measure.F12_HOLD_S
+        assert c["press"]["frameAfter"] >= c["press"]["frameBefore"] and c["valid"]
+    assert [c["settleS"] for c in captures] == [4.0, 4.0, 7.0, 4.0, 7.0, 4.0]
+    assert found_host["presses"] == [(sendinput.VK_F12, sendinput.SCAN_F12, 0.25)] * 6
+    assert found_host["blocked"] == [True] * 6  # F12 with input.block on
+    assert not list(found_host["folder"].glob("*.rdc"))
+    facts = found["session"]
+    sha = hashlib.sha256(b"MZ renderdoc").hexdigest()
+    assert facts["renderdoc"] == {"dll": RENDERDOC_DLL, "sha256": sha}
+    assert facts["machine"]["idleSeconds"] == 120.0 and facts["displays"]["state"] == "on"
+    assert verify.record_problems(root, "m4-capture-test", path.read_bytes()) == ([], None)
+    assert report_verb.summary(found, captures)[2].startswith("  .rdc: 6, 0.0 MiB under raw/")
+    with pytest.raises(compare_verb.CompareError, match=r"is a capture run: its \.rdc files are"):
+        compare_verb.compare(root, "m4-capture-test", None, None)
+
+
+def test_a_capture_run_without_renderdoc_in_the_game_takes_nothing(
+    fake_run, tmp_path, monkeypatch
+) -> None:
+    """latest.log without gfx-debuggers' lines for the tier's dll: the run fails before any
+    press, naming what was found."""
+    root, spec_path, _, _ = fake_run
+    optilux_tree(root)
+    found_host = renderdoc_run(
+        fake_run, tmp_path, monkeypatch, "[15:04:01] Found Renderdoc shared library at: C:\\RD\n"
+    )
+    spec_path.write_text(json.dumps(capture(variants=[HELLO])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 1
+    found = json.loads((root / record.RECORDS / "m4-capture-test.json").read_text("utf-8"))
+    assert found["status"] == "failed" and found_host["presses"] == []
+    assert (
+        "gfx-debuggers found RenderDoc at ['C:\\\\RD'] (the tier's runtime/tools/"
+        in (found["reason"])
+    )
+
+
+def test_take_rdc_waits_for_one_closed_capture_and_refuses_the_rest(tmp_path: Path) -> None:
+    """take_rdc on a fake host: a capture RenderDoc still writes is retried until it closes; no
+    file in time is P23's answer; two files, another name, another header or a later stray are
+    refused, each named."""
+
+    class Writing(Host):
+        def __init__(self, busy: int) -> None:
+            super().__init__(modfake.Fake(TOKEN, pid=GAME_PID))
+            self.busy = busy
+
+        def move(self, source: Path, target: Path) -> None:
+            if self.busy:
+                self.busy -= 1
+                raise PermissionError(32, "in use")
+            os.replace(source, target)
+
+    folder, target = tmp_path / "RenderDoc", tmp_path / "raw" / "rdc" / "v" / "a"
+    folder.mkdir()
+    (folder / "java_2026.10.28_14.00_frame7.rdc").write_bytes(b"RDOC old")
+    before = measure.rdc_names(folder)
+    name = f"java_{LOADED}_frame42.rdc"
+    (folder / name).write_bytes(b"RDOC new")
+    host = Writing(busy=3)
+    taken = measure.take_rdc(host, folder, before, target)
+    assert (taken["name"], taken["frame"], taken["loaded"], taken["bytes"]) == (name, 42, LOADED, 8)
+    assert taken["sha256"] == hashlib.sha256(b"RDOC new").hexdigest() and host.busy == 0
+    assert (target / name).read_bytes() == b"RDOC new" and not (folder / name).exists()
+    with pytest.raises(session.RunError, match=r"RenderDoc captured nothing \(plans/m4.md P23\)"):
+        measure.take_rdc(Writing(0), folder, before, target)
+    (folder / "java_a.rdc").write_bytes(b"RDOC")
+    with pytest.raises(session.RunError, match=r"java_a\.rdc is not RenderDoc's name for the game"):
+        measure.take_rdc(Writing(0), folder, before, target)
+    (folder / "java_a.rdc").unlink()
+    (folder / name).write_bytes(b"RDOC")
+    (folder / f"java_{LOADED}_frame43.rdc").write_bytes(b"RDOC")
+    with pytest.raises(session.RunError, match="2 new captures for one press"):
+        measure.take_rdc(Writing(0), folder, before, target / "x")
+    (folder / f"java_{LOADED}_frame43.rdc").unlink()
+    (folder / name).write_bytes(b"PK not a capture")
+    with pytest.raises(session.RunError, match=r"starts b'PK n', not RenderDoc's b'RDOC'"):
+        measure.take_rdc(Writing(0), folder, before, target / "y")
+    stuck = Writing(busy=10**6)
+    (folder / name).write_bytes(b"RDOC")
+    with pytest.raises(session.RunError, match="stayed open 300 s after F12"):
+        measure.take_rdc(stuck, folder, before, target / "z")
+
+
+def test_a_capture_records_rdc_must_be_hashed_and_named_by_renderdoc() -> None:
+    """verify records on a capture record: each .rdc under rdc/<view>/<variant>/ by RenderDoc's
+    name, its frame and load minute the name's, hashed; an ok record one capture per view and
+    variant from one RenderDoc, frames rising, no .rdc twice, on the debug tier."""
+    name = f"java_{LOADED}_frame10.rdc"
+    rdc = {
+        "path": f"rdc/v/a/{name}",
+        "name": name,
+        "frame": 10,
+        "loaded": LOADED,
+        "bytes": 5,
+        "sha256": "a" * 64,
+        "seconds": 1.0,
+    }
+    ok = {"index": 1, "view": "v", "variant": "a", "rdc": rdc, "flags": [], "valid": True}
+    assert verify.rdc_problem(ok, {"a"}) is None
+    cases = [
+        ({**ok, "variant": "b"}, "variant 'b' is none of the record's"),
+        ({**ok, "rdc": {**rdc, "path": f"rdc/w/a/{name}"}}, "is not RenderDoc's file under its"),
+        ({**ok, "rdc": {**rdc, "name": "other.rdc"}}, "is not RenderDoc's file under its view"),
+        ({**ok, "rdc": {**rdc, "frame": 11}}, "frame 11 or load minute"),
+        ({**ok, "rdc": {**rdc, "sha256": "x"}}, "an .rdc without its sha256 and bytes"),
+        ({**ok, "rdc": {**rdc, "bytes": 0}}, "an .rdc without its sha256 and bytes"),
+        ({**ok, "rdc": {k: v for k, v in rdc.items() if k != "sha256"}}, "an .rdc without path"),
+        ({**ok, "flags": ["moving"]}, "flags ['moving'], not among event"),
+        ({**ok, "flags": ["event"]}, "valid True disagrees with its flags"),
+        ({k: v for k, v in ok.items() if k != "rdc"}, "capture 1 lacks rdc"),
+    ]
+    for capture_, says in cases:
+        assert says in (verify.rdc_problem(capture_, {"a"}) or ""), says
+    second_name = f"java_{LOADED}_frame20.rdc"
+    second = {
+        **ok,
+        "index": 2,
+        "variant": "b",
+        "rdc": {**rdc, "path": f"rdc/v/b/{second_name}", "name": second_name, "frame": 20},
+    }
+    identity = {"platform": {"tier": "debug"}}
+    found = {
+        "mode": "quick",
+        "status": "ok",
+        "identity": identity,
+        "variants": [{"id": "a"}, {"id": "b"}],
+        "captures": [ok, {**second, "rdc": {**second["rdc"], "sha256": "b" * 64}}],
+    }
+    assert verify.capture_problems(found) == []
+    assert verify.capture_problems({**found, "captures": [ok]}) == [
+        "an ok capture record lacks or repeats a variant at a view"
+    ]
+    assert verify.capture_problems({**found, "captures": [ok, second]}) == [
+        "two captures hold one .rdc"
+    ]
+    earlier = {**second["rdc"], "frame": 5, "name": f"java_{LOADED}_frame5.rdc"}
+    earlier["path"] = f"rdc/v/b/{earlier['name']}"
+    assert verify.capture_problems(
+        {**found, "captures": [ok, {**second, "rdc": {**earlier, "sha256": "b" * 64}}]}
+    ) == ["RenderDoc's frames [10, 5] do not rise capture by capture"]
+    other = {**found, "identity": {"platform": {"tier": "bench"}}, "mode": "slow"}
+    assert verify.capture_problems(other) == ["tier 'bench', not debug", "mode 'slow'"]

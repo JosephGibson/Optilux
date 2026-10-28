@@ -71,8 +71,15 @@ VISUAL = "visual"
 # A dump run (plans/m3.md D60): per dimension its first view (dump_views), per variant there a
 # reload with Iris's debug flag on and game/patched_shaders/ copied under raw/, each file hashed.
 DUMP = "dump"
-KINDS = ("measurement", "calibration", "acceptance", VISUAL, DUMP)
-# A visual run's own keys are the required ones, its mode and notes: none of these.
+# A capture run (plans/m4.md D81): a visual run's steps up to each view's settle, then RenderDoc's
+# capture of a frame through F12, on the debug tier alone (CAPTURE_TIER: gfx-debuggers loads
+# RenderDoc there, platform.md#mod-tiers); every other kind runs on the bench tier.
+CAPTURE = "capture"
+CAPTURE_TIER = "debug"
+BENCH_TIER = "bench"
+KINDS = ("measurement", "calibration", "acceptance", VISUAL, DUMP, CAPTURE)
+VIEWED = (VISUAL, CAPTURE)
+# A visual or capture run's own keys are the required ones, its mode and notes: none of these.
 VISUAL_REFUSED = ("items", "calibration", "heap", *BUDGET, "warmup", "remeasures", "reloads")
 # A dump run's: the required ones and notes; its views come from the views file, not a mode.
 DUMP_REFUSED = ("mode", *VISUAL_REFUSED)
@@ -82,6 +89,10 @@ DUMP_REFUSED = ("mode", *VISUAL_REFUSED)
 VISUAL_PAIR = 2
 VISUAL_FLAGS = ("moving", "event", "incomplete")
 VISUAL_INVALIDATING = ("event", "incomplete")
+# A capture (optilux/measure.py's rdc_capture) is flagged `event` for an invalidating event
+# between its press and its file, which invalidates it.
+CAPTURE_FLAGS = ("event",)
+CAPTURE_INVALIDATING = ("event",)
 MODES = ("quick", "full")
 COVERAGE = "coverage"
 VISUAL_MODES = (*MODES, COVERAGE)
@@ -685,14 +696,14 @@ def check_spec(
     if kind not in KINDS:
         raise RecordError(f"kind {kind!r}; fix: one of {', '.join(KINDS)}")
     mode = data.get("mode")
-    if kind == VISUAL and mode is None:
+    if kind in VIEWED and mode is None:
         raise RecordError(
-            "a visual run takes a mode's perf views or the coverage views; fix: mode quick, full "
-            f"or {COVERAGE}"
+            f"a {kind} run takes a mode's perf views or the coverage views; fix: mode quick, "
+            f"full or {COVERAGE}"
         )
     if kind not in ("acceptance", DUMP) and mode is None:
         raise RecordError(f"a {kind} run measures a mode's schedule; fix: mode quick or full")
-    modes = VISUAL_MODES if kind == VISUAL else MODES
+    modes = VISUAL_MODES if kind in VIEWED else MODES
     if mode is not None and mode not in modes and kind != DUMP:
         raise RecordError(f"mode {mode!r}; fix: one of {', '.join(modes)}")
     if data.get("treatment") is not None:
@@ -700,10 +711,15 @@ def check_spec(
             "treatment: declared treatments come with the JVM track (run-record.md#comparison); "
             "fix: drop it"
         )
-    if data["tier"] != "bench":
+    if kind == CAPTURE and data["tier"] != CAPTURE_TIER:
         raise RecordError(
-            f"tier {data['tier']!r}: runs use the bench tier, the one every measurement uses; "
-            "fix: set tier bench"
+            f"tier {data['tier']!r}: a capture run needs RenderDoc in the game, which only the "
+            f"{CAPTURE_TIER} tier loads (plans/m4.md D81); fix: set tier {CAPTURE_TIER}"
+        )
+    if kind != CAPTURE and data["tier"] != BENCH_TIER:
+        raise RecordError(
+            f"tier {data['tier']!r}: runs use the bench tier, the one every measurement uses (the "
+            f"{CAPTURE_TIER} tier is a capture run's alone); fix: set tier {BENCH_TIER}"
         )
     views = data["views"]
     if not isinstance(views, str) or not VIEW_ID.fullmatch(views):
@@ -741,7 +757,7 @@ def check_spec(
         raise RecordError("notes must be text; fix: write them as one string")
     items = data.get("items", [] if mode is not None else None)
     cap = suite["capture"]["reloadCap"]
-    if kind == VISUAL:
+    if kind in VIEWED:
         return check_visual_spec(root, data, suite, pack, views_file, world, notes, cap)
     if kind == DUMP:
         return check_dump_spec(root, data, suite, pack, views_file, world, notes, cap)
@@ -1066,8 +1082,8 @@ def check_visual_variants(root: Path, variants: Any, suite: dict, pack: str) -> 
             )
         if variant.get("timers", False) is not False:
             raise RecordError(
-                f"{where}: timers {variant['timers']!r}: a visual run times nothing; fix: timers "
-                "false, or leave it out"
+                f"{where}: timers {variant['timers']!r}: a visual or capture run times nothing; "
+                "fix: timers false, or leave it out"
             )
         vid = variant["id"]
         if not isinstance(vid, str) or not NAME.fullmatch(vid) or vid.startswith(TWIN):
@@ -1118,15 +1134,17 @@ def check_visual_spec(
     notes: str | None,
     cap: int,
 ) -> Spec:
-    """A visual run (plans/m3.md D63): a mode's perf views, or with mode `coverage` the views
-    file's coverage views (D64), in the views file's order; its variants (check_visual_variants);
-    the session's reloads, selftest's and the start-of-run reload, then one per view and variant,
-    within capture.reloadCap: a visual session is never split, as its frames would come from
-    launches apart. No measured run's or acceptance run's keys."""
+    """A visual run (plans/m3.md D63) or a capture run (plans/m4.md D81, on CAPTURE_TIER): a
+    mode's perf views, or with mode `coverage` the views file's coverage views (D64), in the views
+    file's order; its variants (check_visual_variants); the session's reloads, selftest's and the
+    start-of-run reload, then one per view and variant, within capture.reloadCap: such a session
+    is never split, as its frames would come from launches apart. No measured run's or acceptance
+    run's keys."""
+    kind = data["kind"]
     given = [key for key in VISUAL_REFUSED if key in data]
     if given:
         raise RecordError(
-            f"{', '.join(given)}: no visual run's (plans/m3.md D63); fix: drop "
+            f"{', '.join(given)}: no {kind} run's (plans/m3.md D63); fix: drop "
             + ("it" if len(given) == 1 else "them")
         )
     variants = check_visual_variants(root, data["variants"], suite, pack)
@@ -1137,18 +1155,18 @@ def check_visual_spec(
     planned = ACCEPTANCE_RELOADS + len(ids) * len(variants)
     if planned > cap:
         raise RecordError(
-            f"the visual session plans {planned} reloads ({ACCEPTANCE_RELOADS} + {len(ids)} views "
-            f"x {len(variants)} variants), over capture.reloadCap {cap}, and a visual session is "
+            f"the {kind} session plans {planned} reloads ({ACCEPTANCE_RELOADS} + {len(ids)} views "
+            f"x {len(variants)} variants), over capture.reloadCap {cap}, and a {kind} session is "
             "never split (plans/m3.md D63); fix: fewer variants"
             + (", or quick mode" if data["mode"] == "full" else "")
         )
     return Spec(
         data["name"],
-        VISUAL,
+        kind,
         views_file["id"],
         world,
         pack,
-        "bench",
+        CAPTURE_TIER if kind == CAPTURE else BENCH_TIER,
         PACK_SET,
         (),
         notes,

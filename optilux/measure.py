@@ -50,8 +50,8 @@ from typing import Any
 
 import psutil
 
-from optilux import launch, modclient, platform, presentmon, record, world
-from optilux.acceptance import F4_MIN_AVAILABLE, memory_row
+from optilux import launch, modclient, platform, presentmon, record, sendinput, world
+from optilux.acceptance import F4_MIN_AVAILABLE, inject, memory_row
 from optilux.session import (
     CLOSED,
     COMMAND_TIMEOUT,
@@ -67,6 +67,7 @@ from optilux.session import (
     RunError,
     RunHost,
     Session,
+    in_front,
     now,
     session_start,
     shows_hand,
@@ -135,6 +136,24 @@ PAIR = record.VISUAL_PAIR
 PAIR_MS = 2000
 FRAMES = "frames"
 VISUAL_CAPTURE_TIMEOUT = READY_TIMEOUT + 30.0
+# A capture run's captures (plans/m4.md D81): at each view and variant, after the visual run's
+# reload and settle, RenderDoc captures the next frame once it sees F12 down at a present (its key
+# poll reads GetAsyncKeyState, so the key is held F12_HOLD_S: sendinput.key_hold), input.block on
+# (the game ignores the key: mod.md#9-input-and-hud). RenderDoc 1.46 writes the capture into its
+# folder in the temp path (RunHost.rdc_folder), named by its default template: the game's exe,
+# the minute RenderDoc loaded, the frame (the dll's format strings); the run moves the one new file
+# under raw/<run>/rdc/<view>/<variant>/ once RenderDoc has closed it (the rename fails while it
+# writes), its header RDOC.
+RDC = "rdc"
+RDC_NAME = re.compile(r"java_(\d{4}\.\d\d\.\d\d_\d\d\.\d\d)_frame(\d+)\.rdc")
+RDC_MAGIC = b"RDOC"
+F12_HOLD_S = 0.25
+RDC_TIMEOUT = 30.0
+RDC_WRITE_TIMEOUT = 300.0
+RDC_POLL = 0.25
+# gfx-debuggers 3.2.0's lines once it loaded RenderDoc into the game (javap, plans/m4.md P8).
+RENDERDOC_FOUND = "Found Renderdoc shared library at: "
+RENDERDOC_LOADED = "Renderdoc loaded successfully."
 # A5's waits (mod.md#12-acceptance, plans/m3.md D68): per wait one frames.capture of two frames,
 # the first frame after the readiness predicate held (minSeconds 0: the predicate alone) and the
 # reference, the view's visual settle plus A5_PLUS_S later, under frames/<view>/a5/.
@@ -1122,12 +1141,13 @@ def bare(
     heap_row(m)
 
 
-def visual_body(m: Measured) -> None:
+def visual_body(m: Measured, take: Callable | None = None) -> None:
     """A visual session after hello (plans/m3.md D63): the session start, the first variant's files
     written before the start-of-run reload; one lap over the mode's views (D48), each reached as a
     measured pass reaches it (arrive: its function, camera.place, D49's GUI, the overworld
-    weather's ticks), then per variant its pair (visual_capture), the settle's dimension-change
-    addition only for the first after a dimension change; input.block off. No PresentMon."""
+    weather's ticks), then per variant its pair (visual_capture, or a capture run's `take`), the
+    settle's dimension-change addition only for the first after a dimension change; input.block
+    off. No PresentMon."""
     s, c = m.s, m.c
     s.stop_on = ends
     m.mark("start")
@@ -1153,7 +1173,7 @@ def visual_body(m: Measured) -> None:
         changed = arrive(m, view)
         for slot, variant in enumerate(m.found):
             settle = visual_settle(m.suite["capture"], view, changed and slot == 0)
-            visual_capture(m, view, variant, settle)
+            (take or visual_capture)(m, view, variant, settle)
     if m.gui:
         leave_gui(m, "end")
     s.step("input.block off", lambda: c.input_block(False))
@@ -1240,6 +1260,199 @@ def visual_capture(m: Measured, view: dict, variant: Variant, settle: float) -> 
     }
     m.entries.append(entry)
     m.journal.append("captures", entry)
+
+
+def capture_body(m: Measured) -> None:
+    """A capture session after hello (plans/m4.md D81): RenderDoc loaded into this game
+    (renderdoc_loaded), then a visual session's steps with rdc_capture at each view and variant."""
+    m.facts["renderdoc"] = renderdoc_loaded(m)
+    visual_body(m, rdc_capture)
+
+
+def renderdoc_loaded(m: Measured) -> dict:
+    """gfx-debuggers' own lines in this session's latest.log: RenderDoc found at the tier's
+    renderdoc.path alone and loaded (platform.md#mod-tiers); RunError before any capture
+    otherwise. The dll as launch passed it, with its sha256."""
+    passed = m.s.launched.facts.get("jvmProperties") or []
+    dll = next((p for p in passed if p["name"] == "renderdoc.path" and "path" in p), None)
+    if dll is None:
+        raise RunError("the launch passed no renderdoc.path; fix: launch the debug tier")
+    text = m.s.launched.log.read_text(encoding="utf-8", errors="replace")
+    found = [
+        line.split(RENDERDOC_FOUND, 1)[1].strip()
+        for line in text.splitlines()
+        if RENDERDOC_FOUND in line
+    ]
+    expected = str(m.s.root / dll["path"])
+    loaded = RENDERDOC_LOADED in text
+    if [launch.norm(path) for path in found] != [launch.norm(expected)] or not loaded:
+        raise RunError(
+            f"latest.log: gfx-debuggers found RenderDoc at {found or 'nothing'} (the tier's "
+            f"{dll['path']}) and {'loaded' if loaded else 'did not load'} it; fix: `optilux "
+            "install`, then rerun"
+        )
+    m.s.say(f"RenderDoc: loaded from {dll['path']} (sha256 {dll['sha256'][:12]}...)")
+    return {"dll": dll["path"], "sha256": dll["sha256"]}
+
+
+def rdc_names(folder: Path) -> set[str]:
+    return {p.name for p in folder.glob("*.rdc")} if folder.is_dir() else set()
+
+
+def rdc_capture(m: Measured, view: dict, variant: Variant, settle: float) -> None:
+    """One variant's capture at one view (plans/m4.md D81): its files, shaders.reload and its pack,
+    the options read back, ready (STABLE_FRAMES, the view's visual settle: a visual pair's wait);
+    then, the game in front with no screen, F12 held through SendInput between two frames.index
+    reads (acceptance.inject: sent only while the game is focused and owns the foreground
+    window); the one new .rdc taken (take_rdc); the pose held. Its entry: the press, the file
+    under raw/ with its bytes, sha256, RenderDoc's frame and load minute, the flags. No file means
+    F12 reached no RenderDoc (P23): RunError, the run ends there."""
+    s, c = m.s, m.c
+    m.index += 1
+    label = f"{m.index:03d} {view['id']} {variant.id}"
+    m.write_files(variant)
+    m.reloads += 1
+    reload = s.step(
+        f"{label}: shaders.reload",
+        lambda: c.shaders_reload(RELOAD_TIMEOUT, 2, pack=variant.pack),
+        lambda a: f"{a['seconds']:.3f} s, reloadFrame {a['reloadFrame']}",
+    )
+    options = s.step(
+        f"{label}: shaders.options",
+        c.shaders_options,
+        keep=lambda a: {"pack": a["pack"], "values": len(a["values"])},
+    )
+    m.check_options(variant, options)
+    ready = s.step(
+        f"{label}: ready",
+        lambda: c.ready(STABLE_FRAMES, settle, READY_TIMEOUT),
+        lambda a: f"{a['seconds']:.2f} s, limitedBy {a['limitedBy']}",
+    )
+    state = s.step(f"{label}: state", c.state)
+    if not in_front(s, state) or state["screen"] is not None:
+        raise RunError(
+            f"{label}: the game is not focused, its window not in front or a screen open "
+            f"(foreground pid {s.host.foreground_pid()}, the game's {s.launched.pid}): no F12 sent"
+        )
+    folder = s.host.rdc_folder()
+    before = rdc_names(folder)
+    first = s.step(f"{label}: frames.index", lambda: c.request("frames.index"))
+    pressed = s.step(
+        f"{label}: F12",
+        lambda: inject(
+            s, "F12", lambda: s.host.key_hold(sendinput.VK_F12, sendinput.SCAN_F12, F12_HOLD_S)
+        ),
+        lambda a: f"held {F12_HOLD_S:g} s, inserted {a['inserted']} of 2",
+    )
+    after = s.step(f"{label}: frames.index", lambda: c.request("frames.index"))
+    if pressed["inserted"] != 2:
+        raise RunError(
+            f"{label}: F12 was not sent whole (inserted {pressed['inserted']} of 2; focused "
+            f"{pressed['focused']}, foreground pid {pressed['foregroundPid']}, the game's "
+            f"{s.launched.pid})"
+        )
+    target = s.raw / RDC / view["id"] / variant.id
+    taken = take_rdc(s.host, folder, before, target)
+    s.say(
+        f"{label}: {taken['name']}, {taken['bytes'] / 1024**2:.1f} MiB, sha256 "
+        f"{taken['sha256'][:12]}..., in {taken['seconds']:.1f} s"
+    )
+    held = s.step(f"{label}: camera.get", c.camera_get)
+    moved = modclient.pose_differences(view_pose(view), held["pose"])
+    if moved:
+        raise RunError(f"{label}: the camera left the view during the capture: {moved}")
+    end = s.step(f"{label}: frames.index", lambda: c.request("frames.index"))
+    events = window_events(s.events, first["frameIndex"], end["frameIndex"] + 1)
+    flags = ["event"] if events else []
+    entry = {
+        "index": m.index,
+        "view": view["id"],
+        "variant": variant.id,
+        "settleS": settle,
+        "reload": {k: reload[k] for k in ("seconds", "reloadFrame", "pack")},
+        "ready": ready,
+        "press": {
+            "frameBefore": first["frameIndex"],
+            "sinceReloadBefore": first["sinceReload"],
+            "frameAfter": after["frameIndex"],
+            "heldS": F12_HOLD_S,
+            "inserted": pressed["inserted"],
+            "foregroundPid": pressed["foregroundPid"],
+        },
+        "rdc": {"path": (target.relative_to(s.raw) / taken["name"]).as_posix(), **taken},
+        "flags": flags,
+        "valid": not any(flag in record.CAPTURE_INVALIDATING for flag in flags),
+        "problems": [f"{e['event']} at frame {e['frameIndex']}" for e in events],
+    }
+    m.entries.append(entry)
+    m.journal.append("captures", entry)
+
+
+def take_rdc(host: RunHost, folder: Path, before: set[str], target: Path) -> dict:
+    """The one capture a press made: the new .rdc in RenderDoc's folder, waited for up to
+    RDC_TIMEOUT, named as RDC_NAME says, moved under `target` once RenderDoc has closed it (the
+    rename fails while it writes: up to RDC_WRITE_TIMEOUT), its header RDOC; no other new file
+    beside it. RunError naming what was found otherwise. Its name, RenderDoc's frame and load
+    minute, bytes, sha256 and the seconds from the press."""
+    began = host.clock()
+    fresh = sorted(rdc_names(folder) - before)
+    while not fresh:
+        if host.clock() - began >= RDC_TIMEOUT:
+            raise RunError(
+                f"no new capture in {folder} {RDC_TIMEOUT:g} s after F12: RenderDoc captured "
+                "nothing (plans/m4.md P23); fix: the mod's TriggerCapture (D81)"
+            )
+        host.sleep(RDC_POLL)
+        fresh = sorted(rdc_names(folder) - before)
+    if len(fresh) > 1:
+        raise RunError(f"{len(fresh)} new captures for one press: {', '.join(fresh)}")
+    name = fresh[0]
+    named = RDC_NAME.fullmatch(name)
+    if named is None:
+        raise RunError(f"{name} is not RenderDoc's name for the game (java_<minute>_frame<n>.rdc)")
+    target.mkdir(parents=True, exist_ok=True)
+    while True:
+        try:
+            host.move(folder / name, target / name)
+            break
+        except PermissionError:
+            if host.clock() - began >= RDC_WRITE_TIMEOUT:
+                raise RunError(f"{name} stayed open {RDC_WRITE_TIMEOUT:g} s after F12") from None
+            host.sleep(RDC_POLL)
+    seconds = host.clock() - began
+    path = target / name
+    with path.open("rb") as handle:
+        head = handle.read(len(RDC_MAGIC))
+    if head != RDC_MAGIC:
+        raise RunError(f"{name} starts {head!r}, not RenderDoc's {RDC_MAGIC!r}")
+    later = sorted(rdc_names(folder) - before)
+    if later:
+        raise RunError(f"{', '.join(later)} came beside {name} for one press")
+    return {
+        "name": name,
+        "frame": int(named.group(2)),
+        "loaded": named.group(1),
+        "bytes": path.stat().st_size,
+        "sha256": platform.sha256(path),
+        "seconds": round(seconds, 2),
+    }
+
+
+def capture_problems(entries: list[dict], planned: int, laps_done: bool) -> list[str]:
+    """What fails a capture record beside its session: a capture planned but never taken (missing
+    = fail), or captures from more than one RenderDoc (their load minutes differ) or out of its
+    frame order."""
+    problems = []
+    missing = planned - len(entries)
+    if missing > 0 and laps_done:
+        problems.append(f"{missing} planned captures were not taken")
+    loaded = sorted({e["rdc"]["loaded"] for e in entries})
+    if len(loaded) > 1:
+        problems.append(f"the captures come from RenderDoc loaded at {', '.join(loaded)}")
+    frames = [e["rdc"]["frame"] for e in entries]
+    if frames != sorted(set(frames)):
+        problems.append(f"RenderDoc's frames {frames} do not rise capture by capture")
+    return problems
 
 
 def a5_body(m: Measured, pack: str, waits: list[tuple[int, int, str]], evidence: dict) -> None:

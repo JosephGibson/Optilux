@@ -1,13 +1,15 @@
 """A minimal SendInput helper (user32, through ctypes; plans/m1.md P33).
 
 The harness's own OS input, for the few checks that need a real device path: 0.01.06's mouse nudge
-with input.block off, A2's F2 press, and A7's positive control and blocked arm. SendInput
+with input.block off, A2's F2 press, A7's positive control and blocked arm, and a capture run's
+F12 held for RenderDoc (plans/m4.md D81). SendInput
 injects into the foreground window's input stream; it is refused across integrity levels (UIPI)
 without saying so, so a caller judges the effect in the game, never the return value alone.
 Windows only: user32 is loaded on first use; tests pass a fake.
 """
 
 import ctypes
+import time
 from typing import Any
 
 INPUT_MOUSE = 0
@@ -20,6 +22,10 @@ KEYEVENTF_KEYUP = 0x0002
 # key's scan code from the message, so an injected key carries both, as a keyboard's would.
 VK_F2 = 0x71
 SCAN_F2 = 0x3C
+# RenderDoc's capture key, F12 (plans/m4.md D81): RenderDoc polls GetAsyncKeyState at each present,
+# so the key is held down across several frames (key_hold), never only pressed and released.
+VK_F12 = 0x7B
+SCAN_F12 = 0x58
 # A7's keys: T opens the chat screen (Gui's keyChat), Escape closes it, which grabs the mouse
 # (Gui.setScreen(null) calls MouseHandler.grabMouse; read in the 26.3 jar, 0.01.09).
 VK_T = 0x54
@@ -100,6 +106,22 @@ def key_press(vk: int, api: Any = None, scan: int = 0) -> int:
     up = INPUT(type=INPUT_KEYBOARD)
     up.u.ki = KEYBDINPUT(wVk=vk, wScan=scan, dwFlags=KEYEVENTF_KEYUP)
     return send([down, up], api)
+
+
+def key_hold(vk: int, seconds: float, api: Any = None, scan: int = 0, sleep=time.sleep) -> int:
+    """One key down, held `seconds`, then up, each its own SendInput; 2 when SendInput took both.
+    The up is sent whatever happens in between, so a key is never left down."""
+    down = INPUT(type=INPUT_KEYBOARD)
+    down.u.ki = KEYBDINPUT(wVk=vk, wScan=scan)
+    up = INPUT(type=INPUT_KEYBOARD)
+    up.u.ki = KEYBDINPUT(wVk=vk, wScan=scan, dwFlags=KEYEVENTF_KEYUP)
+    sent = 0
+    try:
+        sent = send([down], api)
+        sleep(seconds)
+    finally:
+        sent += send([up], api)
+    return sent
 
 
 def left_click(api: Any = None) -> int:

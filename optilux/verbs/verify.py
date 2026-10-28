@@ -8,10 +8,11 @@ kind, a status (a reason beside any but ok) and an identity of the record's era 
 it is not ok); an acceptance run's items; a measured run's mode, calibration, variants and
 captures, a part's `split`, a split session's parts (each a record) and no captures, its
 verdicts when it names a calibration; a visual run's mode, variants and pairs, each frame hashed
-and the flags agreeing with its frames. Measurement, calibration and visual records stay within
-RECORD_BUDGET bytes; an acceptance record over it is reported, never refused: committed records
-are never edited. Kept out of the runner's import closure, so its rules never move the harness
-identity (plans/m2.md D36). CI runs it, and the pre-commit hook when a record is staged.
+and the flags agreeing with its frames; a capture run's, on the debug tier, each .rdc hashed.
+Measurement, calibration, visual, dump and capture records stay within RECORD_BUDGET bytes; an
+acceptance record over it is reported, never refused: committed records are never edited. Kept
+out of the runner's import closure, so its rules never move the harness identity (plans/m2.md
+D36). CI runs it, and the pre-commit hook when a record is staged.
 """
 
 import argparse
@@ -30,7 +31,7 @@ from optilux.verbs.pack import PACK_DIR
 # run-record.md#record's budget, D51: ~200 KB a measurement or calibration record (frame-level
 # samples live in results/raw/); M1's full acceptance records run to 238 KB (F13).
 RECORD_BUDGET = 200_000
-BUDGETED = ("measurement", "calibration", record.VISUAL, record.DUMP)
+BUDGETED = ("measurement", "calibration", record.VISUAL, record.DUMP, record.CAPTURE)
 # Records written before M2.P01 added `harness` (plans/m2.md D36) hold the other ten keys.
 EARLIER_IDENTITY = tuple(key for key in record.IDENTITY_KEYS if key != "harness")
 ROLES = ("baseline", "candidate", "twin")
@@ -40,6 +41,11 @@ SPLIT_KEYS = ("session", "part", "parts", "views")
 # the frame's stamps.
 VISUAL_CAPTURE_KEYS = ("index", "view", "variant", "frames", "flags", "valid")
 FRAME_KEYS = ("path", "sha256", "frameIndex", "sinceReload", "qpcNs", "swapQpcNs")
+# A capture record's capture (plans/m4.md D81): its .rdc under raw/rdc/<view>/<variant>/ by
+# RenderDoc's name (measure.RDC_NAME), its bytes, sha256, RenderDoc's frame and load minute.
+RDC_CAPTURE_KEYS = ("index", "view", "variant", "rdc", "flags", "valid")
+RDC_KEYS = ("path", "name", "frame", "loaded", "bytes", "sha256")
+RDC_NAME = re.compile(r"java_(\d{4}\.\d\d\.\d\d_\d\d\.\d\d)_frame(\d+)\.rdc")
 # A dump record's dump (plans/m3.md D60): its dimension and variant, its files by manifest.
 DUMP_CAPTURE_KEYS = ("index", "view", "dimension", "variant", "dump", "valid")
 SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -244,6 +250,69 @@ def visual_problems(found: dict) -> list[str]:
     return problems
 
 
+def rdc_problem(capture: Any, ids: set) -> str | None:
+    """A capture against its record (plans/m4.md D81): its keys, a variant of the record's, its
+    .rdc at rdc/<view>/<variant>/<name> by RenderDoc's name, whose frame and load minute it
+    repeats, a sha256 and bytes, the flags known and `valid` agreeing with them."""
+    if not isinstance(capture, dict):
+        return "a capture is no object"
+    missing = [key for key in RDC_CAPTURE_KEYS if key not in capture]
+    if missing:
+        return f"capture {capture.get('index')} lacks {', '.join(missing)}"
+    where, rdc, flags = f"capture {capture['index']}", capture["rdc"], capture["flags"]
+    if capture["variant"] not in ids:
+        return f"{where}: variant {capture['variant']!r} is none of the record's"
+    if not isinstance(rdc, dict) or tuple(k for k in RDC_KEYS if k in rdc) != RDC_KEYS:
+        return f"{where}: an .rdc without {', '.join(RDC_KEYS)}"
+    named = RDC_NAME.fullmatch(str(rdc["name"]))
+    if named is None or rdc["path"] != f"rdc/{capture['view']}/{capture['variant']}/{rdc['name']}":
+        return f"{where}: .rdc {rdc['path']!r} is not RenderDoc's file under its view and variant"
+    if (rdc["loaded"], rdc["frame"]) != (named.group(1), int(named.group(2))):
+        return f"{where}: frame {rdc['frame']!r} or load minute {rdc['loaded']!r} is not its name's"
+    hashed = isinstance(rdc["sha256"], str) and SHA256.fullmatch(rdc["sha256"])
+    if not hashed or not isinstance(rdc["bytes"], int) or rdc["bytes"] <= 0:
+        return f"{where}: an .rdc without its sha256 and bytes"
+    if not isinstance(flags, list) or any(flag not in record.CAPTURE_FLAGS for flag in flags):
+        return f"{where}: flags {flags!r}, not among {', '.join(record.CAPTURE_FLAGS)}"
+    valid = not any(flag in record.CAPTURE_INVALIDATING for flag in flags)
+    if capture["valid"] is not valid:
+        return f"{where}: valid {capture['valid']!r} disagrees with its flags {flags}"
+    return None
+
+
+def capture_problems(found: dict) -> list[str]:
+    """A capture record's own fields (plans/m4.md D81): the debug tier, its mode, variants and
+    captures; an ok one holds one capture of every variant at every view it took, from one
+    RenderDoc (one load minute), its frames rising and no two .rdc alike."""
+    problems = []
+    tier = ((found.get("identity") or {}).get("platform") or {}).get("tier")
+    if found.get("identity") is not None and tier != record.CAPTURE_TIER:
+        problems.append(f"tier {tier!r}, not {record.CAPTURE_TIER}")
+    if found.get("mode") not in record.VISUAL_MODES:
+        problems.append(f"mode {found.get('mode')!r}")
+    variants, captures = found.get("variants"), found.get("captures")
+    if not isinstance(variants, list) or not isinstance(captures, list):
+        return [*problems, "no variants or captures list"]
+    ids = {v.get("id") for v in variants if isinstance(v, dict)}
+    found_problems = [p for c in captures if (p := rdc_problem(c, ids)) is not None]
+    problems += found_problems[:3]
+    if found.get("status") != "ok" or found_problems:
+        return problems
+    taken = [(c["view"], c["variant"]) for c in captures]
+    views = list(dict.fromkeys(view for view, _ in taken))
+    if not taken or sorted(taken) != sorted((view, vid) for view in views for vid in ids):
+        problems.append("an ok capture record lacks or repeats a variant at a view")
+    rdcs = [c["rdc"] for c in captures]
+    if len({r["loaded"] for r in rdcs}) != 1:
+        problems.append("an ok capture record's .rdc come from more than one RenderDoc")
+    frames = [r["frame"] for r in rdcs]
+    if frames != sorted(set(frames)):
+        problems.append(f"RenderDoc's frames {frames} do not rise capture by capture")
+    if len({r["sha256"] for r in rdcs}) != len(rdcs):
+        problems.append("two captures hold one .rdc")
+    return problems
+
+
 def dump_capture_problem(capture: Any, ids: set, dumps: dict) -> str | None:
     """A dump against its record (plans/m3.md D60): its keys, a variant of the record's, a
     dimension, its manifest a key of `dumps` whose files hash to it, its count theirs, each
@@ -407,6 +476,8 @@ def record_problems(root: Path, name: str, text: bytes) -> tuple[list[str], str 
             problems.append(str(error))
     if kind == record.VISUAL:
         problems += visual_problems(found)
+    elif kind == record.CAPTURE:
+        problems += capture_problems(found)
     elif kind == record.DUMP:
         problems += dump_problems(found)
     elif found.get("mode") is not None or kind != "acceptance":
