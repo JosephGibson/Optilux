@@ -67,6 +67,7 @@ from optilux.session import (
     RunError,
     RunHost,
     Session,
+    ensure_focus,
     in_front,
     now,
     session_start,
@@ -1328,13 +1329,15 @@ def rdc_strays(m: Measured, folder: Path, when: str) -> set[str]:
 def rdc_capture(m: Measured, view: dict, variant: Variant, settle: float) -> None:
     """One variant's capture at one view (plans/m4.md D81): its files, shaders.reload and its pack,
     the options read back, ready (STABLE_FRAMES, the view's visual settle: a visual pair's wait);
-    then, the game in front with no screen and RenderDoc's folder holding no stray (rdc_strays),
-    F12 held through SendInput between two frames.index reads (acceptance.inject: sent only while
-    the game is focused and owns the foreground window), the game still in front after it and
-    frames presented during the hold; the one new .rdc taken (take_rdc), its name carrying the
-    minute this game's RenderDoc loaded (renderdoc_loaded); the pose held. Its entry: the press,
-    the file under raw/ with its bytes, sha256, RenderDoc's frame and load minute, the flags. No
-    file means F12 reached no RenderDoc (P23): RunError, the run ends there."""
+    then the game brought in front as A2 does (session.ensure_focus: SetForegroundWindow, then a
+    click at its centre when its window is there; input.block on), no screen, RenderDoc's folder
+    holding no stray (rdc_strays), F12 held through SendInput between two frames.index reads
+    (acceptance.inject: sent only while the game is focused and owns the foreground window), the
+    game still in front after it and frames presented during the hold; the one new .rdc taken
+    (take_rdc), its name carrying the minute this game's RenderDoc loaded (renderdoc_loaded); the
+    pose held. Its entry: the focus step, the press, the file under raw/ with its bytes, sha256,
+    RenderDoc's frame and load minute, the flags. No file means F12 reached no RenderDoc (P23):
+    RunError, the run ends there."""
     s, c = m.s, m.c
     m.index += 1
     label = f"{m.index:03d} {view['id']} {variant.id}"
@@ -1356,11 +1359,13 @@ def rdc_capture(m: Measured, view: dict, variant: Variant, settle: float) -> Non
         lambda: c.ready(STABLE_FRAMES, settle, READY_TIMEOUT),
         lambda a: f"{a['seconds']:.2f} s, limitedBy {a['limitedBy']}",
     )
-    state = s.step(f"{label}: state", c.state)
+    focus: dict[str, Any] = {}
+    state = s.step(f"{label}: focus", lambda: ensure_focus(s, focus))
     if not in_front(s, state) or state["screen"] is not None:
         raise RunError(
             f"{label}: the game is not focused, its window not in front or a screen open "
-            f"(foreground pid {s.host.foreground_pid()}, the game's {s.launched.pid}): no F12 sent"
+            f"(foreground pid {s.host.foreground_pid()}, the game's {s.launched.pid}, after "
+            f"{focus.get('focusFallback') or 'no fallback'}): no F12 sent"
         )
     folder = s.host.rdc_folder()
     before = rdc_strays(m, folder, f"before {label}'s press")
@@ -1414,6 +1419,7 @@ def rdc_capture(m: Measured, view: dict, variant: Variant, settle: float) -> Non
         "settleS": settle,
         "reload": {k: reload[k] for k in ("seconds", "reloadFrame", "pack")},
         "ready": ready,
+        "focus": focus,
         "press": {
             "frameBefore": first["frameIndex"],
             "sinceReloadBefore": first["sinceReload"],

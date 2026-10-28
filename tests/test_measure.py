@@ -3965,13 +3965,58 @@ def test_a_capture_whose_game_leaves_the_front_during_the_hold_stops(
 
     def foreground() -> int:
         calls["n"] += 1
-        return GAME_PID if calls["n"] < 3 else 999  # the state check, inject, then another
+        return GAME_PID if calls["n"] < 5 else 999  # the focus step's 3 reads, inject, then another
 
     monkeypatch.setattr(host, "foreground_pid", foreground, raising=False)
     spec_path.write_text(json.dumps(capture(variants=[HELLO])), encoding="utf-8")
     assert cli.main(["run", str(spec_path)]) == 1
     found = json.loads((root / record.RECORDS / "m4-capture-test.json").read_text("utf-8"))
     assert "001 forest_noon hello: the game left the front during F12's hold" in found["reason"]
+
+
+def test_a_capture_brings_the_game_in_front_as_a2_does(fake_run, tmp_path, monkeypatch) -> None:
+    """Another window in front before a press (m4-capture-1: the firewall's prompt for RenderDoc's
+    listening socket): A2's focus step brings the game back (SetForegroundWindow) and the press
+    goes ahead, the fallback in the capture's entry; a game it cannot bring back gets no F12."""
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    found_host = renderdoc_run(fake_run, tmp_path, monkeypatch)
+    front = {"pid": 3204}
+    monkeypatch.setattr(host, "foreground_pid", lambda: front["pid"], raising=False)
+    monkeypatch.setattr(
+        host,
+        "focus",
+        lambda pid: front.update(pid=pid) or "SetForegroundWindow -> 1",
+        raising=False,
+    )
+    spec_path.write_text(json.dumps(capture(variants=[HELLO])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 0
+    found = json.loads((root / record.RECORDS / "m4-capture-test.json").read_text("utf-8"))
+    first = found["captures"][0]
+    assert first["focus"] == {
+        "focusFallback": ["foreground pid 3204", "SetForegroundWindow -> 1"],
+        "foregroundPid": GAME_PID,
+    }
+    assert found["captures"][1]["focus"] == {"foregroundPid": GAME_PID}  # in front already
+    assert len(found_host["presses"]) == 3
+
+
+def test_a_capture_whose_game_cannot_come_in_front_sends_no_f12(
+    fake_run, tmp_path, monkeypatch
+) -> None:
+    """A2's focus step failing (SetForegroundWindow refused, the click's point another
+    process's): the run ends before the press, naming the fallback's steps."""
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    found_host = renderdoc_run(fake_run, tmp_path, monkeypatch)
+    monkeypatch.setattr(host, "foreground_pid", lambda: 3204, raising=False)
+    monkeypatch.setattr(host, "focus", lambda pid: "SetForegroundWindow -> 0", raising=False)
+    monkeypatch.setattr(host, "click_focus", lambda pid: "the window at (1920, 1080) is pid 3204's")
+    spec_path.write_text(json.dumps(capture(variants=[HELLO])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 1
+    found = json.loads((root / record.RECORDS / "m4-capture-test.json").read_text("utf-8"))
+    assert "foreground pid 3204, the game's 4242, after ['foreground pid 3204'" in found["reason"]
+    assert found_host["presses"] == []  # no F12
 
 
 @pytest.mark.windows
