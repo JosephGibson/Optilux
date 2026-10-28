@@ -26,6 +26,7 @@ SCAN_F2 = 0x3C
 # so the key is held down across several frames (key_hold), never only pressed and released.
 VK_F12 = 0x7B
 SCAN_F12 = 0x58
+UP_TRIES = 3
 # A7's keys: T opens the chat screen (Gui's keyChat), Escape closes it, which grabs the mouse
 # (Gui.setScreen(null) calls MouseHandler.grabMouse; read in the 26.3 jar, 0.01.09).
 VK_T = 0x54
@@ -110,7 +111,8 @@ def key_press(vk: int, api: Any = None, scan: int = 0) -> int:
 
 def key_hold(vk: int, seconds: float, api: Any = None, scan: int = 0, sleep=time.sleep) -> int:
     """One key down, held `seconds`, then up, each its own SendInput; 2 when SendInput took both.
-    The up is sent whatever happens in between, so a key is never left down."""
+    The up is sent whatever happens in between, and sent again (UP_TRIES in all) while SendInput
+    refuses it, so a key is never left down."""
     down = INPUT(type=INPUT_KEYBOARD)
     down.u.ki = KEYBDINPUT(wVk=vk, wScan=scan)
     up = INPUT(type=INPUT_KEYBOARD)
@@ -120,7 +122,11 @@ def key_hold(vk: int, seconds: float, api: Any = None, scan: int = 0, sleep=time
         sent = send([down], api)
         sleep(seconds)
     finally:
-        sent += send([up], api)
+        for _ in range(UP_TRIES):
+            took = send([up], api)
+            if took:
+                sent += took
+                break
     return sent
 
 

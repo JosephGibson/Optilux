@@ -99,6 +99,10 @@ INVALIDATING = ("hook.error", "focus.lost", "screen.opened", "reload.done", "dim
 JCMD_TIMEOUT = 60
 # GetTempPathW's buffer: MAX_PATH + 1 characters hold any path it returns.
 MAX_PATH = 260
+# CreateFileW's arguments for RunHost.unheld, and the error another open handle gives.
+GENERIC_READ = 0x80000000
+OPEN_EXISTING = 3
+ERROR_SHARING_VIOLATION = 32
 
 
 class RunError(RuntimeError):
@@ -216,6 +220,33 @@ class RunHost(launch.Host):
         if not kernel32.GetTempPathW(len(buffer), buffer):
             raise OSError(ctypes.get_last_error(), "GetTempPathW failed")
         return Path(buffer.value) / "RenderDoc"
+
+    def unheld(self, path: Path) -> bool:
+        """Whether no other handle holds `path` open: an open sharing nothing (CreateFileW, share
+        mode 0) succeeds only then, so a capture RenderDoc still writes reads False. OSError for
+        any failure but a sharing violation."""
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+        kernel32.CreateFileW.restype = wintypes.HANDLE
+        kernel32.CreateFileW.argtypes = [
+            wintypes.LPCWSTR,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.LPVOID,
+            wintypes.DWORD,
+            wintypes.DWORD,
+            wintypes.HANDLE,
+        ]
+        handle = kernel32.CreateFileW(str(path), GENERIC_READ, 0, None, OPEN_EXISTING, 0, None)
+        if handle == wintypes.HANDLE(-1).value:
+            error = ctypes.get_last_error()
+            if error == ERROR_SHARING_VIOLATION:
+                return False
+            raise OSError(error, f"CreateFileW {path} failed")
+        kernel32.CloseHandle(handle)
+        return True
 
     def move(self, source: Path, target: Path) -> None:
         """A file renamed into place; PermissionError while another process holds it open

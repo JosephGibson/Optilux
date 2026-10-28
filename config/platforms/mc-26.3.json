@@ -203,7 +203,7 @@
      "path": "runtime/tools/renderdoc-1.46/RenderDoc_1.46_64/renderdoc.dll"
     }
    ],
-   "jvmPropertiesWhy": "gfx-debuggers 3.2.0 (javap, plans/m4.md P8): -Ddebugger=renderdoc skips its picker dialog; on Windows it System.loads renderdoc.dll into the game's own process at preLaunch (Linux alone re-executes with LD_PRELOAD); renderdoc.path names the dll itself, as tools.json's RenderDoc unpacks it, since a path without one falls back to RENDERDOC_PATH and Program Files; launch passes both and checks them on the started command line",
+   "jvmPropertiesWhy": "gfx-debuggers 3.2.0 (javap, plans/m4.md P8): -Ddebugger=renderdoc skips its picker dialog; on Windows it System.loads renderdoc.dll into the game's own process at preLaunch (Linux alone re-executes with LD_PRELOAD); renderdoc.path names the dll itself, as tools.json's RenderDoc unpacks it (a folder holding it works too: resolveRenderdocDll), as a path holding none falls back to RENDERDOC_PATH and Program Files; launch passes both and checks them on the started command line",
    "mods": [
     {
      "slug": "gfx-debuggers",

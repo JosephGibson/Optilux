@@ -1169,6 +1169,9 @@ class Host(session.RunHost):
     def sleep(self, seconds: float) -> None:
         self.now += seconds
 
+    def unheld(self, path: Path) -> bool:
+        return True  # no other process holds the fake machine's files
+
 
 @pytest.fixture
 def fake_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -3736,7 +3739,9 @@ def test_a_capture_spec_takes_the_debug_tier_and_a_modes_views(bench_root) -> No
             record.check_spec(root, data, PLAT, SUITE, saves, PACK)
 
 
-def renderdoc_run(fake_run, tmp_path: Path, monkeypatch, log: str | None = None) -> dict:
+def renderdoc_run(
+    fake_run, tmp_path: Path, monkeypatch, log: str | None = None, loaded: str = LOADED
+) -> dict:
     """fake_run on the debug tier: the pinned dll under runtime/tools/, the launch's properties
     and gfx-debuggers' lines in latest.log, the game in front, and an F12 that writes the next
     RenderDoc capture into a temp folder. Returns the host's presses and that folder."""
@@ -3752,7 +3757,7 @@ def renderdoc_run(fake_run, tmp_path: Path, monkeypatch, log: str | None = None)
         found["blocked"].append(fake.game["inputBlocked"])
         folder.mkdir(parents=True, exist_ok=True)
         n = len(found["presses"])
-        (folder / f"java_{LOADED}_frame{1000 + 10 * n}.rdc").write_bytes(b"RDOC" + bytes(n))
+        (folder / f"java_{loaded}_frame{1000 + 10 * n}.rdc").write_bytes(b"RDOC" + bytes(n))
         return 2
 
     monkeypatch.setattr(host, "key_hold", key_hold, raising=False)
@@ -3826,7 +3831,7 @@ def test_a_capture_run_takes_one_rdc_per_view_and_variant(fake_run, tmp_path, mo
     assert not list(found_host["folder"].glob("*.rdc"))
     facts = found["session"]
     sha = hashlib.sha256(b"MZ renderdoc").hexdigest()
-    assert facts["renderdoc"] == {"dll": RENDERDOC_DLL, "sha256": sha}
+    assert facts["renderdoc"] == {"dll": RENDERDOC_DLL, "sha256": sha, "loadedAt": "15:04:01"}
     assert facts["machine"]["idleSeconds"] == 120.0 and facts["displays"]["state"] == "on"
     assert verify.record_problems(root, "m4-capture-test", path.read_bytes()) == ([], None)
     assert report_verb.summary(found, captures)[2].startswith("  .rdc: 6, 0.0 MiB under raw/")
@@ -3854,19 +3859,156 @@ def test_a_capture_run_without_renderdoc_in_the_game_takes_nothing(
     )
 
 
+def test_a_capture_runs_check_names_its_views_and_refuses_without_the_dll(
+    fake_run, tmp_path, monkeypatch, capsys
+) -> None:
+    """`run --check` of a capture spec: its views, tier and zips, no measured line; without the
+    debug tier's renderdoc.dll it refuses, naming the file, before anything is written."""
+    root, spec_path, _, _ = fake_run
+    optilux_tree(root)
+    renderdoc_run(fake_run, tmp_path, monkeypatch)
+    spec_path.write_text(json.dumps(capture(variants=[HELLO])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path), "--check"]) == 0
+    out = capsys.readouterr().out
+    assert "capture: 5 reloads on forest_noon, nether_crimson, end_dragon, tier debug; zips:" in out
+    assert "\nmeasured:" not in out
+    (root / RENDERDOC_DLL).unlink()
+    assert cli.main(["run", str(spec_path), "--check"]) == 1
+    assert f"no file {RENDERDOC_DLL}; fix: run `optilux install`" in capsys.readouterr().err
+    assert not (root / record.RAW / "m4-capture-test").exists()
+
+
+def test_a_capture_run_killed_mid_session_is_finished_with_the_rdc_it_took(
+    fake_run, tmp_path, monkeypatch
+) -> None:
+    """A capture run killed at its second capture: the next run finishes it aborted, with the
+    first capture's .rdc entry as journaled (no PresentMon to read), which verify records takes."""
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    renderdoc_run(fake_run, tmp_path, monkeypatch)
+    spec_path.write_text(json.dumps(capture(variants=[HELLO, UNBOUND])), encoding="utf-8")
+    calls = {"n": 0}
+    take = measure.rdc_capture
+
+    def killed(*args: Any) -> None:
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise Killed
+        take(*args)
+
+    monkeypatch.setattr(measure, "rdc_capture", killed)
+    with pytest.raises(Killed):
+        run_verb.perform(root, spec_path, host, FakeMachine(), print, print)
+    del host.table[os.getpid()]  # the killed runner is gone
+    host.table[os.getpid() + 1] = {"pid": os.getpid() + 1, "createTime": 9.0, "exe": "python.exe"}
+    host.game.returncode = None
+    (finished,) = measure.finish_orphans(root, host, lambda text: None)
+    assert (finished["status"], finished["kind"], finished["mode"]) == (
+        "aborted",
+        "capture",
+        "quick",
+    )
+    (taken,) = finished["captures"]
+    assert taken["rdc"]["frame"] == 1010 and "problems" not in taken
+    assert "calibration" not in finished
+    text = (root / record.RECORDS / "m4-capture-test.json").read_bytes()
+    assert verify.record_problems(root, "m4-capture-test", text) == ([], None)
+
+
+def test_a_stray_capture_in_renderdocs_folder_stops_the_run(tmp_path: Path) -> None:
+    """rdc_strays: the folder's first listing is kept as an earlier run's files; a file that
+    comes after it (a late second capture, another process's) is refused, never taken by the
+    next press."""
+    folder = tmp_path / "RenderDoc"
+    m = SimpleNamespace(rdc_seen=None)
+    assert measure.rdc_strays(m, folder, "before 001's press") == set()  # no folder yet
+    folder.mkdir()
+    (folder / "java_2026.10.27_09.00_frame3.rdc").write_bytes(b"RDOC")
+    m = SimpleNamespace(rdc_seen=None)
+    assert measure.rdc_strays(m, folder, "x") == {"java_2026.10.27_09.00_frame3.rdc"}
+    assert measure.rdc_strays(m, folder, "x") == {"java_2026.10.27_09.00_frame3.rdc"}
+    (folder / f"java_{LOADED}_frame1011.rdc").write_bytes(b"RDOC")
+    with pytest.raises(session.RunError, match=r"frame1011\.rdc came into .* after the last"):
+        measure.rdc_strays(m, folder, "after the last capture")
+
+
+@pytest.mark.parametrize(
+    ("loaded", "ok"), [("2026.10.28_15.03", True), ("2026.10.28_15.07", False)]
+)
+def test_a_capture_names_this_games_renderdoc_by_its_load_minute(
+    fake_run, tmp_path, monkeypatch, loaded: str, ok: bool
+) -> None:
+    """latest.log's load at 15:04:01: a capture named for RenderDoc loaded at 15.03 (the minute
+    before the line) is this game's; one named 15.07 is another RenderDoc's, refused."""
+    root, spec_path, _, _ = fake_run
+    optilux_tree(root)
+    renderdoc_run(fake_run, tmp_path, monkeypatch, loaded=loaded)
+    spec_path.write_text(json.dumps(capture(variants=[HELLO])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == (0 if ok else 1)
+    found = json.loads((root / record.RECORDS / "m4-capture-test.json").read_text("utf-8"))
+    if not ok:
+        assert (
+            f"names a RenderDoc loaded at {loaded}, not this game's (15.04 or 15.03"
+            in (found["reason"])
+        )
+
+
+def test_a_capture_whose_game_leaves_the_front_during_the_hold_stops(
+    fake_run, tmp_path, monkeypatch
+) -> None:
+    """The game checked in front before F12 and again after the hold: another window in front
+    after it stops the run, the key perhaps lost to it."""
+    root, spec_path, _, host = fake_run
+    optilux_tree(root)
+    renderdoc_run(fake_run, tmp_path, monkeypatch)
+    calls = {"n": 0}
+
+    def foreground() -> int:
+        calls["n"] += 1
+        return GAME_PID if calls["n"] < 3 else 999  # the state check, inject, then another
+
+    monkeypatch.setattr(host, "foreground_pid", foreground, raising=False)
+    spec_path.write_text(json.dumps(capture(variants=[HELLO])), encoding="utf-8")
+    assert cli.main(["run", str(spec_path)]) == 1
+    found = json.loads((root / record.RECORDS / "m4-capture-test.json").read_text("utf-8"))
+    assert "001 forest_noon hello: the game left the front during F12's hold" in found["reason"]
+
+
+@pytest.mark.windows
+def test_a_file_another_handle_holds_is_not_unheld(tmp_path: Path) -> None:
+    """RunHost.unheld on Windows: an open handle (Python's sharing read and write, as a writer's
+    would) makes it False; closed, True."""
+    path = tmp_path / "java_capture.rdc"
+    path.write_bytes(b"RDOC")
+    host = session.RunHost()
+    with path.open("ab"):
+        assert host.unheld(path) is False
+    assert host.unheld(path) is True
+    with pytest.raises(OSError):
+        host.unheld(tmp_path / "missing.rdc")
+
+
 def test_take_rdc_waits_for_one_closed_capture_and_refuses_the_rest(tmp_path: Path) -> None:
     """take_rdc on a fake host: a capture RenderDoc still writes is retried until it closes; no
     file in time is P23's answer; two files, another name, another header or a later stray are
     refused, each named."""
 
     class Writing(Host):
-        def __init__(self, busy: int) -> None:
-            super().__init__(modfake.Fake(TOKEN, pid=GAME_PID))
-            self.busy = busy
+        """RenderDoc holding the file `busy` polls more, then a rename refused `racing` times."""
 
-        def move(self, source: Path, target: Path) -> None:
+        def __init__(self, busy: int, racing: int = 0) -> None:
+            super().__init__(modfake.Fake(TOKEN, pid=GAME_PID))
+            self.busy, self.racing = busy, racing
+
+        def unheld(self, path: Path) -> bool:
             if self.busy:
                 self.busy -= 1
+                return False
+            return True
+
+        def move(self, source: Path, target: Path) -> None:
+            if self.racing:
+                self.racing -= 1
                 raise PermissionError(32, "in use")
             os.replace(source, target)
 
@@ -3876,10 +4018,11 @@ def test_take_rdc_waits_for_one_closed_capture_and_refuses_the_rest(tmp_path: Pa
     before = measure.rdc_names(folder)
     name = f"java_{LOADED}_frame42.rdc"
     (folder / name).write_bytes(b"RDOC new")
-    host = Writing(busy=3)
-    taken = measure.take_rdc(host, folder, before, target)
+    host = Writing(busy=3, racing=2)
+    taken = measure.take_rdc(host, folder, before, target, host.clock() - 1.0)
     assert (taken["name"], taken["frame"], taken["loaded"], taken["bytes"]) == (name, 42, LOADED, 8)
-    assert taken["sha256"] == hashlib.sha256(b"RDOC new").hexdigest() and host.busy == 0
+    assert taken["sha256"] == hashlib.sha256(b"RDOC new").hexdigest()
+    assert (host.busy, host.racing) == (0, 0) and taken["seconds"] >= 2.25  # from the press
     assert (target / name).read_bytes() == b"RDOC new" and not (folder / name).exists()
     with pytest.raises(session.RunError, match=r"RenderDoc captured nothing \(plans/m4.md P23\)"):
         measure.take_rdc(Writing(0), folder, before, target)

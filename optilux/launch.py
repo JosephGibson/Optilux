@@ -26,7 +26,7 @@ import shutil
 import subprocess
 import time
 import zipfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -897,7 +897,7 @@ def build_command(
     uuid: str,
     token: str | None,
     version_type: str,
-    properties: Iterable[str] = (),
+    properties: Sequence[str] = (),
 ) -> list[str]:
     """The game's command: Temurin's java, bench.json's heap and flags, the token, the tier's
     properties (tier_properties), the spec's JVM options, the main class (KnotClient), the
@@ -961,7 +961,7 @@ def command_facts(
     java_profile: dict,
     java: Path,
     base: Path,
-    properties: Iterable[str] = (),
+    properties: Sequence[str] = (),
 ) -> list[str]:
     """The started command line against the profile, the spec and the tier's properties
     directly, so a builder bug cannot pass by agreeing with itself: the java, the heap and flags,

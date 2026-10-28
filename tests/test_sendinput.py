@@ -75,6 +75,29 @@ def test_f12_is_held_down_then_released_even_when_the_wait_breaks() -> None:
     assert api.calls == [[("key", 0x7B, 0x58, 0)], [("key", 0x7B, 0x58, up)]]
 
 
+def test_a_refused_key_up_is_sent_again() -> None:
+    """SendInput refusing the up (UIPI says nothing) is retried, UP_TRIES in all."""
+
+    class Refusing(FakeUser32):
+        def __init__(self, refusals: int) -> None:
+            super().__init__()
+            self.refusals = refusals
+
+        def SendInput(self, count: int, array, size: int) -> int:
+            took = super().SendInput(count, array, size)
+            if len(self.calls) > 1 and self.refusals:
+                self.refusals -= 1
+                return 0
+            return took
+
+    api = Refusing(refusals=2)
+    assert sendinput.key_hold(sendinput.VK_F12, 0.25, api, sendinput.SCAN_F12, lambda s: None) == 2
+    assert len(api.calls) == 4  # the down, then the up three times
+    api = Refusing(refusals=5)
+    assert sendinput.key_hold(sendinput.VK_F12, 0.25, api, sendinput.SCAN_F12, lambda s: None) == 1
+    assert len(api.calls) == 1 + sendinput.UP_TRIES
+
+
 def test_a_left_click_is_button_down_then_up() -> None:
     api = FakeUser32()
     assert sendinput.left_click(api) == 2

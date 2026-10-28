@@ -154,6 +154,11 @@ RDC_POLL = 0.25
 # gfx-debuggers 3.2.0's lines once it loaded RenderDoc into the game (javap, plans/m4.md P8).
 RENDERDOC_FOUND = "Found Renderdoc shared library at: "
 RENDERDOC_LOADED = "Renderdoc loaded successfully."
+# latest.log's time of a line ([HH:mm:ss], the game's log4j pattern): RenderDoc names a
+# capture by the minute it loaded, which the load's line gives (or the minute after it).
+LOG_TIME = re.compile(r"\[(\d\d):(\d\d):(\d\d)\]")
+# After the last capture: the time a second capture of its press has to show up.
+RDC_GRACE = 2.0
 # A5's waits (mod.md#12-acceptance, plans/m3.md D68): per wait one frames.capture of two frames,
 # the first frame after the readiness predicate held (minSeconds 0: the predicate alone) and the
 # reference, the view's visual settle plus A5_PLUS_S later, under frames/<view>/a5/.
@@ -827,6 +832,8 @@ class Measured:
     last_written: Variant | None = None
     last_debug: bool = False  # iris.properties' debug flag as last written (a dump run's reload)
     cycle: int = 1  # a visual run's align: the Optilux pack's cycle (config/pipeline.json)
+    rdc_seen: set[str] | None = None  # a capture run's: RenderDoc's folder at its first press
+    rdc_minutes: tuple[str, ...] = ()  # its RenderDoc's load minute, or the one before
 
     @property
     def c(self) -> modclient.Client:
@@ -864,7 +871,7 @@ class Measured:
         if first is None:
             self.effective[variant.id] = {"sha256": digest, "values": values}
             kept = {"sha256": digest, "count": len(values)}
-            if variant.role == "baseline" or self.spec.kind in (record.VISUAL, record.DUMP):
+            if variant.role == "baseline" or self.spec.kind in (*record.VIEWED, record.DUMP):
                 kept["values"] = values
             self.journal.set(
                 "effective", {**self.journal.data.get("effective", {}), variant.id: kept}
@@ -1264,49 +1271,70 @@ def visual_capture(m: Measured, view: dict, variant: Variant, settle: float) -> 
 
 def capture_body(m: Measured) -> None:
     """A capture session after hello (plans/m4.md D81): RenderDoc loaded into this game
-    (renderdoc_loaded), then a visual session's steps with rdc_capture at each view and variant."""
+    (renderdoc_loaded), then a visual session's steps with rdc_capture at each view and variant;
+    after the last, RDC_GRACE s for a late second capture, then RenderDoc's folder holds no file
+    the run did not see (rdc_strays)."""
     m.facts["renderdoc"] = renderdoc_loaded(m)
     visual_body(m, rdc_capture)
+    if m.rdc_seen is not None:
+        m.s.host.sleep(RDC_GRACE)
+        rdc_strays(m, m.s.host.rdc_folder(), "after the last capture")
 
 
 def renderdoc_loaded(m: Measured) -> dict:
     """gfx-debuggers' own lines in this session's latest.log: RenderDoc found at the tier's
     renderdoc.path alone and loaded (platform.md#mod-tiers); RunError before any capture
-    otherwise. The dll as launch passed it, with its sha256."""
+    otherwise. The dll as launch passed it, with its sha256, and the log's time of the load,
+    whose minute (or the one before) each capture's name must carry (rdc_capture)."""
     passed = m.s.launched.facts.get("jvmProperties") or []
     dll = next((p for p in passed if p["name"] == "renderdoc.path" and "path" in p), None)
     if dll is None:
         raise RunError("the launch passed no renderdoc.path; fix: launch the debug tier")
-    text = m.s.launched.log.read_text(encoding="utf-8", errors="replace")
-    found = [
-        line.split(RENDERDOC_FOUND, 1)[1].strip()
-        for line in text.splitlines()
-        if RENDERDOC_FOUND in line
-    ]
+    lines = m.s.launched.log.read_text(encoding="utf-8", errors="replace").splitlines()
+    found = [line.split(RENDERDOC_FOUND, 1)[1].strip() for line in lines if RENDERDOC_FOUND in line]
+    loaded = [line for line in lines if RENDERDOC_LOADED in line]
     expected = str(m.s.root / dll["path"])
-    loaded = RENDERDOC_LOADED in text
-    if [launch.norm(path) for path in found] != [launch.norm(expected)] or not loaded:
+    stamp = LOG_TIME.match(loaded[0]) if len(loaded) == 1 else None
+    if [launch.norm(path) for path in found] != [launch.norm(expected)] or stamp is None:
         raise RunError(
             f"latest.log: gfx-debuggers found RenderDoc at {found or 'nothing'} (the tier's "
-            f"{dll['path']}) and {'loaded' if loaded else 'did not load'} it; fix: `optilux "
-            "install`, then rerun"
+            f"{dll['path']}) and logged {len(loaded)} timed load(s); fix: `optilux install`, "
+            "then rerun"
         )
-    m.s.say(f"RenderDoc: loaded from {dll['path']} (sha256 {dll['sha256'][:12]}...)")
-    return {"dll": dll["path"], "sha256": dll["sha256"]}
+    hour, minute = int(stamp.group(1)), int(stamp.group(2))
+    before = (hour * 60 + minute - 1) % (24 * 60)
+    m.rdc_minutes = (f"{hour:02d}.{minute:02d}", f"{before // 60:02d}.{before % 60:02d}")
+    m.s.say(f"RenderDoc: loaded from {dll['path']} at {stamp.group(0)[1:-1]}")
+    return {"dll": dll["path"], "sha256": dll["sha256"], "loadedAt": stamp.group(0)[1:-1]}
 
 
 def rdc_names(folder: Path) -> set[str]:
     return {p.name for p in folder.glob("*.rdc")} if folder.is_dir() else set()
 
 
+def rdc_strays(m: Measured, folder: Path, when: str) -> set[str]:
+    """RenderDoc's folder now, its first listing kept as the files the run never took (an
+    earlier run's); RunError for a file that came since (a second capture of an earlier press,
+    or another process's), which a later press would otherwise take as its own."""
+    now = rdc_names(folder)
+    if m.rdc_seen is None:
+        m.rdc_seen = now
+    stray = sorted(now - m.rdc_seen)
+    if stray:
+        raise RunError(f"{', '.join(stray)} came into {folder} {when}, from no press of the run")
+    return now
+
+
 def rdc_capture(m: Measured, view: dict, variant: Variant, settle: float) -> None:
     """One variant's capture at one view (plans/m4.md D81): its files, shaders.reload and its pack,
     the options read back, ready (STABLE_FRAMES, the view's visual settle: a visual pair's wait);
-    then, the game in front with no screen, F12 held through SendInput between two frames.index
-    reads (acceptance.inject: sent only while the game is focused and owns the foreground
-    window); the one new .rdc taken (take_rdc); the pose held. Its entry: the press, the file
-    under raw/ with its bytes, sha256, RenderDoc's frame and load minute, the flags. No file means
-    F12 reached no RenderDoc (P23): RunError, the run ends there."""
+    then, the game in front with no screen and RenderDoc's folder holding no stray (rdc_strays),
+    F12 held through SendInput between two frames.index reads (acceptance.inject: sent only while
+    the game is focused and owns the foreground window), the game still in front after it and
+    frames presented during the hold; the one new .rdc taken (take_rdc), its name carrying the
+    minute this game's RenderDoc loaded (renderdoc_loaded); the pose held. Its entry: the press,
+    the file under raw/ with its bytes, sha256, RenderDoc's frame and load minute, the flags. No
+    file means F12 reached no RenderDoc (P23): RunError, the run ends there."""
     s, c = m.s, m.c
     m.index += 1
     label = f"{m.index:03d} {view['id']} {variant.id}"
@@ -1335,8 +1363,9 @@ def rdc_capture(m: Measured, view: dict, variant: Variant, settle: float) -> Non
             f"(foreground pid {s.host.foreground_pid()}, the game's {s.launched.pid}): no F12 sent"
         )
     folder = s.host.rdc_folder()
-    before = rdc_names(folder)
+    before = rdc_strays(m, folder, f"before {label}'s press")
     first = s.step(f"{label}: frames.index", lambda: c.request("frames.index"))
+    pressed_at = s.host.clock()
     pressed = s.step(
         f"{label}: F12",
         lambda: inject(
@@ -1351,8 +1380,22 @@ def rdc_capture(m: Measured, view: dict, variant: Variant, settle: float) -> Non
             f"{pressed['focused']}, foreground pid {pressed['foregroundPid']}, the game's "
             f"{s.launched.pid})"
         )
+    still = s.step(f"{label}: state", c.state)
+    if not in_front(s, still) or still["screen"] is not None:
+        raise RunError(f"{label}: the game left the front during F12's hold: the key may be lost")
+    presented = after["frameIndex"] - first["frameIndex"]
+    if presented < 2:
+        raise RunError(
+            f"{label}: {presented} frame(s) presented around F12's hold, so RenderDoc could not "
+            "see it at a present; fix: rerun"
+        )
     target = s.raw / RDC / view["id"] / variant.id
-    taken = take_rdc(s.host, folder, before, target)
+    taken = take_rdc(s.host, folder, before, target, pressed_at)
+    if taken["loaded"][-5:] not in m.rdc_minutes:
+        raise RunError(
+            f"{label}: {taken['name']} names a RenderDoc loaded at {taken['loaded']}, not this "
+            f"game's ({' or '.join(m.rdc_minutes)}, latest.log)"
+        )
     s.say(
         f"{label}: {taken['name']}, {taken['bytes'] / 1024**2:.1f} MiB, sha256 "
         f"{taken['sha256'][:12]}..., in {taken['seconds']:.1f} s"
@@ -1388,19 +1431,22 @@ def rdc_capture(m: Measured, view: dict, variant: Variant, settle: float) -> Non
     m.journal.append("captures", entry)
 
 
-def take_rdc(host: RunHost, folder: Path, before: set[str], target: Path) -> dict:
-    """The one capture a press made: the new .rdc in RenderDoc's folder, waited for up to
-    RDC_TIMEOUT, named as RDC_NAME says, moved under `target` once RenderDoc has closed it (the
-    rename fails while it writes: up to RDC_WRITE_TIMEOUT), its header RDOC; no other new file
-    beside it. RunError naming what was found otherwise. Its name, RenderDoc's frame and load
-    minute, bytes, sha256 and the seconds from the press."""
-    began = host.clock()
+def take_rdc(
+    host: RunHost, folder: Path, before: set[str], target: Path, began: float | None = None
+) -> dict:
+    """The one capture a press made (`began` its clock): the new .rdc in RenderDoc's folder,
+    waited for up to RDC_TIMEOUT, named as RDC_NAME says; once RenderDoc has closed it (no other
+    handle open: RunHost.unheld, up to RDC_WRITE_TIMEOUT) moved under `target`, its header RDOC;
+    no other new file beside it. RunError naming what was found otherwise. Its name, RenderDoc's
+    frame and load minute, bytes, sha256 and the seconds from the press."""
+    began = host.clock() if began is None else began
     fresh = sorted(rdc_names(folder) - before)
     while not fresh:
         if host.clock() - began >= RDC_TIMEOUT:
             raise RunError(
                 f"no new capture in {folder} {RDC_TIMEOUT:g} s after F12: RenderDoc captured "
-                "nothing (plans/m4.md P23); fix: the mod's TriggerCapture (D81)"
+                "nothing (plans/m4.md P23), or wrote elsewhere: its log beside the captures says "
+                "which; fix: the mod's TriggerCapture (D81) if F12 never reached it"
             )
         host.sleep(RDC_POLL)
         fresh = sorted(rdc_names(folder) - before)
@@ -1413,12 +1459,14 @@ def take_rdc(host: RunHost, folder: Path, before: set[str], target: Path) -> dic
     target.mkdir(parents=True, exist_ok=True)
     while True:
         try:
-            host.move(folder / name, target / name)
-            break
+            if host.unheld(folder / name):
+                host.move(folder / name, target / name)
+                break
         except PermissionError:
-            if host.clock() - began >= RDC_WRITE_TIMEOUT:
-                raise RunError(f"{name} stayed open {RDC_WRITE_TIMEOUT:g} s after F12") from None
-            host.sleep(RDC_POLL)
+            pass
+        if host.clock() - began >= RDC_WRITE_TIMEOUT:
+            raise RunError(f"{name} stayed open {RDC_WRITE_TIMEOUT:g} s after F12")
+        host.sleep(RDC_POLL)
     seconds = host.clock() - began
     path = target / name
     with path.open("rb") as handle:
@@ -2063,7 +2111,7 @@ def orphan_record(root: Path, raw: Path, journal: dict, done: dict, complete: bo
     entries = journal.get("captures", [])
     validity = journal.get("validity")  # the run's own suite: its identity hashed it
     pid = (journal.get("game") or {}).get("pid")
-    visual = spec.get("kind") == record.VISUAL
+    visual = spec.get("kind") in record.VIEWED  # a capture run's .rdc as a visual run's pairs
     dumped = spec.get("kind") == record.DUMP
     captures: list[dict] = []
     why = "PresentMon did not end by its session's stop: its CSV may lack its last rows"

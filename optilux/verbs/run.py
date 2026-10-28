@@ -1492,7 +1492,7 @@ def perform(
         f"{'on' if system['hags'] else 'off'}, Windows build {system['windowsBuild']}"
     )
     machine_facts = None
-    if spec.mode is not None and spec.kind != record.VISUAL:  # D42: a measured run's
+    if spec.mode is not None and spec.kind != record.VISUAL:  # D42: a measured or capture run's
         marks["machine"] = time.monotonic()
         machine_facts = measure.machine_to_itself(host, ready.recorded["hags"]["adapterLuid"], say)
         say(
@@ -1648,7 +1648,7 @@ def check(ready: Prepared, as_json: bool) -> int:
         zipped = {k: v for k, v in ready.optilux.items() if k != "data"}
         zipped["build"] = ready.spec.optilux
     zips = [{k: v for k, v in z.items() if k != "data"} for z in ready.zips]
-    measured = ready.spec.mode is not None and ready.spec.kind != record.VISUAL
+    measured = ready.spec.mode is not None and ready.spec.kind not in record.VIEWED
     if as_json:
         found = {"ok": True, "name": ready.spec.name, "launched": False, "calibration": cid}
         found["optilux"] = zipped
