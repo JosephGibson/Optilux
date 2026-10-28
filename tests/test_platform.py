@@ -13,13 +13,14 @@ import pytest
 from optilux import REPO_ROOT, platform
 
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "mc-26.3"
-# Mojang's four 26.3 version JSONs: released 2026-09-15, republished 2026-10-06 (P6), on
-# 2026-10-13 and by 2026-10-22 (142 language files in the index each time), each refreshed into
-# the committed spec.
+# Mojang's five 26.3 version JSONs: released 2026-09-15, republished 2026-10-06 (P6), on
+# 2026-10-13, by 2026-10-22 and by 2026-10-28 (142 language files in the index each time), each
+# refreshed into the committed spec.
 OLD = "4fe1aa1ef8da1cb95c5bad1fb98890ca56dd8ca3"
 NEW = "702fe59163c6ee6578607daa85811d9bc9c7cc40"
 NEWER = "11f1aefe473eefba0af62e3286c33b692807b2eb"
 NEWEST = "61fff1316bd50312624a858bbb5eb18fa45208ed"
+LATEST = "5df1795e16eea19d75b923d66ecca9ce183353c5"
 PACKAGES = "https://piston-meta.mojang.com/v1/packages/{sha1}/26.3.json"
 PROFILE_URL = "https://meta.fabricmc.net/v2/versions/loader/26.3/0.19.5/profile/json"
 # Maven's .sha1 for fabric-loader 0.19.5, the one library the profile lists without a sha1.
@@ -28,6 +29,7 @@ OLD_INDEX = "abfaa525f923f807df8b4e4d29c1b5e3a104adbe"
 NEW_INDEX = "1e4e4a68dece1c0f51b8f93b45da8fe8da51bcd3"
 NEWER_INDEX = "e787e8afd149a4cefa89d341b91f5aed8f5d93a0"
 NEWEST_INDEX = "0c8f43b28f837869c1e54a6aeb22c396a1548946"
+LATEST_INDEX = "917ff6d74b9f635c46bac0d28857206bbcc1ffe4"
 
 
 def version_json(sha1: str) -> dict:
@@ -218,7 +220,7 @@ def test_arguments_from_mojangs_json() -> None:
 
 
 def test_the_spec_from_the_newest_json_is_the_committed_spec() -> None:
-    built = build(NEWEST)
+    built = build(LATEST)
     committed = (REPO_ROOT / "config" / "platforms" / "mc-26.3.launch.json").read_bytes()
     assert platform.spec_text(built).encode("utf-8") == committed
     assert len(built["classpath"]) == 82 and built["classpath"][-1]["from"] == "mojang:client"
@@ -231,8 +233,8 @@ def test_the_spec_from_the_newest_json_is_the_committed_spec() -> None:
     assert built["mainClass"] == "net.fabricmc.loader.impl.launch.knot.KnotClient"
     assert built["assetIndex"] == {
         "id": "34",
-        "sha1": NEWEST_INDEX,
-        "url": PACKAGES.format(sha1=NEWEST_INDEX).replace("26.3.json", "34.json"),
+        "sha1": LATEST_INDEX,
+        "url": PACKAGES.format(sha1=LATEST_INDEX).replace("26.3.json", "34.json"),
     }
     assert platform.spec_diff(platform.load_spec(REPO_ROOT, "mc-26.3"), built) == []
 
@@ -243,6 +245,7 @@ def test_the_spec_from_the_newest_json_is_the_committed_spec() -> None:
         (OLD, NEW, (OLD_INDEX, NEW_INDEX), 105_275),
         (NEW, NEWER, (NEW_INDEX, NEWER_INDEX), 941_887),
         (NEWER, NEWEST, (NEWER_INDEX, NEWEST_INDEX), 64_086),
+        (NEWEST, LATEST, (NEWEST_INDEX, LATEST_INDEX), 145_753),
     ],
 )
 def test_mojangs_republished_json_moved_only_the_asset_index(
