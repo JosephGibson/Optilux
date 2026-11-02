@@ -1,0 +1,38 @@
+{
+ "ok": true,
+ "renderdoc": "1.46",
+ "api": "OpenGL",
+ "actions": 20,
+ "spotChecked": 6,
+ "events": [
+  {"event": 2, "name": "glClear(Color = <0.000000, 0.000000, 0.000000, 0.000000>, Depth = <0.000000>)", "kind": "clear", "groups": [], "program": null, "ms": 0.1},
+  {"event": 10, "name": "glDrawArrays(6)", "kind": "draw", "groups": ["Sky"], "program": "sky_basic", "ms": 0.4},
+  {"event": 20, "name": "glMultiDrawElementsBaseVertex(10)[0]", "kind": "draw", "groups": ["Terrain solid"], "program": "sodium_terrain_solid", "ms": 3.0},
+  {"event": 21, "name": "glMultiDrawElementsBaseVertex(2)[0]", "kind": "draw", "groups": ["Terrain solid"], "program": "sodium_terrain_cutout", "ms": 2.0},
+  {"event": 30, "name": "glMultiDrawElementsBaseVertex(4)[0]", "kind": "draw", "groups": ["Shadow Terrain solid"], "program": "shadow_sodium_terrain_cutout", "ms": 1.0},
+  {"event": 31, "name": "glMultiDrawElementsBaseVertex(3)[0]", "kind": "draw", "groups": [], "program": "sodium_terrain_cutout", "ms": 0.5},
+  {"event": 40, "name": "glCopyImageSubData()", "kind": "copy", "groups": [], "program": null, "ms": 0.5},
+  {"event": 41, "name": "glGenerateTextureMipmap()", "kind": "mips", "groups": ["composite", "composite6"], "program": null, "ms": 0.3},
+  {"event": 42, "name": "glDrawArrays(3)", "kind": "draw", "groups": ["composite", "composite6"], "program": "composite6", "ms": 1.2},
+  {"event": 50, "name": "glDrawArrays(3)", "kind": "draw", "groups": ["final"], "program": "final", "ms": 0.4},
+  {"event": 60, "name": "glDrawElements(6)", "kind": "draw", "groups": [], "program": "Program 428", "ms": 0.1},
+  {"event": 61, "name": "glBlitNamedFramebuffer()", "kind": "resolve", "groups": [], "program": null, "ms": 0.5}
+ ],
+ "ab": [
+  {
+   "program": "composite6",
+   "stage": "frag",
+   "candidate": "C:/candidate/composite6.fsh",
+   "own": "ab-composite6.frag",
+   "ownSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+   "draws": 1,
+   "rounds": {
+    "original": [{"frameMs": 10.0, "programMs": 1.2}, {"frameMs": 10.4, "programMs": 1.24}, {"frameMs": 9.6, "programMs": 1.18}],
+    "noop": [{"frameMs": 10.0, "programMs": 1.25}, {"frameMs": 10.0, "programMs": 1.3}, {"frameMs": 10.0, "programMs": 1.2}],
+    "control": [{"frameMs": 10.0, "programMs": 1.24}, {"frameMs": 10.0, "programMs": 1.29}, {"frameMs": 10.0, "programMs": 1.19}],
+    "candidate": [{"frameMs": 10.0, "programMs": 1.0}, {"frameMs": 10.0, "programMs": 1.05}, {"frameMs": 10.0, "programMs": 0.95}]
+   }
+  },
+  {"program": "gbuffers_water", "stage": "frag", "candidate": "C:/candidate/water.fsh", "notDrawn": true}
+ ]
+}

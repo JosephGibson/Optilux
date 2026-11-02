@@ -1,5 +1,5 @@
 # Offline testing
-Status: L0 built in M3.P04 (optilux/offline.py), L1 and L2 but L2's uniform-work scan in M3.P08 (optilux/l1.py, l2.py), L3 in M4.P02 (optilux/l3.py), each run with `optilux check <level>` (design.md#5-interfaces); L4 and the scan are spec, for M4, and L5 runs in a dev session. Each method is ranked by what ALC recorded about it.
+Status: L0 built in M3.P04 (optilux/offline.py), L1 and L2 but L2's uniform-work scan in M3.P08 (optilux/l1.py, l2.py), L3 in M4.P02 (optilux/l3.py), L4 in M4.P05 (optilux/l4.py), each run with `optilux check <level>` (design.md#5-interfaces); the scan is spec, for M4, and L5 runs in a dev session. Each method is ranked by what ALC recorded about it.
 
 ## Contents
 Rules · Levels · Decision powers · ALC evidence · Tools · Costs · Verify
@@ -12,7 +12,7 @@ Rules · Levels · Decision powers · ALC evidence · Tools · Costs · Verify
 - A method may only use the power its record earned (Decision powers).
 - Ground truth is what Iris compiles, not the pack's source: Iris rewrites built-ins, and compiled code depends on the settings.
 - Every offline closure names its method and evidence in the run record. ALC never checked a closure live; Optilux spot-checks one per milestone.
-- ALC named its replay method "E2". Optilux calls it replay A/B, because design.md's evidence decisions also use E-numbers.
+- ALC's replay method "E2" is Optilux's replay A/B: design.md's evidence decisions use E-numbers.
 
 ## Levels
 Cheapest first; a change climbs only as far as it needs.
@@ -23,7 +23,7 @@ Cheapest first; a change climbs only as far as it needs.
 | L1 Iris-faithful | Iris dumps (`patched_shaders`, via iris.properties' enableDebugOptions, plans/m3.md D60, or Viewfinder). Then: premise check (is the code compiled and executed at these settings?), dump equality / took-effect, impact matrix and pipeline audit from the pipeline spec | one launch per settings set | close |
 | L2 compiler view | RGA OpenGL gfx1101 on dump stages: ISA, VGPR, `--livereg`, `--livereg-sgpr`, `--cfg`; uniform-work scan (PB) | dumps | explain |
 | L3 function tests | each include under shaders/lib/ with a test file under tests/l3/ compiled by moderngl into a program calling its functions over a float texture of synthetic cases, read back against numpy goldens within the test's tolerance (tonemap, packing, noise, TAA maths). Custom uniforms evaluated in Iris's own expression engine (gpu-iris.md#custom-uniforms) against the GLSL they replace | source and a GL 3.3 context | close (function correctness) |
-| L4 replay | RenderDoc 1.46 on a stored capture: attribution shares; replay A/B (candidate vs no-op replacement); per-pass golden images (`GetTextureData` + FLIP) | one capture launch per baseline | predict (A/B), close (pass golden images: identical) |
+| L4 replay | RenderDoc 1.46 on a capture run's .rdc: attribution shares; replay A/B (candidate vs no-op replacement); per-pass outputs on their used pixels (`GetTextureData`) | one capture launch per baseline | explain (shares), predict (A/B), close (pass outputs: identical) |
 | L5 in-game dev | Viewfinder MCP (dev tier): shader hot-swap with compiler diagnostics, pass-output dumps, texture/SSBO inspection, program reflection, per-pass GPU timings | a dev session; not evidence until E5 (design.md#8-open-decisions) | explain; dumps become L3/L4 fixtures |
 
 - Variant matrix: generated from the pack's option list and the pipeline spec, not hand-written. ALC verified only its played settings, and a "profiles x dimensions" check was planned but never built.
@@ -48,60 +48,60 @@ Cheapest first; a change climbs only as far as it needs.
   - custom uniforms (gpu-iris.md#custom-uniforms): shaders.properties read as Iris 1.11.7's PropertiesPreprocessor reads it (javap): JCPP with each on/off option that is on as 1, each value option and L0's environment defines; a line starting with # and one of JCPP 1.4.14's 15 commands a directive, the 8 conditional and define ones evaluated, the others refused at their line; every other line passed through verbatim, never macro-expanded; then java.util.Properties' logical lines and its uniform.<type>.<name> and variable.<type>.<name> keys (offline.customs);
   - every custom uniform at the defaults needs an l3.Uniform in tests/l3/uniforms.py: its name, the GLSL it replaces, Iris's inputs per case, a tolerance, the option values and the includes whose functions the GLSL calls, else it fails unnamed by a test. Per case the runner evaluates the uniform after the definitions it reads (Iris resolves forward references; a cycle refused), each name suffixed by the case; the GPU evaluates the GLSL with the same inputs as uniforms, one draw per case into its texel; the engine's value is the golden. A definition calling smooth(), random() or randomInt() is refused: the runner's clock is not the game's. The hello pack defines none;
   - its tests skip without a GL 3.3 context (CI), the uniforms' also without runtime/.
+- L4 as built (M4.P05, `optilux check L4 <run>`, optilux/l4.py and l4replay.py): each .rdc held to its record's sha256, replayed in its own qrenderdoc (Tools) into raw/<run>/l4/:
+  - attribution: each action FetchCounters times, its debug groups and a draw's program and framebuffer (the last glUseProgram's, by Iris's label, `Program <n>` unlabelled, and glBindFramebuffer's), held to RenderDoc's state at each change; shares per program (else per kind), per group, outside every group, the cutout terrain draws' groups (P10);
+  - pass outputs: per program and framebuffer its last draw's colour and depth targets against the first capture of its view and pack family, per pixel, an integer target's where its pass's depth shows geometry (D75), the far value read off the depth (0 in 26.3's captures: reversed); closing at every perf view of an ok record; no depth or target, undecided;
+  - replay A/B (`--ab PROGRAM.STAGE=FILE`): the candidate's median share over 5 fetches against a no-op's (the capture's own source rebuilt), a second no-op giving the noise.
 - Impact matrix: changed files -> includes -> passes (pipeline spec) -> views that exercise them. This replaces ALC's text-walk `deps`, which over-reported (enderBeams reached 37 files; 5 were really kept) and missed Voxy wrappers.
 
 ## Decision powers
 What may close a candidate:
 - L0 build failure: the variant is broken; fix it, do not measure.
 - L1 premise failure: the changed code is not compiled or not executed at the measured settings. ALC closed 4 entries this way, all from reading dumps.
-- L1 dump equality: a candidate whose dumped stages and properties equal the baseline's in a dimension is skipped there. If they equal it everywhere, the change did not take effect. ALC skipped 16 of 40 candidate-view captures.
+- L1 dump equality: a candidate whose dumped stages and properties equal the baseline's in a dimension is skipped there. If they equal it everywhere, the change did not take effect.
 - L3 failure: a function returns wrong values.
-- L4 pass golden image identical: if the changed pass's outputs match the baseline's bit for bit on every captured view (captures cover every perf view), the visual tier is identical for that pass. Timing still needs measurement.
+- L4 pass outputs identical: if the changed pass's outputs match the baseline's bit for bit on their used pixels on every captured view (captures cover every perf view), the visual tier is identical for that pass. Timing still needs measurement.
 
 What may only predict:
 - Replay A/B: always against a no-op replacement, never the original (a no-op build alone changed 682 px). Replay time follows the GPU clock, so use shares, never ms.
   - The no-op spread on gbuffers stages (0.07-3.6 % of a frame) is larger than any closure limit, so replay A/B never closes a gbuffers candidate.
 
 What may only explain:
-- RGA: ISA comparable to the dumps on only some stages (ALC: 17 of 48 post stages; every vertex stage differed). Occupancy predictions did not pay (60 -> 24 VGPRs measured slower). Static counts hide dynamic skips (-1.2 % instructions; -59 % pass time in replay). Directive and constant changes leave the ISA identical yet are real (-1.57 %, -0.69 %).
+- RGA: ISA comparable to the dumps on only some stages (gpu-iris.md; every vertex stage differed); occupancy predictions did not pay (playbook.md). Static counts hide dynamic skips (-1.2 % instructions; -59 % pass time in replay). Directive and constant changes leave the ISA identical yet are real (-1.57 %, -0.69 %).
 - Viewfinder per-pass timings, until checked against GPUBusy (mod.md#12-acceptance, A11).
 
 ## ALC evidence
 Ranked by value x reliability / cost:
-1. Iris dumps + glslang under inferred macros, for premise checks: 7 entries closed with no measurement; ~2 s for 219 wrappers.
+1. Iris dumps + glslang under inferred macros, for premise checks: 7 entries closed with no measurement.
 2. Dump equality / took-effect: exact and cheap; 16 of 40 captures skipped.
 3. Replay A/B as a predictor: sign and size right on 5/5 (B01-B02); EXP-036 predicted 7.1 %, measured 7.3 %. EXP-018 over-predicted on 7/8 views.
 4. RenderDoc attribution and resource audits: ranked the frame; an audit premise (1,344 reads, all NoFilter) led to an accepted -2.14 %.
 5. RGA on dumps: three closures, all on premises, never on occupancy.
-6. Tree-diff impact matrix and coverage: flagged 4 of 5 B02 candidates; missed Voxy wrappers.
+6. Tree-diff impact matrix and coverage: flagged 4 of 5 B02 candidates (Levels: its misses).
 7. Region-file camera scouting found a camera inside nylium (~12,000 scored). Optilux checks poses in game instead (measurement.md#baseline-suite; user, 2026-10-06).
 
-ALC never rendered anything offline: glfw and PyOpenGL were only a GL-capability probe.
+ALC never rendered offline (glfw and PyOpenGL only probed GL).
 
 ## Tools
 glslang, RGA and RenderDoc are pinned in config/tools.json (file, sha256, source), which `install` unpacks into runtime/tools/.
 - glslang 16.6.0, runtime/tools/glslang-16.6.0/bin/glslang.exe (`-E` preprocess, `-l` link, `-q` reflection). It is not AMD's compiler and can accept code the driver rejects; the in-game reload is the final compile check.
   - `-l` alone links a fragment input no vertex output writes, which the driver refuses (gpu-iris.md#programs-and-alpha-tests); `--validate-io` refuses it and mismatched types, and still links unread outputs (M3.P04). `-E` keeps the input's line numbers.
-- Iris dumps: `enableDebugOptions=true` (iris.properties) writes `patched_shaders/` per pipeline build. They are fully preprocessed, and debug mode may change performance.
+- Iris dumps: `enableDebugOptions=true` (iris.properties) writes `patched_shaders/` per pipeline build (fully preprocessed; debug mode's cost: gpu-iris.md).
   - 1.11.7 (javap, M3.P08): a reload under the flag writes game/preprocessed.properties and original.properties, then patched_shaders/<id>.properties per ID map (Properties.store: its first line the date), then every program as NNN_<name>.vsh, .fsh and .json, the counter per pipeline; ShaderMap fills every ShaderKey when the pipeline is made, so the print is whole once the reload answers. Its clear spares *.properties, so a dump run empties both places before each reload.
   - TransformPatcher caches each transform (a static LRUCache of 400, keyed by the sources and parameters, never cleared) and reads the flag only on a miss: a program first built without the flag prints its flag-off transform later. A dump run turns the flag on from its start-of-run reload; selftest's reload of the launch's reference pack stays flag-off.
   - Iris's patcher is the Java library glsl-transformer (1.11.7 bundles glsl-transformer-3.0.0-pre3 and jcpp-1.4.14). Running it outside the game could produce dumps with no launch [verify].
 - Shadesmith (GPL-3.0; expands includes and options, then glslang -> spirv-opt -> spirv-cross): unused, as glslang on the pack's own source covers L0 (plans/m3.md D58).
 - RGA 2.15, runtime/tools/rga-2.15/rga.exe (`-s opengl -c gfx1101`; `--version` prints 2.15.0.30); the GUI no longer does OpenGL. Driver-independent, so it explains and never gates.
 - RenderDoc 1.46, runtime/tools/renderdoc-1.46/RenderDoc_1.46_64/ (renderdoccmd.exe, qrenderdoc.exe, renderdoc.dll; `renderdoccmd version` prints v1.46 built from e4bd23b6, 2026-10-26); RenderDoc_1.46_64.zip pinned by the sha256 of the day's download (101,000,153 bytes), as renderdoc.org publishes only a .sig (plans/m4.md P7):
-  - captures (M4.P04, plans/m4.md D81): `run`'s capture kind (run-record.md#run-spec) on the debug tier, where gfx-debuggers loads renderdoc.dll into the game at preLaunch and Iris's debug groups mark the passes (platform.md#mod-tiers); the run reads gfx-debuggers' lines in latest.log first. Per view and variant, after a visual run's reload and settle, F12 is held 0.25 s through SendInput with input.block on (RenderDoc polls GetAsyncKeyState at each present; the game ignores the key), sent only while the game is focused and owns the foreground window, which it must still do after the hold, frames presented meanwhile; A2's focus step brings it in front first (session.ensure_focus), as RenderDoc's listening socket raises a Windows Defender Firewall prompt for runtime's java.exe that takes the front (m4-capture-1; answering it is the user's). RenderDoc writes `java_<the minute it loaded>_frame<n>.rdc` into GetTempPathW's RenderDoc folder (no environment variable moves it); the run takes the one new file, its minute the load line's or the one before, and moves it under raw/<run>/rdc/<view>/<variant>/ once no other handle holds it, its header RDOC; a file it did not make, between presses or 2 s after the last, ends the run. m4-capture-3 (2026-10-30): F12 reached RenderDoc at all six presses (P23), each .rdc 106-607 MiB and written in 0.5-1.9 s, and each one's frame lay between the frames.index reads around its press (9196, 9197, 9198): RenderDoc's frame number is the mod's frame index.
+  - captures (M4.P04, plans/m4.md D81): `run`'s capture kind (run-record.md#run-spec) on the debug tier (platform.md#mod-tiers), gfx-debuggers' lines read in latest.log first. Per press F12 is held 0.25 s through SendInput with input.block on (RenderDoc polls GetAsyncKeyState at each present; the game ignores the key), only while the game owns the foreground, before and after, frames presented; A2's focus step brings it in front (session.ensure_focus), as RenderDoc's listening socket raises a firewall prompt for runtime's java.exe (m4-capture-1; answering it is the user's). RenderDoc writes `java_<its load minute>_frame<n>.rdc` into GetTempPathW's RenderDoc folder; the run takes the one new file, its minute the load line's or the one before, moved under raw/<run>/rdc/<view>/<variant>/ once no other handle holds it, header RDOC; a file it did not make, between presses or 2 s after the last, ends the run. m4-capture-3: each .rdc 106-607 MiB, written in 0.5-1.9 s, its frame between the frames.index reads around its press: RenderDoc's frame number is the mod's frame index.
   - a capture record: a visual record's fields; each capture's `press` (frames.index around F12, the hold, SendInput's count, the foreground pid) and `rdc` (path, name, RenderDoc's frame and load minute, bytes, sha256), `flags` (event) and `valid`; `session.renderdoc` (the dll, its sha256); failed on a capture not taken, .rdc from two RenderDocs or frames out of order; `verify records` checks each, `compare` refuses it.
-  - headless `renderdoc` Python module (`InitialiseReplay`, `FetchCounters` for EventGPUDuration);
-  - 1.46 renamed `ActionDescription.next/previous` and removed `GetDefaultCaptureOptions`;
-  - no GL ISA view on current AMD drivers;
-  - ALC quirks: qrenderdoc's bundled Python 3.8, the first-run analytics dialog, 77 % of events unmapped until mapped by bound program, replay ~1.7x live.
+  - replays (L4): the renderdoc module loads only in qrenderdoc's Python 3.8 (`--python`, minimized), whose first-run analytics dialog blocks scripts (answered here); 1.46 made an FBO attachment a `Descriptor`, renamed `ActionDescription.next/previous`, removed `GetDefaultCaptureOptions`; no GL ISA view on AMD; replay about 2x live (forest_noon, Unbound: 18.0 ms, GPUBusy 8.2), shares moving between replays.
 - Iris's expression engine (gpu-iris.md#custom-uniforms), for L3's custom uniforms: optilux/IrisExpressions.java, run by optilux/expressions.py through the pinned Temurin's java as a single source file (about 1 s a start), the store's Iris jar (sha512) and the launch spec's JOML 1.10.9 and fastutil 8.5.18 (sha1) on its classpath, each hash-checked before every start. kroppeb.stareval's Parser with IrisOptions.options, ExpressionResolver with IrisFunctions.functions; inputs and expressions typed (bool, int, float, vec2-4, mat4), in order, each expression an input of those after it; floats cross as float32 both ways (hex in, Java's shortest decimal out), a mat4 by column. Iris's CustomUniforms itself needs Guava and Iris's logging, so the runner skips it.
 - moderngl 5.13.0 with glcontext 3.1.0, pinned in pyproject.toml (plans/m4.md P9): a standalone WGL context for L3, `create_standalone_context()` giving "3.3.0 Core Profile Context" on the RX 7800 XT (2026-10-26). EGL is Linux-only.
 - Viewfinder v2.1.4+26.3 (MIT, Fabric, needs Iris), dev tier:
-  - MCP over streamable HTTP at http://127.0.0.1:7150/mcp, started with the game, loopback only, no authentication. It is not read-only: an MCP client can edit packs and change scenes. One active request, 32 queued. Spike L2: 23 tools (reload, pack switch with effective options, captures to game/viewfinder_captures/, per-pass GPU timings in ns, set_scene, control_ticks), no server-command tool; its MCP thread keeps the JVM alive at quit (watchdog crash report, exit -8).
+  - MCP over streamable HTTP, started with the game, loopback only, no authentication. It is not read-only: an MCP client can edit packs and change scenes. One active request, 32 queued. Its port, 23 tools (captures to game/viewfinder_captures/), quit and fps under the debug context: platform.md#mc-263-verified (L2, V5).
   - Claude Code can connect to it directly during shader work.
-  - Its per-pass GPU timings may replace building GL timers in optilux-helper (E3).
-  - Overhead unknown; under Iris's debug context it reported 30 fps where the bench tier ran 141 (confounded, spike L2).
+  - Its per-pass GPU timings may replace building GL timers in optilux-helper (E3); its overhead is unknown.
 - Image metrics, pinned in pyproject.toml: flip-evaluator 1.7 (FLIP on frames), scikit-image 0.26.0 (SSIM), with pillow 13.0.0 and numpy 2.5.4 decoding. ColorVideoVDP 0.5.7 is the candidate metric for a temporal gate; it must first flag the positive controls (measurement.md#visual-protocol).
 
 ## Costs
@@ -109,8 +109,8 @@ ALC timings, for planning:
 - glslang preprocess + compile: 59 ms per program, 219 wrappers in ~2 s on 16 threads.
 - RGA: 21 s for 86 programs.
 - Replay A/B: ~25 s per view on the first run, then cached by capture, sources, helper version and driver.
-- Attribution: ~6 min per launch for 8 views; captures 192-462 MB at 4K.
-- A replay A/B baseline goes stale when the baseline pack changes. ALC's never did, because it was frozen upstream; Optilux's will, so each new baseline needs one capture launch (debug tier).
+- Attribution: ~6 min per launch for 8 views; captures 192-462 MB at 4K. `check L4`: 6 captures (106-607 MiB) in 30 s.
+- A replay A/B baseline goes stale when the baseline pack changes (ALC's, frozen upstream, never did): each new baseline needs a capture launch (Levels).
 
 ## Verify
 - glsl-transformer offline: does it reproduce Iris 1.11.7's dumps byte for byte?

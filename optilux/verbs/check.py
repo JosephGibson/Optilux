@@ -16,6 +16,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -23,7 +24,19 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from optilux import REPO_ROOT, expressions, l1, l2, l3, offline, packzip, platform, record
+from optilux import (
+    REPO_ROOT,
+    expressions,
+    l1,
+    l2,
+    l3,
+    l4,
+    l4replay,
+    offline,
+    packzip,
+    platform,
+    record,
+)
 from optilux.verbs import Verb, verify
 from optilux.verbs.install import REFERENCE, RUNTIME, STORE, TOOLS, TOOLS_DIR, shown
 
@@ -98,6 +111,37 @@ def configure(parser: argparse.ArgumentParser) -> None:
         help="a folder holding shaders/, a pack's .zip, or - for a zip on stdin; default: shader/",
     )
     l3_parser.add_argument("--json", action="store_true", help="print JSON instead of text")
+    l4_parser = levels.add_parser(
+        "L4",
+        help="RenderDoc replays of a capture run: shares, pass outputs, replay A/B",
+        description=(
+            "Replay each .rdc of a capture record in RenderDoc 1.46 through qrenderdoc's Python "
+            "(docs/offline.md#levels): per capture the frame's GPU time as shares per program and "
+            "per Iris group, the ungrouped share and the cutout draws' part of it (explain); per "
+            "view each capture's pass outputs against the first of its pack family there, on the "
+            "pixels their readers use (identical closes); with --ab, a program's stage replaced "
+            "by a candidate against a no-op replacement (predict)."
+        ),
+    )
+    l4_parser.add_argument("record", metavar="run", help="a capture record's run name")
+    l4_parser.add_argument(
+        "--ab",
+        action="append",
+        default=[],
+        metavar="PROGRAM.STAGE=FILE",
+        help="replay A/B: the program's vert or frag stage replaced by FILE's source; repeatable",
+    )
+    l4_parser.add_argument(
+        "--capture",
+        action="append",
+        default=[],
+        metavar="VIEW/VARIANT",
+        help="replay only these captures; repeatable; default: every valid one",
+    )
+    l4_parser.add_argument(
+        "--keep", action="store_true", help="keep the pass outputs' targets under raw/<run>/l4/"
+    )
+    l4_parser.add_argument("--json", action="store_true", help="print JSON instead of text")
 
 
 def load_pack(root: Path, named: str | None) -> offline.Pack:
@@ -937,7 +981,239 @@ def print_l3(found: dict) -> None:
     )
 
 
+# L4 (docs/offline.md#levels, plans/m4.md M4.P05): optilux/l4.py on a capture record.
+
+L4_PREFIX = "optilux check L4"
+STAGES = ("vert", "frag")
+
+
+def capture_record(root: Path, named: str) -> dict:
+    """The capture record L4 replays: results/records/<run>.json of kind capture."""
+    try:
+        found = record.read_record(root, named)
+    except record.RecordError as error:
+        raise l4.L4Error(str(error)) from None
+    if not isinstance(found, dict) or found.get("kind") != record.CAPTURE:
+        raise l4.L4Error(f"{named} is no capture record; fix: a run of kind capture (D81)")
+    return found
+
+
+def renderdoc_pin(root: Path) -> dict:
+    pin = json.loads((root / TOOLS).read_text(encoding="utf-8")).get("renderdoc")
+    if not isinstance(pin, dict) or not all(pin.get(k) for k in ("unpack", "exe", "version")):
+        raise l4.L4Error(f"{TOOLS} pins no renderdoc with unpack, exe and version; fix: restore it")
+    return pin
+
+
+def ab_items(given: list[str]) -> list[dict]:
+    """--ab's PROGRAM.STAGE=FILE items: a program's label, vert or frag, an existing file."""
+    items = []
+    for item in given:
+        left, _, file = item.partition("=")
+        program, _, stage = left.rpartition(".")
+        if not program or stage not in STAGES or not file:
+            raise l4.L4Error(f"--ab {item!r}; fix: PROGRAM.STAGE=FILE, STAGE vert or frag")
+        path = Path(file).resolve()
+        if not path.is_file():
+            raise l4.L4Error(f"--ab {item!r}: {file} is no file; fix: a candidate source")
+        items.append({"program": program, "stage": stage, "file": str(path)})
+    return items
+
+
+def perf_views(root: Path, found: dict) -> list[str]:
+    """The perf views of the views file the record's spec names (config/views/<id>.json's
+    `views`); none when it names none or the file is gone, so nothing closes."""
+    name = (found.get("spec") or {}).get("views")
+    path = root / record.VIEWS / f"{name}.json"
+    if not isinstance(name, str) or not path.is_file():
+        return []
+    return [v["id"] for v in json.loads(path.read_text(encoding="utf-8"))["views"]]
+
+
+def run_l4(root: Path, named: str, replace: list[str], only: list[str], keep: bool) -> dict:
+    """`check L4`'s whole result: per valid capture its .rdc held to the record's sha256 and
+    replayed (optilux/l4.py): its attribution, its pass outputs when another capture of its view
+    and pack family is compared with it, its replay A/Bs (in the one capture --capture names, the
+    source its candidate was written from); per such pair and view the passes compared; the
+    closures over every perf view (l4.closures); also written to results/raw/<run>/l4/l4.json."""
+    started = time.perf_counter()
+    found = capture_record(root, named)
+    pin = renderdoc_pin(root)
+    exe = l4.qrenderdoc(root, pin)
+    items = ab_items(replace)
+    if items and len(only) != 1:
+        raise l4.L4Error(
+            "--ab replays one capture, the one its candidate was written from; fix: name it "
+            "with one --capture VIEW/VARIANT"
+        )
+    raw = root / found["raw"]
+    variants = {v["id"]: v for v in found["variants"]}
+    taken = found.get("captures") or []
+    captures = [c for c in taken if c.get("valid") and c.get("rdc")]
+    names = [f"{c['view']}/{c['variant']}" for c in captures]
+    unknown = [name for name in only if name not in names]
+    if unknown:
+        raise l4.L4Error(
+            f"--capture {', '.join(unknown)}: no valid capture of that name; fix: one of "
+            f"{', '.join(names) or 'none'}"
+        )
+    if only:
+        captures = [c for c in captures if f"{c['view']}/{c['variant']}" in only]
+    if not captures:
+        raise l4.L4Error(f"{named} holds no valid capture; fix: a capture run that took one")
+    pairs = l4.pairs(captures, variants)
+    compared = {(v, b) for v, b, _ in pairs} | {(v, c) for v, _, c in pairs}
+    entries = []
+    for capture in captures:
+        key = (capture["view"], capture["variant"])
+        rdc = raw / capture["rdc"]["path"]
+        size = l4.held(rdc, capture["rdc"]["sha256"])
+        out = raw / l4.L4_DIR / capture["view"] / capture["variant"]
+        job: dict = {"outputs": key in compared}
+        if items:
+            job["ab"] = {"fetches": l4.FETCHES, "replace": items}
+        replayed = l4.replay(exe, rdc, out, job, pin["version"])
+        events = l4.parse_events(replayed, "/".join(key))
+        entries.append(
+            {
+                "view": key[0],
+                "variant": key[1],
+                "rdc": capture["rdc"]["name"],
+                "bytes": size,
+                "folder": shown(out, root),
+                "actions": replayed["actions"],
+                "spotChecked": replayed["spotChecked"],
+                "attribution": l4.attribution(events),
+                "passes": replayed.get("outputs"),
+                "ab": [l4.ab_summary(a) for a in replayed.get("ab", [])],
+            }
+        )
+    by_key = {(e["view"], e["variant"]): e for e in entries}
+    comparisons = []
+    for view, base, cand in pairs:
+        b, c = by_key[(view, base)], by_key[(view, cand)]
+        passes = l4.compare_passes(
+            (root / b["folder"], b["passes"]), (root / c["folder"], c["passes"])
+        )
+        comparisons.append({"view": view, "baseline": base, "candidate": cand, "passes": passes})
+    if not keep:
+        for entry in entries:
+            shutil.rmtree(root / entry["folder"] / l4replay.TARGETS, ignore_errors=True)
+    closed, held_back = l4.closures(comparisons, perf_views(root, found), found.get("status"))
+    result = {
+        "ok": True,
+        "run": found["name"],
+        "status": found.get("status"),
+        "renderdoc": pin["version"],
+        "skipped": [f"{c.get('view')}/{c.get('variant')}" for c in taken if not c.get("valid")],
+        "captures": entries,
+        "comparisons": comparisons,
+        "closures": closed,
+        "heldBack": held_back,
+        "seconds": round(time.perf_counter() - started, 2),
+    }
+    out = raw / l4.L4_DIR
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "l4.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
+    return result
+
+
+def pct(share: float) -> str:
+    return f"{100 * share:.2f} %"
+
+
+def share_list(rows: list[dict], floor: float = 0.001) -> str:
+    """`name share` for each row at or above the floor, the rest summed."""
+    shown_rows = [r for r in rows if r["share"] >= floor]
+    rest = [r for r in rows if r["share"] < floor]
+    text = ", ".join(f"{r['name']} {pct(r['share'])}" for r in shown_rows) or "none"
+    if rest:
+        text += f"; {len(rest)} more under {pct(floor)}: {pct(sum(r['share'] for r in rest))}"
+    return text
+
+
+def print_l4(result: dict) -> None:
+    print(
+        f"{L4_PREFIX}: {result['run']} ({result['status']}): {len(result['captures'])} captures "
+        f"replayed in RenderDoc {result['renderdoc']} (qrenderdoc's Python); each frame's GPU "
+        "time as shares, never ms (replay follows the GPU clock); attribution explains only"
+    )
+    for name in result["skipped"]:
+        print(f"skipped {name}: not a valid capture")
+    for entry in result["captures"]:
+        found = entry["attribution"]
+        mib = entry["bytes"] / 2**20
+        print(
+            f"{entry['view']}/{entry['variant']}: {entry['rdc']} ({mib:.1f} MiB, "
+            f"sha256 held): {found['events']:,} timed events, {found['draws']:,} draws, "
+            f"{entry['spotChecked']} program or framebuffer changes held to RenderDoc's state"
+        )
+        print(f"  programs: {share_list(found['programs'])}")
+        print(f"  groups: {share_list(found['groups'])}")
+        outside, cut = found["ungrouped"], found["cutout"]
+        print(f"  ungrouped: {pct(outside['share'])} ({share_list(outside['entries'], 0.0)})")
+        part = "none ungrouped" if cut["ofUngrouped"] is None else pct(cut["ofUngrouped"])
+        print(
+            f"  cutout draws: {cut['draws']:,}, {pct(cut['share'])} of the frame, in "
+            f"{share_list(cut['groups'], 0.0)}; their part of the ungrouped share: {part}"
+        )
+        for ab in entry["ab"]:
+            if ab.get("notDrawn") or ab.get("error"):
+                why = ab.get("error") or "not drawn here"
+                print(f"  replay A/B {ab['program']}.{ab['stage']}: {why}")
+                continue
+            med = ab["medians"]
+            print(
+                f"  replay A/B {ab['program']}.{ab['stage']} ({ab['draws']} draws, "
+                f"{ab['fetches']} fetches): share {pct(med['noop']['share'])} with the no-op, "
+                f"{pct(med['candidate']['share'])} with the candidate: predicts "
+                f"{100 * ab['predicted']:+.3f} points of the frame (no-op against its control "
+                f"{100 * ab['noise']:+.3f}); predicts only"
+            )
+    for comp in result["comparisons"]:
+        passes = comp["passes"]
+        same = [p["program"] for p in passes if p["tier"] == l4.IDENTICAL]
+        print(
+            f"pass outputs at {comp['view']}, {comp['candidate']} against {comp['baseline']}: "
+            f"{len(same)} of {len(passes)} passes identical on their used pixels"
+        )
+        for found in passes:
+            rows = "; ".join(
+                f"{t['slot']} {t['texture']}: "
+                + (
+                    f"{t['differing']:,} of {t['used']:,} used pixels differ"
+                    if t.get("differing")
+                    else (t.get("why") or f"{t['used']:,} used pixels equal")
+                )
+                for t in found["targets"]
+            )
+            why = f" ({found['why']})" if found.get("why") else ""
+            print(f"  {found['program']}: {found['tier']}{why}" + (f": {rows}" if rows else ""))
+    for closed in result["closures"]:
+        print(
+            f"CLOSED ({l4.OUTPUTS}): {closed['pass']}'s visual tier identical, "
+            f"{closed['candidate']} against {closed['baseline']} at {closed['views']} views"
+        )
+    for why in result["heldBack"]:
+        print(f"no closure: {why}")
+    print(f"{L4_PREFIX}: {len(result['captures'])} captures in {result['seconds']} s")
+
+
 def run(args: argparse.Namespace) -> int:
+    if args.level == "L4":
+        try:
+            found = run_l4(REPO_ROOT, args.record, args.ab, args.capture, args.keep)
+        except (l4.L4Error, OSError, ValueError) as error:
+            if args.json:
+                print(json.dumps({"ok": False, "error": str(error)}))
+            else:
+                print(f"{L4_PREFIX}: {error}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(found))
+        else:
+            print_l4(found)
+        return 0
     if args.level == "L3":
         try:
             found = run_l3(REPO_ROOT, args.pack)
@@ -998,7 +1274,7 @@ def run(args: argparse.Namespace) -> int:
 VERB = Verb(
     name="check",
     help="offline levels (L0: the build checks; L1: a dump run's verdicts; L2: its GPU "
-    "analysis; L3: the function tests)",
+    "analysis; L3: the function tests; L4: a capture run's replays)",
     run=run,
     configure=configure,
 )
