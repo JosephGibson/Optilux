@@ -12,6 +12,8 @@ import pytest
 from optilux import REPO_ROOT, l3, offline
 from optilux.verbs import check as check_verb
 
+HELLO_ROOT = REPO_ROOT / "tests" / "fixtures" / "hello"  # the hello pack of M3, its spec v0
+
 F = np.float32
 CURVE = (
     "#ifndef CURVE\n"
@@ -191,8 +193,8 @@ def test_a_compile_error_names_the_include_line(gl) -> None:
 
 
 def test_the_hello_pack_passes(gl) -> None:
-    pack = check_verb.load_pack(REPO_ROOT, None)
-    found = l3.check(gl, pack, REPO_ROOT / l3.TESTS_DIR, check_verb.macros(REPO_ROOT))
+    pack = offline.from_folder("shader/", HELLO_ROOT / "shader")
+    found = l3.check(gl, pack, HELLO_ROOT / "l3", check_verb.macros(REPO_ROOT))
     assert found["problems"] == []
     tested = {e["include"] for e in found["includes"] if e["test"]}
     assert tested == {"shaders/lib/fog.glsl", "shaders/lib/light.glsl"}
@@ -200,14 +202,14 @@ def test_the_hello_pack_passes(gl) -> None:
 
 def test_a_broken_copy_fails_naming_the_function_and_input(gl, tmp_path: Path) -> None:
     home = tmp_path / "pack"
-    shutil.copytree(REPO_ROOT / "shader" / "shaders", home / "shaders")
+    shutil.copytree(HELLO_ROOT / "shader" / "shaders", home / "shaders")
     fog = home / "shaders" / "lib" / "fog.glsl"
     text = fog.read_text(encoding="utf-8").replace("abs(fromCamera.y)", "fromCamera.y")
     fog.write_text(text, encoding="utf-8")
     found = l3.check(
         gl,
         offline.from_folder("copy", home),
-        REPO_ROOT / l3.TESTS_DIR,
+        HELLO_ROOT / "l3",
         check_verb.macros(REPO_ROOT),
     )
     assert found["problems"]
@@ -229,6 +231,43 @@ PROPERTIES = (
     "uniform.float.doubled = 3.0 * offset + 0.5\n"
     "#endif\n"
 )
+
+
+def test_the_base_pack_passes(gl) -> None:
+    """The base pack under shader/ against its tests under tests/l3/ (plans/m4.md M4.P06): an L3
+    test per include but options.glsl and sky.glsl."""
+    found = l3.check(
+        gl,
+        check_verb.load_pack(REPO_ROOT, None),
+        REPO_ROOT / l3.TESTS_DIR,
+        check_verb.macros(REPO_ROOT),
+    )
+    assert found["problems"] == []
+    tested = {e["include"].removeprefix("shaders/lib/") for e in found["includes"] if e["test"]}
+    assert tested == {
+        "curves.glsl",
+        "dither.glsl",
+        "fog.glsl",
+        "gbuffer.glsl",
+        "lighting.glsl",
+        "normals.glsl",
+        "shadow.glsl",
+        "srgb.glsl",
+        "tonemap.glsl",
+    }
+
+
+def test_integer_arguments_cross_the_case_texture_whole() -> None:
+    """The integer types (the G-buffer's uvec4 words): whole values below 2^24, an unsigned one
+    never negative; each read and written through a vec4 texel."""
+    words = l3.Argument("words", "uvec4", np.array([[0, 65535, 1, 32768]], F))
+    assert l3.argument_values(words, 1).tolist() == [[0, 65535, 1, 32768]]
+    with pytest.raises(l3.L3Error, match="no negative"):
+        l3.argument_values(l3.Argument("w", "uvec2", np.array([[-1, 0]], F)), 1)
+    with pytest.raises(l3.L3Error, match="whole values"):
+        l3.argument_values(l3.Argument("w", "ivec3", np.array([[0.5, 0, 0]], F)), 1)
+    for kind in l3.INTEGERS:
+        assert kind in l3.READ and kind in l3.WRITE and l3.ROWS[kind] == 1
 
 
 def uniform_pack(properties: str = PROPERTIES) -> offline.Pack:

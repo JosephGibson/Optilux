@@ -1,5 +1,4 @@
 #version 330 core
-// gbuffers_particles: nothing under BENCH_DETERMINISTIC; else as gbuffers_textured_lit.
-#define SURFACE_TEXTURE 1
-#define SURFACE_LIGHT 1
-#include "/lib/surface_vertex.glsl"
+// gbuffers_particles in the overworld: opaque particles into the G-buffer, nothing under BENCH_DETERMINISTIC.
+#define SURFACE_PARTICLE 1
+#include "/program/surface.vsh.glsl"

@@ -596,7 +596,7 @@ def impact(
                         hit.append(found["name"])
         rows.append(matrix_row(path, programs, hit, passes))
     for option in options:
-        hit = [p["name"] for p in passes if p.get("option") == option]
+        hit = [p["name"] for p in passes if option in p.get("options", [p.get("option")])]
         rows.append(matrix_row(f"option {option}", [], hit, passes))
     return rows
 
@@ -611,11 +611,16 @@ def matrix_row(change: str, programs: list[str], hit: list[str], passes: list[di
     }
 
 
-def audit(passes: list[dict], properties: Mapping[tuple[str, str], str]) -> list[str]:
+def audit(
+    passes: list[dict],
+    properties: Mapping[tuple[str, str], str],
+    cleared: frozenset[str] = frozenset(),
+) -> list[str]:
     """The pipeline audit per dump (variant, dimension) and its preprocessed.properties: each
-    buffer an enabled pass samples written by an enabled pass before it (else it reads stale data
-    or zero), each buffer one writes read after it (or the screen), each custom uniform a pass
-    reads defined wherever it is enabled."""
+    buffer an enabled pass samples written by an enabled pass before it or `cleared`, set to its
+    clear value every frame (pipeline.json v1's resources), else it reads stale data or zero; each
+    buffer one writes read after it (or the screen); each custom uniform a pass reads defined
+    wherever it is enabled."""
     problems = []
     customs = {
         key: {m["name"] for m in CUSTOM_UNIFORM.finditer(text)} for key, text in properties.items()
@@ -627,7 +632,9 @@ def audit(passes: list[dict], properties: Mapping[tuple[str, str], str]) -> list
         where = f"{vid} in {dim}"
         for n, reader in enumerate(on):
             for sampler in reader["inputs"]["samplers"]:
-                fed = any(sampler in written(p) and before(p, n, reader, on) for p in on)
+                fed = sampler in cleared or any(
+                    sampler in written(p) and before(p, n, reader, on) for p in on
+                )
                 if BUFFER.fullmatch(sampler) and not fed:
                     problems.append(
                         f"{where}: {reader['name']} samples {sampler}, which no enabled pass "

@@ -13,6 +13,8 @@ import pytest
 from optilux import REPO_ROOT, l2, record
 from optilux.verbs import check
 
+HELLO_ROOT = REPO_ROOT / "tests" / "fixtures" / "hello"  # the hello pack of M3, its spec v0
+
 FIXTURES = Path(__file__).parent / "fixtures" / "l2"
 PIN = json.loads((REPO_ROOT / "config" / "tools.json").read_text(encoding="utf-8"))["rga"]
 RGA = REPO_ROOT / "runtime" / "tools" / PIN["unpack"] / PIN["exe"]
@@ -204,7 +206,7 @@ def test_check_l2_names_each_programs_stages_under_its_own_name(
 
 @needs_rga
 def test_the_pinned_rga_builds_the_hello_packs_final_program(tmp_path: Path) -> None:
-    stages = {e: REPO_ROOT / "shader" / "shaders" / f"final.{e}" for e in ("vsh", "fsh")}
+    stages = {e: HELLO_ROOT / "shader" / "shaders" / f"final.{e}" for e in ("vsh", "fsh")}
     program = l2.Program("final", stages, "0" * 64)
     found = l2.analyze(RGA, program, tmp_path / "final")
     assert (found["failed"], found["tool"]) == ({}, None), found
@@ -238,7 +240,7 @@ GEOMETRY = (
 def test_the_pinned_rga_names_a_geometry_stage_as_l2_reads_it(tmp_path: Path) -> None:
     """RGA 2.15 writes gfx1101_<output>_geom for --geom (and _tesc, _tese for the tessellation
     stages, seen 2026-10-22), the names l2.NAMES maps .gsh, .tcs and .tes to."""
-    shaders = REPO_ROOT / "shader" / "shaders"
+    shaders = HELLO_ROOT / "shader" / "shaders"
     (tmp_path / "s.gsh").write_text(GEOMETRY, encoding="utf-8")
     stages = {"vsh": shaders / "final.vsh", "gsh": tmp_path / "s.gsh", "fsh": shaders / "final.fsh"}
     found = l2.analyze(RGA, l2.Program("final", stages, "1" * 64), tmp_path / "out")

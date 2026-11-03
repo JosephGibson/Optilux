@@ -1,5 +1,4 @@
 #version 330 core
-// gbuffers_lightning: nothing under BENCH_DETERMINISTIC; else its vertex colour (lightning has no texture),
-// as gbuffers_basic.
-#define SURFACE_NOT_IN_BENCH 1
-#include "/lib/surface_fragment.glsl"
+// gbuffers_lightning in the overworld: lightning's vertex colour, nothing under BENCH_DETERMINISTIC.
+#define FORWARD_NOT_IN_BENCH 1
+#include "/program/forward.fsh.glsl"

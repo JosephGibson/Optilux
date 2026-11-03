@@ -10,10 +10,11 @@ import pytest
 from optilux import REPO_ROOT, l1, offline, record
 from optilux.verbs import check, verify
 
-PIPELINE = json.loads((REPO_ROOT / "config" / "pipeline.json").read_text(encoding="utf-8"))
+HELLO_ROOT = REPO_ROOT / "tests" / "fixtures" / "hello"  # the hello pack of M3, its spec v0
+PIPELINE = json.loads((HELLO_ROOT / "pipeline.json").read_text(encoding="utf-8"))
 PASSES = PIPELINE["passes"]
 DIMS = record.DIMENSIONS
-HELLO = offline.from_folder("shader/", REPO_ROOT / "shader")
+HELLO = offline.from_folder("shader/", HELLO_ROOT / "shader")
 GBUFFERS = [p["name"] for p in PASSES if p["stage"] == "gbuffers"]
 
 
@@ -395,6 +396,24 @@ uniform sampler2D gtexture;
 uniform vec3 fogColor;
 void main() { vec4 p = iris_transforms.ModelViewMat * vec4(far + farr + wobble); }
 """
+
+
+def test_the_audit_takes_a_target_cleared_every_frame_as_written() -> None:
+    """pipeline.json v1's resources: a target Iris clears every frame holds its clear value until
+    a pass writes it, so a pass may read it with no writer before it; one never cleared may not."""
+    off = "".join(
+        f"program.{p['program']}.enabled = false\n" for p in PASSES if p["stage"] == "gbuffers"
+    )
+    stale = {("a", DIMS[0]): off}
+    assert len(l1.audit(PASSES, stale)) == 1
+    assert l1.audit(PASSES, stale, frozenset({"colortex0"})) == []
+    spec = {
+        "resources": [
+            {"buffer": "colortex3", "clear": [1.0] * 4},
+            {"buffer": "colortex1", "clear": False},
+        ]
+    }
+    assert check.cleared(spec) == {"colortex3"} and check.cleared({"passes": []}) == set()
 
 
 def test_the_audit_names_a_uniform_iris_never_defines() -> None:

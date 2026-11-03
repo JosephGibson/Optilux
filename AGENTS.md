@@ -20,7 +20,7 @@ Status: the entry point: rules, layout, docs and terms. Where the milestone stan
 - .claude/: settings.json (Claude Code hooks, allow rules); skills/optilux-next (`optilux status`), optilux-release, optilux-plan, optilux-bench (docs/workflow.md#skills); agents/researcher.md and reviewer.md (read-only).
 - .github/: workflows/ci.yml and release.yml (docs/workflow.md#release).
 - mod/: optilux-helper (Fabric), a Gradle project (Loom, wrapper pinned by sha256); `mod build` puts its jar into runtime/<platform>/files/, `mod test` runs its JUnit tests.
-- shader/: the pack (the hello pack), zipped by `pack build`, released by `pack release` (docs/workflow.md#release).
+- shader/: the pack (the base pack), zipped by `pack build`, released by `pack release` (docs/workflow.md#release).
 - config/: platforms (+ launch specs), suite, profiles, java, tools, similarity, views, pipeline, calibrations.
 - snapshots/<world>/: world copies, tree-hashed; results/: records/<run>.json and raw/<run>/.
 - VERSION: the release version (docs/workflow.md#release). Ignored: results/raw/, runtime/, snapshots/, reference/, build/, mod/.gradle/, .venv/, .coverage.

@@ -13,6 +13,8 @@ from conftest import copy_config, similarity_home
 from optilux import REPO_ROOT, offline
 from optilux.verbs import check as check_verb
 
+HELLO_ROOT = REPO_ROOT / "tests" / "fixtures" / "hello"  # the hello pack of M3, its spec v0
+
 PINS = json.loads((REPO_ROOT / "config" / "tools.json").read_text(encoding="utf-8"))["glslang"]
 GLSLANG = REPO_ROOT / "runtime" / "tools" / PINS["unpack"] / PINS["exe"]
 needs_glslang = pytest.mark.skipif(not GLSLANG.is_file(), reason="no glslang under runtime/tools/")
@@ -425,19 +427,17 @@ def test_the_iso_profile_holds_played_s_options_and_every_dropped_key() -> None:
 
 
 def hello_copy(tmp_path: Path) -> Path:
-    shutil.copytree(REPO_ROOT / "shader" / "shaders", tmp_path / "pack" / "shaders")
+    shutil.copytree(HELLO_ROOT / "shader" / "shaders", tmp_path / "pack" / "shaders")
     return tmp_path / "pack"
 
 
 def passes() -> list[dict]:
-    return json.loads((REPO_ROOT / "config" / "pipeline.json").read_text(encoding="utf-8"))[
-        "passes"
-    ]
+    return json.loads((HELLO_ROOT / "pipeline.json").read_text(encoding="utf-8"))["passes"]
 
 
 @needs_glslang
 def test_the_hello_pack_passes_the_matrix() -> None:
-    pack = check_verb.load_pack(REPO_ROOT, None)
+    pack = offline.from_folder("shader/", HELLO_ROOT / "shader")
     matrix = offline.build_matrix(pack, passes(), check_verb.macros(REPO_ROOT), GLSLANG)
     assert not matrix.failed and not matrix.problems
     assert (len(matrix.builds), len(matrix.compiled)) == (8 * 3 * 2, 8 * 2)
@@ -446,6 +446,18 @@ def test_the_hello_pack_passes_the_matrix() -> None:
     )
     assert "entityId" in lit.reflection["Uniform reflection"]  # -q's reflection, the option on
     assert "fogStart" not in lit.reflection["Uniform reflection"]
+
+
+@needs_glslang
+def test_the_base_pack_passes_the_matrix() -> None:
+    """The base pack under shader/ and config/pipeline.json v1 (plans/m4.md M4.P06): every program
+    in each of its dimensions' folders at the defaults and each option's other values builds."""
+    spec = json.loads((REPO_ROOT / "config" / "pipeline.json").read_text(encoding="utf-8"))
+    pack = check_verb.load_pack(REPO_ROOT, None)
+    matrix = offline.build_matrix(pack, spec["passes"], check_verb.macros(REPO_ROOT), GLSLANG)
+    assert not matrix.failed and not matrix.problems
+    variants = 1 + 1 + 3 + 1  # defaults, BENCH_DETERMINISTIC off, E2_LOAD 4 8 16, LIGHT_PATH 0
+    assert len(matrix.builds) == 20 * 3 * variants - 3 * variants  # no shadow program in world-1
 
 
 @needs_glslang

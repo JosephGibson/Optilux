@@ -287,7 +287,8 @@ def run_l0(root: Path, named: str | None) -> dict:
     pack = load_pack(root, named)
     exe, version = glslang_exe(root)
     spec = (root / PIPELINE).read_bytes()
-    passes = json.loads(spec.decode("utf-8"))["passes"]
+    pipeline = json.loads(spec.decode("utf-8"))
+    passes = pipeline["passes"]
     matrix = offline.build_matrix(pack, passes, macros(root), exe)
     texts = {f"{pack.label.rstrip('/')}/{offline.SHADERS}/{p}": t for p, t in pack.files.items()}
     try:
@@ -539,7 +540,8 @@ def run_l1(root: Path, named: str) -> dict:
         raise l1.L1Error(f"dumps {', '.join(invalid)} are not whole; fix: rerun the dump")
     raw = root / found["raw"]
     spec = (root / PIPELINE).read_bytes()
-    passes = json.loads(spec.decode("utf-8"))["passes"]
+    pipeline = json.loads(spec.decode("utf-8"))
+    passes = pipeline["passes"]
     base, judged = l1.equality(found)
     variants = {v["id"]: v for v in found["variants"]}
     taken = l1.prints(found)
@@ -590,7 +592,7 @@ def run_l1(root: Path, named: str) -> dict:
         if variants[vid].get("build") is not None and name in dumped["files"]:
             path = raw / dumped["capture"]["dump"]["folder"] / name
             properties[(vid, dim)] = path.read_text(encoding="utf-8", errors="replace")
-    problems = l1.audit(passes, properties)
+    problems = l1.audit(passes, properties, cleared(pipeline))
     iris_pinned(root)  # the uniform list was read in that jar
     read: dict[str, dict[str, set[str]]] = {}  # per manifest: one print, read once
     for (vid, dim), dumped in sorted(taken.items()):
@@ -985,6 +987,14 @@ def print_l3(found: dict) -> None:
 
 L4_PREFIX = "optilux check L4"
 STAGES = ("vert", "frag")
+
+
+def cleared(pipeline: dict) -> frozenset[str]:
+    """The buffers Iris clears every frame (pipeline.json v1's resources whose clear is a value;
+    v0 names none)."""
+    return frozenset(
+        r["buffer"] for r in pipeline.get("resources", []) if r.get("clear") is not False
+    )
 
 
 def capture_record(root: Path, named: str) -> dict:

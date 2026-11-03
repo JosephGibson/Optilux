@@ -33,24 +33,69 @@ INCLUDE_ENDING = ".glsl"
 GL_VERSION = 330
 # What a case's argument takes of the case texture: texel rows, and how the program reads them (a
 # mat4 by column, as GLSL's mat4(vec4, ...) builds it).
-ROWS = {"float": 1, "int": 1, "bool": 1, "vec2": 1, "vec3": 1, "vec4": 1, "mat4": 4}
+# The integer types (int, uint and their vectors: the G-buffer's words) cross as floats.
+INTEGERS = ("int", "uint", "ivec2", "ivec3", "ivec4", "uvec2", "uvec3", "uvec4")
+ROWS = {
+    "float": 1,
+    "int": 1,
+    "uint": 1,
+    "bool": 1,
+    "vec2": 1,
+    "vec3": 1,
+    "vec4": 1,
+    "ivec2": 1,
+    "ivec3": 1,
+    "ivec4": 1,
+    "uvec2": 1,
+    "uvec3": 1,
+    "uvec4": 1,
+    "mat4": 4,
+}
 READ = {
     "float": "{0}.x",
     "int": "int({0}.x)",
+    "uint": "uint({0}.x)",
     "bool": "({0}.x > 0.5)",
     "vec2": "{0}.xy",
     "vec3": "{0}.xyz",
     "vec4": "{0}",
+    "ivec2": "ivec2({0}.xy)",
+    "ivec3": "ivec3({0}.xyz)",
+    "ivec4": "ivec4({0})",
+    "uvec2": "uvec2({0}.xy)",
+    "uvec3": "uvec3({0}.xyz)",
+    "uvec4": "uvec4({0})",
     "mat4": "mat4({0}, {1}, {2}, {3})",
 }
-COMPONENTS = {"float": 1, "int": 1, "bool": 1, "vec2": 2, "vec3": 3, "vec4": 4}
+COMPONENTS = {
+    "float": 1,
+    "int": 1,
+    "uint": 1,
+    "bool": 1,
+    "vec2": 2,
+    "vec3": 3,
+    "vec4": 4,
+    "ivec2": 2,
+    "ivec3": 3,
+    "ivec4": 4,
+    "uvec2": 2,
+    "uvec3": 3,
+    "uvec4": 4,
+}
 WRITE = {
     "float": "vec4({0}, 0.0, 0.0, 0.0)",
     "int": "vec4(float({0}), 0.0, 0.0, 0.0)",
+    "uint": "vec4(float({0}), 0.0, 0.0, 0.0)",
     "bool": "vec4(({0}) ? 1.0 : 0.0, 0.0, 0.0, 0.0)",
     "vec2": "vec4({0}, 0.0, 0.0)",
     "vec3": "vec4({0}, 0.0)",
     "vec4": "({0})",
+    "ivec2": "vec4(vec2({0}), 0.0, 0.0)",
+    "ivec3": "vec4(vec3({0}), 0.0)",
+    "ivec4": "vec4({0})",
+    "uvec2": "vec4(vec2({0}), 0.0, 0.0)",
+    "uvec3": "vec4(vec3({0}), 0.0)",
+    "uvec4": "vec4({0})",
 }
 # A float32 holds every integer of magnitude up to 2^24 exactly, so an int crosses the float
 # texture and target unchanged within it.
@@ -268,10 +313,12 @@ def argument_values(arg: Argument, cases: int) -> np.ndarray:
         raise L3Error(
             f"argument {arg.name}: a {arg.type} per case takes {shape}, not {values.shape}"
         )
-    if arg.type in ("int", "bool") and (
+    if arg.type in (*INTEGERS, "bool") and (
         not np.array_equal(values, np.round(values)) or np.abs(values).max(initial=0) >= EXACT_INT
     ):
         raise L3Error(f"argument {arg.name}: an {arg.type} takes whole values below 2^24")
+    if arg.type.startswith("u") and values.min(initial=0) < 0:
+        raise L3Error(f"argument {arg.name}: a {arg.type} takes no negative values")
     return values.astype(np.float32)
 
 
@@ -331,8 +378,9 @@ def shown_value(kind: str, values: np.ndarray) -> str:
     flat = np.asarray(values, np.float64).ravel()
     if kind == "bool":
         return "true" if flat[0] > 0.5 else "false"
-    if kind == "int":
-        return str(int(flat[0]))
+    if kind in INTEGERS:
+        found = [str(int(x)) for x in flat]
+        return found[0] if len(found) == 1 else f"({', '.join(found)})"
     if flat.size == 1:
         return number(flat[0])
     if kind == "mat4":
