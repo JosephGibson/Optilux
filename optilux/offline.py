@@ -192,6 +192,12 @@ SUMMARY = re.compile(r"\d+ compilation errors\.\s+No code generated\.|'' : compi
 # A link's reflection (-q): its sections, each a name and its entries' names.
 REFLECTION = re.compile(r"^(?P<name>[A-Z][A-Za-z ]+ reflection):$")
 GLSLANG_TIMEOUT = 120
+# Iris's GlintTransformer (javap of the pinned jar, M4.P07) declares these two in every stage of
+# every program before its declarations and defines them at its end: on glintTexture for a glint
+# draw with an overlay, else as the stubs below, which L0 compiles a stage against (the prototypes
+# as glslang's preamble, the stubs after the preprocessed source, so no line moves).
+GLINT_PROTOTYPES = "bool mc_hasGlint(); vec3 mc_sampleGlint();"
+GLINT_STUBS = "bool mc_hasGlint() { return false; }\nvec3 mc_sampleGlint() { return vec3(0.0); }\n"
 VERSION_LINE = re.compile(r"Glslang Version: \d+:(?P<version>\S+)")
 
 
@@ -989,7 +995,9 @@ def compile_build(
                 done.failures.append(Failure("preprocess", shown, lines))
                 continue
             (work / name).write_text(
-                "\n".join(lines_of(ran.stdout)) + "\n", encoding="utf-8", newline="\n"
+                "\n".join(lines_of(ran.stdout)) + "\n" + GLINT_STUBS,
+                encoding="utf-8",
+                newline="\n",
             )
             preprocessed.append((name, shown))
             refused = [
@@ -1003,7 +1011,9 @@ def compile_build(
         if any(f.step != DETERMINISM for f in done.failures) or not preprocessed:
             return done
         names = [name for name, _ in preprocessed]
-        ran = glslang_run(glslang, ["-l", "-q", "--validate-io", *names], work)
+        ran = glslang_run(
+            glslang, ["-l", "-q", "--validate-io", f"-P{GLINT_PROTOTYPES}", *names], work
+        )
         done.runs += 1
     output = ran.stdout + ran.stderr
     if ran.returncode:
@@ -1396,6 +1406,9 @@ MOVING = {
     # (docs/shader.md#determinism-and-taa).
     "fogStart": f"eased by each frame's length on {WALL_CLOCK} (26.3's fog environments)",
     "fogEnd": f"eased by each frame's length on {WALL_CLOCK} (26.3's fog environments)",
+    # The glint's scroll, 26.3's TextureTransform on Util.getMillis() (plans/m4.md P19).
+    "textureMatrix": f"scrolls the enchantment glint by {WALL_CLOCK} (26.3's TextureTransform)",
+    "mc_sampleGlint": f"samples the glint on its texture matrix, scrolled by {WALL_CLOCK} (P19)",
     **{
         name: "smoothed by frame time (Iris's HardcodedCustomUniforms)"
         for name in SMOOTHED_HARDCODED

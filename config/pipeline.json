@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "why": "Pipeline spec v1 (docs/shader.md#pipeline-spec, plans/m4.md M4.P06): the base pack's colour targets as resources and one pass per program in frame order, under shader/shaders/ (the root the overworld's, world-1 the Nether's, world1 the End's). tests/test_pipeline.py keeps it equal to the pack: each resource's format and clear as the pack sets them, history where a pass reads last frame's values (none yet); per pass its dimensions, the samplers and uniforms its two stages declare at the defaults over its folders, its outputs (RENDERTARGETS; none for the shadow pass's empty DRAWBUFFERS), the options that change its code, budget null until M4.P11's cost rows (D84), every view of its dimensions until M4.P08's coverage list.",
+  "why": "Pipeline spec v1 (docs/shader.md#pipeline-spec, plans/m4.md M4.P06, M4.P07): the pack's colour targets as resources and one pass per program in frame order, under shader/shaders/ (the root the overworld's, world-1 the Nether's, world1 the End's); a forward program that also draws before deferred (the overlays' writers, the beacon beam's core, leashes: D76) is listed after deferred, where it draws its scene output. tests/test_pipeline.py keeps it equal to the pack: each resource's format and clear as the pack sets them at its defaults, history where a pass reads last frame's values (none yet); per pass its dimensions, the samplers and uniforms its two stages declare at the defaults over its folders, its outputs at the defaults (RENDERTARGETS; none for the shadow pass's empty DRAWBUFFERS), each option whose setting changes its preprocessed text (an include's unused function or the targets' comment counts), budget null until M4.P11's cost rows (D84), every view of its dimensions until M4.P08's coverage list.",
   "pack": "optilux",
   "cycle": 1,
   "cycleWhy": "BENCH_DETERMINISTIC's cycle in frames: the pack reads no term that moves from frame to frame, so a frame repeats every frame (docs/shader.md#determinism-and-taa).",
@@ -198,6 +198,40 @@
       ]
     },
     {
+      "name": "shadow-lightning",
+      "program": "shadow_lightning",
+      "stage": "shadow",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [],
+        "uniforms": [
+          "chunkOffset",
+          "modelViewMatrix",
+          "projectionMatrix"
+        ]
+      },
+      "outputs": [],
+      "feature": "shadows",
+      "options": [
+        "BENCH_DETERMINISTIC"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "end_dragon",
+        "night",
+        "underwater",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
       "name": "sky-none",
       "program": "gbuffers_skybasic",
       "stage": "gbuffers",
@@ -310,7 +344,9 @@
       ],
       "feature": "gbuffer",
       "options": [
-        "LIGHT_PATH"
+        "FOLIAGE_TRANSLUCENCY",
+        "LIGHT_PATH",
+        "SCENE_FORMAT"
       ],
       "budget": null,
       "views": [
@@ -359,7 +395,9 @@
       ],
       "feature": "gbuffer",
       "options": [
-        "LIGHT_PATH"
+        "FOLIAGE_TRANSLUCENCY",
+        "LIGHT_PATH",
+        "SCENE_FORMAT"
       ],
       "budget": null,
       "views": [
@@ -405,12 +443,32 @@
           "buffer": "colortex1",
           "format": "RGBA16UI",
           "scale": 1.0
+        },
+        {
+          "resource": "mod",
+          "buffer": "colortex3",
+          "format": "RGBA8",
+          "scale": 1.0
+        },
+        {
+          "resource": "emit",
+          "buffer": "colortex4",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "trans",
+          "buffer": "colortex5",
+          "format": "RGBA16F",
+          "scale": 1.0
         }
       ],
       "feature": "gbuffer",
       "options": [
         "BENCH_DETERMINISTIC",
-        "LIGHT_PATH"
+        "LIGHT_PATH",
+        "OVERLAYS",
+        "SCENE_FORMAT"
       ],
       "budget": null,
       "views": [
@@ -455,11 +513,31 @@
           "buffer": "colortex1",
           "format": "RGBA16UI",
           "scale": 1.0
+        },
+        {
+          "resource": "mod",
+          "buffer": "colortex3",
+          "format": "RGBA8",
+          "scale": 1.0
+        },
+        {
+          "resource": "emit",
+          "buffer": "colortex4",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "trans",
+          "buffer": "colortex5",
+          "format": "RGBA16F",
+          "scale": 1.0
         }
       ],
       "feature": "gbuffer",
       "options": [
-        "LIGHT_PATH"
+        "LIGHT_PATH",
+        "OVERLAYS",
+        "SCENE_FORMAT"
       ],
       "budget": null,
       "views": [
@@ -503,12 +581,32 @@
           "buffer": "colortex1",
           "format": "RGBA16UI",
           "scale": 1.0
+        },
+        {
+          "resource": "mod",
+          "buffer": "colortex3",
+          "format": "RGBA8",
+          "scale": 1.0
+        },
+        {
+          "resource": "emit",
+          "buffer": "colortex4",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "trans",
+          "buffer": "colortex5",
+          "format": "RGBA16F",
+          "scale": 1.0
         }
       ],
       "feature": "particles",
       "options": [
         "BENCH_DETERMINISTIC",
-        "LIGHT_PATH"
+        "LIGHT_PATH",
+        "OVERLAYS",
+        "SCENE_FORMAT"
       ],
       "budget": null,
       "views": [
@@ -553,11 +651,32 @@
           "buffer": "colortex1",
           "format": "RGBA16UI",
           "scale": 1.0
+        },
+        {
+          "resource": "mod",
+          "buffer": "colortex3",
+          "format": "RGBA8",
+          "scale": 1.0
+        },
+        {
+          "resource": "emit",
+          "buffer": "colortex4",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "trans",
+          "buffer": "colortex5",
+          "format": "RGBA16F",
+          "scale": 1.0
         }
       ],
       "feature": "gbuffer",
       "options": [
-        "LIGHT_PATH"
+        "BENCH_DETERMINISTIC",
+        "LIGHT_PATH",
+        "OVERLAYS",
+        "SCENE_FORMAT"
       ],
       "budget": null,
       "views": [
@@ -594,6 +713,7 @@
           "shadowtex1"
         ],
         "uniforms": [
+          "blockFlicker",
           "endFlashIntensity",
           "far",
           "fogColor",
@@ -622,8 +742,15 @@
       ],
       "feature": "lighting",
       "options": [
+        "BLOCK_FLICKER",
         "E2_LOAD",
-        "LIGHT_PATH"
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "LIGHT_PATH",
+        "OVERLAYS",
+        "SCENE_FORMAT",
+        "SHADOWS",
+        "SUN_SPECULAR"
       ],
       "budget": null,
       "views": [
@@ -641,8 +768,158 @@
       ]
     },
     {
-      "name": "forward-lit",
-      "program": "gbuffers_textured_lit",
+      "name": "forward-entities",
+      "program": "gbuffers_entities_translucent",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture",
+          "shadowtex1"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "normalMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "shadowModelView",
+          "shadowProjection",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "trans",
+          "buffer": "colortex5",
+          "format": "RGBA16F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "forward",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "E2_LOAD",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "OVERLAYS",
+        "SCENE_FORMAT",
+        "SHADOWS",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "forward-blocks",
+      "program": "gbuffers_block_translucent",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture",
+          "shadowtex1"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "normalMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "shadowModelView",
+          "shadowProjection",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "trans",
+          "buffer": "colortex5",
+          "format": "RGBA16F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "forward",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "E2_LOAD",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "OVERLAYS",
+        "SCENE_FORMAT",
+        "SHADOWS",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "beacon-beam",
+      "program": "gbuffers_beaconbeam",
       "stage": "gbuffers",
       "dimensions": [
         "minecraft:overworld",
@@ -655,6 +932,164 @@
         ],
         "uniforms": [
           "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "gbuffer",
+          "buffer": "colortex1",
+          "format": "RGBA16UI",
+          "scale": 1.0
+        },
+        {
+          "resource": "mod",
+          "buffer": "colortex3",
+          "format": "RGBA8",
+          "scale": 1.0
+        },
+        {
+          "resource": "emit",
+          "buffer": "colortex4",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "trans",
+          "buffer": "colortex5",
+          "format": "RGBA16F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "forward",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "LIGHT_PATH",
+        "OVERLAYS",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "glint",
+      "program": "gbuffers_armor_glint",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "emit",
+          "buffer": "colortex4",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "overlays",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "OVERLAYS",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "eyes",
+      "program": "gbuffers_spidereyes",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
           "chunkOffset",
           "endFlashIntensity",
           "far",
@@ -679,7 +1114,525 @@
       ],
       "feature": "forward",
       "options": [
-        "BENCH_DETERMINISTIC"
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "outline",
+      "program": "gbuffers_line",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "outline",
+      "options": [
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "crumbling",
+      "program": "gbuffers_damagedblock",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "mod",
+          "buffer": "colortex3",
+          "format": "RGBA8",
+          "scale": 1.0
+        }
+      ],
+      "feature": "overlays",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "OVERLAYS",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "translucent-terrain",
+      "program": "gbuffers_water",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture",
+          "shadowtex1"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "normalMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "shadowModelView",
+          "shadowProjection",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "forward",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "E2_LOAD",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SHADOWS",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "forward-particles",
+      "program": "gbuffers_particles_translucent",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture",
+          "shadowtex1"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "shadowModelView",
+          "shadowProjection",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "particles",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "E2_LOAD",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SHADOWS",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "clouds",
+      "program": "gbuffers_clouds",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "clouds",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "weather",
+      "program": "gbuffers_weather",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture",
+          "shadowtex1"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "shadowModelView",
+          "shadowProjection",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "weather",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "E2_LOAD",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SHADOWS",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "lightning",
+      "program": "gbuffers_lightning",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "lightning",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "nether_crimson",
+        "end_dragon",
+        "night",
+        "underwater",
+        "nether_soul",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "forward-hand",
+      "program": "gbuffers_hand_water",
+      "stage": "gbuffers",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_nether",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "blockFlicker",
+          "chunkOffset",
+          "endFlashIntensity",
+          "far",
+          "fogColor",
+          "gbufferModelViewInverse",
+          "heldBlockLightValue",
+          "heldBlockLightValue2",
+          "modelViewMatrix",
+          "normalMatrix",
+          "projectionMatrix",
+          "rainStrength",
+          "shadowLightPosition",
+          "sunPosition"
+        ]
+      },
+      "outputs": [
+        {
+          "resource": "scene",
+          "buffer": "colortex0",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        }
+      ],
+      "feature": "forward",
+      "options": [
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
       ],
       "budget": null,
       "views": [
@@ -706,9 +1659,12 @@
         "minecraft:the_end"
       ],
       "inputs": {
-        "samplers": [],
+        "samplers": [
+          "shadowtex1"
+        ],
         "uniforms": [
           "alphaTestRef",
+          "blockFlicker",
           "chunkOffset",
           "endFlashIntensity",
           "far",
@@ -720,6 +1676,8 @@
           "projectionMatrix",
           "rainStrength",
           "shadowLightPosition",
+          "shadowModelView",
+          "shadowProjection",
           "sunPosition"
         ]
       },
@@ -729,10 +1687,44 @@
           "buffer": "colortex0",
           "format": "R11F_G11F_B10F",
           "scale": 1.0
+        },
+        {
+          "resource": "gbuffer",
+          "buffer": "colortex1",
+          "format": "RGBA16UI",
+          "scale": 1.0
+        },
+        {
+          "resource": "mod",
+          "buffer": "colortex3",
+          "format": "RGBA8",
+          "scale": 1.0
+        },
+        {
+          "resource": "emit",
+          "buffer": "colortex4",
+          "format": "R11F_G11F_B10F",
+          "scale": 1.0
+        },
+        {
+          "resource": "trans",
+          "buffer": "colortex5",
+          "format": "RGBA16F",
+          "scale": 1.0
         }
       ],
       "feature": "forward",
-      "options": [],
+      "options": [
+        "BLOCK_FLICKER",
+        "E2_LOAD",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "LIGHT_PATH",
+        "OVERLAYS",
+        "SCENE_FORMAT",
+        "SHADOWS",
+        "SUN_SPECULAR"
+      ],
       "budget": null,
       "views": [
         "forest_noon",
@@ -763,6 +1755,7 @@
         ],
         "uniforms": [
           "alphaTestRef",
+          "blockFlicker",
           "chunkOffset",
           "endFlashIntensity",
           "far",
@@ -787,7 +1780,12 @@
       ],
       "feature": "forward",
       "options": [
-        "BENCH_DETERMINISTIC"
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SUN_SPECULAR"
       ],
       "budget": null,
       "views": [
@@ -805,62 +1803,8 @@
       ]
     },
     {
-      "name": "clouds",
-      "program": "gbuffers_clouds",
-      "stage": "gbuffers",
-      "dimensions": [
-        "minecraft:overworld",
-        "minecraft:the_nether",
-        "minecraft:the_end"
-      ],
-      "inputs": {
-        "samplers": [],
-        "uniforms": [
-          "alphaTestRef",
-          "chunkOffset",
-          "endFlashIntensity",
-          "far",
-          "fogColor",
-          "gbufferModelViewInverse",
-          "heldBlockLightValue",
-          "heldBlockLightValue2",
-          "modelViewMatrix",
-          "projectionMatrix",
-          "rainStrength",
-          "shadowLightPosition",
-          "sunPosition"
-        ]
-      },
-      "outputs": [
-        {
-          "resource": "scene",
-          "buffer": "colortex0",
-          "format": "R11F_G11F_B10F",
-          "scale": 1.0
-        }
-      ],
-      "feature": "clouds",
-      "options": [
-        "BENCH_DETERMINISTIC"
-      ],
-      "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
-    },
-    {
-      "name": "weather",
-      "program": "gbuffers_weather",
+      "name": "forward-lit",
+      "program": "gbuffers_textured_lit",
       "stage": "gbuffers",
       "dimensions": [
         "minecraft:overworld",
@@ -869,10 +1813,12 @@
       ],
       "inputs": {
         "samplers": [
-          "gtexture"
+          "gtexture",
+          "shadowtex1"
         ],
         "uniforms": [
           "alphaTestRef",
+          "blockFlicker",
           "chunkOffset",
           "endFlashIntensity",
           "far",
@@ -884,6 +1830,8 @@
           "projectionMatrix",
           "rainStrength",
           "shadowLightPosition",
+          "shadowModelView",
+          "shadowProjection",
           "sunPosition"
         ]
       },
@@ -895,63 +1843,16 @@
           "scale": 1.0
         }
       ],
-      "feature": "weather",
+      "feature": "forward",
       "options": [
-        "BENCH_DETERMINISTIC"
-      ],
-      "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
-    },
-    {
-      "name": "lightning",
-      "program": "gbuffers_lightning",
-      "stage": "gbuffers",
-      "dimensions": [
-        "minecraft:overworld",
-        "minecraft:the_nether",
-        "minecraft:the_end"
-      ],
-      "inputs": {
-        "samplers": [],
-        "uniforms": [
-          "alphaTestRef",
-          "chunkOffset",
-          "endFlashIntensity",
-          "far",
-          "fogColor",
-          "gbufferModelViewInverse",
-          "heldBlockLightValue",
-          "heldBlockLightValue2",
-          "modelViewMatrix",
-          "projectionMatrix",
-          "rainStrength",
-          "shadowLightPosition",
-          "sunPosition"
-        ]
-      },
-      "outputs": [
-        {
-          "resource": "scene",
-          "buffer": "colortex0",
-          "format": "R11F_G11F_B10F",
-          "scale": 1.0
-        }
-      ],
-      "feature": "lightning",
-      "options": [
-        "BENCH_DETERMINISTIC"
+        "BENCH_DETERMINISTIC",
+        "BLOCK_FLICKER",
+        "E2_LOAD",
+        "FOLIAGE_TRANSLUCENCY",
+        "HELD_LIGHT",
+        "SCENE_FORMAT",
+        "SHADOWS",
+        "SUN_SPECULAR"
       ],
       "budget": null,
       "views": [
@@ -1038,7 +1939,9 @@
         }
       ],
       "feature": "dither",
-      "options": [],
+      "options": [
+        "DITHER"
+      ],
       "budget": null,
       "views": [
         "forest_noon",

@@ -2,10 +2,12 @@
 // entities, block, hand, particles). Inputs are Iris's core-profile names (`#version 330 core`):
 // Iris renames them to the vertex format's attributes, or to Sodium's for terrain
 // (docs/shader.md#facts). Switches: SURFACE_PARTICLE (no normal attribute: the face is taken to
-// look at the camera).
+// look at the camera); SURFACE_TERRAIN (mc_Entity, block.properties' id, -1 for a block it does
+// not list: foliage passes on as 1.0, else 0.0, a smooth varying the fragment stage rounds).
 
 #include "/lib/options.glsl"
 #include "/lib/curves.glsl"
+#include "/program/targets.glsl"
 
 in vec3 vaPosition;
 in vec4 vaColor;
@@ -14,6 +16,10 @@ in ivec2 vaUV2;
 #ifndef SURFACE_PARTICLE
 in vec3 vaNormal;
 uniform mat3 normalMatrix;
+#endif
+#if defined SURFACE_TERRAIN && defined FOLIAGE_TRANSLUCENCY
+in vec2 mc_Entity;
+out float foliage;
 #endif
 
 uniform mat4 modelViewMatrix;
@@ -39,5 +45,8 @@ void main() {
     worldNormal = -fromCamera;
 #else
     worldNormal = mat3(gbufferModelViewInverse) * (normalMatrix * vaNormal);
+#endif
+#if defined SURFACE_TERRAIN && defined FOLIAGE_TRANSLUCENCY
+    foliage = int(mc_Entity.x + 0.5) == BLOCK_FOLIAGE ? 1.0 : 0.0;
 #endif
 }

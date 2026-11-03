@@ -42,12 +42,12 @@ Each: Iris (program, ShaderKey, fallbacks: [verify in jar: ProgramId, ShaderKey]
 
 ### Lightning
 - Iris: gbuffers_lightning (LIGHTNING: POSITION_COLOR, FULLBRIGHT) -> entities -> textured_lit (R3); also the dragon's death beams; blended, so after deferred (P11) [inferred]. Slot: forward, added and unlit; TAA mask skip.
-- D: discarded as built. A bolt struck in rain's 120 stepped ticks (config/suite.json capture.ticksAfterWeatherChange) would freeze into its captures [inferred]; the discard hides the bolt, not a sky flash in a uniform the pack reads [inferred]. m3-determinism-2 and -3 were identical at rain.
+- D: discarded as built, its shadow too (shadow_lightning, M4.P07; the shadow root would cast it). A bolt struck in rain's 120 stepped ticks (config/suite.json capture.ticksAfterWeatherChange) would freeze into its captures [inferred]; the discard hides the bolt, not a sky flash in a uniform the pack reads [inferred]. m3-determinism-2 and -3 were identical at rain.
 - View: none reliably; a summoned lightning_bolt (not a monster) at the site under /tick freeze, clear of the mobs, would be world-prep content, so identity [inferred]. C: about 0 [inferred].
 
 ### Beacon beam
 - Iris: gbuffers_beaconbeam (BEACON: BLOCK format, no alpha test, per-fragment fog, FULLBRIGHT) -> textured (R1, R3). beacon.beam.depth is read by nothing (P12); the beam draws before deferred and after it, at BLOCK_ENTITIES both times (M4.P06's probe).
-- Slot: forward after deferred, fogged in its program; renderStage cannot split its two draws, so its pre-deferred one is waived (plans/m4.md D76).
+- Slot: forward after deferred, fogged in its program; renderStage cannot split its two draws, so as built (M4.P07) every beam fragment also writes the G-buffer as an emissive material, which only deferred reads: the core before it lands there, unlit, the glow after it in the scene (docs/shader.md#pipeline-spec).
 - D: still within a launch (the hello pack's coverage_beacon pair identical, m3-coverage-3), moving across launches: "the beacon beam's turn and scroll (the game time, which the unfrozen ticks before /tick freeze move)" (config/suite.json coverageViews); the coverage rule excludes it, so no discard. View: coverage_beacon. C: a thin column, about 0.01 ms [inferred].
 
 ### Lines
@@ -58,7 +58,7 @@ Each: Iris (program, ShaderKey, fallbacks: [verify in jar: ProgramId, ShaderKey]
 
 ### Text
 - Iris (R1 ShaderKey): TEXT, TEXT_INTENSITY, TEXT_BG -> entities_translucent -> entities; TEXT_BE, TEXT_INTENSITY_BE -> block_translucent -> block; hand text -> hand or hand_water. Sign text (text_be) draws through gbuffers_block_translucent (M4.P06's probe), as R1 says, not R2's gbuffers_block.
-- Slot: name tags and texts after deferred, lit forward (P11); sign text before it, its glyphs alpha 0 or 1, so alpha-tested into the G-buffer (D76), as the base pack's block fallback does.
+- Slot: name tags and texts after deferred, lit forward (P11); sign text before it, its glyphs alpha 0 or 1. As built (M4.P07) not the G-buffer D76 names: block_translucent also draws banner patterns before deferred, so it lights each fragment forward into the scene and trans with vanilla's blend, right on either side, sign text at alpha 1.
 - D: static. View: coverage_items' sign (read back by world prep); no site entity has a custom name (optilux/world.py CONTENT): name tags uncovered. C: about 0.
 
 ### Armor glint

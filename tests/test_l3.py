@@ -233,20 +233,25 @@ PROPERTIES = (
 )
 
 
+@needs_runtime
 def test_the_base_pack_passes(gl) -> None:
-    """The base pack under shader/ against its tests under tests/l3/ (plans/m4.md M4.P06): an L3
-    test per include but options.glsl and sky.glsl."""
+    """The pack under shader/ against its tests under tests/l3/ (plans/m4.md M4.P06, M4.P07): an
+    L3 test per include but options.glsl and sky.glsl, and its custom uniforms (blockFlicker at the
+    defaults) held to their GLSL in Iris's engine."""
     found = l3.check(
         gl,
         check_verb.load_pack(REPO_ROOT, None),
         REPO_ROOT / l3.TESTS_DIR,
         check_verb.macros(REPO_ROOT),
+        check_verb.engine(REPO_ROOT),
     )
     assert found["problems"] == []
+    assert found["uniforms"]["defined"] == ["blockFlicker"]
     tested = {e["include"].removeprefix("shaders/lib/") for e in found["includes"] if e["test"]}
     assert tested == {
         "curves.glsl",
         "dither.glsl",
+        "flicker.glsl",
         "fog.glsl",
         "gbuffer.glsl",
         "lighting.glsl",

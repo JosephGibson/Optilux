@@ -207,8 +207,10 @@ def load() -> dict:
     return json.loads(PIPELINE.read_text(encoding="utf-8"))
 
 
-def all_text() -> str:
-    return "\n".join(p.read_text(encoding="utf-8") for p in SHADERS.rglob("*") if p.is_file())
+def targets_text() -> str:
+    """program/targets.glsl's kept lines at the defaults: Iris reads the formats and clears from
+    deferred's preprocessed source, so an option (SCENE_FORMAT) can pick one."""
+    return "\n".join(active(expand(SHADERS / "program" / "targets.glsl")))
 
 
 def test_the_spec_names_the_pack_its_cycle_and_its_views() -> None:
@@ -223,7 +225,7 @@ def test_the_spec_names_the_pack_its_cycle_and_its_views() -> None:
 
 
 def test_the_resources_are_the_formats_and_clears_the_pack_sets() -> None:
-    text = all_text()
+    text = targets_text()
     formats = {m["buffer"]: m["format"] for m in FORMAT.finditer(text)}
     kept = {m["buffer"] for m in CLEARED.finditer(text)}
     colors = {
@@ -292,7 +294,19 @@ def test_each_pass_writes_the_targets_its_fragment_stage_names() -> None:
 
 def test_each_pass_names_the_options_that_change_its_code() -> None:
     values = option_values()
-    assert set(values) == {"BENCH_DETERMINISTIC", "LIGHT_PATH", "E2_LOAD"}
+    assert set(values) == {
+        "BENCH_DETERMINISTIC",
+        "SHADOWS",
+        "HELD_LIGHT",
+        "BLOCK_FLICKER",
+        "SUN_SPECULAR",
+        "FOLIAGE_TRANSLUCENCY",
+        "DITHER",
+        "LIGHT_PATH",
+        "E2_LOAD",
+        "SCENE_FORMAT",
+        "OVERLAYS",
+    }
     for found in load()["passes"]:
         program = found["program"]
         changed = sorted(

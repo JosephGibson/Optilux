@@ -450,14 +450,18 @@ def test_the_hello_pack_passes_the_matrix() -> None:
 
 @needs_glslang
 def test_the_base_pack_passes_the_matrix() -> None:
-    """The base pack under shader/ and config/pipeline.json v1 (plans/m4.md M4.P06): every program
-    in each of its dimensions' folders at the defaults and each option's other values builds."""
+    """The pack under shader/ and config/pipeline.json v1 (plans/m4.md M4.P06, M4.P07): every
+    program in each of its dimensions' folders at the defaults and each option's other values
+    builds."""
     spec = json.loads((REPO_ROOT / "config" / "pipeline.json").read_text(encoding="utf-8"))
     pack = check_verb.load_pack(REPO_ROOT, None)
     matrix = offline.build_matrix(pack, spec["passes"], check_verb.macros(REPO_ROOT), GLSLANG)
     assert not matrix.failed and not matrix.problems
-    variants = 1 + 1 + 3 + 1  # defaults, BENCH_DETERMINISTIC off, E2_LOAD 4 8 16, LIGHT_PATH 0
-    assert len(matrix.builds) == 20 * 3 * variants - 3 * variants  # no shadow program in world-1
+    # defaults; BENCH_DETERMINISTIC, DITHER, FOLIAGE_TRANSLUCENCY, HELD_LIGHT, OVERLAYS and
+    # SUN_SPECULAR off; BLOCK_FLICKER 0, 2, 3; E2_LOAD 4, 8, 16; LIGHT_PATH 0; SCENE_FORMAT 1;
+    # SHADOWS 0
+    variants = 1 + 6 + 3 + 3 + 1 + 1 + 1
+    assert len(matrix.builds) == 31 * 3 * variants - 4 * variants  # no shadow program in world-1
 
 
 @needs_glslang
@@ -603,6 +607,9 @@ def test_properties_l0_cannot_read_are_refused(source: str, message: str) -> Non
         ("float a = mod(float(frameCounter), 16.0);", None),
         ("int a = frameCounter & 15;", None),
         ("int a = frameCounter & 0x1F;", "with & 0x1F, a cycle of 32"),
+        ("uniform mat4 textureMatrix;", None),
+        ("uv = (textureMatrix * vec4(uv, 0.0, 1.0)).xy;", "reads textureMatrix, scrolls the"),
+        ("color.rgb += mc_sampleGlint();", "reads mc_sampleGlint, samples the glint on its"),
     ],
 )
 def test_the_rule_reads_a_line(line: str, refused: str | None) -> None:
@@ -682,3 +689,24 @@ def test_l0_refuses_a_read_of_frame_time_counter_under_the_define(tmp_path: Path
     )
     assert found["matrix"]["determinism"]["refusals"] == len(refused)
     assert all(not f["failures"][1:] for f in refused)  # compiled and linked besides
+
+
+@needs_glslang
+def test_l0_compiles_a_glint_call_and_refuses_it_under_the_define(tmp_path: Path) -> None:
+    """Iris declares mc_sampleGlint() in every stage (GlintTransformer, plans/m4.md P19); L0
+    compiles and links a call against its stub, and the rule refuses the call under the define."""
+    home = hello_copy(tmp_path)
+    stage = home / "shaders" / "lib" / "surface_fragment.glsl"
+    text = stage.read_text(encoding="utf-8").replace(
+        "    vec4 color = vertexColor;",
+        "    vec4 color = vertexColor;\n    color.rgb += mc_sampleGlint();",
+    )
+    stage.write_text(text, encoding="utf-8")
+    found = check_verb.run_l0(REPO_ROOT, str(home))
+    refused = [f for f in found["matrix"]["failures"] if f["step"] == offline.DETERMINISM]
+    assert {f["variant"] for f in refused} == {"defaults"}
+    assert all(not f["failures"][1:] for f in refused)  # compiled and linked besides
+    others = [f for f in found["matrix"]["failures"] if f["step"] != offline.DETERMINISM]
+    assert others == []  # BENCH_DETERMINISTIC false compiles and links the call
+    (line,) = {line for f in refused for line in f["lines"]}
+    assert "reads mc_sampleGlint, samples the glint on its texture matrix" in line
