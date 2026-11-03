@@ -19,13 +19,13 @@ Tags: [inferred] reasoning, [m] measured, [verify in jar] not yet read in the pi
 - docs/research/post.md: mip-tile bloom on TAA's resolved frame with a Karis prefilter; RCAS-style sharpening after TAA; a static dither last.
 - docs/research/next-gen.md: integer floodfill colored light and half-res shafts if a probe and cost rows allow; path tracing not.
 - docs/research/iris.md: fragment programs only in M4; compute, SSBO and images after one probe; nothing smoothed under BENCH_DETERMINISTIC.
-- docs/research/programs.md: the coverage programs no topic held, all written in M4; lightning into emit, lines and text into trans; particles, weather and lightning off under BENCH_DETERMINISTIC; the base 0.6-1.7 ms a view type [inferred].
+- docs/research/programs.md: the coverage programs no topic held, all written in M4; lightning, lines and text after deferred (plans/m4.md P11); particles, weather and lightning off under BENCH_DETERMINISTIC; the base 0.6-1.7 ms a view type [inferred].
 
 ## Architecture
 ### Lighting path (E2's candidates)
-- D: opaque gbuffers (terrain_solid without discard, terrain_cutout on alphaTestRef, entities, block, hand, opaque particles via particles.ordering=mixed) write `gbuf` RGBA16UI: albedo 3x8, octahedral normal 2x7, block and sky light 7 each, vanilla AO 6, material 6. Blended draws before deferred write one target per operation, as one colour and a mode cannot hold a multiply under an add (docs/research/lighting.md#overlay-targets): `mod` RGBA8 multiplied (damaged block), `emit` R11G11B10F added (glint, spider eyes, beacon beam, lightning), `trans` RGBA16F premultiplied over (translucent entities, block entities and text lit forward; lines); their depth writes are premise 17; an R8 `mask` serves TAA. Every later pass reads only these and depth.
+- D: opaque gbuffers (terrain_solid without discard, terrain_cutout on alphaTestRef, entities, block, hand, opaque particles, 26.3's solid phase) write `gbuf` RGBA16UI: albedo 3x8, octahedral normal 2x7, block and sky light 7 each, vanilla AO 6, material 6. The few blended draws before deferred (plans/m4.md P11, D76) write one target per operation, as one colour and a mode cannot hold a multiply under an add (docs/research/lighting.md#overlay-targets): `mod` RGBA8 multiplied (crumbling), `emit` R11G11B10F added (shield and trim glint), `trans` RGBA16F premultiplied over (banner patterns, armour cracks); every other blended draw comes after deferred, lit forward; an R8 `mask` serves TAA. Every later pass reads only these and depth.
 - F (LIGHT_PATH, dev): the include per fragment; it still exports normal and material for AO and SSR [inferred].
-- M4 draws a shadow pass: the coverage list holds `shadow` (docs/shader.md#coverage-list) and M4 builds every coverage-list program (docs/roadmap.md#m1-to-m6). So E2 can time a real 1-tap lookup plus E2_LOAD, which may lift separateAo's shadow-pass caveat.
+- M4 draws a shadow pass: the coverage list holds `shadow` (docs/shader.md#coverage-list) and M4 builds every coverage-list program (docs/roadmap.md#m1-to-m6). So E2 can time a real 1-tap lookup plus E2_LOAD.
 
 ### Pass order (iris-gl)
 Rules: what gbuffers_water samples sits at colortex4+ (colortex0-3 "are only able to be sampled from fullscreen passes", docs/research/iris.md); one size per pass; no pass reads what it writes (docs/shader.md#pipeline-spec). Scale 1 unless marked.
@@ -36,13 +36,13 @@ Rules: what gbuffers_water samples sits at colortex4+ (colortex0-3 "are only abl
 | sky-lut (prepare-prepare2, overworld) | 5 | uniforms | 256x64, 32x32 RGBA16F; skyview 192x108 R11G11B10F |
 | maps (prepare3) | 5 | worldTime; cameraPosition and, off the define, frameTimeCounter (beams) | nebula 512x256 RGBA16F; End beam map |
 | surface (opaque gbuffers) | 4 | gtexture, vaUV2, mc_Entity | gbuf RGBA16UI; mask R8 |
-| overlay (blended, before deferred) | 4 | as surface | mod RGBA8, emit R11G11B10F, trans RGBA16F |
+| overlay (P11's blended, before deferred) | 4 | as surface | mod RGBA8, emit R11G11B10F, trans RGBA16F |
 | ao (deferred, deferred1) | 5 | depth, gbuf | RG16F (AO, 1/viewZ), 0.5 |
 | clouds (deferred2) | 5 | skyview, noise | RGBA16F + RG16F, 0.5 |
 | light (deferred3) | 4 | gbuf, mod, emit, trans, shadowtex, ao, clouds, skyview | scene-lit R11G11B10F: lit, sky, clouds, no fog |
 | ssr (deferred4, mips of scene-lit) | 5 | scene-lit, gbuf, depthtex1 | refl RGBA16F, confidence in alpha, 0.5 |
 | resolve (deferred5) | 4 | scene-lit, refl, gbuf | scene R11G11B10F: reflections, opaque fog |
-| forward (water, hand_water, weather, translucent particles) | 4 | depthtex1, scene-lit, skyview | blends into scene |
+| forward (every other blended draw: P11) | 4 | depthtex1, scene-lit, skyview | blends into scene |
 | beams (composite, End) | 5 | beam map, depth | RGBA16F, 0.5 |
 | taa (composite1) | 5 | scene, beams, history, depth, mask | history RGBA16F, an explicit pair: the resolved frame |
 | bloom (composite2-3) | 5 | history, or scene and beams | P R11G11B10F 0.5 mipmapped; tile atlas |
@@ -74,8 +74,8 @@ Every row is [verify in jar] by its class (under net.irisshaders.iris); state as
 |---|---|---|
 | Sodium keys to terrain_solid (no alpha test), _cutout, water; shadow_solid, _cutout, _water | yes | ShaderKey, ProgramId |
 | the pack applies alphaTestRef; entityId per vertex; MC_HAND_DEPTH 0.125 | read in jar (docs/shader.md#facts) | StandardMacros |
-| deferred between opaque and translucent gbuffers; particles.ordering=mixed | yes | IrisRenderingPipeline |
-| RGBA16UI; its clear; never blended | format yes, clear open | InternalTextureFormat, BlendModeOverride |
+| deferred between opaque and translucent gbuffers; particles.ordering inert (P12) | yes | IrisRenderingPipeline |
+| RGBA16UI; its clear; never blended | yes; float clear undefined (P14): Clear=false reads back exact (M4.P06) | InternalTextureFormat, BlendModeOverride |
 | R11F_G11F_B10F, RGB10_A2, RGBA16F, RG16F | yes | InternalTextureFormat |
 | colortex0-3 unsampleable in gbuffers | yes | IrisSamplers |
 | size.buffer, one size a pass; scale.<pass>; mip flags per program | yes; program lists conflict | ShaderProperties, CompositeRenderer |
@@ -84,16 +84,16 @@ Every row is [verify in jar] by its class (under net.irisshaders.iris); state as
 | custom uniforms on frameCounter, viewWidth, matrices, sunAngle, worldTime, worldDay, eyeBrightness, rainStrength, held light | yes | kroppeb.stareval Parser, CustomUniforms |
 | smooth(), wetness, eyeBrightnessSmooth on the wall clock (docs say ticks; source holds) | yes, barred | SmoothFloat, SmoothedFloat |
 | rainStrength PER_TICK; sun at the tick delta; the End's worldTime; hideGUI per frame | yes; still under freeze open | CommonUniforms, CelestialUniforms, WorldTimeUniforms |
-| separateAo (maybe needing a shadow pass), oldLighting, oldHandLight | yes | WorldRenderingSettings, IdMapUniforms |
-| mc_Entity, at_midBlock.w in core terrain; mc_sampleGlint's clock | open | TransformPatcher |
-| shadow directives, compare samplers, SEPARATE_HARDWARE_SAMPLERS, a colourless shadow program, endFlashShadows | yes; colourless open | PackShadowDirectives, ShadowRenderer |
-| sky, stars, sun, moon, clouds, weather directives; prepare; program.<world>/<name>.enabled | yes; 26.3 open | ShaderProperties, ProgramSet |
+| separateAo (no shadow-pass condition: P16), oldLighting, oldHandLight | yes | WorldRenderingSettings, IdMapUniforms |
+| mc_Entity, at_midBlock.w in core terrain; mc_sampleGlint's clock | yes (P16, P19) | TransformPatcher |
+| shadow directives, compare samplers, SEPARATE_HARDWARE_SAMPLERS, a colourless shadow program, endFlashShadows | yes (P20) | PackShadowDirectives, ShadowRenderer |
+| sky, stars, sun, moon, clouds, weather directives; prepare; program.<world>/<name>.enabled | yes; sky= drops only Iris's horizon, stars= nothing (P12) | ShaderProperties, ProgramSet |
 | raw TEXTURE_3D custom textures; noisetex from Random(0) | yes | CustomTextureData, NativeImageBackedNoiseTexture |
 | depthtex1 copied before deferred; gbuffers_water sees deferred's flips | yes | RenderTargets |
-| textureGather select, bitCount (ARB_gpu_shader5) | open | StandardMacros |
-| compute, SSBO | unlikely: ARB_compute_shader "OpenGL 4.2 is required" | FeatureFlags, IrisRenderSystem |
-| custom images (ARB_clear_texture) | open: image load/store needs GL 3.0 and GLSL 1.30 (docs/research/iris.md#compute-ssbos-images) | FeatureFlags, IrisRenderSystem, GlImage |
-| final target format, RGBA8 assumed | open | FinalPassRenderer |
+| textureGather select, bitCount (ARB_gpu_shader5) | defined in game (M4.P06) | StandardMacros |
+| compute, SSBO | exposed: their MC_GL_ macros defined in game (M4.P06, P22) | FeatureFlags, IrisRenderSystem |
+| custom images (ARB_clear_texture) | extensions defined in game (M4.P06), unused | FeatureFlags, IrisRenderSystem, GlImage |
+| final target format | RGBA8 (P15) | FinalPassRenderer |
 
 ## Budget
 - 26.3 baseline [m]: Unbound played's GPUBusy per view in the table below (results/records/m3-shadows-full-1.json); shadows off -0.86 ms mean. ALC's 1.21.11 ablations are context (config/profiles/complementary-unbound-played.json): TAA 0.579, clouds 0.302, water reflection 0.192, SSAO 0.138, bloom 0.128 ms.
@@ -159,37 +159,20 @@ Look-target questions:
 ## Milestones
 - M4 and M5 keep their cut (docs/roadmap.md#decisions D73).
 - M4 (docs/roadmap.md#m1-to-m6): D72 first; every coverage-list program, shadow included; lighting; tonemap and final; the gradient sky; edge fog; E2; cost and timer rows; L3-L4. M5: shadow filters, sky, clouds, water, fogs, AO, bloom, full TAA, the flush, A6, A12, controls, live pass.
-- M4, the remaining programs (docs/research/programs.md#for-optilux): each written, lightning and damaged block too; particles.ordering=mixed; under BENCH_DETERMINISTIC weather=false false and a particle vertex cull, each an identical-tier A/B against the discard, glint unscrolled, the beam drawn; a define-off coverage variant for particles, weather and lightning, judged within its launch; lines, lightning, spider eyes, damaged block, hand_water, name tags and snow each a written waiver or a views or world change (identity, so recalibration), the user's.
+- M4, the remaining programs (docs/research/programs.md#for-optilux): each written, lightning and damaged block too; under BENCH_DETERMINISTIC weather=false false and a particle vertex cull, each an identical-tier A/B against the discard, glint unscrolled, the beam drawn; a define-off coverage variant for particles, weather and lightning, judged within its launch; lines, lightning, spider eyes, damaged block, hand_water, name tags and snow each a written waiver or a views or world change (identity, so recalibration), the user's.
 - Unnamed in-scope features: the material map, held-item light and flicker in M4 with lighting; vanilla weather in M4 (coverage list; discarded under BENCH_DETERMINISTIC); block reflections and rain puddles in M5 with water (one ssr include); image sharpening with TAA and underwater distortion in final, M5; entity shadows in M5 with shadows; End beams in M5 with fog; the End flash's light term in M4, its glow in M5 with sky.
 - M5 split: M5a the temporal proof, then TAA-free features: TAA v0, `camera.path`, the flush with F12's answer, A6, A12, so E4 closes early; shadows, sky, fogs, water to Medium, reflections, puddles, bloom. M5b the TAA-denoised features and gates: TAA's ladder and masks, AO, clouds, End beams, sharpening, High SSR, positive controls, live pass. It avoids ALC's M3 case (docs/design.md#6-milestones).
 
 ## Premises for M4's plan
-M4.P00 verifies each at its source, or marks it open:
-1. Sodium's terrain keys reach terrain_solid (no alpha test), terrain_cutout and water; shadow keys likewise.
-2. Deferred runs between opaque and translucent gbuffers; particles.ordering=mixed works.
-3. RGBA16UI allocates, clears or leaves sky to depth, never blends; the float formats load.
-4. separateAo fills vaColor.a on Sodium 0.9.2, with or without a shadow pass.
-5. mc_Entity and at_midBlock.w reach core terrain and gbuffers_water.
-6. oldLighting=false drops face shade; oldHandLight=false; held light at every view.
-7. Custom-uniform inputs and the matrix element order (m.<row>.<column> or .x a column).
-8. colortex0-3 unsampleable in gbuffers; size.buffer, scale and mip flags as read; the flip copy.
-9. mc_sampleGlint() and the wall clock.
-10. A colourless shadow program; compare samplers; no Nether pass without a shadow sampler.
-11. sky=, stars=, sun=, moon=, clouds=off on 26.3; the End sky's program.
-12. Tick-delta and PER_TICK uniforms still under /tick freeze: the TAA-off check on the M4 base.
-13. The driver's MC_GL_ARB_* extensions in an L1 dump; Unbound's world0/shadow.vsh, "#version 400 compatibility", ran in m3-shadows-full-1, a hint GLSL 4.00 compiles here [Iris keeping 400 inferred].
-14. The final target's format, which sets the dither step.
-15. Iris 1.11.7 against branches 26.3 (head 1.11.6), 26.1, 1.21.9 and multiloader-new (F9).
-16. Where 26.3 splits opaque from translucent particles; Iris's line patch on a pack's own gbuffers_line; blend.gbuffers_spidereyes against ProgramId's forced blend; readiness against Sodium's sort tasks (docs/research/programs.md#open-questions).
-17. Whether entities_translucent, block_translucent, text and lines write depth before deferred, and blend.<program>.<buffer> giving mod a multiply and emit an add (docs/research/lighting.md#overlay-targets).
+M4's plan verified each at its source (docs/plans/m4.md#3-premises, P10-P23); M4.P06's probe read the in-game ones: every MC_GL_ extension the driver reports defined, an RGBA16UI target read back exactly, depth read forward (docs/platform.md#mc-263).
 
 ## Risks
-- Compute and SSBOs are likely absent; Iris builds computes unchecked, so a refused one fails the load, and an unsupported bufferObject throws: colored light, world-space reflections, Hi-Z and froxels each need a fragment path.
+- Iris builds computes unchecked, so a refused one fails the load, and an unsupported bufferObject throws; compute and SSBOs are exposed here (M4.P06's probe).
 - F12 open voids entities' TAA-on rows.
 - The portable history pair costs Iris a copy plus a read and a write; image parity waits on a probe that also proves its barrier (docs/research/iris.md#history-and-previous-frame-data).
-- Tick-delta uniforms are untested: the hello pack reads none.
+- Tick-delta uniforms: 26.3 returns 1.0 while ticks are frozen (P18); the TAA-off check proves them.
 - E2's tier: near only under one 8-bit step of quantization, else close (user sign-off); the bench lacks MoreCulling (played tier), so it sees more leaf overdraw.
-- ~20 resources against colortex0-15 verified (docs/gpu-iris.md#passes-and-buffers), 32 in source; dimensions can reuse indices [inferred].
+- ~20 resources against 32 colortex (P14); dimensions can reuse indices [inferred].
 - SSR in gbuffers_water raises every translucent's VGPRs.
 - Bloom pulsing and AO shimmer at leaves: the live pass.
 - Lottes constants solved as Unbound writes them may trip verify similarity (docs/shader.md#policy).

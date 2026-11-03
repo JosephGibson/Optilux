@@ -37,11 +37,11 @@ Complementary License Agreement 1.7 (License.txt): studied, never copied (docs/s
 ## Techniques
 
 ### T1 Deferred sky, vanilla sky draws off
-- Claim: a sky shaded in gbuffers_skybasic pays for fragments terrain later covers; a deferred sky runs once per depth-1 pixel (docs/playbook.md#4-design-defaults). The draw order is [inferred]: R9 runs opaque gbuffers before deferred in no fixed order, and only weather, water and hand_water after it (programs/overview, gbuffers).
-- Switches (R9 features; boolean directives in R10 ShaderProperties): Iris-only `sky=false` drops the disc, horizon and void, `stars=false` the star geometry (gbuffers_skybasic); `sun` and `moon` the textures (gbuffers_skytextured); whether `sky` drops the sunrise fan (MC_RENDER_STAGE_SUNSET) is unstated. All four off should leave the sky programs no draws [inferred]; the design default draws a cheap gradient there instead, measured below.
+- Claim: a sky shaded in gbuffers_skybasic pays for fragments terrain later covers; a deferred sky runs once per depth-1 pixel (docs/playbook.md#4-design-defaults). The draw order (plans/m4.md P11): the sky, opaque gbuffers, deferred, then every blended draw, not R9's three programs.
+- Switches (P12, not R9): `sky=false` drops only Iris's horizon and `stars` is read by nothing, so vanilla's dome, stars and sunrise fan stay drawn (at SKY: M4.P06's probe); `sun` and `moon` cancel vanilla's sprites (gbuffers_skytextured). The base pack's gbuffers_skybasic puts every vertex outside the clip volume instead, and deferred draws the gradient.
 - Vanilla style: `sun` and `moon` on; gbuffers_skytextured writes the sprite to a cleared celestial buffer, split by MC_RENDER_STAGE_SUN and _MOON (R9 render_stages); deferred adds it times the view transmittance. Unbound works around Iris below IRIS_VERSION 10814 reporting the sun as MOON (program/gbuffers_skytextured.glsl), so L4 checks the stages. Optilux style: both off, discs in deferred (T6).
 - Cost: 0.01-0.05 ms in an existing deferred pass at full sky coverage [inferred: 8.3 M pixels, one LUT fetch, about 30 ALU]; its own pass if it raises that pass's allocation step (docs/gpu-iris.md#occupancy).
-- Det: no frame-varying term; Iris clears colortex0 to fogColor (docs/shader.md#determinism-and-taa), so deferred writes every depth-1 pixel. Iris: directives and stages on 26.3 [verify in jar]. Aperture: no gbuffers sky program; the celestial buffer is written once, read later.
+- Det: no frame-varying term; Iris clears colortex0 to fogColor (docs/shader.md#determinism-and-taa), so deferred writes every depth-1 pixel. Iris: directives P12, the End's sky box and flash through skytextured (P13). Aperture: no gbuffers sky program; the celestial buffer is written once, read later.
 
 ### T2 Hillaire 2020 LUT atmosphere
 - Claim: R1 renders the sky from small ray-marched LUTs (R2):
@@ -54,7 +54,7 @@ Complementary License Agreement 1.7 (License.txt): studied, never copied (docs/s
 - Cost: about 16 k + 1 k + 21 k texels, 0.02-0.08 ms [inferred, loosely scaled from R4, its sample counts unknown]. Risk: one 32x32 fragment pass for multiple scattering is 16 wave64s, each looping 64 x 20 times with latency exposed, and may exceed that [inferred]; spread the directions over a larger pass and reduce, or use 16 directions; L4 times each.
 - Quality: Low is T5 (no LUTs), Medium 192x108 at 30 samples, High 384x216 at 40 [inferred].
 - Det: a pure function of uniforms each frame, no history: cycle 1.
-- Iris [verify in jar]: `prepare` passes run after shadow and before gbuffers, at the size of the buffers they write (R9 prepare); integer `size.buffer` values are pixels (R9 rendering, R11; Photon uses `192 108`, R8), and gbuffers cannot write a resized buffer (R9 rendering); non-integer formats sample GL_LINEAR, CLAMP_TO_EDGE (R10 RenderTarget). No compute, SSBO or image load/store; 3-4 of colortex0-15 (docs/gpu-iris.md#passes-and-buffers).
+- Iris [verify in jar]: `prepare` passes run after shadow and before gbuffers, at the size of the buffers they write (R9 prepare); integer `size.buffer` values are pixels (R9 rendering, R11; Photon uses `192 108`, R8), and gbuffers cannot write a resized buffer (R9 rendering); non-integer formats sample GL_LINEAR, CLAMP_TO_EDGE (R10 RenderTarget). Compute, SSBOs and images are exposed here, unused (M4.P06's probe); 32 colortex, gbuffers sampling 4-31 (P14).
 - Aperture: each LUT written in one pass, read in later ones, never read-write; the maths in an Iris-free include.
 
 ### T3 Precomputed Bruneton tables
@@ -95,12 +95,12 @@ Complementary License Agreement 1.7 (License.txt): studied, never copied (docs/s
 - Medium: an own beam field marched at half resolution, int-uniform step count 12, clipped to the band's slab, upsampled depth-aware (docs/playbook.md#51-structural): 0.3-0.55 ms [inferred: 2.07 M x 12 step-pixels against at most 8.3 M x 41, about 1/14, no shadow fetches; loose, as Unbound's march ends early on terrain].
 - Low: a direction-only beam layer in a small End sky map, no parallax, at most 0.05 ms [inferred]. High: 32 steps.
 - Flash: endFlashIntensity, endFlashPosition (view space), previousEndFlashIntensity (R9 uniforms/world, Iris-only) [verify in jar]. Iris-only `endFlashShadows` sets shadowLightPosition to endFlashPosition (R9 features): off unless the shadows topic wants it.
-- Det: the End's clock drives the flash, set by the End views (docs/shader.md#determinism-and-taa); beams move on worldTime, frozen in a session [verify in jar: the End's worldTime]; a spatial dither, static with TAA off, cycle 16 under TAA, which denoises it. Aperture: an explicit half-resolution target.
+- Det: the End's clock drives the flash, set by the End views (docs/shader.md#determinism-and-taa); beams move on worldTime, the End's own clock mod 24000 (P18), frozen in a session; a spatial dither, static with TAA off, cycle 16 under TAA, which denoises it. Aperture: an explicit half-resolution target.
 
 ### T11 Time-of-day custom uniforms
 - Sun, moon and up vectors; the celestial basis; day, twilight and night factors; star and nebula visibility; moon illuminance from moonPhase; rain and thunder blends. None uses smooth() (docs/measurement.md#visual-protocol).
 - Ground sun colour from an analytic Chapman optical depth (R15; Photon's LUT-free transmittance uses one, R8), held to the transmittance LUT by an L3 test: one formula, one place.
-- Matrices: R9 reads `m.<row>.<column>`; docs/gpu-iris.md#custom-uniforms says `.x` is a column [PB v]. The jar decides.
+- Matrices: R9 reads `m.<row>.<column>`; `.x` is a column (P18), as docs/gpu-iris.md#custom-uniforms says.
 
 ### T12 The sky as the reflection fallback
 - One sky-view fetch at the reflected direction plus an analytic sun specular, times sky light so caves do not reflect daylight (as Unbound weights its fallback); the visible sky's formula. Photon's sky map also feeds SH ambient light (R8).
@@ -111,7 +111,7 @@ Complementary License Agreement 1.7 (License.txt): studied, never copied (docs/s
 - Light shafts (fog-volumetrics owns them): Unbound marches the shadow map at full resolution with frame-varying dithers (docs/shader.md#determinism-and-taa), so TAA-dependent: A12, or the review tier under E4's fallback. About 1.6 ms at full resolution with 11 steps (the End's about 6 ms times 11/41), 0.2-0.5 ms at half [inferred]. R14's radial blur is cheaper, but "the shafts will flicker" as occluders cross the image edge. Played had them off: no ALC row.
 
 ## For Optilux
-- M4: T11's uniform chain (lighting needs it); T5 as the sky; T1's switches and the coverage-list entries for gbuffers_skybasic and gbuffers_skytextured.
+- M4: T11's uniform chain (lighting needs it); T5 as the sky; T1's culled skybasic and the coverage-list entries for gbuffers_skybasic and gbuffers_skytextured.
 - M5: T2's three prepare passes (transmittance, multiple scattering, sky-view with sun and moon outputs); T1's composite; T6 in both styles; T7, T8; T9, T10 (beams at Medium); T12.
 
 | Option | Off | Low | Medium | High |
@@ -126,7 +126,7 @@ The sun/moon style is vanilla or Optilux, with no levels.
 - Budget hypothesis at 4K, sky items only [inferred]: at most 0.08 ms on forest_noon, rain, entities, underwater and cave; 0.1 ms plus water's reflection fetches on ocean_sunset; 0.12 ms on night; 0.01 ms in the Nether; 0.3-0.55 ms in the End with beams at Medium, 0.06 ms at Low.
 - Confirmations (docs/measurement.md#verdicts-and-cost-rows):
   - Forward sky against T1: cost rows on night and end_city, identical or near tier; coverage_beacon visual only, as no perf mode reads coverage views (docs/measurement.md#baseline-suite).
-  - The switches against the gradient in the sky draws: an L4 replay with no gbuffers_skybasic draws, then the identical tier on every view.
+  - The culled skybasic against the gradient in the sky draws: an L4 replay with no skybasic fragments, then the identical tier on every view.
   - T2 Medium against T5: a cost row on every overworld view, review tier.
   - The T8 map against a per-pixel nebula on night: close at best, else review.
   - Beams Off, Low, Medium: cost rows on end_dragon and end_city, review tier.
@@ -134,11 +134,9 @@ The sun/moon style is vanilla or Optilux, with no levels.
 - L3 golden tests (docs/offline.md#levels): transmittance against a numpy integration; the sky-view UV round trip, horizon row included; sky-view against a brute-force march near the horizon and sun; multiple scattering finite, non-negative, r < 1; custom uniforms in Iris's engine against the GLSL and world-space sunPosition; the Chapman sun colour against the LUT; the star hash stable, footprint at least 1.5 px; the nebula map invariant to camera rotation; beams finite, on the representative-pixel rule.
 
 ## Open questions
-- Are `sky`, `stars`, `sun` and `moon` honoured on 26.3, does `sky` drop the sunrise fan, which program and renderStage draw the End box and flash? javap of ShaderProperties and the sky mixins; an L1 dump at end_dragon.
-- Is compute exposed on the 3.3 context (R10: supportsCompute if the glDispatchCompute pointer is non-null)? IRIS_FEATURE_COMPUTE_SHADERS under `iris.features.optional` (R9 flags) in an L1 dump; only a compute multiple-scattering LUT needs it.
 - Are skyColor and fogColor eased over time on 26.3? javap and a static capture after a biome move.
 - Do rainStrength and thunderStrength hold still at rain under /tick freeze? Two static captures at rain.
 - Physical sky (T2) or art-directed gradient: D72's look target, by side-by-side review against Unbound at ocean_sunset and night.
 - Is Low's beam layer, without parallax, acceptable? Review.
 - What fraction of each view is sky? Depth-1 pixel counts in L4 captures; it sets the budgets.
-- Which clock does worldTime read in the End, and do 26.3's moon and star angles follow sunAngle? javap of Iris's time uniforms and 26.3's sky renderer.
+- Do 26.3's moon and star angles follow sunAngle? javap of Iris's time uniforms and 26.3's sky renderer.

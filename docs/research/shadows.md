@@ -53,14 +53,14 @@ Read in R10, described in our words.
 - Programs: shadow_solid, _cutout, _water, _entities and _block fall back to shadow (R6, Iris 1.8+). Solid without discard is a design default (docs/playbook.md#4-design-defaults; CONFLICT in docs/gpu-iris.md#depth-and-discard). 26.3's core path injects no alpha test (docs/shader.md#facts): shadow_cutout tests alphaTestRef, shadow_solid samples no texture. Colour is read only where a translucent lies before the opaque depth, so only shadow_water need write shadowcolor0, and nothing shadowcolor1 while light shafts are not-yet [inferred].
 - Cost [inferred]: 0.2-0.5 ms at 2048^2 and 96 blocks (the share above), less without Unbound's two colour writes per fragment (an RGBA8 2048^2 target is 16 MB per full write); 4096^2 quadruples raster and colour traffic, not vertex work. Quality: 2048 at Low and Medium, 4096 at High; the distance is its own option.
 - Determinism: outside the End the matrices depend only on the shadow angle, sunPathRotation and the camera (R7), all held by the session; End angles follow the End's clock, which the views set [inferred]. Under BENCH_DETERMINISTIC no shadow program reads frameTimeCounter (caustics, waving).
-- Iris [verify in jar]: directives and defaults; whether a shadow program may declare no colour output. Per R7 the shadow renderer exists when shadow targets do and shadow.enabled is not false; targets are made up front only when it is true, else for the first program sampling a shadow sampler. No dimension macro exists (docs/offline.md#levels), so a Nether without a pass needs world-1 programs that sample none.
+- Iris (plans/m4.md P20): defaults 1024 texels and 160 blocks; an empty `/* DRAWBUFFERS: */` makes a shadow program depth-only; a dimension renders a pass only when its own programs sample a shadow target or shadow.enabled, shared by every dimension, is set. No dimension macro exists (docs/offline.md#levels), so a Nether without a pass needs world-1 programs that sample none.
 - Aperture: four cascades in array textures, shadowMap and solidShadowMap (R8: "Aperture makes use of cascaded shadow maps"). One Iris-free include maps (distort, or pick a cascade; return uv, depth, the texel's world size); every filter takes its output.
 
 ### Noise-free hardware PCF
 - Claim: a compare sampler gives a bilinear 2x2 PCF in one fetch (R6: "very little to no performance impact"). Taps at derived offsets and weights build a smooth kernel from few fetches: R2 covers 6x6 texels with 9 taps, measured "between 10 and 20% faster than the Gather4 method" (GTX 480, HD 4000), and dropped rotated Poisson taps for their noise. 4 taps cover 4x4 the same way [inferred].
 - Cost [inferred]: Medium is 4 compares on shadowtex1, one on shadowtex0 and at most one colour fetch: 6 fetches a pixel, 50 M at 4K, 0.09 ms at R12's peak, so 0.15-0.35 ms allowing 2-4x for misses and dependent chains, against Unbound's 0.3-1.4 ms of forward lookups. Issue the compares before any dependent fetch (docs/gpu-iris.md#latency). Quality: Low 1 tap, Medium 4, High 9.
 - Determinism: no frame-varying term, so nothing needs accumulating: each TAA-off frame is final, and identical or near tiers hold under E4's fallback; TAA-on frames rest on A12 like every pass.
-- Iris: shadowHardwareFiltering makes the shadowtex samplers compare samplers (sampler2DShadow; texture() is core 3.3) [verify in jar]. Aperture: shadowMapFiltered, a sampler2DArrayShadow with the cascade in z (R8).
+- Iris: shadowHardwareFiltering makes the shadowtex samplers compare samplers (sampler2DShadow; texture() is core 3.3; P20). shadowtex holds forward depth, D32 cleared to 1, never rewritten by Iris's depth transform, and a forward reference compares lit where it is at or before the stored depth (M4.P06's probe). Aperture: shadowMapFiltered, a sampler2DArrayShadow with the cascade in z (R8).
 
 ### Rotated disk, rotated per frame
 - Claim: a few taps on a spiral or Vogel disk, rotated per pixel and per frame, turn banding into noise that TAA averages. R4: "a 8-tap filter with a special per-pixel noise A.K.A. "Interleaved Gradient Noise"". R10 uses 4 taps; R9 rotates a Vogel disk per frame and returns early when its first 4 taps agree.
@@ -93,7 +93,7 @@ Read in R10, described in our words.
 
 ### Contact shadows
 - Claim: screen-space shadows "complement shadow maps by capturing small details", shipped for sunlight in Days Gone (R5).
-- Cost [inferred]: 8-16 depth reads a pixel, 0.2-0.5 ms at 4K, less at half resolution with a depth-aware upsample (docs/playbook.md#51-structural); a jittered start relies on TAA. A fragment march over depthtex fits Iris and Aperture; R5's code is a compute dispatch [unverified], compute on the 3.3 context [verify in jar].
+- Cost [inferred]: 8-16 depth reads a pixel, 0.2-0.5 ms at 4K, less at half resolution with a depth-aware upsample (docs/playbook.md#51-structural); a jittered start relies on TAA. A fragment march over depthtex fits Iris and Aperture; R5's code is a compute dispatch [unverified]; compute is exposed here (M4.P06's probe).
 
 ### Not recommended
 - Variance shadow maps (Donnelly and Lauritzen 2006, in R1's references): float targets, blurs, and leaks where casters overlap, as Minecraft's do everywhere [inferred]. Cascades emulated by duplicating geometry add vertex work to a heavy pass; view-dependent warps change shadows with yaw on motion paths [inferred].
@@ -127,19 +127,17 @@ Budget hypothesis at Medium with entity shadows on, ms [inferred, against R11]:
 What confirms it:
 - A feature cost row per level, full mode (docs/measurement.md#verdicts-and-cost-rows), against the table; until timer rows exist (E3), the pass-versus-lookup split from a debug-tier replay share (docs/offline.md#levels).
 - Exact trims as A/B verdicts at the identical tier with L4 per-pass golden images: depth-only solid, batched taps, the dropped clear with texelFetch. The sky-light-0 gate, the far tap and the single colour fetch: near, else review.
-- The feature: review against Unbound's frames; the TAA-off determinism check with shadows on (A12 or E4's fallback); the live pass for shimmer at each 2-block snap and the sun-to-moon switch. Nether: a cost row inside the threshold and no pass in a replay or Iris's debug text, which says when a pack uses no shadow map (R7) [verify in jar].
+- The feature: review against Unbound's frames; the TAA-off determinism check with shadows on (A12 or E4's fallback); the live pass for shimmer at each 2-block snap and the sun-to-moon switch. Nether: a cost row inside the threshold and no pass in a replay or Iris's debug text, which says when a pack uses no shadow map (R7).
 
 L3 golden tests (docs/offline.md#levels): mapping and inverse round-trip, texel size against finite differences, centre density at 2048 and 96; bias offsets for chosen normals, N.L and radii; filter weights summing to 1, a step edge's profile, all levels equal where fully lit or shadowed; the coloured composition; the rotation index equal at f and f + C; the fade band continuous at both ends; the light vector and tap count in Iris's engine (docs/gpu-iris.md#custom-uniforms).
 
 Dependencies: lighting (consumes the term; owns the sky-light fallback, sun-to-moon fade, sunPathRotation, foliage); taa (the cycle C, flush, N_conv); water (tint, caustics; underwater costs most); clouds (cloud shadows multiply the term); fog-volumetrics (End beams and shafts read the map); ao (shared deferred reads); iris (per-dimension programs, the pass rule, 26.3's shadow programs, endFlashShadows); next-gen (voxel shadows, LOD).
 
 ## Open questions
-- Can a 1.11.7 shadow program write no colour? javap on the pinned jar and an L1 dump.
-- Does Unbound's Nether render a shadow pass (its 0.03 ms row; the ACT-only hook suggests not), and does Optilux's world-1 set avoid one? A replay in nether_crimson and IrisRenderingPipeline in the jar.
+- Does Unbound's Nether render a shadow pass (its 0.03 ms row)? P20's rule says only if its world-1 programs sample a shadow target; a replay in nether_crimson shows it.
 - Forward or deferred lookup? E2's cost rows on forest_noon.
 - Noise-free 4 taps or 2 rotated taps with TAA, at the same look? An A/B cost row and review, after A12.
-- shadowtex depth format ("hardware/driver dependent", R6) and ortho planes (R7: -100.05 and 156)? javap.
+- The ortho planes (R7: -100.05 and 156)? javap. (The depth format is D32 here: M4.P06's probe.)
 - Does the 2-block snap shimmer, as the distortion moves texels by fractions where R1 snaps whole texels [inferred]? The live pass.
 - Is the sky-light-0 gate identical on all eleven views? A visual compare.
-- Is ARB_gpu_shader5 (compare gather) exposed on the 3.3 context? MC_GL_ARB_gpu_shader5 in an L1 dump; Unbound's #version 400 shadow vertex stage running here hints yes [inferred].
 - Entity shadow cost and range: the entities view's cost row.
