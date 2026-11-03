@@ -17,7 +17,8 @@
 //   FORWARD_ADDITIVE   an added blend: the fog fades the light out rather than toward the sky;
 //   FORWARD_GLINT      off BENCH_DETERMINISTIC the item's own glint, mc_sampleGlint() (P19), added;
 //   FORWARD_NOT_IN_BENCH  nothing under BENCH_DETERMINISTIC (their state moves with the ticks
-//                      before /tick freeze and the stepped ones, or with the game time);
+//                      before /tick freeze and the stepped ones, or with the game time; weather
+//                      is not drawn at all there: shaders.properties' weather directive);
 //   one target beside the scene, by the draw's blend (OVERLAYS keeps the three overlays):
 //   FORWARD_TRANS      trans: the colour and alpha, which vanilla's translucent blend premultiplies
 //                      over (banner patterns, armour cracks, sign text);
