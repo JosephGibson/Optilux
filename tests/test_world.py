@@ -7,6 +7,7 @@ launch; the counts prep must hold."""
 
 import hashlib
 import json
+import math
 import shutil
 from pathlib import Path
 from typing import Any
@@ -15,10 +16,12 @@ import pytest
 from conftest import copy_config
 
 from optilux import REPO_ROOT, launch, platform, record, world
+from optilux.session import OFFHAND_OFF, OFFHAND_ON, holds_offhand, shows_hand
 
 PLAT = platform.load(REPO_ROOT)
 UUID = "51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79"
 BENCH, _ = record.load_views(REPO_ROOT, "bench_263")
+COVERAGE_IDS = ("coverage_items", "coverage_mobs", "coverage_beacon", "coverage_hand")
 
 
 def tree(root: Path, files: dict[str, bytes]) -> Path:
@@ -287,7 +290,7 @@ def test_pack_mcmeta_declares_the_platforms_data_format_alone() -> None:
 def test_the_pack_holds_one_function_per_view_and_prunes_stale_ones(tmp_path: Path) -> None:
     files = world.pack_files(BENCH, "121.0")
     every = record.every_view(BENCH)  # the coverage views' too (plans/m3.md D64)
-    assert len(every) == 14 and sorted(files) == sorted(
+    assert len(every) == 15 and sorted(files) == sorted(
         ["pack.mcmeta"] + [f"data/optilux/function/view/{v['id']}.mcfunction" for v in every]
     )
     live = tmp_path / "w"
@@ -295,7 +298,7 @@ def test_the_pack_holds_one_function_per_view_and_prunes_stale_ones(tmp_path: Pa
     found = world.write_pack(live, files)
     assert listing(live / "datapacks" / "optilux") == files
     assert found["pruned"] == ["data/optilux/function/view/gone.mcfunction"]
-    assert len(found["written"]) == 15
+    assert len(found["written"]) == 16
     again = world.write_pack(live, files)
     assert (again["written"], again["pruned"]) == ([], [])
 
@@ -306,14 +309,14 @@ def test_the_pack_holds_one_function_per_view_and_prunes_stale_ones(tmp_path: Pa
 def test_chunky_selections_cover_the_views_plus_the_render_distance() -> None:
     found = world.selections(BENCH)
     assert [(s.world, s.shape, s.x, s.z, s.radius_x, s.radius_z) for s in found] == [
-        ("minecraft:overworld", "rectangle", -26, 658, 629, 702),  # x -655..603, z -44..1360
+        ("minecraft:overworld", "rectangle", -24, 658, 631, 702),  # x -655..607, z -44..1360
         ("minecraft:the_nether", "rectangle", 111, -153, 408, 457),
         ("minecraft:the_end", "square", 57, -19, 289, 289),
         ("minecraft:the_end", "square", 318, 1055, 289, 289),
     ]
     assert found[2].views == ("end_dragon",) and found[3].views == ("end_city",)
-    assert len(found[0].views) == 10 and set(found[1].views) == {"nether_crimson", "nether_soul"}
-    assert found[0].views[7:] == ("coverage_items", "coverage_mobs", "coverage_beacon")
+    assert len(found[0].views) == 11 and set(found[1].views) == {"nether_crimson", "nether_soul"}
+    assert found[0].views[7:] == COVERAGE_IDS
     for task in found:
         for view in record.every_view(BENCH):
             if view["id"] in task.views:
@@ -326,8 +329,8 @@ def test_chunky_commands_carry_the_lines_it_answers_with() -> None:
     assert overworld.commands() == [
         ("/chunky world minecraft:overworld", "World changed to "),
         ("/chunky shape rectangle", "Shape changed to "),
-        ("/chunky center -26 658", "Center changed to -26, 658."),
-        ("/chunky radius 629 702", "Radius changed for x to 629, and for z to 702."),
+        ("/chunky center -24 658", "Center changed to -24, 658."),
+        ("/chunky radius 631 702", "Radius changed for x to 631, and for z to 702."),
     ]
     assert end.commands()[-1] == ("/chunky radius 289", "Radius changed to 289.")
 
@@ -482,10 +485,12 @@ def test_no_tick_is_stepped_beside_the_dragon_fight() -> None:
 def held() -> dict:
     """coverage_counts' answer for a site holding all its content."""
     x, y, z = world.SIGN
+    bx, by, bz = world.BANNER
     return {
         "entities": {item.name: 1 for item in world.CONTENT},
         "blocks": dict.fromkeys((name for name, _ in world.block_tests()), True),
         "sign": [f'{x}, {y}, {z} has the following block data: "Optilux"'],
+        "banner": [f'{bx}, {by}, {bz} has the following block data: "minecraft:gradient"'],
     }
 
 
@@ -771,10 +776,12 @@ COVER = {v["id"]: v for v in BENCH[record.COVERAGE]}
 
 
 def test_the_site_holds_suite_jsons_content_inside_its_box_beneath_its_views() -> None:
-    """Each of suite.json coverageViews' items has its part: three NoAI mobs, the armor stand,
-    the item frame, the dropped item, the enchanted item, the sign, the beacon on its base, the
-    campfire, a view with the hand; each entity inside the site's box on the floor, each view
-    over the floor."""
+    """Each of suite.json coverageViews' items has its part: four NoAI mobs, one named, the
+    armor stand in enchanted trimmed armour, the item frame, the dropped item, the enchanted item,
+    the sign, the gradient banner, the beacon on its base, the campfire, two views with the hand
+    (the off-hand's glass), one of them coverage_hand, whose crosshair meets the floor within
+    reach (plans/m4.md D83, P21); each entity inside the site's box on the floor, each view over
+    the floor."""
     names = {item.name for item in world.CONTENT} | {name for name, *_ in world.BLOCKS}
     assert SUITE["coverageViews"]["content"] == [
         "NoAI mobs",
@@ -786,12 +793,23 @@ def test_the_site_holds_suite_jsons_content_inside_its_box_beneath_its_views() -
         "enchanted item",
         "held torch (creative mode; spectator shows no hand)",
         "particle source",
+        "named mob (its name tag drawn with the GUI shown: a view with hand)",
+        "off-hand translucent item (a view with hand)",
+        "gradient banner",
+        "enchanted trimmed armour",
+        "block outline (creative, the GUI shown, a block within reach)",
     ]
-    assert {"armor stand", "item frame", "dropped item", "enchanted item"} <= names
-    assert {"sign", "beacon", "campfire"} <= names
+    assert {"armor stand", "item frame", "dropped item", "enchanted item", "named mob"} <= names
+    assert {"sign", "beacon", "campfire", "banner"} <= names
     mobs = [item for item in world.CONTENT if "NoAI:1b" in item.data]
-    assert [item.name for item in mobs] == ["mooshroom", "polar bear", "fox"]
-    assert [vid for vid, v in COVER.items() if v["hand"]] == ["coverage_beacon"]
+    assert [item.name for item in mobs] == ["mooshroom", "polar bear", "fox", "named mob"]
+    assert [item.name for item in world.CONTENT if "CustomNameVisible:1b" in item.data] == [
+        "named mob"
+    ]
+    hands = [vid for vid, v in COVER.items() if v["hand"]]
+    assert hands == ["coverage_beacon", "coverage_hand"]
+    assert all(holds_offhand(COVER[vid]) for vid in hands)
+    assert not holds_offhand(VIEW["entities"]) and shows_hand(VIEW["entities"])
     (_, (x0, y0, z0), (x1, _, z1), _) = world.FILLS[0]
     box = f"x={x0},y={y0},z={z0},dx={x1 - x0},dy=10,dz={z1 - z0}"
     assert box == world.SITE
@@ -803,6 +821,25 @@ def test_the_site_holds_suite_jsons_content_inside_its_box_beneath_its_views() -
     for view in COVER.values():
         assert view["dim"] == world.OVERWORLD and view["y"] > y0 + 1
         assert x0 <= view["x"] <= x1 and z0 <= view["z"] <= z1, view["id"]
+
+
+def test_coverage_hands_crosshair_meets_a_floor_block_within_reach() -> None:
+    """P21: the outline draws where the crosshair meets a block within the player's block reach
+    (4.5, a survival player's, below creative's): coverage_hand's ray from the eye (1.62 above
+    its y) down its pitch meets the floor's top at y 101 inside the floor, off every block edge,
+    nearer than reach and nearer than the named mob, which stands beyond it."""
+    view = COVER["coverage_hand"]
+    yaw, pitch = math.radians(view["yaw"]), math.radians(view["pitch"])
+    ray = (-math.sin(yaw) * math.cos(pitch), -math.sin(pitch), math.cos(yaw) * math.cos(pitch))
+    eye = (view["x"], view["y"] + 1.62, view["z"])
+    (_, (x0, y0, z0), (x1, _, z1), _) = world.FILLS[0]
+    t = (eye[1] - (y0 + 1)) / -ray[1]
+    hit = [eye[i] + ray[i] * t for i in range(3)]
+    assert t < 4.5 and x0 <= hit[0] < x1 + 1 and z0 <= hit[2] < z1 + 1
+    assert all(0.1 < part % 1 < 0.9 for part in (hit[0], hit[2]))  # inside one block's face
+    assert (math.floor(hit[0]), math.floor(hit[2])) == (320, 1069)
+    named = next(item for item in world.CONTENT if item.name == "named mob")
+    assert named.pos[0] - 0.45 > hit[0]  # its box starts past the hit: the floor is met first
 
 
 def test_the_build_commands_carry_the_tag_and_decimal_positions() -> None:
@@ -829,9 +866,34 @@ def test_the_build_commands_carry_the_tag_and_decimal_positions() -> None:
         # A whole number would be centred on its block by the command (x 308 summons at 308.5).
         assert all("." in part for part in commands[item.name].split()[2:5]), item.name
         assert item.selector().startswith(f"@e[type={item.kind},tag=optilux_bench,x=306,")
+    assert commands["named mob"] == (
+        '/summon minecraft:cow 321.5 101.0 1068.8 {Tags:["optilux_bench"],'
+        'PersistenceRequired:1b,Rotation:[90.0f,0.0f],NoAI:1b,Silent:1b,CustomName:"Optilux",'
+        "CustomNameVisible:1b}"
+    )
+    chest = (
+        'components:{"minecraft:trim":{pattern:"minecraft:sentry",material:"minecraft:gold"},'
+        '"minecraft:enchantments":{"minecraft:protection":1}}'
+    )
+    assert commands["armor stand"].endswith(
+        ',ShowArms:1b,equipment:{head:{id:"minecraft:iron_helmet",count:1},'
+        f'chest:{{id:"minecraft:diamond_chestplate",count:1,{chest}}}}}}}'
+    )
+    stands = next(item for item in world.CONTENT if item.name == "armor stand").selector()
+    assert stands.endswith(f",nbt={{equipment:{{chest:{{{chest}}}}}}}]")  # both counted
+    named = next(item for item in world.CONTENT if item.name == "named mob").selector()
+    assert named.endswith(',nbt={CustomName:"Optilux",CustomNameVisible:1b}]')
+    assert commands["banner"] == (
+        "/setblock 319 101 1073 minecraft:white_banner[rotation=8]"
+        '{patterns:[{pattern:"minecraft:gradient",color:"blue"}]}'
+    )
     assert world.sign_command() == "/data get block 313 101 1072 front_text.messages[0]"
+    assert world.banner_command() == "/data get block 319 101 1073 patterns[0].pattern"
     tests = dict(world.block_tests())
-    assert len(tests) == 4 + 9 + 4
+    assert len(tests) == 4 + 9 + 5
+    assert tests["banner at 319 101 1073"] == (
+        "/execute if block 319 101 1073 minecraft:white_banner[rotation=8]"
+    )
     assert tests["campfire at 311 101 1064"] == (
         "/execute if block 311 101 1064 minecraft:campfire[lit=true]"
     )
@@ -851,12 +913,15 @@ def test_the_site_must_hold_one_of_each_every_block_and_the_signs_text() -> None
     found["entities"].update(fox=0, mooshroom=2)
     found["blocks"]["beacon at 314 101 1064"] = False
     found["sign"] = ['313, 101, 1072 has the following block data: ""']
+    found["banner"] = ["Found no elements matching patterns[0].pattern"]
     assert world.coverage_problems(found) == [
         "coverage: 2 mooshroom counted, not 1",
         "coverage: 0 fox counted, not 1",
         "coverage: no beacon at 314 101 1064",
         "coverage: the sign reads ['313, 101, 1072 has the following block data: \"\"'], not "
         "'Optilux'",
+        "coverage: the banner reads ['Found no elements matching patterns[0].pattern'], not "
+        "'minecraft:gradient'",
     ]
 
 
@@ -884,8 +949,11 @@ def site(old: tuple[int, ...] = (0,), unchanged: bool = False, failing: str = ""
             return counted(1), []
         if text.startswith("/execute if block"):
             return answer(True, ["Test passed"], []), []
-        if text.startswith("/data get block"):
+        if text == world.sign_command():
             return answer(True, ['313, 101, 1072 has the following block data: "Optilux"'], []), []
+        if text == world.banner_command():
+            line = '319, 101, 1073 has the following block data: "minecraft:gradient"'
+            return answer(True, [line], []), []
         if failing and text.startswith(failing):
             return answer(False, [], ["Unable to summon entity"]), []
         if unchanged and text.startswith("/fill"):
@@ -949,8 +1017,9 @@ def test_a_coverage_view_steps_its_ticks_at_its_pose_and_shows_its_hand(monkeypa
     client = FakeClient(site())
     facts, ramped = prep_view(monkeypatch, client, COVER["coverage_beacon"])
     assert client.ticks == [SUITE["capture"]["ticksAfterWeatherChange"], 100]
-    assert (facts["viewTicks"], facts["gui"], ramped) == (100, True, "clear")
-    kinds = ("camera.place", "ticks", "hideGui", "/gamemode")
+    assert (facts["viewTicks"], facts["gui"], facts["offhand"]) == (100, True, True)
+    assert ramped == "clear"
+    kinds = ("camera.place", "ticks", "hideGui", "/gamemode", "/item")
     shown = [t for t in client.sent if t.startswith(kinds)]
     assert shown == [
         "camera.place 314.5 1071.0",
@@ -958,12 +1027,18 @@ def test_a_coverage_view_steps_its_ticks_at_its_pose_and_shows_its_hand(monkeypa
         "ticks 100",  # its own, with the camera there, after the weather's
         "/gamemode creative",
         "hideGui False",
+        OFFHAND_ON,  # the glass beside the torch, emptied before the snapshot can save it
+        OFFHAND_OFF,
         "hideGui True",
         "/gamemode spectator",
     ]
+    assert OFFHAND_ON == (
+        "/item replace entity @s weapon.offhand with minecraft:light_blue_stained_glass"
+    )
     client = FakeClient(site())
     facts, _ = prep_view(monkeypatch, client, COVER["coverage_items"])
-    assert "viewTicks" not in facts and facts["gui"] is False
+    assert "viewTicks" not in facts and (facts["gui"], facts["offhand"]) == (False, False)
+    assert not [t for t in client.sent if t.startswith("/item")]
 
 
 def clocked(text: str, client: FakeClient):
@@ -1066,7 +1141,7 @@ def test_prep_builds_the_site_after_chunky_and_counts_it_again_after_the_sweep(
     prep = kill_prep(client)
     world.session(prep, PLAT, SUITE, BENCH, world.selections(BENCH), Path("raw"))
     every = record.every_view(BENCH)
-    assert log.count("function") == len(every) == 14
+    assert log.count("function") == len(every) == 15
     first = log.index("function")
     order = [*log[:first], "function", *log[first + len(every) :]]
     assert order == [

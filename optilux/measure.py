@@ -57,6 +57,8 @@ from optilux.session import (
     COMMAND_TIMEOUT,
     GPU_COUNTER,
     INVALIDATING,
+    OFFHAND_OFF,
+    OFFHAND_ON,
     OVERWORLD,
     PARTIAL,
     PLACE_TIMEOUT,
@@ -68,6 +70,7 @@ from optilux.session import (
     RunHost,
     Session,
     ensure_focus,
+    holds_offhand,
     in_front,
     now,
     session_start,
@@ -829,6 +832,7 @@ class Measured:
     ramped: str | None = None
     previous: str | None = None
     gui: bool = False
+    offhand: bool = False  # session.OFFHAND held (a coverage view with `hand`)
     last_end: int | None = None
     last_written: Variant | None = None
     last_debug: bool = False  # iris.properties' debug flag as last written (a dump run's reload)
@@ -969,9 +973,17 @@ def stop_presentmon(m: Measured, pm: presentmon.Host) -> None:
 
 
 def leave_gui(m: Measured, where: str) -> None:
-    """D49 after a view that shows the hand (shows_hand): the GUI hidden again and spectator back,
-    before the next pose (camera.place needs a spectator or a flying player)."""
+    """D49 after a view that shows the hand (shows_hand): the off-hand emptied if it held
+    OFFHAND, the GUI hidden again and spectator back, before the next pose (camera.place needs a
+    spectator or a flying player)."""
     s, c = m.s, m.c
+    if m.offhand:
+        s.step(
+            f"{where}: off-hand emptied",
+            lambda: c.command(OFFHAND_OFF, COMMAND_TIMEOUT),
+            lambda a: "; ".join(a["messages"]),
+        )
+        m.offhand = False
     s.step(f"{where}: hud.set hideGui", lambda: c.hud_set(hide_gui=True))
     s.step(
         f"{where}: spectator",
@@ -1025,6 +1037,13 @@ def arrive(m: Measured, view: dict) -> bool:
         )
         s.step(f"{vid}: hud.set hideGui false", lambda: c.hud_set(hide_gui=False))
         m.gui = True
+    if holds_offhand(view):
+        s.step(
+            f"{vid}: off-hand",
+            lambda: c.command(OFFHAND_ON, COMMAND_TIMEOUT),
+            lambda a: "; ".join(a["messages"]),
+        )
+        m.offhand = True
     if view["dim"] == OVERWORLD and m.ramped != view["weather"]:
         n = m.suite["capture"]["ticksAfterWeatherChange"]
         s.step(f"{vid}: ticks.step {n}", lambda: c.ticks_step(n, TICKS_TIMEOUT))

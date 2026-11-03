@@ -322,7 +322,7 @@ def test_the_coverage_views_load_beside_the_perf_views_which_alone_feed_the_mode
     data, _ = record.load_views(REPO_ROOT, "bench_263")
     perf = [v["id"] for v in data["views"]]
     cover = [v["id"] for v in data[record.COVERAGE]]
-    assert cover == ["coverage_items", "coverage_mobs", "coverage_beacon"]
+    assert cover == ["coverage_items", "coverage_mobs", "coverage_beacon", "coverage_hand"]
     assert [v["id"] for v in record.every_view(data)] == perf + cover
     assert record.coverage_views(data) == tuple(cover)
     assert record.mode_views(SUITE, "full", data) == tuple(perf)  # "all": the perf views alone

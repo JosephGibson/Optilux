@@ -224,7 +224,7 @@
   "record id, dim, pos, yaw, pitch, time, weather in config/views/<world-id>.json (committed); its hash joins the run identity (run-record.md#identity) and the datapack functions are generated from it"
  ],
  "coverageViews": {
-  "status": "built (M3.P07, plans/m3.md D64): config/views/bench_263.json's coverage list (coverage_items, coverage_mobs, coverage_beacon) over the site `world prep` builds near (314, 1069) (optilux/world.py), m3-coverage-1 its first visual run; moving under /tick freeze across launches: the dropped items' spin (ItemEntity.bobOffs, random at each load, never saved), the beacon beam's turn and scroll (the game time, which the unfrozen ticks before /tick freeze move), both seen by m3-coverage-3 against m3-coverage-2 (the hello pack: coverage_mobs identical, the rest only there), the campfire's smoke (particles), the enchanted item's glint (wall-clock) where a pack draws it",
+  "status": "built (M3.P07, plans/m3.md D64): config/views/bench_263.json's coverage list (coverage_items, coverage_mobs, coverage_beacon; coverage_hand in M4.P08, plans/m4.md D83) over the site `world prep` builds near (314, 1069) (optilux/world.py), m3-coverage-1 its first visual run; moving under /tick freeze across launches: the dropped items' spin (ItemEntity.bobOffs, random at each load, never saved), the beacon beam's turn and scroll (the game time, which the unfrozen ticks before /tick freeze move), both seen by m3-coverage-3 against m3-coverage-2 (the hello pack: coverage_mobs identical, the rest only there), the campfire's smoke (particles), the enchanted item's glint (wall-clock) where a pack draws it",
   "area": "frozen, out of sight of every perf view",
   "content": [
    "NoAI mobs",
@@ -235,9 +235,14 @@
    "beacon",
    "enchanted item",
    "held torch (creative mode; spectator shows no hand)",
-   "particle source"
+   "particle source",
+   "named mob (its name tag drawn with the GUI shown: a view with hand)",
+   "off-hand translucent item (a view with hand)",
+   "gradient banner",
+   "enchanted trimmed armour",
+   "block outline (creative, the GUI shown, a block within reach)"
   ],
-  "rule": "every program on the shader coverage list is drawn by >= 1 coverage view; anything still moving under /tick freeze is excluded from identical/near checks"
+  "rule": "every program on the shader coverage list is drawn by >= 1 perf or coverage view, else waived with its reason in config/pipeline.json (plans/m4.md D83); anything still moving under /tick freeze is excluded from identical/near checks"
  },
  "motionPaths": [
   {

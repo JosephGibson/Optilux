@@ -3268,8 +3268,8 @@ def test_a_coverage_visual_spec_takes_the_coverage_views_alone(bench_root) -> No
     reads; a measured run takes no such mode."""
     root, saves = bench_root
     spec = record.check_spec(root, visual(mode="coverage"), PLAT, SUITE, saves, PACK)
-    assert spec.mode == "coverage" and spec.planned == 2 + 3 * 2
-    assert spec.view_ids == ("coverage_items", "coverage_mobs", "coverage_beacon")
+    assert spec.mode == "coverage" and spec.planned == 2 + 4 * 2
+    assert spec.view_ids == ("coverage_items", "coverage_mobs", "coverage_beacon", "coverage_hand")
     with pytest.raises(record.RecordError, match=r"mode 'coverage'; fix: one of quick, full$"):
         record.check_spec(root, measured(mode="coverage"), PLAT, SUITE, saves, PACK)
     path = root / record.VIEWS / "bench_263.json"
@@ -3387,16 +3387,17 @@ def test_a_visual_run_takes_each_variants_pair_at_each_view(fake_run, monkeypatc
 
 def test_a_coverage_run_shows_the_hand_and_steps_the_views_ticks_at_its_pose(fake_run) -> None:
     """plans/m3.md D64 on the fake: mode coverage visits the coverage views in the file's order;
-    at the view with `hand` creative and the GUI come right after camera.place (D49), its own
-    ticks after them, with the camera there, and both are put back at the end; the record's mode
-    coverage passes verify records."""
+    at a view with `hand` creative, the GUI and the off-hand's glass (plans/m4.md D83) come right
+    after camera.place (D49), its own ticks after them, with the camera there; each is put back
+    before the next pose and at the end, the off-hand emptied first; the record's mode coverage
+    passes verify records."""
     root, spec_path, fake, _ = fake_run
     optilux_tree(root)
     spec_path.write_text(json.dumps(visual(mode="coverage", variants=[HELLO])), encoding="utf-8")
     assert cli.main(["run", str(spec_path)]) == 0
     path = root / record.RECORDS / "m3-visual-test.json"
     found = json.loads(path.read_text(encoding="utf-8"))
-    views = ["coverage_items", "coverage_mobs", "coverage_beacon"]
+    views = ["coverage_items", "coverage_mobs", "coverage_beacon", "coverage_hand"]
     assert (found["status"], found["mode"]) == ("ok", "coverage")
     assert [c["view"] for c in found["captures"]] == views and found["session"]["laps"] == [views]
     assert found["session"]["weatherTicks"] == [{"view": "coverage_items", "ticks": 120}]
@@ -3411,13 +3412,26 @@ def test_a_coverage_run_shows_the_hand_and_steps_the_views_ticks_at_its_pose(fak
         return args.get("text") if message["cmd"] == "command" else None
 
     received = fake.received
-    beacon = max(n for n, m in enumerate(received) if m["cmd"] == "camera.place")
-    assert received[beacon]["args"]["z"] == 1071.0
-    steps = [text for m in received[beacon + 1 :] if (text := shown(m)) is not None]
+    places = [n for n, m in enumerate(received) if m["cmd"] == "camera.place"]
+    beacon, hand = places[-2:]
+    assert (received[beacon]["args"]["z"], received[hand]["args"]["yaw"]) == (1071.0, -90.0)
+    steps = [text for m in received[beacon + 1 : hand] if (text := shown(m)) is not None]
     assert steps == [
         "/gamemode creative",
         "hideGui False",
+        session.OFFHAND_ON,
         "ticks 100",
+        session.OFFHAND_OFF,  # leaving it: emptied before spectator
+        "hideGui True",
+        "/gamemode spectator",
+        measure.FUNCTION.format(id="coverage_hand"),
+    ]
+    end = [text for m in received[hand + 1 :] if (text := shown(m)) is not None]
+    assert end == [
+        "/gamemode creative",
+        "hideGui False",
+        session.OFFHAND_ON,
+        session.OFFHAND_OFF,
         "hideGui True",
         "/gamemode spectator",
     ]
@@ -3722,7 +3736,12 @@ def test_a_capture_spec_takes_the_debug_tier_and_a_modes_views(bench_root) -> No
     assert spec.view_ids == ("forest_noon", "nether_crimson", "end_dragon")
     assert spec.planned == 2 + 3 * 2 and spec.groups == ()
     coverage = record.check_spec(root, capture(mode="coverage"), PLAT, SUITE, saves, PACK)
-    assert coverage.view_ids == ("coverage_items", "coverage_mobs", "coverage_beacon")
+    assert coverage.view_ids == (
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand",
+    )
     for changes, says in [
         ({"tier": "bench"}, "a capture run needs RenderDoc in the game, which only the debug tier"),
         ({"tier": "dev"}, "fix: set tier debug"),

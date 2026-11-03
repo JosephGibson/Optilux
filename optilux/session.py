@@ -506,6 +506,19 @@ def shows_hand(view: dict) -> bool:
     return view["id"] == ENTITIES or view.get("hand") is True
 
 
+# The off-hand's translucent item (plans/m4.md D83: the translucent hand, gbuffers_hand_water),
+# held at a coverage view with `hand` alone: put there on arriving and emptied when the GUI is
+# hidden again, so no perf view (entities shows the hand) and no snapshot holds it.
+OFFHAND = "minecraft:light_blue_stained_glass"
+OFFHAND_ON = f"/item replace entity @s weapon.offhand with {OFFHAND}"
+OFFHAND_OFF = "/item replace entity @s weapon.offhand with minecraft:air"
+
+
+def holds_offhand(view: dict) -> bool:
+    """A coverage view with `hand` holds OFFHAND beside the torch; entities never does."""
+    return view.get("hand") is True
+
+
 # The session.
 
 

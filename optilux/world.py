@@ -32,6 +32,8 @@ from typing import Any, Protocol
 from optilux import launch, modclient, platform, record
 from optilux.acceptance import helper_lines, png_size
 from optilux.session import (
+    OFFHAND_OFF,
+    OFFHAND_ON,
     OVERWORLD,
     PLACE_TIMEOUT,
     READY_TIMEOUT,
@@ -42,6 +44,7 @@ from optilux.session import (
     Session,
     framebuffer_refusal,
     framebuffer_size,
+    holds_offhand,
     now,
     shows_hand,
     view_pose,
@@ -153,17 +156,25 @@ CLOCK = re.compile(rf"^Clock {END_CLOCK} is at (?P<ticks>\d+) tick\(s\)$")
 # 1061..1077, near (314, 1069) in the overworld, whose views (the views file's coverage list) lie
 # over 512 blocks from every perf view; the snapshot's chunks under it reach y 83 at most (read
 # 2026-10-22), so nothing stands in its way. suite.json coverageViews' content stands on it, built
-# through `command` once Chunky has generated the area: NoAI mobs, an armor stand, an item frame,
-# a dropped item, an enchanted item (the enchanted golden apple's own glint), a sign's text, a
-# beacon on its iron base and a campfire as the particle source; the held torch is a view's `hand`.
+# through `command` once Chunky has generated the area: NoAI mobs, one with a visible name, an
+# armor stand in enchanted trimmed armour, an item frame, a dropped item, an enchanted item (the
+# enchanted golden apple's own glint), a sign's text, a gradient banner, a beacon on its iron base
+# and a campfire as the particle source (plans/m3.md D64, plans/m4.md D83); the held torch and the
+# off-hand glass are a view's `hand` (session.OFFHAND), the outline that view's crosshair on the
+# floor. A name tag and the outline draw only with the GUI shown (26.3: Hud.isHidden, read in
+# LivingEntityRenderer.shouldShowName and GameRenderer.shouldRenderBlockOutline), so the named mob
+# stands where only coverage_hand, a view with `hand`, frames it.
 SITE = "x=306,y=100,z=1061,dx=16,dy=10,dz=16"  # a selector's box over the floor and above it
 FILLS = (
     ("floor", (306, 100, 1061), (322, 100, 1077), "minecraft:smooth_stone"),
     ("beacon base", (313, 100, 1063), (315, 100, 1065), "minecraft:iron_block"),
 )
 # Each block: its name, its position, what setblock places and the predicate `execute if block`
-# tests it by. The sign faces north (rotation 8), its text in front; the planks hold the frame.
+# tests it by. The sign and the banner face north (rotation 8), toward coverage_items; the planks
+# hold the frame. The banner's one pattern is a gradient (plans/m4.md D83: banner patterns draw
+# blended before deferred, into D76's trans), read back as the sign's text is.
 SIGN_TEXT = "Optilux"
+PATTERN = "minecraft:gradient"
 BLOCKS = (
     ("beacon", (314, 101, 1064), "minecraft:beacon", "minecraft:beacon"),
     ("campfire", (311, 101, 1064), "minecraft:campfire[lit=true]", "minecraft:campfire[lit=true]"),
@@ -174,8 +185,15 @@ BLOCKS = (
         f'minecraft:oak_sign[rotation=8]{{front_text:{{messages:["{SIGN_TEXT}","coverage","",""]}}}}',
         "minecraft:oak_sign[rotation=8]",
     ),
+    (
+        "banner",
+        (319, 101, 1073),
+        f'minecraft:white_banner[rotation=8]{{patterns:[{{pattern:"{PATTERN}",color:"blue"}}]}}',
+        "minecraft:white_banner[rotation=8]",
+    ),
 )
 SIGN = BLOCKS[3][1]
+BANNER = BLOCKS[4][1]
 # 26.3's answers to a block already as asked (en_us.json): the block is there, so neither fails.
 UNCHANGED = ("Could not set the block", "No blocks were filled")
 PASSED = "Test passed"
@@ -208,17 +226,37 @@ class Content:
 
 MOB = "NoAI:1b,Silent:1b"
 ITEM = 'Item:{{id:"{id}",count:1}},NoGravity:1b,Age:-32768s,PickupDelay:32767s'
+# The name tag's text (a plain component, which 26.3 stores as a bare string).
+NAME = "Optilux"
+NAMED = f'CustomName:"{NAME}",CustomNameVisible:1b'
+# The chestplate's trim and enchantment (plans/m4.md D83: trimmed armour with a glint draws the
+# trim's glint pass, armor_glint, before deferred into D76's emit; P11, P19); its count matches on
+# both, so a stand that dropped either is no stand of the site's.
+CHEST = (
+    'components:{"minecraft:trim":{pattern:"minecraft:sentry",material:"minecraft:gold"},'
+    '"minecraft:enchantments":{"minecraft:protection":1}}'
+)
 CONTENT = (
     Content("mooshroom", "minecraft:mooshroom", (308.0, 101.0, 1066.5), -90.0, MOB),
     Content("polar bear", "minecraft:polar_bear", (307.5, 101.0, 1069.5), -70.0, MOB),
     Content("fox", "minecraft:fox", (308.5, 101.0, 1072.5), -110.0, MOB),
+    # Facing coverage_hand, west of it, its name tag in that view alone (SITE's comment).
+    Content(
+        "named mob",
+        "minecraft:cow",
+        (321.5, 101.0, 1068.8),
+        90.0,
+        f"{MOB},{NAMED}",
+        f"{{{NAMED}}}",
+    ),
     Content(
         "armor stand",
         "minecraft:armor_stand",
         (311.5, 101.0, 1072.5),
         180.0,
         'ShowArms:1b,equipment:{head:{id:"minecraft:iron_helmet",count:1},'
-        'chest:{id:"minecraft:diamond_chestplate",count:1}}',
+        f'chest:{{id:"minecraft:diamond_chestplate",count:1,{CHEST}}}}}',
+        f"{{equipment:{{chest:{{{CHEST}}}}}}}",
     ),
     # Facing north on the planks behind it; Pos and block_pos given, so the frame loads at its
     # block without "Block-attached entity at invalid position" in latest.log (BlockAttachedEntity).
@@ -854,18 +892,23 @@ def sign_command() -> str:
     return f"/data get block {x} {y} {z} front_text.messages[0]"
 
 
+def banner_command() -> str:
+    x, y, z = BANNER
+    return f"/data get block {x} {y} {z} patterns[0].pattern"
+
+
 def coverage_problems(found: dict) -> list[str]:
     """What the site must hold (coverage_counts): one of each content entity, every block, the
-    sign's first line. The problems, empty when all hold."""
+    sign's first line and the banner's pattern. The problems, empty when all hold."""
     problems = [
         f"coverage: {n} {name} counted, not 1" for name, n in found["entities"].items() if n != 1
     ]
     missing = [name for name, held in found["blocks"].items() if not held]
     if missing:
         problems.append(f"coverage: no {', '.join(missing)}")
-    x, y, z = SIGN
-    if found["sign"] != [SIGN_LINE.format(x=x, y=y, z=z, text=SIGN_TEXT)]:
-        problems.append(f"coverage: the sign reads {found['sign']}, not {SIGN_TEXT!r}")
+    for key, (x, y, z), text in (("sign", SIGN, SIGN_TEXT), ("banner", BANNER, PATTERN)):
+        if found[key] != [SIGN_LINE.format(x=x, y=y, z=z, text=text)]:
+            problems.append(f"coverage: the {key} reads {found[key]}, not {text!r}")
     return problems
 
 
@@ -1088,7 +1131,7 @@ def place(p: Prep, name: str, text: str) -> list[str]:
 
 def coverage_counts(p: Prep, view: dict, label: str) -> dict:
     """What the site holds, the camera at `view`: each content entity counted by its selector,
-    each block tested (block_tests), the sign's first line read back."""
+    each block tested (block_tests), the sign's first line and the banner's pattern read back."""
     at_site(p, view, f"coverage {label}")
     entities = {
         item.name: count(p, f"coverage {label}: {item.name}", item.selector()) for item in CONTENT
@@ -1097,8 +1140,11 @@ def coverage_counts(p: Prep, view: dict, label: str) -> dict:
         name: parse_test(command(p, f"coverage {label}: {name}", text, check=False))
         for name, text in block_tests()
     }
-    read = command(p, f"coverage {label}: sign text", sign_command(), check=False)
-    return {"entities": entities, "blocks": blocks, "sign": read["messages"] + read["failures"]}
+    found: dict[str, Any] = {"entities": entities, "blocks": blocks}
+    for key, text in (("sign", sign_command()), ("banner", banner_command())):
+        read = command(p, f"coverage {label}: {key}", text, check=False)
+        found[key] = read["messages"] + read["failures"]
+    return found
 
 
 def old_content(p: Prep) -> int:
@@ -1314,21 +1360,31 @@ def prepare_view(
             )
     p.s.step(f"{vid}: ready after the kill", lambda: p.c.ready(STABLE_FRAMES, 1.0, READY_TIMEOUT))
     gui = shows_hand(view)
+    offhand = holds_offhand(view)
     if gui:
         command(p, f"{vid}: creative", "/gamemode creative")
         p.s.step(f"{vid}: hud.set hideGui false", lambda: p.c.hud_set(hide_gui=False))
+    if offhand:
+        command(p, f"{vid}: off-hand", OFFHAND_ON)
+        raised = f"{vid}: ready, the off-hand raised"
+        p.s.step(raised, lambda: p.c.ready(STABLE_FRAMES, 1.0, READY_TIMEOUT))
     try:
         facts["frame"] = frame(p, view, raw, suite["display"]["resolution"])
     except BaseException:
-        if gui:  # put the GUI and spectator back without hiding the frame's error
+        if gui:  # put the hand, GUI and spectator back without hiding the frame's error
             with contextlib.suppress(Exception):
+                if offhand:
+                    p.c.command(OFFHAND_OFF, check=False)
                 p.c.hud_set(hide_gui=True)
                 p.c.command("/gamemode spectator", check=False)
         raise
+    if offhand:  # never into the snapshot: the player is saved at the quit
+        command(p, f"{vid}: off-hand emptied", OFFHAND_OFF)
     if gui:
         p.s.step(f"{vid}: hud.set hideGui true", lambda: p.c.hud_set(hide_gui=True))
         command(p, f"{vid}: spectator", "/gamemode spectator")
     facts["gui"] = gui
+    facts["offhand"] = offhand
     return facts, ramped
 
 
