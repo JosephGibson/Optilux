@@ -461,7 +461,7 @@ def test_the_base_pack_passes_the_matrix() -> None:
     # SUN_SPECULAR off; BLOCK_FLICKER 0, 2, 3; E2_LOAD 4, 8, 16; LIGHT_PATH 0; SCENE_FORMAT 1;
     # SHADOWS 0
     variants = 1 + 6 + 3 + 3 + 1 + 1 + 1
-    assert len(matrix.builds) == 31 * 3 * variants - 4 * variants  # no shadow program in world-1
+    assert len(matrix.builds) == 34 * 3 * variants - 7 * variants  # no shadow program in world-1
 
 
 @needs_glslang

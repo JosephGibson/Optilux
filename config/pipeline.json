@@ -160,6 +160,114 @@
       ]
     },
     {
+      "name": "shadow-entities",
+      "program": "shadow_entities",
+      "stage": "shadow",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "chunkOffset",
+          "entityId",
+          "modelViewMatrix",
+          "projectionMatrix"
+        ]
+      },
+      "outputs": [],
+      "feature": "shadows",
+      "options": [
+        "BENCH_DETERMINISTIC"
+      ],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "end_dragon",
+        "night",
+        "underwater",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "shadow-block",
+      "program": "shadow_block",
+      "stage": "shadow",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "chunkOffset",
+          "modelViewMatrix",
+          "projectionMatrix"
+        ]
+      },
+      "outputs": [],
+      "feature": "shadows",
+      "options": [],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "end_dragon",
+        "night",
+        "underwater",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
+      "name": "shadow-water",
+      "program": "shadow_water",
+      "stage": "shadow",
+      "dimensions": [
+        "minecraft:overworld",
+        "minecraft:the_end"
+      ],
+      "inputs": {
+        "samplers": [
+          "gtexture"
+        ],
+        "uniforms": [
+          "alphaTestRef",
+          "chunkOffset",
+          "modelViewMatrix",
+          "projectionMatrix"
+        ]
+      },
+      "outputs": [],
+      "feature": "shadows",
+      "options": [],
+      "budget": null,
+      "views": [
+        "forest_noon",
+        "ocean_sunset",
+        "cave",
+        "rain",
+        "end_dragon",
+        "night",
+        "underwater",
+        "entities",
+        "end_city"
+      ]
+    },
+    {
       "name": "shadow-casters",
       "program": "shadow",
       "stage": "shadow",
