@@ -1,0 +1,421 @@
+{
+ "schema": 1,
+ "name": "m4-probe-dump-1",
+ "kind": "dump",
+ "spec": {
+  "name": "m4-probe-dump-1",
+  "kind": "dump",
+  "views": "bench_263",
+  "world": "bench_263",
+  "variants": [
+   {
+    "id": "probe",
+    "pack": "optilux",
+    "profile": null
+   }
+  ],
+  "tier": "bench",
+  "resourcePacks": "deterministic",
+  "notes": "M4.P06's probe (plans/m4.md P22, P23), a build never committed: per dimension Iris's dump of it, whose preprocessed.properties keeps one line per extension Iris defines MC_<name> for in game (the 296 the driver reports to a 3.3 core context as candidates, with controls), and whose patched stages show how Iris rewrites depthtex and gl_FragCoord reads (the reversed-depth question of M4.P05's handoff)."
+ },
+ "notes": "M4.P06's probe (plans/m4.md P22, P23), a build never committed: per dimension Iris's dump of it, whose preprocessed.properties keeps one line per extension Iris defines MC_<name> for in game (the 296 the driver reports to a 3.3 core context as candidates, with controls), and whose patched stages show how Iris rewrites depthtex and gl_FragCoord reads (the reversed-depth question of M4.P05's handoff).",
+ "status": "aborted",
+ "reason": "the run ended without writing its record (killed or crashed); the next run finished it at 2026-11-03T18:05:08+00:00",
+ "startedAt": "2026-11-02T20:33:02+00:00",
+ "endedAt": "2026-11-02T20:33:02+00:00",
+ "identity": {
+  "platform": {
+   "sha256": "3bc69860cc84a5ac20feb2d34887c1768a1572c0a232d2ab52fd38def6aab20c",
+   "tier": "bench",
+   "tiers": [
+    "bench"
+   ]
+  },
+  "launchSpec": {
+   "file": "mc-26.3.launch.json",
+   "sha256": "90f5f994701168e0d65b2893c669b641819f8d82ca2842413e130d74f2bf9784"
+  },
+  "mods": [
+   "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+   "ed1f2a39e4300fec8adf94b0bc06d8fea4ae7bcf6efeeed6f568ed601d21157052897afecf5fa0bfe5cfab2d74ea245fb3f352a395dfaba5464486dbe1ac86a5",
+   "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+   "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+  ],
+  "world": {
+   "snapshot": "snapshots/bench_263",
+   "treeSha256": "33a4074d4198ea0143a5dc2a47b3e21ce900cbe9baa8276b5c918dc4a5a03035",
+   "files": 128
+  },
+  "views": {
+   "file": "bench_263.json",
+   "sha256": "c1e7046ede88765a8ce0b7936c2c765776a326815f5eec1819c7ccb59f87a6a1"
+  },
+  "resourcePacks": {
+   "set": "deterministic",
+   "packs": [
+    {
+     "file": "Faithful 64x - Release 15.zip",
+     "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+    },
+    {
+     "file": "optilux-static-textures.zip",
+     "sha512": "ff44b3cc091747390108ff3acdfc6ba2a81adaebff181f250306ab7a2053279574d7792e762c7d93c4fb224f19ea27f9c7e5dd6522a711c0f48c118015529ee8"
+    }
+   ]
+  },
+  "settings": {
+   "options": {
+    "version": "5023",
+    "fullscreen": "true",
+    "exclusiveFullscreen": "true",
+    "enableVsync": "false",
+    "maxFps": "260",
+    "renderDistance": "16",
+    "simulationDistance": "12",
+    "fov": "0.5",
+    "bobView": "false",
+    "guiScale": "3",
+    "mipmapLevels": "4",
+    "biomeBlendRadius": "2",
+    "graphicsPreset": "\"custom\"",
+    "preferredGraphicsBackend": "\"opengl\"",
+    "improvedTransparency": "false",
+    "pauseOnLostFocus": "false",
+    "onboardAccessibility": "false",
+    "skipMultiplayerWarning": "true",
+    "joinedFirstServer": "true",
+    "telemetryOptInExtra": "false",
+    "realmsNotifications": "false",
+    "narrator": "0",
+    "inactivityFpsLimit": "\"minimized\"",
+    "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\",\"file/optilux-static-textures.zip\"]"
+   },
+   "overrides": {},
+   "token": true,
+   "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+   "iris": {
+    "enableShaders": "true",
+    "enableDebugOptions": "false",
+    "disableUpdateMessage": "true",
+    "maxShadowRenderDistance": "32"
+   },
+   "unwritten": {
+    "ao": "true",
+    "chunkSectionFadeInTime": "0.75",
+    "cutoutLeaves": "true",
+    "entityDistanceScaling": "1.0",
+    "entityShadows": "true",
+    "forceUnicodeFont": "false",
+    "japaneseGlyphVariants": "false",
+    "fovEffectScale": "1.0",
+    "darknessEffectScale": "1.0",
+    "glintSpeed": "0.5",
+    "glintStrength": "0.75",
+    "prioritizeChunkUpdates": "1",
+    "macFullscreenMenuVisibility": "false",
+    "gamma": "0.5",
+    "debugGuiScale": "0",
+    "maxAnisotropyBit": "1",
+    "textureFiltering": "1",
+    "particles": "0",
+    "reducedDebugInfo": "false",
+    "renderClouds": "\"true\"",
+    "cloudRange": "64",
+    "screenEffectScale": "1.0",
+    "soundDevice": "\"\"",
+    "vignette": "true",
+    "weatherRadius": "10",
+    "autoJump": "false",
+    "rotateWithMinecart": "false",
+    "operatorItemsTab": "false",
+    "autoSuggestions": "true",
+    "chatColors": "true",
+    "chatLinks": "true",
+    "chatLinksPrompt": "true",
+    "discrete_mouse_scroll": "false",
+    "invertXMouse": "false",
+    "invertYMouse": "false",
+    "showSubtitles": "false",
+    "directionalAudio": "false",
+    "toggleCrouch": "false",
+    "toggleSprint": "false",
+    "toggleAttack": "false",
+    "toggleUse": "false",
+    "sprintWindow": "7",
+    "darkMojangStudiosBackground": "false",
+    "hideLightningFlashes": "false",
+    "hideSplashTexts": "false",
+    "mouseSensitivity": "0.5",
+    "damageTiltStrength": "1.0",
+    "highContrast": "false",
+    "highContrastBlockOutline": "false",
+    "narratorHotkey": "true",
+    "incompatibleResourcePacks": "[]",
+    "lastServer": "",
+    "lang": "en_us",
+    "chatVisibility": "0",
+    "chatOpacity": "1.0",
+    "chatLineSpacing": "0.0",
+    "textBackgroundOpacity": "0.5",
+    "backgroundForChatOnly": "true",
+    "hideServerAddress": "false",
+    "advancedItemTooltips": "false",
+    "overrideWidth": "0",
+    "overrideHeight": "0",
+    "chatHeightFocused": "1.0",
+    "chatDelay": "0.0",
+    "chatHeightUnfocused": "0.4375",
+    "chatScale": "1.0",
+    "chatWidth": "1.0",
+    "notificationDisplayTime": "1.0",
+    "useNativeTransport": "true",
+    "mainHand": "\"right\"",
+    "attackIndicator": "1",
+    "tutorialStep": "none",
+    "mouseWheelSensitivity": "1.0",
+    "allowCursorChanges": "true",
+    "quitShortcuts": "true",
+    "ctrlClickEmulatesRightClick": "false",
+    "glDebugVerbosity": "1",
+    "hideMatchedNames": "true",
+    "syncChunkWrites": "true",
+    "showAutosaveIndicator": "true",
+    "allowServerListing": "true",
+    "inGameNotification": "false",
+    "sharePresence": "\"all\"",
+    "onlyShowSecureChat": "false",
+    "saveChatDrafts": "false",
+    "panoramaScrollSpeed": "1.0",
+    "menuBackgroundBlurriness": "5",
+    "startedCleanly": "true",
+    "musicToast": "\"never\"",
+    "musicFrequency": "\"DEFAULT\"",
+    "key_key.attack": "key.mouse.left",
+    "key_key.use": "key.mouse.right",
+    "key_key.forward": "key.keyboard.w",
+    "key_key.left": "key.keyboard.a",
+    "key_key.back": "key.keyboard.s",
+    "key_key.right": "key.keyboard.d",
+    "key_key.jump": "key.keyboard.space",
+    "key_key.sneak": "key.keyboard.left.shift",
+    "key_key.sprint": "key.keyboard.left.control",
+    "key_key.drop": "key.keyboard.q",
+    "key_key.inventory": "key.keyboard.e",
+    "key_key.chat": "key.keyboard.t",
+    "key_key.playerlist": "key.keyboard.tab",
+    "key_key.pickItem": "key.mouse.middle",
+    "key_key.command": "key.keyboard.slash",
+    "key_key.friends": "key.keyboard.o",
+    "key_key.socialInteractions": "key.keyboard.p",
+    "key_key.toggleGui": "key.keyboard.f1",
+    "key_key.toggleSpectatorShaderEffects": "key.keyboard.f4",
+    "key_key.screenshot": "key.keyboard.f2",
+    "key_key.togglePerspective": "key.keyboard.f5",
+    "key_key.smoothCamera": "key.keyboard.unknown",
+    "key_key.fullscreen": "key.keyboard.f11",
+    "key_key.spectatorOutlines": "key.keyboard.unknown",
+    "key_key.spectatorHotbar": "key.mouse.middle",
+    "key_key.swapOffhand": "key.keyboard.f",
+    "key_key.saveToolbarActivator": "key.keyboard.c",
+    "key_key.loadToolbarActivator": "key.keyboard.x",
+    "key_key.advancements": "key.keyboard.l",
+    "key_key.quickActions": "key.keyboard.g",
+    "key_key.debug.overlay": "key.keyboard.f3",
+    "key_key.debug.modifier": "key.keyboard.f3",
+    "key_key.hotbar.1": "key.keyboard.1",
+    "key_key.hotbar.2": "key.keyboard.2",
+    "key_key.hotbar.3": "key.keyboard.3",
+    "key_key.hotbar.4": "key.keyboard.4",
+    "key_key.hotbar.5": "key.keyboard.5",
+    "key_key.hotbar.6": "key.keyboard.6",
+    "key_key.hotbar.7": "key.keyboard.7",
+    "key_key.hotbar.8": "key.keyboard.8",
+    "key_key.hotbar.9": "key.keyboard.9",
+    "key_key.debug.reloadChunk": "key.keyboard.a",
+    "key_key.debug.showHitboxes": "key.keyboard.b",
+    "key_key.debug.clearChat": "key.keyboard.d",
+    "key_key.debug.crash": "key.keyboard.c",
+    "key_key.debug.showChunkBorders": "key.keyboard.g",
+    "key_key.debug.showAdvancedTooltips": "key.keyboard.h",
+    "key_key.debug.copyRecreateCommand": "key.keyboard.i",
+    "key_key.debug.spectate": "key.keyboard.n",
+    "key_key.debug.switchGameMode": "key.keyboard.f4",
+    "key_key.debug.debugOptions": "key.keyboard.f6",
+    "key_key.debug.focusPause": "key.keyboard.p",
+    "key_key.debug.dumpDynamicTextures": "key.keyboard.s",
+    "key_key.debug.reloadResourcePacks": "key.keyboard.t",
+    "key_key.debug.profiling": "key.keyboard.l",
+    "key_key.debug.copyLocation": "key.keyboard.c",
+    "key_key.debug.dumpVersion": "key.keyboard.v",
+    "key_key.debug.profilingChart": "key.keyboard.1",
+    "key_key.debug.fpsCharts": "key.keyboard.2",
+    "key_key.debug.networkCharts": "key.keyboard.3",
+    "key_key.debug.lightmapTexture": "key.keyboard.4",
+    "key_key.debug.improvedTransparency": "key.keyboard.x",
+    "key_iris.keybind.reload": "key.keyboard.r",
+    "key_iris.keybind.toggleShaders": "key.keyboard.k",
+    "key_iris.keybind.shaderPackSelection": "key.keyboard.i",
+    "key_iris.keybind.wireframe": "key.keyboard.unknown",
+    "soundCategory_master": "0.0",
+    "soundCategory_music": "1.0",
+    "soundCategory_record": "1.0",
+    "soundCategory_weather": "1.0",
+    "soundCategory_block": "1.0",
+    "soundCategory_hostile": "1.0",
+    "soundCategory_neutral": "1.0",
+    "soundCategory_player": "1.0",
+    "soundCategory_ambient": "1.0",
+    "soundCategory_voice": "1.0",
+    "soundCategory_ui": "1.0",
+    "modelPart_cape": "true",
+    "modelPart_jacket": "true",
+    "modelPart_left_sleeve": "true",
+    "modelPart_right_sleeve": "true",
+    "modelPart_left_pants_leg": "true",
+    "modelPart_right_pants_leg": "true",
+    "modelPart_hat": "true"
+   }
+  },
+  "suite": {
+   "sha256": "dcc6d36e4851afd922d31d1e2d6ba6b81bbc8d9a28a4451420c6f74b8b3b82c2",
+   "sections": [
+    "display",
+    "modes",
+    "capture",
+    "validity",
+    "statistics"
+   ]
+  },
+  "java": {
+   "runtime": "jdk-25.0.4.1+1",
+   "version": "25.0.4.1+1-LTS",
+   "release": "86e5e51658bb2b9cf064b3957d81ac39abdb346b2cac19867c1625dd19d440d9",
+   "heap": {
+    "xms": 6144,
+    "xmx": 6144,
+    "unit": "MiB"
+   },
+   "args": []
+  },
+  "system": {
+   "gpu": "AMD Radeon RX 7800 XT",
+   "hags": true,
+   "resolution": "3840x2160",
+   "windowMode": "exclusive fullscreen",
+   "windowsBuild": 26200
+  },
+  "harness": {
+   "modules": {
+    "optilux/__init__.py": "17e3ccb977899bc7d0e5bf9ce25e4cbec753f5ddc5753a49cf23a482a9ceca7b",
+    "optilux/acceptance.py": "18ab694d8ee062e466555441d714457812f58bb9ade39a80e1b26c0e8e54cb8a",
+    "optilux/launch.py": "2410f2d96353876f53ae84719b2a1dc39b1617bacdabc80ebd0b5434ea9d2428",
+    "optilux/measure.py": "9196fa14f33679744b6573999a16ecf5d8f4864b5f1ff009976cb6c93279b0ae",
+    "optilux/modclient.py": "9bc87a14b70eebad07299e5eac628cd9eaba3c4a3fc283cb9a06fe14b46a4d3e",
+    "optilux/packzip.py": "f992c60d74eea68ad0aeeb732066d7d31cc3af88518edb5561105b72646e502d",
+    "optilux/platform.py": "abb2d92e85f4f27b4d5a9d42fd732ed51dc82008ed6e077d57f46ae7e096af20",
+    "optilux/presentmon.py": "6424faf4d8e41ad699d25d3730b6d6d059fe914b2b3e2c6a0187882281e09269",
+    "optilux/record.py": "24de99b1e85e05baf9bcc8067dfc80256761dae507253b978cdf3e27cb333028",
+    "optilux/repo.py": "d22eef770a60566986bedbbca6783713dedec5cae344ee5bd1547ee237dfc394",
+    "optilux/sendinput.py": "f1d023cec75e2b26a3d78e30311bfe21115f80b7bcc927c0e3262fdb0f957a4b",
+    "optilux/session.py": "52ce328295daaad35513f09654e5de80886cf262ed2e6d79e583b7c381e006eb",
+    "optilux/stats.py": "048e7afa5569b930ded697e2c7aea256292a1cc1694c68996ff7de1df782c478",
+    "optilux/verbs/__init__.py": "6fb856fb4a359a394bd83e135caf220ad6b0b1a224139a9380dfbe4e1da5859d",
+    "optilux/verbs/install.py": "fdd23d296167e2bc31b707ffa457e0488eb89720e9be04f26fb7abea50a4bd5a",
+    "optilux/verbs/run.py": "e7ec0f61b15d6e1055725713e6fdb61ba4526cc1603082a4d5710bfd91d31151",
+    "optilux/winpipe.py": "f716a6c15d8548841ab87277f32e9341f0ca968d6b70e02afd36ef28c4b68106",
+    "optilux/world.py": "00f3c04b1e29fa6558815f7671e80837c92a787953861f85cd2811ca7406a1b2"
+   },
+   "presentMon": {
+    "file": "PresentMon-2.6.0-x64.exe",
+    "sha256": "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af",
+    "arguments": [
+     "--process_id",
+     "<pid>",
+     "--output_file",
+     "<csv>",
+     "--qpc_time_ms",
+     "--v2_metrics",
+     "--session_name",
+     "optilux-<run>",
+     "--stop_existing_session",
+     "--no_console_stats"
+    ]
+   }
+  }
+ },
+ "recorded": {
+  "platformFile": "4dd7c9450c2a662eb26c3a1dee0728aa53e6973eec79e9daeb881e205d2b66b2",
+  "driver": "32.0.31041.1004",
+  "windowsRevision": 9711,
+  "display": {
+   "name": "\\\\.\\DISPLAY2",
+   "hz": 240,
+   "displays": 2
+  },
+  "hags": {
+   "caps": 11,
+   "supported": true,
+   "enabledByDefault": false,
+   "adapterLuid": "0x11eb1"
+  },
+  "hwSchMode": 2,
+  "harness": {
+   "commit": "7c62abdb375b83d4dd8ae2b1060f34c4fb489129",
+   "dirty": true
+  }
+ },
+ "variants": [
+  {
+   "id": "probe",
+   "role": "baseline",
+   "pack": "optilux.zip",
+   "sha512": "46fd40f5bae82b1d6db87febeb79fc1e330b8d970857b62ca132293dc12a36e2b72372d0448f754390a4f6fb435d087830fb6bc42a6b3e88c7f550d29fe5be63",
+   "build": {
+    "variant": "optilux",
+    "ref": null,
+    "commit": null
+   },
+   "l0": {
+    "ok": true,
+    "sha512": "46fd40f5bae82b1d6db87febeb79fc1e330b8d970857b62ca132293dc12a36e2b72372d0448f754390a4f6fb435d087830fb6bc42a6b3e88c7f550d29fe5be63",
+    "glslang": "16.6.0",
+    "pipeline": {
+     "file": "config/pipeline.json",
+     "sha256": "6f3be28207a7e27fdf2fa2a0edcd2a925f2a24cbda574c07cd9dceeaa1f44fb0"
+    },
+    "builds": 87,
+    "variants": [
+     "defaults"
+    ],
+    "profiles": [
+     "config/profiles/complementary-unbound-iso.json",
+     "config/profiles/complementary-unbound-played.json"
+    ]
+   },
+   "profile": null,
+   "options": {},
+   "timers": false,
+   "effective": null
+  }
+ ],
+ "captures": [],
+ "dumps": {},
+ "packs": {
+  "optilux.zip": "packs/optilux.zip"
+ },
+ "session": {
+  "orphan": {
+   "at": "2026-11-03T18:05:08+00:00",
+   "game": "gone",
+   "presentmon": "never started",
+   "files": {
+    "removed": [
+     "optilux.zip"
+    ],
+    "kept": []
+   }
+  },
+  "journal": "results/raw/m4-probe-dump-1/journal.json"
+ },
+ "raw": "results/raw/m4-probe-dump-1"
+}
