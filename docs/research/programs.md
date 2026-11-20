@@ -36,14 +36,14 @@ Each: Iris (program, ShaderKey, fallbacks: [verify in jar: ProgramId, ShaderKey]
 - Iris: gbuffers_weather (WEATHER, 0.1 cutoff) -> textured_lit (R3). after deferred, with every blended draw (P11, not R2's three programs); rain.depth is read by nothing (P12); `weather` "Enables or disables weather (rain & snow) geometry and rain splash particles" (R2 features; R1 IrisRenderingPipeline reads it).
 - Draw: vanilla's rain or snow columns, to options.txt weatherRadius 10 (unwritten: R7's settings). Slot: forward, lit from vaUV2 by the shared include, fogged at its own depth (synthesis); rainStrength raw, PER_TICK (docs/research/synthesis.md#iris-gates); TAA mask skip.
 - D: discarded as built. Proposed [inferred]: weather=false false (R2 features: weather=<weatherGeometryEnabled> <splashParticlesEnabled>, with the CAN_DISABLE_WEATHER feature flag) inside #ifdef BENCH_DETERMINISTIC in shaders.properties, which Iris preprocesses with the options (docs/gpu-iris.md#properties-and-options; Unbound gates directives on options), so nothing draws; an identical-tier A/B against the discard.
-- View: rain (thunder) in a visual run of its mode; no coverage view has weather and none is snowy (config/views/bench_263.json): snow uncovered.
+- View: rain (thunder), off the define alone (m4-coverage-capture-2); no view is snowy: snow waived (docs/shader.md#coverage-list, plans/m4.md D83).
 - C: the passthrough read 0.93-0.94 ms at rain, 0.54-0.59 at forest_noon and ocean_sunset [m, R7], rain plus the view's geometry: vanilla rain at most about 0.4 ms [inferred], "pure overdraw, no shader-side fix" (docs/playbook.md#6-did-not-work); Optilux's off the define 0.2-0.5 ms [inferred]. Gated rows keep the define on (docs/measurement.md#session step 9): weather shows only in the define's cost row and M6's ratio.
 - Not-yet: weather styles live here (docs/shader.md#dropped-features), D72 input. Aperture's weather switch is unknown; the discard ports.
 
 ### Lightning
 - Iris: gbuffers_lightning (LIGHTNING: POSITION_COLOR, FULLBRIGHT) -> entities -> textured_lit (R3); also the dragon's death beams; blended, so after deferred (P11) [inferred]. Slot: forward, added and unlit; TAA mask skip.
 - D: discarded as built, its shadow too (shadow_lightning, M4.P07; the shadow root would cast it). A bolt struck in rain's 120 stepped ticks (config/suite.json capture.ticksAfterWeatherChange) would freeze into its captures [inferred]; the discard hides the bolt, not a sky flash in a uniform the pack reads [inferred]. m3-determinism-2 and -3 were identical at rain.
-- View: none reliably; a summoned lightning_bolt (not a monster) at the site under /tick freeze, clear of the mobs, would be world-prep content, so identity [inferred]. C: about 0 [inferred].
+- View: none, waived (docs/shader.md#coverage-list, plans/m4.md D83); a summoned lightning_bolt (not a monster) at the site under /tick freeze, clear of the mobs, would be world-prep content, so identity [inferred]. C: about 0 [inferred].
 
 ### Beacon beam
 - Iris: gbuffers_beaconbeam (BEACON: BLOCK format, no alpha test, per-fragment fog, FULLBRIGHT) -> textured (R1, R3). beacon.beam.depth is read by nothing (P12); the beam draws before deferred and after it, at BLOCK_ENTITIES both times (M4.P06's probe).
@@ -54,38 +54,38 @@ Each: Iris (program, ShaderKey, fallbacks: [verify in jar: ProgramId, ShaderKey]
 - Iris: gbuffers_line (LINES: POSITION_COLOR_NORMAL_LINE_WIDTH) -> basic (R1, R2); leashes take basic. isLines holds only with the pack's own line program (R1 IrisRenderingPipeline) and forces the core transform (R1 TransformPatcher); the outline comes wrapped as iris:is_outline (R1 MixinLevelRenderer).
 - Draw: "block outline, fishing line" (R2), the outline in vanilla's colour (docs/shader.md#look-and-scope). Slot: unlit, forward: outlines draw after deferred (P11).
 - The vertex stage widens each segment into a screen-space strip, as vanilla does; a fixed pixel width reads thin at 4K [inferred]; the format carries a line width (R1 ShaderKey). TAA: unjittered, skip. D: no frame term; Unbound's rainbow outline reads frameTimeCounter (outline styles: not-yet, D72 input, about 0 ms).
-- View: none [inferred; vanilla's outline rule unread]: perf views hide the GUI, and entities and coverage_beacon have nothing in reach; coverage_beacon looks level from about y 103.6 over the beacon at y 101, 7 blocks off (config/views/bench_263.json, optilux/world.py). A pose looking down at a block within 5 blocks, with hand, would draw it: a views change, so identity. C: about 0.
+- View: coverage_hand (M4.P08, plans/m4.md P21; the `lines` key in m4-coverage-capture-2): 26.3 draws the outline only with the GUI shown (GameRenderer.shouldRenderBlockOutline reads Hud.isHidden), so no perf view, and before it entities and coverage_beacon had nothing in reach; coverage_beacon looks level from about y 103.6 over the beacon at y 101, 7 blocks off (config/views/bench_263.json, optilux/world.py). A pose looking down at a block within 5 blocks, with hand, would draw it: a views change, so identity. C: about 0.
 
 ### Text
 - Iris (R1 ShaderKey): TEXT, TEXT_INTENSITY, TEXT_BG -> entities_translucent -> entities; TEXT_BE, TEXT_INTENSITY_BE -> block_translucent -> block; hand text -> hand or hand_water. Sign text (text_be) draws through gbuffers_block_translucent (M4.P06's probe), as R1 says, not R2's gbuffers_block.
 - Slot: name tags and texts after deferred, lit forward (P11); sign text before it, its glyphs alpha 0 or 1. As built (M4.P07) not the G-buffer D76 names: block_translucent also draws banner patterns before deferred, so it lights each fragment forward into the scene and trans with vanilla's blend, right on either side, sign text at alpha 1.
-- D: static. View: coverage_items' sign (read back by world prep); no site entity has a custom name (optilux/world.py CONTENT): name tags uncovered. C: about 0.
+- D: static. View: coverage_items' sign (read back by world prep); the named cow's tag at coverage_hand (M4.P08: `text`, `shadow_text`), drawn only with the GUI shown (LivingEntityRenderer.shouldShowName reads Hud.isHidden). C: about 0.
 
 ### Armor glint
 - Iris: gbuffers_armor_glint (GLINT) -> textured (R1, R3). Inline, GlintTransformer makes mc_sampleGlint() glintAlpha times glintTexture at iris_glintCoord, the UV through iris_transforms.TextureMat, for a glint draw with an overlay, else a stub returning 0; IRIS_INLINE_GLINT is defined (R1).
 - Slot: the shield and trim glint pass, before deferred, into emit (D76); other glint draws in its item's pass, which calls mc_sampleGlint() nowhere (P19).
 - D: TextureMat carries the scroll 26.3's TextureTransform drives by Util.getMillis() (docs/shader.md#determinism-and-taa), so mc_sampleGlint() follows the wall clock (P19). Under the define the separate draw skips the matrix (as built) and the inline glint is skipped or sampled at the raw UV [inferred].
-- View: none until M4.P08's enchanted trimmed armour (D83); the golden apple's glint draws with its item (entities_cutout_glint: M4.P06's probe). C: a fetch per glinted pixel, about 0.
+- View: coverage_items, coverage_mobs (M4.P08's enchanted trimmed chestplate: the `glint` key); the golden apple's glint draws with its item (entities_cutout_glint: M4.P06's probe). C: a fetch per glinted pixel, about 0.
 
 ### Spider eyes
 - Iris: gbuffers_spidereyes (ENTITIES_EYES, _TRANS: FULLBRIGHT) -> textured (R1, R3), blend forced to SRC_ALPHA, ONE for colour and ZERO, ONE for alpha (R1 ProgramId). Draw: "spider/enderman/dragon eyes" (R2).
 - Slot: blended, so after deferred (P11) [inferred], added into the scene by that blend; a pack's blend.<program> beats it (P12).
-- D: static. View: none: SummonCommand refuses monsters in Peaceful (docs/plans/m3.md#3-premises P22); the difficulty is the user's (docs/plans/m3.md#2-scope) and changing it re-hashes the world [inferred], so recalibration (docs/measurement.md#calibration); a written waiver fits docs/shader.md#pipeline-spec. C: 0.
+- D: static. View: none: SummonCommand refuses monsters in Peaceful (docs/plans/m3.md#3-premises P22); the difficulty is the user's (docs/plans/m3.md#2-scope) and changing it re-hashes the world [inferred], so recalibration (docs/measurement.md#calibration); waived (docs/shader.md#coverage-list). C: 0.
 
 ### Damaged block
 - Iris: gbuffers_damagedblock (CRUMBLING: 0.1 cutoff, no fog, FULLBRIGHT) -> terrain -> textured_lit (R1, R2). Slot: the breaking overlay draws after deferred, forward; crumbling on opaque models before it, into mod (P11, D76). D: static.
-- View: none [inferred]: spectators cannot mine, creative breaks at once, no command sets progress; a helper-mod call into the client level's destroy progress would (a mod change). C: 0.
+- View: none, waived (docs/shader.md#coverage-list): spectators cannot mine, creative breaks at once, no command sets progress; a helper-mod call into the client level's destroy progress would (a mod change). C: 0.
 
 ### Hand
 - Iris: gbuffers_hand -> textured_lit (R3); gbuffers_hand_water -> hand (R1, R2). The solid hand draws before deferred after the depthtex2 copy, the translucent at the level's end (R1 MixinLevelRenderer, IrisRenderingPipeline); MC_HAND_DEPTH 0.125 (docs/research/synthesis.md#iris-gates).
 - Slot: hand into gbuf, hand_water forward (synthesis), positions rebuilt with MC_HAND_DEPTH (docs/research/lighting.md#foliage-and-entities); TAA: identity reprojection.
 - D: fixed inventory; hideGUI reads 0 every frame where the hand shows (docs/roadmap.md#findings-assigned F12), so the flush waits on F12's answer; TAA-off frames are unaffected.
-- View: entities (perf), coverage_beacon; hand_water none, only a torch being held [inferred]. C: under 0.01 ms [inferred]. Not-yet: hand sway, a vertex term (D72 input).
+- View: entities (perf), coverage_beacon, coverage_hand; hand_water those two coverage views, the off-hand's glass (M4.P08, session.OFFHAND). C: under 0.01 ms [inferred]. Not-yet: hand sway, a vertex term (D72 input).
 
 ### Translucent entities and block entities
 - Iris: gbuffers_entities_translucent -> entities -> textured_lit; gbuffers_block_translucent -> block -> terrain (R1, R2); R2 pairs entities_translucent with the ENTITY_TRANSLUCENT feature flag, which Unbound requests as optional (R9). separateEntityDraws is read by nothing (P12); both draw after deferred (P11).
 - Draw: translucent entity and block-entity layers and text; which items and mob layers take them is unread. Slot: forward into the scene, lit by the shared include; banner patterns and armour cracks, before deferred, into trans (D76), RGBA16F as RGBA8 clips and bands.
-- D: static under /tick freeze with NoAI (V2). View: coverage_items, coverage_mobs, entities [inferred]. C: small.
+- D: static under /tick freeze with NoAI (V2). View: block_translucent the coverage views (banner patterns, sign text), entities_translucent coverage_beacon and coverage_hand (the name tag) (m4-coverage-capture-2). C: small.
 
 ### Translucent sorting
 - IRIS_HAS_TRANSLUCENCY_SORTING is defined unconditionally (R1 StandardMacros), "if the currently loaded version of Sodium supports translucency sorting" (R2). Sodium sorts translucent faces per section on the CPU, the order changing only "when the camera crosses the face plane of one of the involved faces" (R4). The bench pins terrain_sorting_enabled true and quad_splitting_mode SAFE (config/suite.json display.sodiumOptionsFile): identity.

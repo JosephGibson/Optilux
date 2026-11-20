@@ -1,0 +1,936 @@
+{
+ "why": "M4.P08's coverage (plans/m4.md D83; docs/shader.md#coverage-list): per capture of m4-coverage-capture-1 (the 11 perf views) and m4-coverage-capture-2 (the coverage views, rain, forest_noon, nether_crimson and end_dragon, BENCH_DETERMINISTIC on and off) the Iris labels its draws carry, read by `check L4` (optilux/l4.py), each held to its record's .rdc sha256; unlabelled programs are the game's own (shader.md#facts). keys: Iris 1.11.7's ShaderKey (the label, lower case) to its ProgramId, and programs: each ProgramId's file (its group's prefix and source name) and fallback, both read with javap from the pinned jar's static initializers (ShaderKey, ProgramId); the composite and final passes' labels (named) are their files. tests/test_pipeline.py holds config/pipeline.json's views, defineOff and waivers to it.",
+ "iris": "iris-fabric-1.11.7+mc26.3.jar",
+ "keys": {
+  "basic": "Basic",
+  "basic_color": "Basic",
+  "textured": "Textured",
+  "textured_color": "Textured",
+  "sps": "SpiderEyes",
+  "sky_basic": "SkyBasic",
+  "sky_basic_color": "SkyBasic",
+  "sky_textured": "SkyTextured",
+  "sky_textured_color": "SkyTextured",
+  "clouds": "Clouds",
+  "clouds_sodium": "Clouds",
+  "terrain_solid": "TerrainSolid",
+  "terrain_cutout": "TerrainCutout",
+  "terrain_translucent": "Water",
+  "moving_block": "Block",
+  "entities_alpha": "Entities",
+  "entities_solid": "Entities",
+  "entities_solid_glint": "Entities",
+  "entities_solid_diffuse": "Entities",
+  "entities_solid_bright": "Entities",
+  "entities_cutout": "Entities",
+  "entities_cutout_glint": "Entities",
+  "entities_cutout_glint_special": "Entities",
+  "entities_cutout_glint_armor": "Entities",
+  "entities_cutout_diffuse": "Entities",
+  "entities_translucent": "EntitiesTrans",
+  "entities_translucent_glint": "EntitiesTrans",
+  "entities_translucent_glint_special": "EntitiesTrans",
+  "entities_eyes": "SpiderEyes",
+  "entities_eyes_trans": "SpiderEyes",
+  "hand_cutout": "Hand",
+  "hand_cutout_glint": "Hand",
+  "hand_cutout_glint_diffuse": "Hand",
+  "hand_cutout_glint_special": "Hand",
+  "hand_cutout_glint_armor": "Hand",
+  "hand_cutout_bright": "Hand",
+  "hand_cutout_diffuse": "Hand",
+  "hand_text": "Hand",
+  "hand_text_translucent": "HandWater",
+  "hand_text_intensity": "Hand",
+  "hand_translucent": "HandWater",
+  "hand_translucent_glint": "HandWater",
+  "hand_translucent_glint_diffuse": "HandWater",
+  "hand_translucent_glint_special": "HandWater",
+  "hand_translucent_glint_armor": "HandWater",
+  "hand_water_bright": "HandWater",
+  "hand_water_diffuse": "HandWater",
+  "lightning": "Lightning",
+  "leash": "Basic",
+  "text_bg": "EntitiesTrans",
+  "particles": "Particles",
+  "particles_trans": "ParticlesTrans",
+  "weather": "Weather",
+  "crumbling": "DamagedBlock",
+  "text": "EntitiesTrans",
+  "text_intensity": "EntitiesTrans",
+  "text_be": "BlockTrans",
+  "text_intensity_be": "BlockTrans",
+  "block_entity": "Block",
+  "block_entity_bright": "Block",
+  "block_entity_diffuse": "Block",
+  "be_translucent": "BlockTrans",
+  "beacon": "BeaconBeam",
+  "glint": "ArmorGlint",
+  "lines": "Line",
+  "mekanism_flame": "SpiderEyes",
+  "sodium_terrain_solid": "TerrainSolid",
+  "sodium_terrain_cutout": "TerrainCutout",
+  "sodium_terrain_translucent": "Water",
+  "shadow_sodium_terrain_solid": "ShadowSolid",
+  "shadow_sodium_terrain_cutout": "ShadowCutout",
+  "shadow_sodium_terrain_translucent": "ShadowWater",
+  "shadow_terrain_cutout": "ShadowCutout",
+  "shadow_translucent": "ShadowWater",
+  "shadow_entities_cutout": "ShadowEntities",
+  "shadow_block": "ShadowBlock",
+  "shadow_beacon_beam": "ShadowEntities",
+  "shadow_basic": "Shadow",
+  "shadow_basic_color": "Shadow",
+  "shadow_tex": "Shadow",
+  "shadow_tex_color": "Shadow",
+  "shadow_clouds": "Shadow",
+  "shadow_lines": "Shadow",
+  "shadow_leash": "Shadow",
+  "shadow_lightning": "ShadowLightning",
+  "shadow_particles": "Shadow",
+  "shadow_text": "ShadowEntities",
+  "shadow_text_bg": "ShadowEntities",
+  "shadow_text_intensity": "ShadowEntities",
+  "mekanism_flame_shadow": "ShadowEntities"
+ },
+ "programs": {
+  "Shadow": {
+   "file": "shadow",
+   "fallback": null
+  },
+  "ShadowSolid": {
+   "file": "shadow_solid",
+   "fallback": "Shadow"
+  },
+  "ShadowCutout": {
+   "file": "shadow_cutout",
+   "fallback": "Shadow"
+  },
+  "ShadowWater": {
+   "file": "shadow_water",
+   "fallback": "Shadow"
+  },
+  "ShadowEntities": {
+   "file": "shadow_entities",
+   "fallback": "Shadow"
+  },
+  "ShadowLightning": {
+   "file": "shadow_lightning",
+   "fallback": "ShadowEntities"
+  },
+  "ShadowBlock": {
+   "file": "shadow_block",
+   "fallback": "Shadow"
+  },
+  "Basic": {
+   "file": "gbuffers_basic",
+   "fallback": null
+  },
+  "Line": {
+   "file": "gbuffers_line",
+   "fallback": "Basic"
+  },
+  "Textured": {
+   "file": "gbuffers_textured",
+   "fallback": "Basic"
+  },
+  "TexturedLit": {
+   "file": "gbuffers_textured_lit",
+   "fallback": "Textured"
+  },
+  "SkyBasic": {
+   "file": "gbuffers_skybasic",
+   "fallback": "Basic"
+  },
+  "SkyTextured": {
+   "file": "gbuffers_skytextured",
+   "fallback": "Textured"
+  },
+  "Clouds": {
+   "file": "gbuffers_clouds",
+   "fallback": "Textured"
+  },
+  "Terrain": {
+   "file": "gbuffers_terrain",
+   "fallback": "TexturedLit"
+  },
+  "TerrainSolid": {
+   "file": "gbuffers_terrain_solid",
+   "fallback": "Terrain"
+  },
+  "TerrainCutout": {
+   "file": "gbuffers_terrain_cutout",
+   "fallback": "Terrain"
+  },
+  "DamagedBlock": {
+   "file": "gbuffers_damagedblock",
+   "fallback": "Terrain"
+  },
+  "Block": {
+   "file": "gbuffers_block",
+   "fallback": "Terrain"
+  },
+  "BlockTrans": {
+   "file": "gbuffers_block_translucent",
+   "fallback": "Block"
+  },
+  "BeaconBeam": {
+   "file": "gbuffers_beaconbeam",
+   "fallback": "Textured"
+  },
+  "Item": {
+   "file": "gbuffers_item",
+   "fallback": "TexturedLit"
+  },
+  "Entities": {
+   "file": "gbuffers_entities",
+   "fallback": "TexturedLit"
+  },
+  "EntitiesTrans": {
+   "file": "gbuffers_entities_translucent",
+   "fallback": "Entities"
+  },
+  "Lightning": {
+   "file": "gbuffers_lightning",
+   "fallback": "Entities"
+  },
+  "Particles": {
+   "file": "gbuffers_particles",
+   "fallback": "TexturedLit"
+  },
+  "ParticlesTrans": {
+   "file": "gbuffers_particles_translucent",
+   "fallback": "Particles"
+  },
+  "EntitiesGlowing": {
+   "file": "gbuffers_entities_glowing",
+   "fallback": "Entities"
+  },
+  "ArmorGlint": {
+   "file": "gbuffers_armor_glint",
+   "fallback": "Textured"
+  },
+  "SpiderEyes": {
+   "file": "gbuffers_spidereyes",
+   "fallback": "Textured"
+  },
+  "Hand": {
+   "file": "gbuffers_hand",
+   "fallback": "TexturedLit"
+  },
+  "Weather": {
+   "file": "gbuffers_weather",
+   "fallback": "TexturedLit"
+  },
+  "Water": {
+   "file": "gbuffers_water",
+   "fallback": "Terrain"
+  },
+  "HandWater": {
+   "file": "gbuffers_hand_water",
+   "fallback": "Hand"
+  },
+  "Final": {
+   "file": "final",
+   "fallback": null
+  }
+ },
+ "named": [
+  "deferred",
+  "composite",
+  "final"
+ ],
+ "captures": [
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "forest_noon",
+   "variant": "pack",
+   "rdc": "8f187df873f4a2d91f8a966c2be88311b36a8288d273efb8c5fe87396df14049",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "ocean_sunset",
+   "variant": "pack",
+   "rdc": "18f892b3765fef040f34a03991bb54eff05ab426fb07f24a66910113fd2dfdf0",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_basic_color",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "cave",
+   "variant": "pack",
+   "rdc": "e18abe61854479f065f2b492b4815a0c99ece9341981e2e7a167590e6661520a",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "night",
+   "variant": "pack",
+   "rdc": "1560b9ca2632f362eb385fe388b4b8e636a7b1d94ea3814cc5120e1bacac99b5",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "underwater",
+   "variant": "pack",
+   "rdc": "0e15b4c5cb2d912ba35472741ca28b6e94be6ef27225fd86b97239600cf99008",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "entities",
+   "variant": "pack",
+   "rdc": "2a571b1e7688ec4d3761f20ce93fb68463fb4890e4472075b4bcde13b7e507fe",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "final",
+    "hand_cutout_diffuse",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 324",
+    "Program 368",
+    "Program 457",
+    "Program 748"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "rain",
+   "variant": "pack",
+   "rdc": "539253bbbfbaa8f6b1bc9f9c235f1688f0271360737a2477c625efbba08f2aae",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "particles",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "nether_crimson",
+   "variant": "pack",
+   "rdc": "edd1732ff56ea33fe1bbf21ccf4104feab730f6ef77b0ea229f184ee1478f496",
+   "labels": [
+    "composite",
+    "deferred",
+    "final",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "nether_soul",
+   "variant": "pack",
+   "rdc": "de6dcd279aced5532acdc26b64631dfd0914d0d981ea6102dd84691bb3e75163",
+   "labels": [
+    "composite",
+    "deferred",
+    "final",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "end_dragon",
+   "variant": "pack",
+   "rdc": "a74cd188a9f88c7b99432cb43241434ccdac64462fac5d8b32397602f36f5ae1",
+   "labels": [
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "final",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid"
+   ],
+   "unlabelled": []
+  },
+  {
+   "run": "m4-coverage-capture-1",
+   "view": "end_city",
+   "variant": "pack",
+   "rdc": "681bc5c9439ab7d14631a93fbe7c0453c5816b63110d566da8af1f598080b483",
+   "labels": [
+    "block_entity_diffuse",
+    "composite",
+    "deferred",
+    "final",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 457"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "forest_noon",
+   "variant": "pack",
+   "rdc": "7afde957bf8b8217d4b1f47c075f775fc42eac28b70e67a4d5eb27af1d62ce94",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "forest_noon",
+   "variant": "pack-define-off",
+   "rdc": "3a7db5201872935697fe2f7468f9bc3df3495c5352daa195c12b1312f66bb59a",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "coverage_items",
+   "variant": "pack",
+   "rdc": "e4bb989a3559338f2c9c82c111aa3747e79462d7738ede4cb2854badeeacaf25",
+   "labels": [
+    "be_translucent",
+    "block_entity",
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "entities_cutout_glint",
+    "entities_solid",
+    "final",
+    "glint",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "text_be"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "coverage_items",
+   "variant": "pack-define-off",
+   "rdc": "a1338a6289e673e9dc89073dccb684763553f9fc4171394210ebfcd2d5a71502",
+   "labels": [
+    "be_translucent",
+    "block_entity",
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "entities_cutout_glint",
+    "entities_solid",
+    "final",
+    "glint",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "text_be"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "coverage_mobs",
+   "variant": "pack",
+   "rdc": "489aff912163b5237ae8bad5f7fbf2935d62c20e063b7a3cb21baf4dfe1ebf0b",
+   "labels": [
+    "be_translucent",
+    "block_entity",
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "final",
+    "glint",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "text_be"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "coverage_mobs",
+   "variant": "pack-define-off",
+   "rdc": "c5bf1deeefb869fea737c76822d79bda35ac5aae696dc733cebfdb89970f9a34",
+   "labels": [
+    "be_translucent",
+    "block_entity",
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "final",
+    "glint",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "text_be"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "coverage_beacon",
+   "variant": "pack",
+   "rdc": "7b5e43ba175825fddb0ed2e29fc116ff2966dfd338a5df3ac1a7755468ecd4a9",
+   "labels": [
+    "be_translucent",
+    "beacon",
+    "block_entity",
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "final",
+    "hand_cutout_diffuse",
+    "hand_water_diffuse",
+    "particles_trans",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "shadow_text",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "text",
+    "text_be"
+   ],
+   "unlabelled": [
+    "Program 332",
+    "Program 344",
+    "Program 413",
+    "Program 453",
+    "Program 607",
+    "Program 725"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "coverage_beacon",
+   "variant": "pack-define-off",
+   "rdc": "2b6054e66dab9b6504a77ba1981a0dabe73afeafae5aefcaeb1a5574b00538f2",
+   "labels": [
+    "be_translucent",
+    "beacon",
+    "block_entity",
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "final",
+    "hand_cutout_diffuse",
+    "hand_water_diffuse",
+    "particles_trans",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "shadow_text",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "text",
+    "text_be"
+   ],
+   "unlabelled": [
+    "Program 332",
+    "Program 413",
+    "Program 453",
+    "Program 725"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "coverage_hand",
+   "variant": "pack",
+   "rdc": "8b7585e8cd841536fe7153c4594dcb5871c96b4844e768da2f024c1461cbcf5d",
+   "labels": [
+    "be_translucent",
+    "beacon",
+    "block_entity",
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "entities_cutout_glint",
+    "final",
+    "hand_cutout_diffuse",
+    "hand_water_diffuse",
+    "lines",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "shadow_text",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "text",
+    "text_be"
+   ],
+   "unlabelled": [
+    "Program 332",
+    "Program 413",
+    "Program 453",
+    "Program 725"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "coverage_hand",
+   "variant": "pack-define-off",
+   "rdc": "c7b7e9a0a19be8d9fc592d243088c52f0adfedf178b70bf106848f60eb121d21",
+   "labels": [
+    "be_translucent",
+    "beacon",
+    "block_entity",
+    "clouds",
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "entities_cutout_glint",
+    "final",
+    "hand_cutout_diffuse",
+    "hand_water_diffuse",
+    "lines",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "shadow_text",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "text",
+    "text_be"
+   ],
+   "unlabelled": [
+    "Program 332",
+    "Program 413",
+    "Program 453",
+    "Program 725"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "rain",
+   "variant": "pack",
+   "rdc": "bef6696b8dcc6194cdacb8c0edf78486c9fe26331a9e17b52474149f0d3c705c",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "particles",
+    "particles_trans",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "rain",
+   "variant": "pack-define-off",
+   "rdc": "251e5972065348f55280737e7df5e25bdec1d900f163a18832b4003117c35a70",
+   "labels": [
+    "clouds",
+    "composite",
+    "deferred",
+    "final",
+    "particles",
+    "particles_trans",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "shadow_sodium_terrain_translucent",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid",
+    "sodium_terrain_translucent",
+    "weather"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "nether_crimson",
+   "variant": "pack",
+   "rdc": "cef3e9c2e9647bb32648e8c623bfefc648e303180291533e3ec23d64ce507e88",
+   "labels": [
+    "composite",
+    "deferred",
+    "final",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "nether_crimson",
+   "variant": "pack-define-off",
+   "rdc": "b6dad58b9a71a6ef102c7a272c42261d3649e8e21c2df14faad891de47b597f3",
+   "labels": [
+    "composite",
+    "deferred",
+    "final",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "end_dragon",
+   "variant": "pack",
+   "rdc": "19d2d62033e596436eb73868ef93d29b63db324ed488a2562600d8ebd3bf1075",
+   "labels": [
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "final",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  },
+  {
+   "run": "m4-coverage-capture-2",
+   "view": "end_dragon",
+   "variant": "pack-define-off",
+   "rdc": "2b88a84884427b53746591ce19b554cb781e7c1cb0aa89732be1ea63410372a5",
+   "labels": [
+    "composite",
+    "deferred",
+    "entities_cutout_diffuse",
+    "final",
+    "shadow_entities_cutout",
+    "shadow_sodium_terrain_cutout",
+    "shadow_sodium_terrain_solid",
+    "sky_basic",
+    "sky_textured",
+    "sodium_terrain_cutout",
+    "sodium_terrain_solid"
+   ],
+   "unlabelled": [
+    "Program 453"
+   ]
+  }
+ ]
+}

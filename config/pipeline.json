@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "why": "Pipeline spec v1 (docs/shader.md#pipeline-spec, plans/m4.md M4.P06, M4.P07): the pack's colour targets as resources and one pass per program in frame order, under shader/shaders/ (the root the overworld's, world-1 the Nether's, world1 the End's); a forward program that also draws before deferred (the overlays' writers, the beacon beam's core, leashes: D76) is listed after deferred, where it draws its scene output. tests/test_pipeline.py keeps it equal to the pack: each resource's format and clear as the pack sets them at its defaults, history where a pass reads last frame's values (none yet); per pass its dimensions, the samplers and uniforms its two stages declare at the defaults over its folders, its outputs at the defaults (RENDERTARGETS; none for the shadow pass's empty DRAWBUFFERS), each option whose setting changes its preprocessed text (an include's unused function or the targets' comment counts), budget null until M4.P11's cost rows (D84), every view of its dimensions until M4.P08's coverage list.",
+  "why": "Pipeline spec v1 (docs/shader.md#pipeline-spec, plans/m4.md M4.P06, M4.P07): the pack's colour targets as resources and one pass per program in frame order, under shader/shaders/ (the root the overworld's, world-1 the Nether's, world1 the End's); a forward program that also draws before deferred (the overlays' writers, the beacon beam's core, leashes: D76) is listed after deferred, where it draws its scene output. tests/test_pipeline.py keeps it equal to the pack: each resource's format and clear as the pack sets them at its defaults, history where a pass reads last frame's values (none yet); per pass its dimensions, the samplers and uniforms its two stages declare at the defaults over its folders, its outputs at the defaults (RENDERTARGETS; none for the shadow pass's empty DRAWBUFFERS), each option whose setting changes its preprocessed text (an include's unused function or the targets' comment counts), budget null until M4.P11's cost rows (D84), its views, defineOff, waiver and dimensionWaivers from M4.P08's captures (viewsWhy).",
   "pack": "optilux",
   "cycle": 1,
   "cycleWhy": "BENCH_DETERMINISTIC's cycle in frames: the pack reads no term that moves from frame to frame, so a frame repeats every frame (docs/shader.md#determinism-and-taa).",
   "views": "bench_263",
-  "viewsWhy": "v0: a pass lists every view of its dimensions in config/views/bench_263.json; M4's coverage list narrows each to the views whose frames show it (docs/shader.md#coverage-list).",
+  "viewsWhy": "M4.P08's coverage list (docs/shader.md#coverage-list, plans/m4.md D83): a pass's views are those of the views file (perf, then coverage) whose capture of the pack at its defaults draws a label Iris resolves to its program (m4-coverage-capture-1 on the 11 perf views, m4-coverage-capture-2 on the four coverage views, rain, forest_noon, nether_crimson and end_dragon; tests/fixtures/l4/coverage.json); defineOff those where only its BENCH_DETERMINISTIC-off capture draws it (capture-2's eight views); a pass no view draws carries a waiver, its reason, else none; dimensionWaivers gives the reason for each dimension of a drawn pass none of whose views draws it. A pass the define discards (particles, particles_translucent, clouds: shader.md#determinism-and-taa) still draws there, its fragments discarded: its look is the define-off captures'. Particles alive at a view vary by launch (rain's particles_translucent in capture-2 alone); the views are the captures' union.",
   "resources": [
     {
       "name": "scene",
@@ -121,8 +121,15 @@
         "night",
         "underwater",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     },
     {
       "name": "shadow-cutout",
@@ -156,8 +163,15 @@
         "night",
         "underwater",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     },
     {
       "name": "shadow-entities",
@@ -186,16 +200,18 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
         "cave",
-        "rain",
         "end_dragon",
-        "night",
-        "underwater",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     },
     {
       "name": "shadow-block",
@@ -220,17 +236,10 @@
       "feature": "shadows",
       "options": [],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "end_dragon",
-        "night",
-        "underwater",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "no capture draws Iris's shadow_block key (ShaderKey SHADOW_BLOCK: ShadowBlock; m4-coverage-capture-1, -2): the shadow draws at end_city and the coverage views carry the shadow_entities_cutout and shadow_text keys (shadow_entities) alone",
+      "dimensionWaivers": {}
     },
     {
       "name": "shadow-water",
@@ -260,12 +269,18 @@
         "ocean_sunset",
         "cave",
         "rain",
-        "end_dragon",
         "night",
         "underwater",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     },
     {
       "name": "shadow-casters",
@@ -293,17 +308,10 @@
         "BENCH_DETERMINISTIC"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "end_dragon",
-        "night",
-        "underwater",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "no capture draws a key Iris resolves to the shadow root (shadow_basic, shadow_basic_color, shadow_tex, shadow_tex_color, shadow_clouds, shadow_lines, shadow_leash, shadow_particles: ShaderKey; m4-coverage-capture-1, -2); it is also the fallback of shadow_solid, _cutout, _water, _entities and _block, each with its own file",
+      "dimensionWaivers": {}
     },
     {
       "name": "shadow-lightning",
@@ -327,17 +335,10 @@
         "BENCH_DETERMINISTIC"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "end_dragon",
-        "night",
-        "underwater",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "lightning (plans/m4.md D83): no capture shows a bolt, none struck in rain's stepped ticks; under BENCH_DETERMINISTIC it casts nothing (shader.md#determinism-and-taa)",
+      "dimensionWaivers": {}
     },
     {
       "name": "sky-none",
@@ -368,14 +369,21 @@
         "ocean_sunset",
         "cave",
         "rain",
-        "nether_crimson",
         "end_dragon",
         "night",
         "underwater",
-        "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "the game draws no sky and no clouds in the Nether"
+      }
     },
     {
       "name": "sky-sprites",
@@ -412,14 +420,21 @@
         "ocean_sunset",
         "cave",
         "rain",
-        "nether_crimson",
         "end_dragon",
         "night",
         "underwater",
-        "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "the game draws no sky and no clouds in the Nether"
+      }
     },
     {
       "name": "gbuffer-terrain-solid",
@@ -468,8 +483,15 @@
         "underwater",
         "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     },
     {
       "name": "gbuffer-terrain-cutout",
@@ -519,8 +541,15 @@
         "underwater",
         "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     },
     {
       "name": "gbuffer-entities",
@@ -580,18 +609,18 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
         "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "gbuffer-block",
@@ -649,18 +678,17 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "gbuffer-particles",
@@ -718,18 +746,14 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "rain"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "gbuffer-hand",
@@ -788,18 +812,16 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "lighting",
@@ -872,8 +894,15 @@
         "underwater",
         "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     },
     {
       "name": "forward-entities",
@@ -937,18 +966,15 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "forward-blocks",
@@ -1012,18 +1038,17 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "beacon-beam",
@@ -1100,18 +1125,15 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "glint",
@@ -1169,18 +1191,15 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "coverage_items",
+        "coverage_mobs"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "eyes",
@@ -1230,19 +1249,10 @@
         "SUN_SPECULAR"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "spider eyes (plans/m4.md D83): Peaceful refuses the monsters that draw them (plans/m3.md P22), and the difficulty is the user's",
+      "dimensionWaivers": {}
     },
     {
       "name": "outline",
@@ -1290,18 +1300,14 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "crumbling",
@@ -1358,19 +1364,10 @@
         "SUN_SPECULAR"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "the damaged block (plans/m4.md D83): no player mines at any view; a spectator cannot and creative breaks at once, and no command sets breaking progress",
+      "dimensionWaivers": {}
     },
     {
       "name": "translucent-terrain",
@@ -1431,14 +1428,20 @@
         "ocean_sunset",
         "cave",
         "rain",
-        "nether_crimson",
-        "end_dragon",
         "night",
         "underwater",
-        "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "no water at the Nether views: water cannot stand in the Nether"
+      }
     },
     {
       "name": "forward-particles",
@@ -1494,18 +1497,15 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
         "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "coverage_beacon"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "clouds",
@@ -1558,14 +1558,20 @@
         "ocean_sunset",
         "cave",
         "rain",
-        "nether_crimson",
-        "end_dragon",
         "night",
         "underwater",
-        "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "the game draws no sky and no clouds in the Nether",
+        "minecraft:the_end": "the game draws no clouds in the End"
+      }
     },
     {
       "name": "weather",
@@ -1620,19 +1626,12 @@
         "SUN_SPECULAR"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [
+        "rain"
+      ],
+      "waiver": "weather draws nothing under BENCH_DETERMINISTIC, on in every gated frame and in the default captures (shaders.properties' weather=false false: plans/m4.md D79); off it rain draws at rain (defineOff, m4-coverage-capture-2); snow on no view, none snowy (plans/m4.md D83)",
+      "dimensionWaivers": {}
     },
     {
       "name": "lightning",
@@ -1680,19 +1679,10 @@
         "SUN_SPECULAR"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "lightning (plans/m4.md D83): no capture shows a bolt, none struck in rain's stepped ticks; a summoned bolt would be world content, and under the define its fragments are discarded",
+      "dimensionWaivers": {}
     },
     {
       "name": "forward-hand",
@@ -1744,18 +1734,15 @@
       ],
       "budget": null,
       "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {
+        "minecraft:the_nether": "nether_crimson and nether_soul hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)",
+        "minecraft:the_end": "end_dragon and end_city hold none of what it draws; the coverage site is the overworld's (plans/m3.md D64)"
+      }
     },
     {
       "name": "forward-basic",
@@ -1834,19 +1821,10 @@
         "SUN_SPECULAR"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "no capture draws a key Iris resolves to basic (basic, basic_color: debug lines and chunk borders, which a bench session never shows; leash: no leashed mob at any view, a gap D83 does not name, logged for the user)",
+      "dimensionWaivers": {}
     },
     {
       "name": "forward-textured",
@@ -1896,19 +1874,10 @@
         "SUN_SPECULAR"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "no capture draws a key Iris resolves to textured (textured, textured_color; m4-coverage-capture-1, -2)",
+      "dimensionWaivers": {}
     },
     {
       "name": "forward-lit",
@@ -1963,19 +1932,10 @@
         "SUN_SPECULAR"
       ],
       "budget": null,
-      "views": [
-        "forest_noon",
-        "ocean_sunset",
-        "cave",
-        "rain",
-        "nether_crimson",
-        "end_dragon",
-        "night",
-        "underwater",
-        "nether_soul",
-        "entities",
-        "end_city"
-      ]
+      "views": [],
+      "defineOff": [],
+      "waiver": "a fallback only: no Iris key names textured_lit; of the programs that fall back to it, those a key names (entities, particles, hand, weather) have their own files, and terrain and item, which no key names, have none",
+      "dimensionWaivers": {}
     },
     {
       "name": "tonemap",
@@ -2017,8 +1977,15 @@
         "underwater",
         "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     },
     {
       "name": "display",
@@ -2062,8 +2029,15 @@
         "underwater",
         "nether_soul",
         "entities",
-        "end_city"
-      ]
+        "end_city",
+        "coverage_items",
+        "coverage_mobs",
+        "coverage_beacon",
+        "coverage_hand"
+      ],
+      "defineOff": [],
+      "waiver": null,
+      "dimensionWaivers": {}
     }
   ]
 }

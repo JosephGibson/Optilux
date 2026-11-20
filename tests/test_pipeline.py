@@ -4,7 +4,11 @@ scale), and one pass per program, in frame order, its dimensions the ones whose 
 (the root is the overworld's, world-1 the Nether's, world1 the End's: offline.WORLD_FOLDERS), the
 samplers and uniforms its two stages declare there at the pack's defaults, its outputs (the
 fragment stage's RENDERTARGETS; none for an empty DRAWBUFFERS; the screen for final), the options
-whose setting changes its code, and every view of its dimensions in the views file it names."""
+whose setting changes its code; its views, the views file's whose capture of the pack at its
+defaults draws it, defineOff those where only its BENCH_DETERMINISTIC-off capture does, and a
+waiver when no view draws it, a dimension waiver for each of its dimensions none of its views
+draws (M4.P08, plans/m4.md D83), against tests/fixtures/l4/coverage.json:
+`check L4`'s labels per capture, held to the capture records, and Iris's key and program maps."""
 
 import json
 import re
@@ -28,6 +32,9 @@ PASS_KEYS = (
     "options",
     "budget",
     "views",
+    "defineOff",
+    "waiver",
+    "dimensionWaivers",
 )
 RESOURCE_KEYS = ("name", "buffer", "format", "clear", "history", "scale", "why")
 # The dimension each world folder serves; the root serves the overworld (offline.WORLD_FOLDERS).
@@ -347,15 +354,122 @@ def test_each_resource_read_is_written_earlier_or_cleared() -> None:
     )
 
 
-def test_each_pass_lists_every_view_of_its_dimensions() -> None:
-    spec = load()
-    views = json.loads(
-        (REPO_ROOT / record.VIEWS / f"{spec['views']}.json").read_text(encoding="utf-8")
-    )["views"]
-    for found in spec["passes"]:
+COVERAGE = REPO_ROOT / "tests" / "fixtures" / "l4" / "coverage.json"
+DEFAULTS, DEFINE_OFF = "pack", "pack-define-off"
+# plans/m4.md D83's waivers: lightning, the damaged block, snow (weather's) and spider eyes.
+D83 = ("gbuffers_lightning", "shadow_lightning", "gbuffers_damagedblock", "gbuffers_weather")
+D83 += ("gbuffers_spidereyes",)
+
+
+def coverage() -> dict:
+    return json.loads(COVERAGE.read_text(encoding="utf-8"))
+
+
+def resolved(fixture: dict, label: str, dim: str) -> tuple[str, str]:
+    """A label's own program file and the file Iris draws it with in that dimension's folder:
+    its ProgramId's, else the first fallback the pack holds (ProgramId's chain)."""
+    if label in fixture["named"]:
+        return label, label
+    program = fixture["keys"][label]
+    own = fixture["programs"][program]["file"]
+    while program is not None:
+        found = fixture["programs"][program]
+        if dim in folders_of(found["file"]):
+            return own, found["file"]
+        program = found["fallback"]
+    raise AssertionError(f"{label}: no program of its chain in {dim}'s folder")
+
+
+def drawn(variant: str) -> dict[str, set[str]]:
+    """Per program file, the views whose captures of the variant draw it."""
+    fixture, views = coverage(), all_views()
+    found: dict[str, set[str]] = {}
+    for capture in fixture["captures"]:
+        if capture["variant"] == variant:
+            dim = views[capture["view"]]["dim"]
+            for label in capture["labels"]:
+                found.setdefault(resolved(fixture, label, dim)[1], set()).add(capture["view"])
+    return found
+
+
+def all_views() -> dict[str, dict]:
+    data, _ = record.load_views(REPO_ROOT, load()["views"])
+    return {v["id"]: v for v in record.every_view(data)}
+
+
+def test_each_pass_lists_the_views_whose_captures_draw_it() -> None:
+    """plans/m4.md D83: a pass's views are those whose default capture draws it, in the views
+    file's order (perf, then coverage), each in one of its dimensions; defineOff those where only
+    the BENCH_DETERMINISTIC-off capture does; every view is captured at the defaults."""
+    order = list(all_views())
+    on, off = drawn(DEFAULTS), drawn(DEFINE_OFF)
+    captured = {c["view"] for c in coverage()["captures"] if c["variant"] == DEFAULTS}
+    assert captured == set(order)
+    for found in load()["passes"]:
+        program = found["program"]
         assert found["dimensions"] and set(found["dimensions"]) <= set(record.DIMENSIONS)
-        assert found["views"] == [v["id"] for v in views if v["dim"] in found["dimensions"]]
+        assert found["views"] == [v for v in order if v in on.get(program, set())], program
+        late = [v for v in order if v in off.get(program, set()) and v not in found["views"]]
+        assert found["defineOff"] == late, program
+        dims = {all_views()[v]["dim"] for v in found["views"] + found["defineOff"]}
+        assert dims <= set(found["dimensions"]), program
         assert found["budget"] is None  # M4.P11's rows set them (plans/m4.md D84)
+
+
+def test_a_pass_no_view_draws_carries_its_waiver() -> None:
+    """docs/shader.md#pipeline-spec: a pass no view draws needs a written waiver; one a view
+    draws has none; D83's (lightning, the damaged block, snow, spider eyes) are among them."""
+    passes = {p["program"]: p for p in load()["passes"]}
+    for program, found in passes.items():
+        if found["views"]:
+            assert found["waiver"] is None, program
+        else:
+            assert isinstance(found["waiver"], str) and len(found["waiver"]) > 40, program
+    assert all("plans/m4.md D83" in passes[program]["waiver"] for program in D83)
+    assert passes["gbuffers_weather"]["defineOff"] == ["rain"]  # rain, off the define
+    assert "snow" in passes["gbuffers_weather"]["waiver"]
+
+
+def test_each_dimension_of_a_drawn_pass_is_drawn_or_waived() -> None:
+    """A pass some view draws names, for each dimension whose folder holds it and none of whose
+    views draws it, the reason (dimensionWaivers): a world folder's file is its own program
+    (world-1's define DIMENSION_NETHER), so the overworld's views do not cover it. A pass no view
+    draws has its waiver alone."""
+    views = all_views()
+    for found in load()["passes"]:
+        waived = found["dimensionWaivers"]
+        if not found["views"]:
+            assert waived == {}, found["program"]
+            continue
+        seen = {views[v]["dim"] for v in found["views"] + found["defineOff"]}
+        assert set(waived) == set(found["dimensions"]) - seen, found["program"]
+        assert all(isinstance(why, str) and len(why) > 30 for why in waived.values())
+
+
+def test_every_label_draws_its_own_program_never_a_fallback() -> None:
+    """Every label a capture shows is an Iris key (or a composite or final pass) whose program
+    has a file of the pack's own in the view's dimension, so no draw goes through a fallback
+    (shader.md#facts: a key whose program has no file draws its fallback under the same label)."""
+    fixture, views = coverage(), all_views()
+    for capture in fixture["captures"]:
+        dim = views[capture["view"]]["dim"]
+        for label in capture["labels"]:
+            own, used = resolved(fixture, label, dim)
+            assert used == own, f"{capture['view']}/{capture['variant']}: {label} via {used}"
+
+
+def test_the_coverage_fixture_holds_the_capture_records() -> None:
+    """Each capture of the fixture is one of its run's valid captures, its .rdc's sha256 the
+    record's; every valid capture of those records is in it."""
+    captures = coverage()["captures"]
+    for run in {c["run"] for c in captures}:
+        data = json.loads((REPO_ROOT / record.RECORDS / f"{run}.json").read_text("utf-8"))
+        assert data["kind"] == "capture" and data["status"] == "ok", run
+        held = {
+            (c["view"], c["variant"]): c["rdc"]["sha256"] for c in data["captures"] if c["valid"]
+        }
+        mine = {(c["view"], c["variant"]): c["rdc"] for c in captures if c["run"] == run}
+        assert mine == held, run
 
 
 def test_the_preprocessor_reads_branches() -> None:
