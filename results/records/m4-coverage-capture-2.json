@@ -1,0 +1,2074 @@
+{
+ "schema": 1,
+ "name": "m4-coverage-capture-2",
+ "kind": "capture",
+ "spec": {
+  "name": "m4-coverage-capture-2",
+  "kind": "capture",
+  "mode": [
+   "coverage_items",
+   "coverage_mobs",
+   "coverage_beacon",
+   "coverage_hand",
+   "rain",
+   "forest_noon",
+   "nether_crimson",
+   "end_dragon"
+  ],
+  "views": "bench_263",
+  "world": "bench_263",
+  "variants": [
+   {
+    "id": "pack",
+    "pack": "optilux@HEAD",
+    "profile": null
+   },
+   {
+    "id": "pack-define-off",
+    "pack": "optilux@HEAD",
+    "profile": null,
+    "options": {
+     "BENCH_DETERMINISTIC": false
+    }
+   }
+  ],
+  "tier": "debug",
+  "resourcePacks": "deterministic",
+  "notes": "M4.P08 (plans/m4.md D83, D86): captures of the M4 pack (HEAD's zip) at its defaults and with BENCH_DETERMINISTIC off on the four coverage views (coverage_hand new: the outline, the name tag, the off-hand glass), rain (weather draws only off the define: shaders.properties' weather=false false under it) and one view of each dimension, for check L4 to name each program drawn per view and variant and to keep each pass's targets (--keep), whose HDR scene the tonemap alternatives are applied to."
+ },
+ "notes": "M4.P08 (plans/m4.md D83, D86): captures of the M4 pack (HEAD's zip) at its defaults and with BENCH_DETERMINISTIC off on the four coverage views (coverage_hand new: the outline, the name tag, the off-hand glass), rain (weather draws only off the define: shaders.properties' weather=false false under it) and one view of each dimension, for check L4 to name each program drawn per view and variant and to keep each pass's targets (--keep), whose HDR scene the tonemap alternatives are applied to.",
+ "status": "ok",
+ "reason": null,
+ "startedAt": "2026-11-20T19:34:15+00:00",
+ "endedAt": "2026-11-20T19:37:29+00:00",
+ "identity": {
+  "platform": {
+   "sha256": "4f77c557dd29ae8f00716fea097a62bd41e67450d0385e3d6e4fa32b2d3d4d54",
+   "tier": "debug",
+   "tiers": [
+    "bench",
+    "debug"
+   ]
+  },
+  "launchSpec": {
+   "file": "mc-26.3.launch.json",
+   "sha256": "0b815ffe340b886479bfeef0eaabea7a3230d0a9f6ef9e9585cc96cad26a6b08"
+  },
+  "mods": [
+   "721614376aac0d6fd7ab27481c120d723736d0507cd1a42e4829efa4dc4b283fbd68b35824f5840d5f227f84df820782ff9a8b0cb6644becba13d8aa215390a5",
+   "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+   "ed1f2a39e4300fec8adf94b0bc06d8fea4ae7bcf6efeeed6f568ed601d21157052897afecf5fa0bfe5cfab2d74ea245fb3f352a395dfaba5464486dbe1ac86a5",
+   "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+   "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+  ],
+  "world": {
+   "snapshot": "snapshots/bench_263",
+   "treeSha256": "31830e4397eadfc3f5387eea48bedc6b26558cad99f8f4b48538ea4c029be4ba",
+   "files": 129
+  },
+  "views": {
+   "file": "bench_263.json",
+   "sha256": "5a98785895ab46fce70c56358d2026c75fc83d3cc6d2c0f8164d419191394d3b"
+  },
+  "resourcePacks": {
+   "set": "deterministic",
+   "packs": [
+    {
+     "file": "Faithful 64x - Release 15.zip",
+     "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+    },
+    {
+     "file": "optilux-static-textures.zip",
+     "sha512": "ff44b3cc091747390108ff3acdfc6ba2a81adaebff181f250306ab7a2053279574d7792e762c7d93c4fb224f19ea27f9c7e5dd6522a711c0f48c118015529ee8"
+    }
+   ]
+  },
+  "settings": {
+   "options": {
+    "version": "5023",
+    "fullscreen": "true",
+    "exclusiveFullscreen": "true",
+    "enableVsync": "false",
+    "maxFps": "260",
+    "renderDistance": "16",
+    "simulationDistance": "12",
+    "fov": "0.5",
+    "bobView": "false",
+    "guiScale": "3",
+    "mipmapLevels": "4",
+    "biomeBlendRadius": "2",
+    "graphicsPreset": "\"custom\"",
+    "preferredGraphicsBackend": "\"opengl\"",
+    "improvedTransparency": "false",
+    "pauseOnLostFocus": "false",
+    "onboardAccessibility": "false",
+    "skipMultiplayerWarning": "true",
+    "joinedFirstServer": "true",
+    "telemetryOptInExtra": "false",
+    "realmsNotifications": "false",
+    "narrator": "0",
+    "inactivityFpsLimit": "\"minimized\"",
+    "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\",\"file/optilux-static-textures.zip\"]"
+   },
+   "overrides": {},
+   "token": true,
+   "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+   "iris": {
+    "enableShaders": "true",
+    "enableDebugOptions": "true",
+    "disableUpdateMessage": "true",
+    "maxShadowRenderDistance": "32"
+   },
+   "unwritten": {
+    "ao": "true",
+    "chunkSectionFadeInTime": "0.75",
+    "cutoutLeaves": "true",
+    "entityDistanceScaling": "1.0",
+    "entityShadows": "true",
+    "forceUnicodeFont": "false",
+    "japaneseGlyphVariants": "false",
+    "fovEffectScale": "1.0",
+    "darknessEffectScale": "1.0",
+    "glintSpeed": "0.5",
+    "glintStrength": "0.75",
+    "prioritizeChunkUpdates": "1",
+    "macFullscreenMenuVisibility": "false",
+    "gamma": "0.5",
+    "debugGuiScale": "0",
+    "maxAnisotropyBit": "1",
+    "textureFiltering": "1",
+    "particles": "0",
+    "reducedDebugInfo": "false",
+    "renderClouds": "\"true\"",
+    "cloudRange": "64",
+    "screenEffectScale": "1.0",
+    "soundDevice": "\"\"",
+    "vignette": "true",
+    "weatherRadius": "10",
+    "autoJump": "false",
+    "rotateWithMinecart": "false",
+    "operatorItemsTab": "false",
+    "autoSuggestions": "true",
+    "chatColors": "true",
+    "chatLinks": "true",
+    "chatLinksPrompt": "true",
+    "discrete_mouse_scroll": "false",
+    "invertXMouse": "false",
+    "invertYMouse": "false",
+    "showSubtitles": "false",
+    "directionalAudio": "false",
+    "toggleCrouch": "false",
+    "toggleSprint": "false",
+    "toggleAttack": "false",
+    "toggleUse": "false",
+    "sprintWindow": "7",
+    "darkMojangStudiosBackground": "false",
+    "hideLightningFlashes": "false",
+    "hideSplashTexts": "false",
+    "mouseSensitivity": "0.5",
+    "damageTiltStrength": "1.0",
+    "highContrast": "false",
+    "highContrastBlockOutline": "false",
+    "narratorHotkey": "true",
+    "incompatibleResourcePacks": "[]",
+    "lastServer": "",
+    "lang": "en_us",
+    "chatVisibility": "0",
+    "chatOpacity": "1.0",
+    "chatLineSpacing": "0.0",
+    "textBackgroundOpacity": "0.5",
+    "backgroundForChatOnly": "true",
+    "hideServerAddress": "false",
+    "advancedItemTooltips": "false",
+    "overrideWidth": "0",
+    "overrideHeight": "0",
+    "chatHeightFocused": "1.0",
+    "chatDelay": "0.0",
+    "chatHeightUnfocused": "0.4375",
+    "chatScale": "1.0",
+    "chatWidth": "1.0",
+    "notificationDisplayTime": "1.0",
+    "useNativeTransport": "true",
+    "mainHand": "\"right\"",
+    "attackIndicator": "1",
+    "tutorialStep": "none",
+    "mouseWheelSensitivity": "1.0",
+    "allowCursorChanges": "true",
+    "quitShortcuts": "true",
+    "ctrlClickEmulatesRightClick": "false",
+    "glDebugVerbosity": "1",
+    "hideMatchedNames": "true",
+    "syncChunkWrites": "true",
+    "showAutosaveIndicator": "true",
+    "allowServerListing": "true",
+    "inGameNotification": "false",
+    "sharePresence": "\"all\"",
+    "onlyShowSecureChat": "false",
+    "saveChatDrafts": "false",
+    "panoramaScrollSpeed": "1.0",
+    "menuBackgroundBlurriness": "5",
+    "startedCleanly": "true",
+    "musicToast": "\"never\"",
+    "musicFrequency": "\"DEFAULT\"",
+    "key_key.attack": "key.mouse.left",
+    "key_key.use": "key.mouse.right",
+    "key_key.forward": "key.keyboard.w",
+    "key_key.left": "key.keyboard.a",
+    "key_key.back": "key.keyboard.s",
+    "key_key.right": "key.keyboard.d",
+    "key_key.jump": "key.keyboard.space",
+    "key_key.sneak": "key.keyboard.left.shift",
+    "key_key.sprint": "key.keyboard.left.control",
+    "key_key.drop": "key.keyboard.q",
+    "key_key.inventory": "key.keyboard.e",
+    "key_key.chat": "key.keyboard.t",
+    "key_key.playerlist": "key.keyboard.tab",
+    "key_key.pickItem": "key.mouse.middle",
+    "key_key.command": "key.keyboard.slash",
+    "key_key.friends": "key.keyboard.o",
+    "key_key.socialInteractions": "key.keyboard.p",
+    "key_key.toggleGui": "key.keyboard.f1",
+    "key_key.toggleSpectatorShaderEffects": "key.keyboard.f4",
+    "key_key.screenshot": "key.keyboard.f2",
+    "key_key.togglePerspective": "key.keyboard.f5",
+    "key_key.smoothCamera": "key.keyboard.unknown",
+    "key_key.fullscreen": "key.keyboard.f11",
+    "key_key.spectatorOutlines": "key.keyboard.unknown",
+    "key_key.spectatorHotbar": "key.mouse.middle",
+    "key_key.swapOffhand": "key.keyboard.f",
+    "key_key.saveToolbarActivator": "key.keyboard.c",
+    "key_key.loadToolbarActivator": "key.keyboard.x",
+    "key_key.advancements": "key.keyboard.l",
+    "key_key.quickActions": "key.keyboard.g",
+    "key_key.debug.overlay": "key.keyboard.f3",
+    "key_key.debug.modifier": "key.keyboard.f3",
+    "key_key.hotbar.1": "key.keyboard.1",
+    "key_key.hotbar.2": "key.keyboard.2",
+    "key_key.hotbar.3": "key.keyboard.3",
+    "key_key.hotbar.4": "key.keyboard.4",
+    "key_key.hotbar.5": "key.keyboard.5",
+    "key_key.hotbar.6": "key.keyboard.6",
+    "key_key.hotbar.7": "key.keyboard.7",
+    "key_key.hotbar.8": "key.keyboard.8",
+    "key_key.hotbar.9": "key.keyboard.9",
+    "key_key.debug.reloadChunk": "key.keyboard.a",
+    "key_key.debug.showHitboxes": "key.keyboard.b",
+    "key_key.debug.clearChat": "key.keyboard.d",
+    "key_key.debug.crash": "key.keyboard.c",
+    "key_key.debug.showChunkBorders": "key.keyboard.g",
+    "key_key.debug.showAdvancedTooltips": "key.keyboard.h",
+    "key_key.debug.copyRecreateCommand": "key.keyboard.i",
+    "key_key.debug.spectate": "key.keyboard.n",
+    "key_key.debug.switchGameMode": "key.keyboard.f4",
+    "key_key.debug.debugOptions": "key.keyboard.f6",
+    "key_key.debug.focusPause": "key.keyboard.p",
+    "key_key.debug.dumpDynamicTextures": "key.keyboard.s",
+    "key_key.debug.reloadResourcePacks": "key.keyboard.t",
+    "key_key.debug.profiling": "key.keyboard.l",
+    "key_key.debug.copyLocation": "key.keyboard.c",
+    "key_key.debug.dumpVersion": "key.keyboard.v",
+    "key_key.debug.profilingChart": "key.keyboard.1",
+    "key_key.debug.fpsCharts": "key.keyboard.2",
+    "key_key.debug.networkCharts": "key.keyboard.3",
+    "key_key.debug.lightmapTexture": "key.keyboard.4",
+    "key_key.debug.improvedTransparency": "key.keyboard.x",
+    "key_iris.keybind.reload": "key.keyboard.r",
+    "key_iris.keybind.toggleShaders": "key.keyboard.k",
+    "key_iris.keybind.shaderPackSelection": "key.keyboard.i",
+    "key_iris.keybind.wireframe": "key.keyboard.unknown",
+    "soundCategory_master": "0.0",
+    "soundCategory_music": "1.0",
+    "soundCategory_record": "1.0",
+    "soundCategory_weather": "1.0",
+    "soundCategory_block": "1.0",
+    "soundCategory_hostile": "1.0",
+    "soundCategory_neutral": "1.0",
+    "soundCategory_player": "1.0",
+    "soundCategory_ambient": "1.0",
+    "soundCategory_voice": "1.0",
+    "soundCategory_ui": "1.0",
+    "modelPart_cape": "true",
+    "modelPart_jacket": "true",
+    "modelPart_left_sleeve": "true",
+    "modelPart_right_sleeve": "true",
+    "modelPart_left_pants_leg": "true",
+    "modelPart_right_pants_leg": "true",
+    "modelPart_hat": "true"
+   }
+  },
+  "suite": {
+   "sha256": "dcc6d36e4851afd922d31d1e2d6ba6b81bbc8d9a28a4451420c6f74b8b3b82c2",
+   "sections": [
+    "display",
+    "modes",
+    "capture",
+    "validity",
+    "statistics"
+   ]
+  },
+  "java": {
+   "runtime": "jdk-25.0.4.1+1",
+   "version": "25.0.4.1+1-LTS",
+   "release": "86e5e51658bb2b9cf064b3957d81ac39abdb346b2cac19867c1625dd19d440d9",
+   "heap": {
+    "xms": 6144,
+    "xmx": 6144,
+    "unit": "MiB"
+   },
+   "args": []
+  },
+  "system": {
+   "gpu": "AMD Radeon RX 7800 XT",
+   "hags": true,
+   "resolution": "3840x2160",
+   "windowMode": "exclusive fullscreen",
+   "windowsBuild": 26200
+  },
+  "harness": {
+   "modules": {
+    "optilux/__init__.py": "17e3ccb977899bc7d0e5bf9ce25e4cbec753f5ddc5753a49cf23a482a9ceca7b",
+    "optilux/acceptance.py": "18ab694d8ee062e466555441d714457812f58bb9ade39a80e1b26c0e8e54cb8a",
+    "optilux/launch.py": "2410f2d96353876f53ae84719b2a1dc39b1617bacdabc80ebd0b5434ea9d2428",
+    "optilux/measure.py": "e4e9f051b98b7313851efdf76b93c97721ec65e36776838435981716862d7b2e",
+    "optilux/modclient.py": "9bc87a14b70eebad07299e5eac628cd9eaba3c4a3fc283cb9a06fe14b46a4d3e",
+    "optilux/packzip.py": "f992c60d74eea68ad0aeeb732066d7d31cc3af88518edb5561105b72646e502d",
+    "optilux/platform.py": "abb2d92e85f4f27b4d5a9d42fd732ed51dc82008ed6e077d57f46ae7e096af20",
+    "optilux/presentmon.py": "6424faf4d8e41ad699d25d3730b6d6d059fe914b2b3e2c6a0187882281e09269",
+    "optilux/record.py": "24de99b1e85e05baf9bcc8067dfc80256761dae507253b978cdf3e27cb333028",
+    "optilux/repo.py": "d22eef770a60566986bedbbca6783713dedec5cae344ee5bd1547ee237dfc394",
+    "optilux/sendinput.py": "f1d023cec75e2b26a3d78e30311bfe21115f80b7bcc927c0e3262fdb0f957a4b",
+    "optilux/session.py": "b8232b3bbf3c1a49a97cb5e5f12a2dadee3a7342e0a88895bd792ac3a54a247f",
+    "optilux/stats.py": "048e7afa5569b930ded697e2c7aea256292a1cc1694c68996ff7de1df782c478",
+    "optilux/verbs/__init__.py": "6fb856fb4a359a394bd83e135caf220ad6b0b1a224139a9380dfbe4e1da5859d",
+    "optilux/verbs/install.py": "fdd23d296167e2bc31b707ffa457e0488eb89720e9be04f26fb7abea50a4bd5a",
+    "optilux/verbs/run.py": "e7ec0f61b15d6e1055725713e6fdb61ba4526cc1603082a4d5710bfd91d31151",
+    "optilux/winpipe.py": "f716a6c15d8548841ab87277f32e9341f0ca968d6b70e02afd36ef28c4b68106",
+    "optilux/world.py": "81e315c8b8721a8f7ed7b5938ab580c53af227a083cdb06c14c526fc0e488d85"
+   },
+   "presentMon": {
+    "file": "PresentMon-2.6.0-x64.exe",
+    "sha256": "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af",
+    "arguments": [
+     "--process_id",
+     "<pid>",
+     "--output_file",
+     "<csv>",
+     "--qpc_time_ms",
+     "--v2_metrics",
+     "--session_name",
+     "optilux-<run>",
+     "--stop_existing_session",
+     "--no_console_stats"
+    ]
+   }
+  }
+ },
+ "recorded": {
+  "platformFile": "4dd7c9450c2a662eb26c3a1dee0728aa53e6973eec79e9daeb881e205d2b66b2",
+  "driver": "32.0.31041.1004",
+  "windowsRevision": 9974,
+  "display": {
+   "name": "\\\\.\\DISPLAY2",
+   "hz": 240,
+   "displays": 2
+  },
+  "hags": {
+   "caps": 11,
+   "supported": true,
+   "enabledByDefault": false,
+   "adapterLuid": "0x11fda"
+  },
+  "hwSchMode": 2,
+  "harness": {
+   "commit": "06d56f6f06286fbd4ed8a23f93e111751c0b45e6",
+   "dirty": true
+  },
+  "amd": {
+   "presentMon": [
+    {
+     "pid": 2212,
+     "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+     "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+    }
+   ],
+   "rsxTraceSession": true
+  },
+  "java": [
+   {
+    "pid": 3672,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+    "role": "gradle daemon"
+   },
+   {
+    "pid": 8252,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+    "role": "gradle daemon"
+   },
+   {
+    "pid": 10412,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+    "role": "other"
+   },
+   {
+    "pid": 11484,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+    "role": "other"
+   },
+   {
+    "pid": 13104,
+    "name": "java.exe",
+    "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+    "role": "gradle daemon"
+   }
+  ],
+  "connectionsAtJoin": [
+   {
+    "remote": "150.171.109.118:443",
+    "status": "ESTABLISHED"
+   }
+  ],
+  "optionsTxt": {
+   "sha256": "e1b91108d25bbabd8f84c4e32d97ea833a7d68ede9a9e3cb8d75743246ea4241"
+  }
+ },
+ "mode": [
+  "coverage_items",
+  "coverage_mobs",
+  "coverage_beacon",
+  "coverage_hand",
+  "rain",
+  "forest_noon",
+  "nether_crimson",
+  "end_dragon"
+ ],
+ "variants": [
+  {
+   "id": "pack",
+   "role": "baseline",
+   "pack": "optilux-06d56f6f0628.zip",
+   "sha512": "8c02119b4530fc7561869cc8f94046a3848822ce8d84127674a21b990625ce023d35890fdafe9f640a7d36236ddee200e65acbeb800131287630ff77975cdb86",
+   "build": {
+    "variant": "optilux@HEAD",
+    "ref": "HEAD",
+    "commit": "06d56f6f06286fbd4ed8a23f93e111751c0b45e6"
+   },
+   "l0": {
+    "ok": true,
+    "sha512": "8c02119b4530fc7561869cc8f94046a3848822ce8d84127674a21b990625ce023d35890fdafe9f640a7d36236ddee200e65acbeb800131287630ff77975cdb86",
+    "glslang": "16.6.0",
+    "pipeline": {
+     "file": "config/pipeline.json",
+     "sha256": "c6381d5b88f38a26aaa8cfdd36a57166cad12a2e81391f18daee3b39d09933e7"
+    },
+    "builds": 1520,
+    "variants": [
+     "defaults",
+     "BENCH_DETERMINISTIC false",
+     "BLOCK_FLICKER 0",
+     "BLOCK_FLICKER 2",
+     "BLOCK_FLICKER 3",
+     "DITHER false",
+     "E2_LOAD 4",
+     "E2_LOAD 8",
+     "E2_LOAD 16",
+     "FOLIAGE_TRANSLUCENCY false",
+     "HELD_LIGHT false",
+     "LIGHT_PATH 0",
+     "OVERLAYS false",
+     "SCENE_FORMAT 1",
+     "SHADOWS 0",
+     "SUN_SPECULAR false"
+    ],
+    "profiles": [
+     "config/profiles/complementary-unbound-iso.json",
+     "config/profiles/complementary-unbound-played.json"
+    ]
+   },
+   "profile": null,
+   "options": {},
+   "effective": {
+    "sha256": "d333ebef3a4424e315ea4ff47ba825b0b6e3352cd95e11616adca77e906fe891",
+    "count": 11,
+    "values": {
+     "BENCH_DETERMINISTIC": true,
+     "BLOCK_FLICKER": "1",
+     "DITHER": true,
+     "E2_LOAD": "0",
+     "FOLIAGE_TRANSLUCENCY": true,
+     "HELD_LIGHT": true,
+     "LIGHT_PATH": "1",
+     "OVERLAYS": true,
+     "SCENE_FORMAT": "0",
+     "SHADOWS": "1",
+     "SUN_SPECULAR": true
+    }
+   }
+  },
+  {
+   "id": "pack-define-off",
+   "role": "candidate",
+   "pack": "optilux-06d56f6f0628.zip",
+   "sha512": "8c02119b4530fc7561869cc8f94046a3848822ce8d84127674a21b990625ce023d35890fdafe9f640a7d36236ddee200e65acbeb800131287630ff77975cdb86",
+   "build": {
+    "variant": "optilux@HEAD",
+    "ref": "HEAD",
+    "commit": "06d56f6f06286fbd4ed8a23f93e111751c0b45e6"
+   },
+   "l0": {
+    "ok": true,
+    "sha512": "8c02119b4530fc7561869cc8f94046a3848822ce8d84127674a21b990625ce023d35890fdafe9f640a7d36236ddee200e65acbeb800131287630ff77975cdb86",
+    "glslang": "16.6.0",
+    "pipeline": {
+     "file": "config/pipeline.json",
+     "sha256": "c6381d5b88f38a26aaa8cfdd36a57166cad12a2e81391f18daee3b39d09933e7"
+    },
+    "builds": 1520,
+    "variants": [
+     "defaults",
+     "BENCH_DETERMINISTIC false",
+     "BLOCK_FLICKER 0",
+     "BLOCK_FLICKER 2",
+     "BLOCK_FLICKER 3",
+     "DITHER false",
+     "E2_LOAD 4",
+     "E2_LOAD 8",
+     "E2_LOAD 16",
+     "FOLIAGE_TRANSLUCENCY false",
+     "HELD_LIGHT false",
+     "LIGHT_PATH 0",
+     "OVERLAYS false",
+     "SCENE_FORMAT 1",
+     "SHADOWS 0",
+     "SUN_SPECULAR false"
+    ],
+    "profiles": [
+     "config/profiles/complementary-unbound-iso.json",
+     "config/profiles/complementary-unbound-played.json"
+    ]
+   },
+   "profile": null,
+   "options": {
+    "BENCH_DETERMINISTIC": false
+   },
+   "effective": {
+    "sha256": "6a45e466652ddaeadf502067291d73ded33ab8d765b1f256ad5beadf59341522",
+    "count": 11,
+    "values": {
+     "BENCH_DETERMINISTIC": false,
+     "BLOCK_FLICKER": "1",
+     "DITHER": true,
+     "E2_LOAD": "0",
+     "FOLIAGE_TRANSLUCENCY": true,
+     "HELD_LIGHT": true,
+     "LIGHT_PATH": "1",
+     "OVERLAYS": true,
+     "SCENE_FORMAT": "0",
+     "SHADOWS": "1",
+     "SUN_SPECULAR": true
+    }
+   }
+  }
+ ],
+ "captures": [
+  {
+   "index": 1,
+   "view": "forest_noon",
+   "variant": "pack",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.2557948,
+    "reloadFrame": 5413,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0063702,
+    "predicateSeconds": 1.2345577,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 1.1720732,
+     "gapFrames": 11
+    },
+    "frames": 484,
+    "frameIndex": 5901,
+    "sinceReload": 488,
+    "qpcNs": 2787742349300
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 5902,
+    "sinceReloadBefore": 489,
+    "frameAfter": 5904,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/forest_noon/pack/java_2026.11.20_15.34_frame5903.rdc",
+    "name": "java_2026.11.20_15.34_frame5903.rdc",
+    "frame": 5903,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 445846235,
+    "sha256": "7afde957bf8b8217d4b1f47c075f775fc42eac28b70e67a4d5eb27af1d62ce94",
+    "seconds": 1.5
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 2,
+   "view": "forest_noon",
+   "variant": "pack-define-off",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.4283306,
+    "reloadFrame": 5946,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0055215,
+    "predicateSeconds": 1.2048109,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 1.1348055,
+     "gapFrames": 12
+    },
+    "frames": 479,
+    "frameIndex": 6430,
+    "sinceReload": 484,
+    "qpcNs": 2794120901500
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 6431,
+    "sinceReloadBefore": 485,
+    "frameAfter": 6433,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/forest_noon/pack-define-off/java_2026.11.20_15.34_frame6432.rdc",
+    "name": "java_2026.11.20_15.34_frame6432.rdc",
+    "frame": 6432,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 443402721,
+    "sha256": "3a7db5201872935697fe2f7468f9bc3df3495c5352daa195c12b1312f66bb59a",
+    "seconds": 1.44
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 3,
+   "view": "coverage_items",
+   "variant": "pack",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.2184526,
+    "reloadFrame": 6475,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0030551,
+    "predicateSeconds": 2.2859107,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 0.5196228,
+     "gapFrames": 68
+    },
+    "frames": 527,
+    "frameIndex": 7006,
+    "sinceReload": 531,
+    "qpcNs": 2800296124300
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 7007,
+    "sinceReloadBefore": 532,
+    "frameAfter": 7009,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/coverage_items/pack/java_2026.11.20_15.34_frame7008.rdc",
+    "name": "java_2026.11.20_15.34_frame7008.rdc",
+    "frame": 7008,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 260800523,
+    "sha256": "e4bb989a3559338f2c9c82c111aa3747e79462d7738ede4cb2854badeeacaf25",
+    "seconds": 1.5
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 4,
+   "view": "coverage_items",
+   "variant": "pack-define-off",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1800012,
+    "reloadFrame": 7039,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.001173,
+    "predicateSeconds": 1.1080424,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 1.0148819,
+     "gapFrames": 20
+    },
+    "frames": 565,
+    "frameIndex": 7607,
+    "sinceReload": 568,
+    "qpcNs": 2806252648000
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 7608,
+    "sinceReloadBefore": 569,
+    "frameAfter": 7610,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/coverage_items/pack-define-off/java_2026.11.20_15.34_frame7609.rdc",
+    "name": "java_2026.11.20_15.34_frame7609.rdc",
+    "frame": 7609,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 259469927,
+    "sha256": "a1338a6289e673e9dc89073dccb684763553f9fc4171394210ebfcd2d5a71502",
+    "seconds": 1.52
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 5,
+   "view": "coverage_mobs",
+   "variant": "pack",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1981393,
+    "reloadFrame": 7640,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0054194,
+    "predicateSeconds": 1.0702203,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 0.9879333,
+     "gapFrames": 15
+    },
+    "frames": 519,
+    "frameIndex": 8164,
+    "sinceReload": 524,
+    "qpcNs": 2812294698500
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 8165,
+    "sinceReloadBefore": 525,
+    "frameAfter": 8167,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/coverage_mobs/pack/java_2026.11.20_15.34_frame8166.rdc",
+    "name": "java_2026.11.20_15.34_frame8166.rdc",
+    "frame": 8166,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 261552137,
+    "sha256": "489aff912163b5237ae8bad5f7fbf2935d62c20e063b7a3cb21baf4dfe1ebf0b",
+    "seconds": 1.5
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 6,
+   "view": "coverage_mobs",
+   "variant": "pack-define-off",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1755296,
+    "reloadFrame": 8195,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0043886,
+    "predicateSeconds": 1.0770563,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 0.9946322,
+     "gapFrames": 16
+    },
+    "frames": 521,
+    "frameIndex": 8721,
+    "sinceReload": 526,
+    "qpcNs": 2818278693000
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 8722,
+    "sinceReloadBefore": 527,
+    "frameAfter": 8724,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/coverage_mobs/pack-define-off/java_2026.11.20_15.34_frame8723.rdc",
+    "name": "java_2026.11.20_15.34_frame8723.rdc",
+    "frame": 8723,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 264846745,
+    "sha256": "c5bf1deeefb869fea737c76822d79bda35ac5aae696dc733cebfdb89970f9a34",
+    "seconds": 1.52
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 7,
+   "view": "coverage_beacon",
+   "variant": "pack",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1741053,
+    "reloadFrame": 9378,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0028728,
+    "predicateSeconds": 1.1172596,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 1.0103197,
+     "gapFrames": 19
+    },
+    "frames": 476,
+    "frameIndex": 9859,
+    "sinceReload": 481,
+    "qpcNs": 2829311188800
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 9861,
+    "sinceReloadBefore": 483,
+    "frameAfter": 9863,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/coverage_beacon/pack/java_2026.11.20_15.34_frame9862.rdc",
+    "name": "java_2026.11.20_15.34_frame9862.rdc",
+    "frame": 9862,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 254574535,
+    "sha256": "7b5e43ba175825fddb0ed2e29fc116ff2966dfd338a5df3ac1a7755468ecd4a9",
+    "seconds": 1.59
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 8,
+   "view": "coverage_beacon",
+   "variant": "pack-define-off",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1774128,
+    "reloadFrame": 9886,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0137434,
+    "predicateSeconds": 1.2089231,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 1.0963706,
+     "gapFrames": 20
+    },
+    "frames": 474,
+    "frameIndex": 10363,
+    "sinceReload": 477,
+    "qpcNs": 2835354315100
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 10365,
+    "sinceReloadBefore": 479,
+    "frameAfter": 10367,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/coverage_beacon/pack-define-off/java_2026.11.20_15.34_frame10366.rdc",
+    "name": "java_2026.11.20_15.34_frame10366.rdc",
+    "frame": 10366,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 255620299,
+    "sha256": "2b6054e66dab9b6504a77ba1981a0dabe73afeafae5aefcaeb1a5574b00538f2",
+    "seconds": 1.58
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 9,
+   "view": "coverage_hand",
+   "variant": "pack",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1681913,
+    "reloadFrame": 10396,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0072275,
+    "predicateSeconds": 1.0756112,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 0.9902251,
+     "gapFrames": 16
+    },
+    "frames": 484,
+    "frameIndex": 10884,
+    "sinceReload": 488,
+    "qpcNs": 2841478087200
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 10886,
+    "sinceReloadBefore": 490,
+    "frameAfter": 10888,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/coverage_hand/pack/java_2026.11.20_15.34_frame10887.rdc",
+    "name": "java_2026.11.20_15.34_frame10887.rdc",
+    "frame": 10887,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 236025488,
+    "sha256": "8b7585e8cd841536fe7153c4594dcb5871c96b4844e768da2f024c1461cbcf5d",
+    "seconds": 1.55
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 10,
+   "view": "coverage_hand",
+   "variant": "pack-define-off",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1747273,
+    "reloadFrame": 10912,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0053161,
+    "predicateSeconds": 1.105648,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 1.054836,
+     "gapFrames": 13
+    },
+    "frames": 471,
+    "frameIndex": 11386,
+    "sinceReload": 474,
+    "qpcNs": 2847472667400
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 11387,
+    "sinceReloadBefore": 475,
+    "frameAfter": 11389,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/coverage_hand/pack-define-off/java_2026.11.20_15.34_frame11388.rdc",
+    "name": "java_2026.11.20_15.34_frame11388.rdc",
+    "frame": 11388,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 237010130,
+    "sha256": "c7b7e9a0a19be8d9fc592d243088c52f0adfedf178b70bf106848f60eb121d21",
+    "seconds": 1.55
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 11,
+   "view": "rain",
+   "variant": "pack",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1658589,
+    "reloadFrame": 12085,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0030193,
+    "predicateSeconds": 1.2898193,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 1.1911949,
+     "gapFrames": 16
+    },
+    "frames": 457,
+    "frameIndex": 12546,
+    "sinceReload": 461,
+    "qpcNs": 2859454947600
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 12547,
+    "sinceReloadBefore": 462,
+    "frameAfter": 12549,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/rain/pack/java_2026.11.20_15.34_frame12548.rdc",
+    "name": "java_2026.11.20_15.34_frame12548.rdc",
+    "frame": 12548,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 393492023,
+    "sha256": "bef6696b8dcc6194cdacb8c0edf78486c9fe26331a9e17b52474149f0d3c705c",
+    "seconds": 1.62
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 12,
+   "view": "rain",
+   "variant": "pack-define-off",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.194893,
+    "reloadFrame": 12587,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0005775,
+    "predicateSeconds": 1.3867764,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 1.2568295,
+     "gapFrames": 19
+    },
+    "frames": 421,
+    "frameIndex": 13011,
+    "sinceReload": 424,
+    "qpcNs": 2865650581100
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 13012,
+    "sinceReloadBefore": 425,
+    "frameAfter": 13014,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/rain/pack-define-off/java_2026.11.20_15.34_frame13013.rdc",
+    "name": "java_2026.11.20_15.34_frame13013.rdc",
+    "frame": 13013,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 401946048,
+    "sha256": "251e5972065348f55280737e7df5e25bdec1d900f163a18832b4003117c35a70",
+    "seconds": 1.66
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 13,
+   "view": "nether_crimson",
+   "variant": "pack",
+   "settleS": 7.0,
+   "reload": {
+    "seconds": 0.2720089,
+    "reloadFrame": 13764,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 7.0004743,
+    "predicateSeconds": 0.9952164,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 0.9701393,
+     "gapFrames": 10
+    },
+    "frames": 1366,
+    "frameIndex": 15134,
+    "sinceReload": 1370,
+    "qpcNs": 2879472459600
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 15135,
+    "sinceReloadBefore": 1371,
+    "frameAfter": 15137,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/nether_crimson/pack/java_2026.11.20_15.34_frame15136.rdc",
+    "name": "java_2026.11.20_15.34_frame15136.rdc",
+    "frame": 15136,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 407343607,
+    "sha256": "cef3e9c2e9647bb32648e8c623bfefc648e303180291533e3ec23d64ce507e88",
+    "seconds": 1.39
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 14,
+   "view": "nether_crimson",
+   "variant": "pack-define-off",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1769544,
+    "reloadFrame": 15197,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0007569,
+    "predicateSeconds": 1.0170348,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 0.9971845,
+     "gapFrames": 8
+    },
+    "frames": 771,
+    "frameIndex": 15972,
+    "sinceReload": 775,
+    "qpcNs": 2885402286200
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 15973,
+    "sinceReloadBefore": 776,
+    "frameAfter": 15975,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/nether_crimson/pack-define-off/java_2026.11.20_15.34_frame15974.rdc",
+    "name": "java_2026.11.20_15.34_frame15974.rdc",
+    "frame": 15974,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 407586630,
+    "sha256": "b6dad58b9a71a6ef102c7a272c42261d3649e8e21c2df14faad891de47b597f3",
+    "seconds": 1.36
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 15,
+   "view": "end_dragon",
+   "variant": "pack",
+   "settleS": 7.0,
+   "reload": {
+    "seconds": 0.2947236,
+    "reloadFrame": 16074,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 7.0016151,
+    "predicateSeconds": 0.1046035,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 0.0797187,
+     "gapFrames": 11
+    },
+    "frames": 2840,
+    "frameIndex": 18917,
+    "sinceReload": 2843,
+    "qpcNs": 2895113244600
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 18918,
+    "sinceReloadBefore": 2844,
+    "frameAfter": 18921,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/end_dragon/pack/java_2026.11.20_15.34_frame18920.rdc",
+    "name": "java_2026.11.20_15.34_frame18920.rdc",
+    "frame": 18920,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 232051261,
+    "sha256": "19d2d62033e596436eb73868ef93d29b63db324ed488a2562600d8ebd3bf1075",
+    "seconds": 0.91
+   },
+   "flags": [],
+   "valid": true
+  },
+  {
+   "index": 16,
+   "view": "end_dragon",
+   "variant": "pack-define-off",
+   "settleS": 4.0,
+   "reload": {
+    "seconds": 0.1823094,
+    "reloadFrame": 18989,
+    "pack": "optilux-06d56f6f0628.zip"
+   },
+   "ready": {
+    "seconds": 4.0011027,
+    "predicateSeconds": 0.1034218,
+    "limitedBy": "minSeconds",
+    "rendererCheck": {
+     "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+     "holds": true,
+     "seconds": 0.0826733,
+     "gapFrames": 11
+    },
+    "frames": 1600,
+    "frameIndex": 20592,
+    "sinceReload": 1603,
+    "qpcNs": 2900404684800
+   },
+   "focus": {
+    "foregroundPid": 8748
+   },
+   "press": {
+    "frameBefore": 20593,
+    "sinceReloadBefore": 1604,
+    "frameAfter": 20595,
+    "heldS": 0.25,
+    "inserted": 2,
+    "foregroundPid": 8748
+   },
+   "rdc": {
+    "path": "rdc/end_dragon/pack-define-off/java_2026.11.20_15.34_frame20594.rdc",
+    "name": "java_2026.11.20_15.34_frame20594.rdc",
+    "frame": 20594,
+    "loaded": "2026.11.20_15.34",
+    "bytes": 232122203,
+    "sha256": "2b88a84884427b53746591ce19b554cb781e7c1cb0aa89732be1ea63410372a5",
+    "seconds": 0.91
+   },
+   "flags": [],
+   "valid": true
+  }
+ ],
+ "session": {
+  "restore": {
+   "treeSha256": "31830e4397eadfc3f5387eea48bedc6b26558cad99f8f4b48538ea4c029be4ba",
+   "files": 129,
+   "copied": 63,
+   "deleted": 0,
+   "kept": 66,
+   "checkedAgainstFacts": true
+  },
+  "machine": {
+   "idleSeconds": 105.0,
+   "highestGpuPct": [
+    {
+     "pid": 5544,
+     "pct": 0.39
+    },
+    {
+     "pid": 1000,
+     "pct": 0.2
+    },
+    {
+     "pid": 1488,
+     "pct": 0.0
+    }
+   ],
+   "checks": 1,
+   "waitedSeconds": 3.2
+  },
+  "displays": {
+   "request": "ES_CONTINUOUS | ES_DISPLAY_REQUIRED",
+   "state": "on",
+   "acTimeoutS": 600,
+   "idleSeconds": 71.1
+  },
+  "zips": [
+   {
+    "file": "optilux-06d56f6f0628.zip",
+    "sha512": "8c02119b4530fc7561869cc8f94046a3848822ce8d84127674a21b990625ce023d35890fdafe9f640a7d36236ddee200e65acbeb800131287630ff77975cdb86",
+    "entries": 222,
+    "variant": "optilux@HEAD",
+    "ref": "HEAD",
+    "commit": "06d56f6f06286fbd4ed8a23f93e111751c0b45e6",
+    "l0": {
+     "ok": true,
+     "sha512": "8c02119b4530fc7561869cc8f94046a3848822ce8d84127674a21b990625ce023d35890fdafe9f640a7d36236ddee200e65acbeb800131287630ff77975cdb86",
+     "glslang": "16.6.0",
+     "pipeline": {
+      "file": "config/pipeline.json",
+      "sha256": "c6381d5b88f38a26aaa8cfdd36a57166cad12a2e81391f18daee3b39d09933e7"
+     },
+     "builds": 1520,
+     "variants": [
+      "defaults",
+      "BENCH_DETERMINISTIC false",
+      "BLOCK_FLICKER 0",
+      "BLOCK_FLICKER 2",
+      "BLOCK_FLICKER 3",
+      "DITHER false",
+      "E2_LOAD 4",
+      "E2_LOAD 8",
+      "E2_LOAD 16",
+      "FOLIAGE_TRANSLUCENCY false",
+      "HELD_LIGHT false",
+      "LIGHT_PATH 0",
+      "OVERLAYS false",
+      "SCENE_FORMAT 1",
+      "SHADOWS 0",
+      "SUN_SPECULAR false"
+     ],
+     "profiles": [
+      "config/profiles/complementary-unbound-iso.json",
+      "config/profiles/complementary-unbound-played.json"
+     ]
+    }
+   }
+  ],
+  "launch": {
+   "platform": "mc-26.3",
+   "tier": "debug",
+   "world": "bench_263",
+   "pid": 8748,
+   "log": "runtime/mc-26.3/game/logs/latest.log",
+   "stdout": "runtime/mc-26.3/game/logs/stdout.log",
+   "uuid": {
+    "value": "51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79",
+    "from": "players/data/51ff11bb-8719-3a7c-b3f6-cb4a2d1c5a79.dat"
+   },
+   "gate": {
+    "games": [],
+    "sessions": [],
+    "amd": {
+     "presentMon": [
+      {
+       "pid": 2212,
+       "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+       "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+      }
+     ],
+     "rsxTraceSession": true
+    },
+    "java": [
+     {
+      "pid": 3672,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+      "role": "gradle daemon"
+     },
+     {
+      "pid": 8252,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+      "role": "gradle daemon"
+     },
+     {
+      "pid": 10412,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+      "role": "other"
+     },
+     {
+      "pid": 11484,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+      "role": "other"
+     },
+     {
+      "pid": 13104,
+      "name": "java.exe",
+      "exe": "C:\\Users\\Joe\\.vscode\\extensions\\redhat.java-1.58.0-win32-x64\\jre\\25.0.4.1-win32-x86_64\\bin\\java.exe",
+      "role": "gradle daemon"
+     }
+    ]
+   },
+   "amdAfterJoin": {
+    "presentMon": [
+     {
+      "pid": 2212,
+      "exe": "C:\\Program Files\\AMD\\CNext\\CNext\\PresentMon-x64.exe",
+      "cmdline": "-stop_existing_session -output_stdout -v1_metrics -qpc_time -session_name RSXTraceSession"
+     }
+    ],
+    "rsxTraceSession": true
+   },
+   "hashes": {
+    "classpathJars": 82,
+    "assetIndex": "34",
+    "versionJson": "80608ff6753705b6a82e2cb86a5937d4d233abd4",
+    "packs": [
+     {
+      "file": "Faithful 64x - Release 15.zip",
+      "kind": "resourcePack",
+      "sha512": "bc534dfb0e71586cb49a18533b29940d0224e03aba52dd65b29127477447e95adfbceb7ccf25468ecb65db05bff0cd1bed45a4708042579cd2fc4a9ae01f9fd8"
+     },
+     {
+      "file": "optilux-static-textures.zip",
+      "kind": "resourcePack",
+      "sha512": "ff44b3cc091747390108ff3acdfc6ba2a81adaebff181f250306ab7a2053279574d7792e762c7d93c4fb224f19ea27f9c7e5dd6522a711c0f48c118015529ee8"
+     },
+     {
+      "file": "ComplementaryUnbound_r5.9.3.zip",
+      "kind": "referencePack",
+      "sha512": "a085d1d8cda67cd17a2b414eeba48bbd809da069f269bab46246235ec8fe714a275013c70d0504527b0987d810deddddba4564332414ab3b3bd7435932ff808c"
+     }
+    ]
+   },
+   "mods": {
+    "placed": [
+     {
+      "file": "fabric-api-0.161.0+26.3.jar",
+      "sha512": "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+      "state": "kept"
+     },
+     {
+      "file": "sodium-fabric-0.9.2+mc26.3.jar",
+      "sha512": "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93",
+      "state": "kept"
+     },
+     {
+      "file": "iris-fabric-1.11.7+mc26.3.jar",
+      "sha512": "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+      "state": "kept"
+     },
+     {
+      "file": "gfx-debuggers-3.2.0.jar",
+      "sha512": "721614376aac0d6fd7ab27481c120d723736d0507cd1a42e4829efa4dc4b283fbd68b35824f5840d5f227f84df820782ff9a8b0cb6644becba13d8aa215390a5",
+      "state": "kept"
+     },
+     {
+      "file": "optilux-helper-0.1.0.jar",
+      "sha512": "ed1f2a39e4300fec8adf94b0bc06d8fea4ae7bcf6efeeed6f568ed601d21157052897afecf5fa0bfe5cfab2d74ea245fb3f352a395dfaba5464486dbe1ac86a5",
+      "state": "kept"
+     }
+    ],
+    "removed": [],
+    "helper": "optilux-helper-0.1.0.jar",
+    "sha512": [
+     "721614376aac0d6fd7ab27481c120d723736d0507cd1a42e4829efa4dc4b283fbd68b35824f5840d5f227f84df820782ff9a8b0cb6644becba13d8aa215390a5",
+     "d8d3312f77fc52a48e4a6cd836fda33669bdebcb4de0b8c0d30adc808b287330a533e0baef355cc1ce6336a26851d9775369a802a4666b7b7a6266af20088f42",
+     "ed1f2a39e4300fec8adf94b0bc06d8fea4ae7bcf6efeeed6f568ed601d21157052897afecf5fa0bfe5cfab2d74ea245fb3f352a395dfaba5464486dbe1ac86a5",
+     "ed6b2586d6fde11fde8472f5a527c51e99b67026e46f94d4bfd85e7e28ce5ee299173ee16ad576ceb51f39f98d30a811086a6deb1a86a524859cc16e12da109d",
+     "f3f260f204b8ce5e8777c2c73f537956755ec61f3817b0b78b5e5568e8aa40f14891f146475075109747665c7c88a45ca0ca9a8df3c68d79c58ecdaa8d8c4b93"
+    ]
+   },
+   "logMods": [
+    "fabric-api",
+    "fabricloader",
+    "gfx-debuggers",
+    "iris",
+    "java",
+    "minecraft",
+    "optilux-helper",
+    "sodium"
+   ],
+   "settings": {
+    "options": {
+     "version": "5023",
+     "fullscreen": "true",
+     "exclusiveFullscreen": "true",
+     "enableVsync": "false",
+     "maxFps": "260",
+     "renderDistance": "16",
+     "simulationDistance": "12",
+     "fov": "0.5",
+     "bobView": "false",
+     "guiScale": "3",
+     "mipmapLevels": "4",
+     "biomeBlendRadius": "2",
+     "graphicsPreset": "\"custom\"",
+     "preferredGraphicsBackend": "\"opengl\"",
+     "improvedTransparency": "false",
+     "pauseOnLostFocus": "false",
+     "onboardAccessibility": "false",
+     "skipMultiplayerWarning": "true",
+     "joinedFirstServer": "true",
+     "telemetryOptInExtra": "false",
+     "realmsNotifications": "false",
+     "narrator": "0",
+     "inactivityFpsLimit": "\"minimized\"",
+     "resourcePacks": "[\"vanilla\",\"file/Faithful 64x - Release 15.zip\",\"file/optilux-static-textures.zip\"]"
+    },
+    "overrides": {},
+    "token": true,
+    "sodiumOptions": "bf6988db622c8eb5e61d77078a54dab89c993eb47be730b9e236cfb364710f83",
+    "iris": {
+     "shaderPack": "ComplementaryUnbound_r5.9.3.zip",
+     "enableShaders": "true",
+     "enableDebugOptions": "true",
+     "disableUpdateMessage": "true",
+     "maxShadowRenderDistance": "32"
+    }
+   },
+   "optionsFile": {
+    "sha256": "e1b91108d25bbabd8f84c4e32d97ea833a7d68ede9a9e3cb8d75743246ea4241",
+    "unwritten": {
+     "ao": "true",
+     "chunkSectionFadeInTime": "0.75",
+     "cutoutLeaves": "true",
+     "entityDistanceScaling": "1.0",
+     "entityShadows": "true",
+     "forceUnicodeFont": "false",
+     "japaneseGlyphVariants": "false",
+     "fovEffectScale": "1.0",
+     "darknessEffectScale": "1.0",
+     "glintSpeed": "0.5",
+     "glintStrength": "0.75",
+     "prioritizeChunkUpdates": "1",
+     "macFullscreenMenuVisibility": "false",
+     "gamma": "0.5",
+     "debugGuiScale": "0",
+     "maxAnisotropyBit": "1",
+     "textureFiltering": "1",
+     "particles": "0",
+     "reducedDebugInfo": "false",
+     "renderClouds": "\"true\"",
+     "cloudRange": "64",
+     "screenEffectScale": "1.0",
+     "soundDevice": "\"\"",
+     "vignette": "true",
+     "weatherRadius": "10",
+     "autoJump": "false",
+     "rotateWithMinecart": "false",
+     "operatorItemsTab": "false",
+     "autoSuggestions": "true",
+     "chatColors": "true",
+     "chatLinks": "true",
+     "chatLinksPrompt": "true",
+     "discrete_mouse_scroll": "false",
+     "invertXMouse": "false",
+     "invertYMouse": "false",
+     "showSubtitles": "false",
+     "directionalAudio": "false",
+     "toggleCrouch": "false",
+     "toggleSprint": "false",
+     "toggleAttack": "false",
+     "toggleUse": "false",
+     "sprintWindow": "7",
+     "darkMojangStudiosBackground": "false",
+     "hideLightningFlashes": "false",
+     "hideSplashTexts": "false",
+     "mouseSensitivity": "0.5",
+     "damageTiltStrength": "1.0",
+     "highContrast": "false",
+     "highContrastBlockOutline": "false",
+     "narratorHotkey": "true",
+     "incompatibleResourcePacks": "[]",
+     "lastServer": "",
+     "lang": "en_us",
+     "chatVisibility": "0",
+     "chatOpacity": "1.0",
+     "chatLineSpacing": "0.0",
+     "textBackgroundOpacity": "0.5",
+     "backgroundForChatOnly": "true",
+     "hideServerAddress": "false",
+     "advancedItemTooltips": "false",
+     "overrideWidth": "0",
+     "overrideHeight": "0",
+     "chatHeightFocused": "1.0",
+     "chatDelay": "0.0",
+     "chatHeightUnfocused": "0.4375",
+     "chatScale": "1.0",
+     "chatWidth": "1.0",
+     "notificationDisplayTime": "1.0",
+     "useNativeTransport": "true",
+     "mainHand": "\"right\"",
+     "attackIndicator": "1",
+     "tutorialStep": "none",
+     "mouseWheelSensitivity": "1.0",
+     "allowCursorChanges": "true",
+     "quitShortcuts": "true",
+     "ctrlClickEmulatesRightClick": "false",
+     "glDebugVerbosity": "1",
+     "hideMatchedNames": "true",
+     "syncChunkWrites": "true",
+     "showAutosaveIndicator": "true",
+     "allowServerListing": "true",
+     "inGameNotification": "false",
+     "sharePresence": "\"all\"",
+     "onlyShowSecureChat": "false",
+     "saveChatDrafts": "false",
+     "panoramaScrollSpeed": "1.0",
+     "menuBackgroundBlurriness": "5",
+     "startedCleanly": "true",
+     "musicToast": "\"never\"",
+     "musicFrequency": "\"DEFAULT\"",
+     "key_key.attack": "key.mouse.left",
+     "key_key.use": "key.mouse.right",
+     "key_key.forward": "key.keyboard.w",
+     "key_key.left": "key.keyboard.a",
+     "key_key.back": "key.keyboard.s",
+     "key_key.right": "key.keyboard.d",
+     "key_key.jump": "key.keyboard.space",
+     "key_key.sneak": "key.keyboard.left.shift",
+     "key_key.sprint": "key.keyboard.left.control",
+     "key_key.drop": "key.keyboard.q",
+     "key_key.inventory": "key.keyboard.e",
+     "key_key.chat": "key.keyboard.t",
+     "key_key.playerlist": "key.keyboard.tab",
+     "key_key.pickItem": "key.mouse.middle",
+     "key_key.command": "key.keyboard.slash",
+     "key_key.friends": "key.keyboard.o",
+     "key_key.socialInteractions": "key.keyboard.p",
+     "key_key.toggleGui": "key.keyboard.f1",
+     "key_key.toggleSpectatorShaderEffects": "key.keyboard.f4",
+     "key_key.screenshot": "key.keyboard.f2",
+     "key_key.togglePerspective": "key.keyboard.f5",
+     "key_key.smoothCamera": "key.keyboard.unknown",
+     "key_key.fullscreen": "key.keyboard.f11",
+     "key_key.spectatorOutlines": "key.keyboard.unknown",
+     "key_key.spectatorHotbar": "key.mouse.middle",
+     "key_key.swapOffhand": "key.keyboard.f",
+     "key_key.saveToolbarActivator": "key.keyboard.c",
+     "key_key.loadToolbarActivator": "key.keyboard.x",
+     "key_key.advancements": "key.keyboard.l",
+     "key_key.quickActions": "key.keyboard.g",
+     "key_key.debug.overlay": "key.keyboard.f3",
+     "key_key.debug.modifier": "key.keyboard.f3",
+     "key_key.hotbar.1": "key.keyboard.1",
+     "key_key.hotbar.2": "key.keyboard.2",
+     "key_key.hotbar.3": "key.keyboard.3",
+     "key_key.hotbar.4": "key.keyboard.4",
+     "key_key.hotbar.5": "key.keyboard.5",
+     "key_key.hotbar.6": "key.keyboard.6",
+     "key_key.hotbar.7": "key.keyboard.7",
+     "key_key.hotbar.8": "key.keyboard.8",
+     "key_key.hotbar.9": "key.keyboard.9",
+     "key_key.debug.reloadChunk": "key.keyboard.a",
+     "key_key.debug.showHitboxes": "key.keyboard.b",
+     "key_key.debug.clearChat": "key.keyboard.d",
+     "key_key.debug.crash": "key.keyboard.c",
+     "key_key.debug.showChunkBorders": "key.keyboard.g",
+     "key_key.debug.showAdvancedTooltips": "key.keyboard.h",
+     "key_key.debug.copyRecreateCommand": "key.keyboard.i",
+     "key_key.debug.spectate": "key.keyboard.n",
+     "key_key.debug.switchGameMode": "key.keyboard.f4",
+     "key_key.debug.debugOptions": "key.keyboard.f6",
+     "key_key.debug.focusPause": "key.keyboard.p",
+     "key_key.debug.dumpDynamicTextures": "key.keyboard.s",
+     "key_key.debug.reloadResourcePacks": "key.keyboard.t",
+     "key_key.debug.profiling": "key.keyboard.l",
+     "key_key.debug.copyLocation": "key.keyboard.c",
+     "key_key.debug.dumpVersion": "key.keyboard.v",
+     "key_key.debug.profilingChart": "key.keyboard.1",
+     "key_key.debug.fpsCharts": "key.keyboard.2",
+     "key_key.debug.networkCharts": "key.keyboard.3",
+     "key_key.debug.lightmapTexture": "key.keyboard.4",
+     "key_key.debug.improvedTransparency": "key.keyboard.x",
+     "key_iris.keybind.reload": "key.keyboard.r",
+     "key_iris.keybind.toggleShaders": "key.keyboard.k",
+     "key_iris.keybind.shaderPackSelection": "key.keyboard.i",
+     "key_iris.keybind.wireframe": "key.keyboard.unknown",
+     "soundCategory_master": "0.0",
+     "soundCategory_music": "1.0",
+     "soundCategory_record": "1.0",
+     "soundCategory_weather": "1.0",
+     "soundCategory_block": "1.0",
+     "soundCategory_hostile": "1.0",
+     "soundCategory_neutral": "1.0",
+     "soundCategory_player": "1.0",
+     "soundCategory_ambient": "1.0",
+     "soundCategory_voice": "1.0",
+     "soundCategory_ui": "1.0",
+     "modelPart_cape": "true",
+     "modelPart_jacket": "true",
+     "modelPart_left_sleeve": "true",
+     "modelPart_right_sleeve": "true",
+     "modelPart_left_pants_leg": "true",
+     "modelPart_right_pants_leg": "true",
+     "modelPart_hat": "true"
+    }
+   },
+   "jvmProperties": [
+    {
+     "name": "debugger",
+     "value": "renderdoc"
+    },
+    {
+     "name": "renderdoc.path",
+     "path": "runtime/tools/renderdoc-1.46/RenderDoc_1.46_64/renderdoc.dll",
+     "sha256": "809da38e3867d9fd09cc5c30dd5310500dee75e999166d7a14ad1ef6e9eca65d"
+    }
+   ],
+   "join": {
+    "seconds": 13.31,
+    "line": "[15:34:28] [Server thread/INFO]: optilux[local:E:32185f15] logged in with entity id 1 at (22.6, 102.8, 533.0)"
+   },
+   "timings": {
+    "prepareSeconds": 0.25,
+    "joinSeconds": 13.31
+   },
+   "command": {
+    "check": "equal",
+    "arguments": 40
+   }
+  },
+  "mod": {
+   "pipe": {
+    "serverPid": 8748,
+    "dacl": "D:(A;;FA;;;S-1-5-21-3689793171-124209945-1107482691-1000)",
+    "secondInstanceError": 231
+   },
+   "hello": {
+    "protocol": 1,
+    "mod": {
+     "id": "optilux-helper",
+     "version": "0.1.0"
+    },
+    "platform": "mc-26.3",
+    "versions": {
+     "minecraft": "26.3",
+     "loader": "0.19.5",
+     "iris": "1.11.7+mc26.3",
+     "sodium": "0.9.2+mc26.3",
+     "java": "25.0.4.1+1-LTS"
+    },
+    "capabilities": [
+     "hello",
+     "selftest",
+     "state",
+     "world.wait",
+     "command",
+     "ticks.step",
+     "ready",
+     "camera.place",
+     "camera.get",
+     "shaders.reload",
+     "shaders.options",
+     "frames.index",
+     "frames.capture",
+     "window.measure",
+     "input.block",
+     "hud.set",
+     "timers.start",
+     "timers.read",
+     "timers.stop",
+     "cancel",
+     "quit"
+    ],
+    "pid": 8748,
+    "resumed": false,
+    "cancelled": [],
+    "frameIndex": 96,
+    "sinceReload": 0,
+    "qpcNs": 2725355846100
+   },
+   "frames": {
+    "first": {
+     "frameIndex": 96,
+     "sinceReload": 0,
+     "qpcNs": 2725358037300
+    },
+    "advanced": {
+     "frameIndex": 97,
+     "sinceReload": 1,
+     "qpcNs": 2728869093100
+    },
+    "seconds": 3.5
+   },
+   "requestLog": "results/raw/m4-coverage-capture-2/requests.jsonl"
+  },
+  "quit": {
+   "how": "quit",
+   "exitCode": 0,
+   "seconds": 1.594000000000051,
+   "pipeEnded": true
+  },
+  "stray": [],
+  "filesCleanup": {
+   "removed": [
+    "optilux-06d56f6f0628.zip",
+    "optilux-06d56f6f0628.zip.txt"
+   ],
+   "kept": []
+  },
+  "logCheck": {
+   "lines": 455,
+   "bytes": 91472,
+   "tokenAbsent": true
+  },
+  "readBack": {
+   "ok": true,
+   "options": {
+    "keys": 24,
+    "moved": {}
+   },
+   "iris": {
+    "keys": 5,
+    "moved": {}
+   },
+   "sodium": {
+    "flagsMoved": {},
+    "sameText": true
+   }
+  },
+  "helperLog": {
+   "applied": 10,
+   "active": 1,
+   "hookFailures": 0,
+   "irisOutsideReload": 0
+  },
+  "steps": {
+   "count": 203,
+   "file": "results/raw/m4-coverage-capture-2/steps.json"
+  },
+  "events": {
+   "counts": {
+    "world.joined": 1,
+    "reload.done": 18,
+    "capture.frame": 1,
+    "dimension.changed": 2,
+    "screen.opened": 4,
+    "world.left": 1
+   },
+   "file": "results/raw/m4-coverage-capture-2/events.json"
+  },
+  "renderdoc": {
+   "dll": "runtime/tools/renderdoc-1.46/RenderDoc_1.46_64/renderdoc.dll",
+   "sha256": "809da38e3867d9fd09cc5c30dd5310500dee75e999166d7a14ad1ef6e9eca65d",
+   "loadedAt": "15:34:17"
+  },
+  "start": {
+   "joined": {
+    "pose": {
+     "dimension": "minecraft:overworld",
+     "x": 22.6,
+     "y": 102.8,
+     "z": 533.0,
+     "yaw": -136.0,
+     "pitch": 37.20000076293945
+    },
+    "time": 6000,
+    "joinedQpcNs": 2728504256300,
+    "frameIndex": 99,
+    "sinceReload": 3,
+    "qpcNs": 2728987961100
+   },
+   "selftest": {
+    "pass": true,
+    "checks": {
+     "frameClock": {
+      "pass": true,
+      "first": {
+       "frameIndex": 103,
+       "qpcNs": 2729015006500,
+       "swapQpcNs": 2729014315200
+      },
+      "later": {
+       "frameIndex": 106,
+       "qpcNs": 2729313302200,
+       "swapQpcNs": 2729308874100
+      }
+     },
+     "renderer": {
+      "pass": true,
+      "reading": {
+       "inWorld": true,
+       "noScreen": true,
+       "sections": 22104,
+       "queuedJobs": 20,
+       "busyThreads": 10,
+       "buildResults": 10,
+       "runningJobs": 40,
+       "taskLists": 750,
+       "submittedTasks": 1,
+       "graphClean": false,
+       "rendererCheck": false,
+       "failing": "buildQueue"
+      }
+     },
+     "reload": {
+      "pass": true,
+      "pack": "ComplementaryUnbound_r5.9.3.zip",
+      "pipeline": "IrisRenderingPipeline",
+      "seconds": 0.6572224,
+      "reloadFrame": 107,
+      "frameIndex": 111,
+      "sinceReload": 4
+     },
+     "capture": {
+      "pass": true,
+      "frameIndex": 636,
+      "sinceReload": 529,
+      "reloadFrame": 107,
+      "align": {
+       "cycle": 4,
+       "phase": 1
+      },
+      "ready": {
+       "seconds": 14.3624759,
+       "predicateSeconds": 14.3624759,
+       "limitedBy": "graph",
+       "rendererCheck": {
+        "name": "SodiumWorldRenderer.isTerrainRenderComplete",
+        "holds": true,
+        "seconds": 3.9301474,
+        "gapFrames": 242
+       },
+       "frames": 520,
+       "frameIndex": 634
+      },
+      "size": "3840x2160",
+      "target": "3840x2160"
+     },
+     "input": {
+      "pass": true,
+      "mixins": [
+       "KeyboardHandlerMixin",
+       "MouseHandlerMixin",
+       "MinecraftMixin"
+      ],
+      "blocked": false
+     }
+    },
+    "frameIndex": 701,
+    "sinceReload": 594,
+    "qpcNs": 2746465761300
+   },
+   "reload": {
+    "pack": "optilux-06d56f6f0628.zip",
+    "pipeline": "IrisRenderingPipeline",
+    "seconds": 0.4519382,
+    "framesAfter": 2,
+    "reloadFrame": 713,
+    "frameIndex": 716,
+    "sinceReload": 3,
+    "qpcNs": 2747353555800
+   }
+  },
+  "laps": [
+   [
+    "forest_noon",
+    "coverage_items",
+    "coverage_mobs",
+    "coverage_beacon",
+    "coverage_hand",
+    "rain",
+    "nether_crimson",
+    "end_dragon"
+   ]
+  ],
+  "weatherTicks": [
+   {
+    "view": "forest_noon",
+    "ticks": 120
+   },
+   {
+    "view": "rain",
+    "ticks": 120
+   }
+  ],
+  "viewTicks": [
+   {
+    "view": "coverage_beacon",
+    "ticks": 100
+   }
+  ],
+  "timeSplit": {
+   "prepare": 32.6,
+   "restore": 1.4,
+   "machine": 3.2,
+   "launch": 13.8,
+   "mod": 3.5,
+   "start": 48.5,
+   "views": 126.1,
+   "quit": 1.6,
+   "after": 0.0
+  }
+ },
+ "raw": "results/raw/m4-coverage-capture-2"
+}
